@@ -1,0 +1,16 @@
+{
+  "request_id": "01900000-0000-7000-8000-000000000001",
+  "protocol_version": 1,
+  "type": "worker.ready",
+  "timestamp": "2026-01-01T00:00:00Z",
+  "payload": {
+    "status": "ok",
+    "worker_version": "0.0.0-fixture",
+    "protocol_version": 1,
+    "python_version": "3.12.0",
+    "pid": 4242,
+    "started_at": "2026-01-01T00:00:00Z",
+    "uptime_s": 12.5
+  },
+  "error": null
+}

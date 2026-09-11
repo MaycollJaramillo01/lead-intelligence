@@ -1,0 +1,37 @@
+# dependencies / toolchains
+node_modules/
+.venv/
+
+# build output
+dist/
+target/
+*.tsbuildinfo
+src-tauri/gen/schemas/
+
+# caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+coverage/
+
+# local runtime state (never commit user data)
+/data/*
+!/data/.gitkeep
+/logs/*
+!/logs/.gitkeep
+
+# secrets and machine-local config
+.env
+.env.*
+/config/local.toml
+*.local
+
+# editors / OS / local tooling
+.claude/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

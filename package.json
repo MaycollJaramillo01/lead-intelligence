@@ -1,0 +1,35 @@
+{
+  "name": "lead-intelligence",
+  "private": true,
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "type": "module",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "setup": "pnpm install --frozen-lockfile && uv sync --directory services/research-engine --locked",
+    "dev": "tauri dev",
+    "build": "pnpm contracts:check && tauri build",
+    "build:app": "tauri build --no-bundle",
+    "lint": "pnpm lint:ts && pnpm lint:rust && pnpm lint:py",
+    "lint:ts": "pnpm -r lint && prettier --check .",
+    "lint:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
+    "lint:py": "uv run --directory services/research-engine ruff check && uv run --directory services/research-engine ruff format --check",
+    "format": "prettier --write . && cargo fmt --manifest-path src-tauri/Cargo.toml && uv run --directory services/research-engine ruff format",
+    "typecheck": "pnpm -r typecheck && uv run --directory services/research-engine mypy",
+    "test": "pnpm test:py && pnpm test:ts && pnpm test:rust",
+    "test:ts": "pnpm -r test",
+    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "test:py": "uv run --directory services/research-engine pytest",
+    "contracts": "uv run --directory services/research-engine python -m research_engine.export_contracts && pnpm --filter @lead/shared-types generate",
+    "contracts:check": "uv run --directory services/research-engine python -m research_engine.export_contracts --check && pnpm --filter @lead/shared-types check",
+    "check": "pnpm contracts:check && pnpm lint && pnpm typecheck && pnpm test",
+    "clean": "node scripts/clean.mjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
+    "prettier": "^3.9.6"
+  }
+}

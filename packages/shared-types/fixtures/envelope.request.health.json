@@ -1,0 +1,8 @@
+{
+  "request_id": "01900000-0000-7000-8000-000000000001",
+  "protocol_version": 1,
+  "type": "health",
+  "timestamp": "2026-01-01T00:00:00Z",
+  "payload": {},
+  "error": null
+}

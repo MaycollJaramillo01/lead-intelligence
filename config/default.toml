@@ -1,0 +1,33 @@
+# Lead Intelligence - safe, non-secret defaults. Embedded into the desktop binary at build time.
+#
+# Precedence (later wins):
+#   default.toml < <environment>.toml < user config file < LEAD_* environment variables
+# User config file: development = config/local.toml (git-ignored),
+#                   production  = %APPDATA%\com.leadintelligence.desktop\config.toml
+# Secrets never go in these files.
+
+[paths]
+# Empty = platform default.
+#   development: <repo>/data and <repo>/logs
+#   production:  %LOCALAPPDATA%\com.leadintelligence.desktop\data and ...\logs
+# Relative paths resolve against that default base directory.
+data_dir = ""
+log_dir = ""
+
+[logging]
+# trace | debug | info | warn | error
+level = "info"
+# Daily log files kept before the oldest is deleted.
+max_files = 14
+
+[worker]
+# Empty = auto-detect: the uv virtualenv in development, the bundled sidecar in production.
+program = ""
+args = []
+# The first start after install can be slow (antivirus scanning, DuckDB import).
+startup_timeout_ms = 20000
+
+[ollama]
+# Local Ollama API. It is only detected and queried; nothing is downloaded automatically.
+base_url = "http://127.0.0.1:11434"
+timeout_ms = 2000

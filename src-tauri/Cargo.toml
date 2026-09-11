@@ -1,0 +1,37 @@
+[package]
+name = "lead-intelligence"
+version = "0.1.0"
+description = "Lead Intelligence desktop core"
+edition = "2024"
+rust-version = "1.88"
+publish = false
+
+[lib]
+name = "lead_intelligence_lib"
+crate-type = ["rlib"]
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[dependencies]
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde", "std"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tauri = { version = "2.11.5", features = [] }
+thiserror = "2.0.20"
+tokio = { version = "1.53.1", features = ["process", "io-util", "sync", "time", "macros", "rt-multi-thread"] }
+toml = "1.1.6"
+tracing = "0.1.44"
+tracing-appender = "0.2.5"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+uuid = { version = "1.26.1", features = ["v7", "serde"] }
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = [] }
+
+[dev-dependencies]
+tauri = { version = "2.11.5", features = ["test"] }
+tempfile = "3.27.0"

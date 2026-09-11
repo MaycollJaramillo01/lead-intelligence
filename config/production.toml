@@ -1,0 +1,4 @@
+# Overrides for release builds.
+[worker]
+# A packaged sidecar unpacks and is scanned by antivirus on first launch.
+startup_timeout_ms = 30000

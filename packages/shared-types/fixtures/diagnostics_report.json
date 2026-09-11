@@ -1,0 +1,111 @@
+{
+  "generated_at": "2026-01-01T00:00:00Z",
+  "core": {
+    "state": "ok",
+    "summary": "synthetic fixture: core ok",
+    "app_version": "0.0.0-fixture",
+    "environment": "development",
+    "os": "windows",
+    "arch": "x86_64",
+    "data_dir": "C:/synthetic/data",
+    "log_dir": "C:/synthetic/logs",
+    "config_sources": [
+      "embedded:default.toml"
+    ],
+    "config_warnings": [],
+    "started_at": "2026-01-01T00:00:00Z",
+    "uptime_s": 30.0
+  },
+  "worker": {
+    "state": "running",
+    "pid": 4242,
+    "started_at": "2026-01-01T00:00:00Z",
+    "restart_count": 0,
+    "last_error": null,
+    "stderr_tail": [],
+    "health": {
+      "status": "ok",
+      "worker_version": "0.0.0-fixture",
+      "protocol_version": 1,
+      "python_version": "3.12.0",
+      "pid": 4242,
+      "started_at": "2026-01-01T00:00:00Z",
+      "uptime_s": 12.5
+    }
+  },
+  "components": {
+    "health": {
+      "status": "ok",
+      "worker_version": "0.0.0-fixture",
+      "protocol_version": 1,
+      "python_version": "3.12.0",
+      "pid": 4242,
+      "started_at": "2026-01-01T00:00:00Z",
+      "uptime_s": 12.5
+    },
+    "sqlite": {
+      "state": "ok",
+      "summary": "synthetic fixture: sqlite ok",
+      "error": null,
+      "checked_at": "2026-01-01T00:00:00Z",
+      "duration_ms": 1.5,
+      "engine": "sqlite",
+      "path": "C:/synthetic/data/lead.sqlite3",
+      "engine_version": "3.0.0",
+      "schema_version": 1,
+      "initialized_at": "2026-01-01T00:00:00.000Z"
+    },
+    "duckdb": {
+      "state": "error",
+      "summary": "synthetic fixture: duckdb failure",
+      "error": "synthetic failure",
+      "checked_at": "2026-01-01T00:00:00Z",
+      "duration_ms": 2.25,
+      "engine": "duckdb",
+      "path": "C:/synthetic/data/analytics.duckdb",
+      "engine_version": null,
+      "schema_version": null,
+      "initialized_at": null
+    },
+    "ollama": {
+      "state": "degraded",
+      "summary": "synthetic fixture: ollama running",
+      "error": null,
+      "checked_at": "2026-01-01T00:00:00Z",
+      "duration_ms": 3.0,
+      "installed": true,
+      "running": true,
+      "base_url": "http://127.0.0.1:11434",
+      "version": "0.0.0",
+      "models": [
+        {
+          "name": "synthetic-model:latest",
+          "size_bytes": 1024,
+          "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+          "family": "synthetic",
+          "parameter_size": "1B",
+          "quantization": null
+        }
+      ]
+    },
+    "gpu": {
+      "state": "unavailable",
+      "summary": "synthetic fixture: no gpu",
+      "error": "nvidia-smi not found",
+      "checked_at": "2026-01-01T00:00:00Z",
+      "duration_ms": 0.5,
+      "devices": [
+        {
+          "index": 0,
+          "name": "Synthetic GPU",
+          "memory_total_mib": 8192,
+          "memory_free_mib": null,
+          "driver_version": null
+        }
+      ],
+      "cuda_available": false,
+      "cuda_driver_version": null
+    }
+  },
+  "components_error": null
+}

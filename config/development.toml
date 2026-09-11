@@ -1,0 +1,3 @@
+# Overrides for development builds (`pnpm dev`, debug binaries, cargo test).
+[logging]
+level = "debug"

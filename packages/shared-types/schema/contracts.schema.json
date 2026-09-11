@@ -1,0 +1,789 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LeadIntelligenceContracts",
+  "description": "Generated from services/research-engine/src/research_engine/contracts.py (protocol version 1). Do not edit by hand.",
+  "x-protocol-version": 1,
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "AppEnvironment": {
+      "enum": [
+        "development",
+        "production"
+      ],
+      "title": "AppEnvironment",
+      "type": "string"
+    },
+    "CommandError": {
+      "additionalProperties": false,
+      "description": "Error shape every Tauri command rejects with.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/CommandErrorCode"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "CommandError",
+      "type": "object"
+    },
+    "CommandErrorCode": {
+      "enum": [
+        "worker_unavailable",
+        "worker_timeout",
+        "worker_error",
+        "protocol_violation",
+        "invalid_input",
+        "internal"
+      ],
+      "title": "CommandErrorCode",
+      "type": "string"
+    },
+    "ComponentState": {
+      "enum": [
+        "ok",
+        "degraded",
+        "unavailable",
+        "error"
+      ],
+      "title": "ComponentState",
+      "type": "string"
+    },
+    "CoreStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/ComponentState"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "app_version": {
+          "type": "string"
+        },
+        "environment": {
+          "$ref": "#/$defs/AppEnvironment"
+        },
+        "os": {
+          "type": "string"
+        },
+        "arch": {
+          "type": "string"
+        },
+        "data_dir": {
+          "type": "string"
+        },
+        "log_dir": {
+          "type": "string"
+        },
+        "config_sources": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "config_warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "uptime_s": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "state",
+        "summary",
+        "app_version",
+        "environment",
+        "os",
+        "arch",
+        "data_dir",
+        "log_dir",
+        "config_sources",
+        "config_warnings",
+        "started_at",
+        "uptime_s"
+      ],
+      "title": "CoreStatus",
+      "type": "object"
+    },
+    "DatabaseStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/ComponentState"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "checked_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "duration_ms": {
+          "type": "number"
+        },
+        "engine": {
+          "enum": [
+            "sqlite",
+            "duckdb"
+          ],
+          "type": "string"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "engine_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "schema_version": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "initialized_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "state",
+        "summary",
+        "error",
+        "checked_at",
+        "duration_ms",
+        "engine",
+        "path",
+        "engine_version",
+        "schema_version",
+        "initialized_at"
+      ],
+      "title": "DatabaseStatus",
+      "type": "object"
+    },
+    "DiagnosticsReport": {
+      "additionalProperties": false,
+      "properties": {
+        "generated_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "core": {
+          "$ref": "#/$defs/CoreStatus"
+        },
+        "worker": {
+          "$ref": "#/$defs/WorkerStatus"
+        },
+        "components": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DiagnosticsResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "components_error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CommandError"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "generated_at",
+        "core",
+        "worker",
+        "components",
+        "components_error"
+      ],
+      "title": "DiagnosticsReport",
+      "type": "object"
+    },
+    "DiagnosticsResult": {
+      "additionalProperties": false,
+      "properties": {
+        "health": {
+          "$ref": "#/$defs/HealthResult"
+        },
+        "sqlite": {
+          "$ref": "#/$defs/DatabaseStatus"
+        },
+        "duckdb": {
+          "$ref": "#/$defs/DatabaseStatus"
+        },
+        "ollama": {
+          "$ref": "#/$defs/OllamaStatus"
+        },
+        "gpu": {
+          "$ref": "#/$defs/GpuStatus"
+        }
+      },
+      "required": [
+        "health",
+        "sqlite",
+        "duckdb",
+        "ollama",
+        "gpu"
+      ],
+      "title": "DiagnosticsResult",
+      "type": "object"
+    },
+    "EmptyPayload": {
+      "additionalProperties": false,
+      "description": "Payload of requests that take no parameters (health, diagnostics, shutdown).",
+      "properties": {},
+      "title": "EmptyPayload",
+      "type": "object"
+    },
+    "Envelope": {
+      "additionalProperties": false,
+      "description": "One JSON Lines frame. `payload` and `error` are mutually exclusive.",
+      "properties": {
+        "request_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "protocol_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "type": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "request_id",
+        "protocol_version",
+        "type",
+        "timestamp",
+        "payload",
+        "error"
+      ],
+      "title": "Envelope",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "enum": [
+        "invalid_message",
+        "unsupported_protocol",
+        "unknown_type",
+        "invalid_payload",
+        "timeout",
+        "shutting_down",
+        "internal"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "ErrorInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "message": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "title": "ErrorInfo",
+      "type": "object"
+    },
+    "GpuDevice": {
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "memory_total_mib": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "memory_free_mib": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "driver_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "index",
+        "name",
+        "memory_total_mib",
+        "memory_free_mib",
+        "driver_version"
+      ],
+      "title": "GpuDevice",
+      "type": "object"
+    },
+    "GpuStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/ComponentState"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "checked_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "duration_ms": {
+          "type": "number"
+        },
+        "devices": {
+          "items": {
+            "$ref": "#/$defs/GpuDevice"
+          },
+          "type": "array"
+        },
+        "cuda_available": {
+          "type": "boolean"
+        },
+        "cuda_driver_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "state",
+        "summary",
+        "error",
+        "checked_at",
+        "duration_ms",
+        "devices",
+        "cuda_available",
+        "cuda_driver_version"
+      ],
+      "title": "GpuStatus",
+      "type": "object"
+    },
+    "HealthResult": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "ok",
+          "type": "string"
+        },
+        "worker_version": {
+          "type": "string"
+        },
+        "protocol_version": {
+          "type": "integer"
+        },
+        "python_version": {
+          "type": "string"
+        },
+        "pid": {
+          "type": "integer"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "uptime_s": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "status",
+        "worker_version",
+        "protocol_version",
+        "python_version",
+        "pid",
+        "started_at",
+        "uptime_s"
+      ],
+      "title": "HealthResult",
+      "type": "object"
+    },
+    "OllamaModel": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "size_bytes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "family": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parameter_size": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "quantization": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "size_bytes",
+        "digest",
+        "family",
+        "parameter_size",
+        "quantization"
+      ],
+      "title": "OllamaModel",
+      "type": "object"
+    },
+    "OllamaStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/ComponentState"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "checked_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "duration_ms": {
+          "type": "number"
+        },
+        "installed": {
+          "type": "boolean"
+        },
+        "running": {
+          "type": "boolean"
+        },
+        "base_url": {
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "models": {
+          "items": {
+            "$ref": "#/$defs/OllamaModel"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "state",
+        "summary",
+        "error",
+        "checked_at",
+        "duration_ms",
+        "installed",
+        "running",
+        "base_url",
+        "version",
+        "models"
+      ],
+      "title": "OllamaStatus",
+      "type": "object"
+    },
+    "ShutdownResult": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "accepted"
+      ],
+      "title": "ShutdownResult",
+      "type": "object"
+    },
+    "UiErrorReport": {
+      "additionalProperties": false,
+      "description": "Technical UI error forwarded to the desktop log (the UI never writes logs itself).",
+      "properties": {
+        "source": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "stack": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "source",
+        "message",
+        "stack"
+      ],
+      "title": "UiErrorReport",
+      "type": "object"
+    },
+    "WorkerState": {
+      "enum": [
+        "stopped",
+        "starting",
+        "running",
+        "stopping",
+        "restarting",
+        "failed"
+      ],
+      "title": "WorkerState",
+      "type": "string"
+    },
+    "WorkerStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/WorkerState"
+        },
+        "pid": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "restart_count": {
+          "type": "integer"
+        },
+        "last_error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stderr_tail": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "health": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HealthResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "state",
+        "pid",
+        "started_at",
+        "restart_count",
+        "last_error",
+        "stderr_tail",
+        "health"
+      ],
+      "title": "WorkerStatus",
+      "type": "object"
+    }
+  }
+}

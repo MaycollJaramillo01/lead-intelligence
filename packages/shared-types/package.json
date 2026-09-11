@@ -1,0 +1,20 @@
+{
+  "name": "@lead/shared-types",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Contract types generated from the Pydantic source of truth in services/research-engine.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fixtures/*": "./fixtures/*"
+  },
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "check": "node scripts/generate.mjs --check",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "json-schema-to-typescript": "^16.0.0",
+    "typescript": "~6.0.3"
+  }
+}

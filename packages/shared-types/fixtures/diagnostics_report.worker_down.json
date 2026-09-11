@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-01-01T00:00:00Z",
+  "core": {
+    "state": "ok",
+    "summary": "synthetic fixture: core ok",
+    "app_version": "0.0.0-fixture",
+    "environment": "development",
+    "os": "windows",
+    "arch": "x86_64",
+    "data_dir": "C:/synthetic/data",
+    "log_dir": "C:/synthetic/logs",
+    "config_sources": [
+      "embedded:default.toml"
+    ],
+    "config_warnings": [],
+    "started_at": "2026-01-01T00:00:00Z",
+    "uptime_s": 30.0
+  },
+  "worker": {
+    "state": "failed",
+    "pid": null,
+    "started_at": null,
+    "restart_count": 3,
+    "last_error": "synthetic fixture: worker exited with code 1",
+    "stderr_tail": [
+      "Traceback (most recent call last):",
+      "SyntheticError: fixture"
+    ],
+    "health": null
+  },
+  "components": null,
+  "components_error": {
+    "code": "worker_unavailable",
+    "message": "synthetic fixture: worker unavailable"
+  }
+}
