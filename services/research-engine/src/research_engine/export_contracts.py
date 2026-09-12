@@ -14,16 +14,18 @@ import json
 import sys
 import tempfile
 from collections.abc import Callable
+from contextlib import ExitStack
 from datetime import UTC, datetime
 from itertools import count
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 from uuid import UUID
 
 from pydantic import BaseModel
 from pydantic.json_schema import models_json_schema
 
-from research_engine import repository
+from research_engine import jobs, repository
 from research_engine.contracts import (
     DATA_CONTRACT_VERSION,
     EXPORTED_MODELS,
@@ -59,6 +61,9 @@ from research_engine.domain import (
     CampaignListQuery,
     CampaignSaved,
     CandidateListQuery,
+    CanonicalChoiceRequest,
+    CanonicalField,
+    ContactType,
     CrawlRunListQuery,
     CrawlStartRequest,
     CrawlUrlListQuery,
@@ -70,7 +75,13 @@ from research_engine.domain import (
     DiscoveryRunListQuery,
     DiscoveryStartRequest,
     ImportPreviewRequest,
+    MatchAction,
+    MatchActionRequest,
+    MatchListQuery,
+    MatchStatus,
     ProblemSeverity,
+    ResolutionRunListQuery,
+    ResolutionStartRequest,
     SourceCatalog,
     SourceEstimate,
     SourceHealth,
@@ -78,6 +89,7 @@ from research_engine.domain import (
     SyntheticSeedResult,
     default_crawl_settings,
 )
+from research_engine.resolution import store as resolution_store
 from research_engine.storage import check_sqlite
 from research_engine.testdata import (
     SYNTHETIC_DATASET_NAME,
@@ -89,6 +101,7 @@ from research_engine.testdata import (
     seed_businesses,
     seed_crawl,
     seed_discovery,
+    seed_resolution,
     synthetic_connector,
     synthetic_project,
     synthetic_run,
@@ -358,6 +371,9 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
                 conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids)
             )
             discovery = build_discovery_fixtures(conn, project.id, ids, seeded)
+            resolution = build_resolution_fixtures(
+                conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids)
+            )
         finally:
             conn.close()
     return {
@@ -376,6 +392,66 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
             )
         ),
         **discovery,
+        **resolution,
+    }
+
+
+def build_resolution_fixtures(conn: Any, context: SyntheticContext) -> dict[str, dict[str, Any]]:
+    """Entity resolution shapes from a real run of the engine over the synthetic duplicates.
+
+    The engine stamps rows with fresh UUIDv7 ids and the wall clock; here both are the fixture
+    counter and the fixed clock, so the exported files are identical on every export.
+    """
+    with ExitStack() as stack:
+        for module in (resolution_store, jobs, repository):
+            stack.enter_context(patch.object(module, "new_id", context.ids))
+            stack.enter_context(patch.object(module, "utc_now", lambda: _T0))
+        seed_resolution(conn, context)
+    project_id = context.project_id
+    run_query = ResolutionRunListQuery(project_id=project_id, limit=25, cursor=None)
+    match_query = MatchListQuery(
+        project_id=project_id,
+        status=None,
+        risk=None,
+        min_score=None,
+        connector_key=None,
+        limit=50,
+        cursor=None,
+    )
+    matches = resolution_store.list_matches(conn, match_query)
+    pending = next(item for item in matches.items if item.status is MatchStatus.PENDING)
+    merged = next(item for item in matches.items if item.status is MatchStatus.MERGED)
+    cluster = repository.get_business_detail(conn, merged.left.root_business_id)
+    chosen = next(value for value in cluster.canonical if value.field is CanonicalField.PHONE)
+    other_phone = next(
+        contact.value
+        for contact in cluster.contacts
+        if contact.value.contact_type is ContactType.PHONE
+        and contact.value.id != chosen.observation_id
+    )
+    return {
+        "resolution_start_request.json": _dump(ResolutionStartRequest(project_id=None)),
+        "resolution_run_list_query.json": _dump(run_query),
+        "resolution_run_page.json": _dump(resolution_store.list_resolution_runs(conn, run_query)),
+        "match_list_query.json": _dump(match_query),
+        "match_page.json": _dump(matches),
+        "match_detail.json": _dump(resolution_store.get_match_detail(conn, pending.id)),
+        "match_action_request.json": _dump(
+            MatchActionRequest(
+                match_id=pending.id,
+                action=MatchAction.MERGE,
+                reason="Synthetic fixture: the same bakery at its new address.",
+            )
+        ),
+        "business_cluster_detail.json": _dump(cluster),
+        "canonical_choice_request.json": _dump(
+            CanonicalChoiceRequest(
+                business_id=cluster.business.id,
+                field=CanonicalField.PHONE,
+                observation_id=other_phone.id,
+                reason=None,
+            )
+        ),
     }
 
 

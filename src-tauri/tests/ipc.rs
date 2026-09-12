@@ -10,10 +10,10 @@ use chrono::Utc;
 use lead_intelligence_lib::commands::{AppState, CoreInfo};
 use lead_intelligence_lib::config::Environment;
 use lead_intelligence_lib::data::{
-    BusinessDetail, BusinessPage, CampaignSaved, CandidateDetail, CandidatePage, CrawlRun,
-    CrawlRunPage, CrawlUrlDetail, CrawlUrlPage, CriteriaCheck, DatasetPage, DiscoveryRun,
-    DiscoveryRunPage, ImportPreview, JobStatus, SourceCatalog, SourceRunStatus,
-    SyntheticSeedResult,
+    BusinessDetail, BusinessPage, CampaignSaved, CandidateDetail, CandidatePage, CanonicalField,
+    CrawlRun, CrawlRunPage, CrawlUrlDetail, CrawlUrlPage, CriteriaCheck, DatasetPage, DiscoveryRun,
+    DiscoveryRunPage, ImportPreview, JobStatus, MatchDetail, MatchPage, MatchStatus,
+    ResolutionRunPage, SelectionMethod, SourceCatalog, SourceRunStatus, SyntheticSeedResult,
 };
 use lead_intelligence_lib::protocol::{
     CommandError, CommandErrorCode, ComponentState, DiagnosticsReport, WorkerState,
@@ -383,6 +383,115 @@ fn the_discovery_flow_runs_end_to_end_through_ipc() {
     )
     .expect_err("no file, no run");
     assert_eq!(command_error(refused).code, CommandErrorCode::InvalidInput);
+
+    // 9. entity resolution: the repeated row becomes part of one business, reversibly
+    let started: ResolutionRunPage = invoke(
+        &webview,
+        "start_resolution",
+        json!({ "request": { "project_id": null } }),
+    )
+    .expect("resolution started")
+    .deserialize()
+    .expect("typed runs");
+    assert_eq!(started.items.len(), 1);
+    let mut settled = started;
+    for _ in 0..400 {
+        settled = invoke(
+            &webview,
+            "list_resolution_runs",
+            json!({ "query": { "project_id": null, "limit": 10, "cursor": null } }),
+        )
+        .expect("resolution runs")
+        .deserialize()
+        .expect("typed runs");
+        if settled
+            .items
+            .iter()
+            .all(|run| !matches!(run.status, JobStatus::Queued | JobStatus::Running))
+        {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    assert_eq!(settled.items[0].status, JobStatus::Succeeded);
+
+    let resolved: BusinessPage = invoke(&webview, "list_businesses", business_query(50))
+        .expect("businesses")
+        .deserialize()
+        .expect("typed page");
+    assert_eq!(resolved.total, 2, "three rows, two businesses");
+    let sol = resolved
+        .items
+        .iter()
+        .find(|item| item.member_count == 2)
+        .expect("the repeated row joined its business");
+
+    let merged: MatchPage = invoke(
+        &webview,
+        "list_matches",
+        json!({ "query": {
+            "project_id": null, "status": "merged", "risk": null, "min_score": null,
+            "connector_key": "file.import", "limit": 50, "cursor": null
+        }}),
+    )
+    .expect("queue")
+    .deserialize()
+    .expect("typed queue");
+    assert_eq!(merged.total, 1);
+    let pair_id = merged.items[0].id.to_string();
+
+    let blank = invoke(
+        &webview,
+        "act_on_match",
+        json!({ "request": { "match_id": pair_id, "action": "defer", "reason": "  " } }),
+    )
+    .expect_err("a blank reason never reaches the worker");
+    assert_eq!(command_error(blank).code, CommandErrorCode::InvalidInput);
+
+    let undone: MatchDetail = invoke(
+        &webview,
+        "act_on_match",
+        json!({ "request": { "match_id": pair_id, "action": "undo", "reason": "IPC test" } }),
+    )
+    .expect("undo")
+    .deserialize()
+    .expect("typed detail");
+    assert_eq!(undone.pair.status, MatchStatus::Pending);
+    assert_eq!(undone.decisions[0].reason, "IPC test");
+    let split: BusinessPage = invoke(&webview, "list_businesses", business_query(50))
+        .expect("businesses")
+        .deserialize()
+        .expect("typed page");
+    assert_eq!(
+        split.total, 3,
+        "undoing the merge gives the record back its own business"
+    );
+
+    let business: BusinessDetail = invoke(
+        &webview,
+        "get_business",
+        json!({ "query": { "business_id": sol.id } }),
+    )
+    .expect("detail")
+    .deserialize()
+    .expect("typed detail");
+    let chosen: BusinessDetail = invoke(
+        &webview,
+        "choose_canonical_value",
+        json!({ "request": {
+            "business_id": sol.id, "field": "name",
+            "observation_id": business.names[0].value.id, "reason": null
+        }}),
+    )
+    .expect("choice")
+    .deserialize()
+    .expect("typed detail");
+    let name = chosen
+        .canonical
+        .iter()
+        .find(|value| value.field == CanonicalField::Name)
+        .expect("a name is shown");
+    assert_eq!(name.method, SelectionMethod::Manual);
 
     tauri::async_runtime::block_on(supervisor.stop());
 }

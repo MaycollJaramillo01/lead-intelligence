@@ -234,5 +234,19 @@
         "acquired_at": "2026-01-01T00:00:00.000Z"
       }
     }
-  ]
+  ],
+  "members": [
+    {
+      "business_id": "01900000-0000-7000-8000-000000000015",
+      "display_name": "Synthetic Auto Repair 0001",
+      "status": "candidate",
+      "connector_name": "Synthetic fixture source (test data)",
+      "connector_kind": "synthetic",
+      "source_url": null,
+      "external_id": "synthetic-000001",
+      "first_seen_at": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "canonical": [],
+  "merges": []
 }

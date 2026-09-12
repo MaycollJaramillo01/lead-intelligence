@@ -375,7 +375,8 @@ def test_ids_are_uuid7_and_sort_by_creation() -> None:
 def test_state_machine_helper() -> None:
     assert can_transition(BusinessStatus.CANDIDATE, BusinessStatus.ACTIVE)
     assert can_transition(BusinessStatus.ACTIVE, BusinessStatus.ACTIVE)
-    assert not can_transition(BusinessStatus.MERGED, BusinessStatus.CLOSED)
+    assert can_transition(BusinessStatus.MERGED, BusinessStatus.CLOSED)  # unmerge restores it
+    assert not can_transition(BusinessStatus.CLOSED, BusinessStatus.CANDIDATE)
     assert can_transition(ValidationStatus.SUPPRESSED, ValidationStatus.OBSERVED)
     assert not can_transition(ValidationStatus.SUPPRESSED, ValidationStatus.LIKELY_VALID)
     with pytest.raises(TypeError):

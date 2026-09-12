@@ -80,6 +80,7 @@ Run only the tests that need local services: `uv run --directory services/resear
 | Research Center: sites fail with `Private or local address refused` | The address resolves to this machine or the local network; the crawler only visits public internet addresses, by design.                              |
 | Research Center: `No browser available`                             | Neither Playwright's Chromium, Edge nor Chrome could start, or free memory is under 2 GiB; pages stay as fetched over HTTP.                           |
 | Research Center: `robots.txt unreadable: nothing allowed`           | The site's robots.txt answered 5xx or 429, or did not answer; RFC 9309 says to fetch nothing. Try again later.                                        |
+| Businesses: `a resolution run is working on this project`           | Review decisions and value choices wait while a resolution run is queued or running on that project. Let it finish, or pause it in Jobs.              |
 | `uv` fails with `os error 1921` when run from a packaged app        | Cache entries created inside an MSIX-virtualised process. Retry with `uv --no-cache …` or clear the affected entries with `uv cache clean <package>`. |
 | `git` reports _dubious ownership_                                   | The `.git` directory belongs to another Windows account; use `git -c safe.directory=<repo> …` or add the exception yourself.                          |
 

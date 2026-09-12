@@ -125,7 +125,7 @@ def snapshot_businesses(
         cursor = conn.execute(
             BUSINESS_SUMMARY_SQL.format(key="b.id")
             + "WHERE b.project_id = ? AND b.deleted_at IS NULL AND p.deleted_at IS NULL "
-            "ORDER BY b.id",
+            "AND b.status <> 'merged' ORDER BY b.id",
             (project_id,),
         )
         while batch := cursor.fetchmany(_BATCH):

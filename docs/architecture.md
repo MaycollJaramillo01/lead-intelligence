@@ -61,8 +61,9 @@ contracts:check` (part of `pnpm check` and `pnpm build`) fails when generated fi
   `businesses.get`, `datasets.list`, the discovery set (`sources.list`, `sources.preview_import`,
   `campaigns.list`, `campaigns.save`, `campaigns.validate`, `discovery.start`, `discovery.control`,
   `discovery.runs`, `discovery.candidates`, `discovery.candidate`), the crawl set (`crawl.start`,
-  `crawl.control`, `crawl.runs`, `crawl.urls`, `crawl.url`) and, in development builds only,
-  `dev.seed_synthetic`. The answer echoes `request_id` with type `<request>.result` and carries
+  `crawl.control`, `crawl.runs`, `crawl.urls`, `crawl.url`), the resolution set
+  (`resolution.start`, `resolution.control`, `resolution.runs`, `matches.list`, `matches.get`,
+  `matches.act`, `businesses.choose_value`) and, in development builds only, `dev.seed_synthetic`. The answer echoes `request_id` with type `<request>.result` and carries
   either `payload` or `error`, never both.
 - Events (worker → core): `worker.ready` (handshake, carries a health payload) and
   `worker.protocol_error` (malformed input; correlated to the request id when recoverable).
@@ -156,6 +157,23 @@ JobsScreen ─ listDiscoveryRuns + listCrawlRuns; cancel goes to the engine that
 
 The crawler is described in [crawling.md](crawling.md): policies, SSRF guard, fallback criteria,
 limits, scheduling, metrics and reason codes.
+
+## Data flow: entity resolution
+
+```text
+BusinessesScreen ▸ Possible duplicates ─ desktop.startResolution({project_id: null})    (apps/desktop)
+  → invoke("start_resolution") → commands::start_resolution                          (src-tauri)
+  → worker: one job per project; on a thread: ingest candidates in batches (records, observations,
+    checkpoint) → load observations → blocking → compare → store pairs → recluster from the stored
+    pairs (people first) → canonical values                                          (research-engine)
+  ⟳ desktop.listResolutionRuns while a run moves; desktop.listMatches for the queue
+MatchReview ─ desktop.getMatch → both records with their evidence, fields, reasons, history
+  ─ desktop.actOnMatch({match_id, action, reason}) → recluster the project → MatchDetail
+BusinessInspector ─ desktop.chooseCanonicalValue({business_id, field, observation_id}) → BusinessDetail
+```
+
+The engine is described in [resolution.md](resolution.md): normalisers, blocking, weights,
+thresholds, safety rules, clusters, canonical values and the reversible flow.
 
 Worker errors keep their meaning across the boundary: `not_found` → `CommandError.not_found`,
 `not_allowed` → `not_allowed`, `invalid_payload` → `invalid_input`; anything else is `worker_error`

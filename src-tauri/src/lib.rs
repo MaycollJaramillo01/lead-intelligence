@@ -48,6 +48,13 @@ pub fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Build
         commands::list_crawl_runs,
         commands::list_crawl_urls,
         commands::get_crawl_url,
+        commands::start_resolution,
+        commands::control_resolution,
+        commands::list_resolution_runs,
+        commands::list_matches,
+        commands::get_match,
+        commands::act_on_match,
+        commands::choose_canonical_value,
         commands::seed_synthetic_data
     ])
 }

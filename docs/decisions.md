@@ -391,3 +391,109 @@ contexts and the browser explicitly.
 **Why.** It works the same with the development launcher and the packaged sidecar, needs no dependency
 and no `unsafe` in Rust, and is proven by a test that kills a worker outright and checks that its
 Chromium processes are gone.
+
+## D-036 · One record per candidate; a business is a root and the records merged into it (phase 06)
+
+**Context.** Merges must keep every member and be reversible. Observations reference a
+`business_id`; moving them on a merge would rewrite their history and make an unmerge guess which
+observations go back.
+
+**Decision.** Each discovery candidate becomes one record business (`entity_records`, immutable).
+Records of the same entity point at the root through `businesses.merged_into_id`, always the root
+(flat clusters); status `merged` hides a record from lists and search results show its root. No
+observation ever moves: the root's detail reads the observations of all its records. Unmerging
+changes two columns and restores the status the record had.
+
+**Why not a separate entity table.** Phase 03 already modelled `merged` and `merged_into_id`; a
+second table would duplicate identity, lists, search and snapshots.
+
+**Consequences.** One business row per candidate. Lead stage, notes and tags live on the root, and
+a later merge does not move them yet (phase 12 must follow merges).
+
+## D-037 · Pure, versioned normalisers, applied again when comparing (phase 06)
+
+**Decision.** Normalisers are pure functions with a `NORMALIZER_VERSION` that stamps the extractions
+that write observations. Matching normalises the raw values of observations again with the running
+build, so a comparison never mixes versions. A new version adds observations through new extractions;
+older ones stay as history and a current-extraction filter hides them from the business.
+
+**Trade-off.** A subset of the Public Suffix List and NANP-only phone validation keep the code small
+and dependency-free; both are stated where they apply.
+
+## D-038 · Explainable weighted rules with safety rules, not a trained model (phase 06)
+
+**Context.** There is no labelled production data, and every decision must be explained.
+
+**Decision.** Each agreement or conflict adds a named log-odds weight; the score is the logistic of
+the total; `auto_merge ≥ 0.97` with two agreeing identities (one of them the name or a stable source
+id) and no conflict, `manual_review ≥ 0.25`. Safety rules can only add caution: a shared phone alone,
+same brand at another location, an address change, generic names and different states never merge
+automatically. Every weight and rule is stored with the pair and the rules version.
+
+**Why.** A sum of named weights is explainable line by line; a model trained on synthetic data would
+learn the generator, not businesses. Measured on the labelled and the generated corpora: automatic
+precision 1.0, and every true pair of the labelled corpus merged or sent to review.
+
+## D-039 · Blocking with a block-size cap instead of global comparison (phase 06)
+
+**Decision.** Exact keys (domain, E.164 phone, stable source id) and candidate keys (distinctive name
+token within a city or ZIP, full name, street, email domain, coordinate cells); a block of more than
+250 records is skipped and counted.
+
+**Trade-off.** Two records reachable only through an oversized block are never compared — a
+switchboard shared by a franchise, "Main St" — which are exactly the pairs the rules would not merge.
+At 30,719 records the engine compared 55,093 pairs instead of 471 million.
+
+## D-040 · Clusters are recomputed from stored pairs, people first (phase 06)
+
+**Decision.** A run and a decision share one path: stored pairs → union-find with people's merges
+first and automatic merges by score, separations (a person's "keep separate" and hard conflicts)
+refusing any chain across them → the differences with `businesses` written as audited merges and
+unmerges with `business_merges` history. Undo reverts the latest decision on a pair. A later run
+refreshes the evidence of a pair a person decided but never its status.
+
+**Trade-off.** A decision recomputes the whole project: a second at tens of thousands of records.
+Recomputing only the affected components is the upgrade path if projects grow to millions.
+
+## D-041 · Canonical values by source trust, then confidence or freshness; conflicts counted (phase 06)
+
+**Decision.** For each field of a cluster the most trusted source wins, then confidence (freshness
+first for a location), then the oldest id. The choice, its method (`policy` or `manual`), reason and
+the number of different values in the cluster are recorded in `canonical_values`, superseded rather
+than overwritten. Lists show how many fields disagree; the inspector shows every value and lets a
+person choose another, which later runs keep.
+
+**Why.** "Last write wins" would let the newest import overwrite a registry; hiding the alternatives
+after a merge would hide the conflict the prompt says must stay visible.
+
+## D-042 · Resolution is a job: batched ingest, recomputed comparison, idempotent apply (phase 06)
+
+**Decision.** `jobs.kind = resolution`, one open run per project. Ingest runs in batches of 200
+candidates with a checkpoint cursor; comparison is recomputed in memory on every run and checks for
+pause and cancel every 2,000 items; applying pairs, clusters and values writes only differences.
+Decisions are refused while a run is working on the same project; a run left running by a dead
+worker is paused at startup.
+
+**Why.** Only ingest writes new rows that must not repeat; the rest is deterministic and cheaper to
+recompute than to checkpoint.
+
+## D-043 · The review queue is a view of Businesses, not a new module (phase 06)
+
+**Decision.** Businesses toggles between the canonical list and Possible duplicates. The navigation
+registry keeps the 16 modules the product defined; the queue belongs to the businesses it resolves.
+
+## D-044 · A business is an establishment; no organization entity yet (phase 06)
+
+**Context.** The prompt asks for `organization` and `location` entities if the model needs to tell a
+brand, a company and a branch apart.
+
+**Decision.** A business is one establishment. Branches and franchise locations stay separate
+businesses (`same_brand_different_location`), and what relates them is kept as a stored distinct
+pair with its rule and evidence. Places are `business_locations` observations with their time, so a
+move is history of the same business. No `organizations` table.
+
+**Why.** Nothing before phase 11 works at brand level, and a brand grouping inferred from a shared
+domain or phone is exactly the kind of heuristic that must not become a fact.
+
+**Consequences.** When a phase needs company-level rollups, `organizations` can be built from the
+stored `same_brand_different_location` pairs without touching records or merges.

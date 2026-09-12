@@ -10,7 +10,7 @@ import csv
 import hashlib
 import io
 import sqlite3
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -343,12 +343,15 @@ def seed_synthetic_workspace(
     """Creates the synthetic workspace once (businesses + a dataset snapshot); then reuses it."""
     live_businesses = (
         "SELECT id FROM businesses WHERE project_id = ? AND deleted_at IS NULL "
-        "ORDER BY name_sort_key, id LIMIT 1"
+        "AND status <> 'merged' ORDER BY name_sort_key, id LIMIT 1"
     )
     find_dataset = (
         "SELECT id FROM datasets WHERE project_id = ? AND name = ? AND deleted_at IS NULL"
     )
-    count_live = "SELECT count(*) FROM businesses WHERE project_id = ? AND deleted_at IS NULL"
+    count_live = (
+        "SELECT count(*) FROM businesses WHERE project_id = ? AND deleted_at IS NULL "
+        "AND status <> 'merged'"
+    )
     now = utc_now()
     with atomic(conn):
         project_id = _scalar(
@@ -382,6 +385,8 @@ def seed_synthetic_workspace(
         run = synthetic_run(project_id, connector_id, now)
         insert(conn, run)
         seed_businesses(conn, SyntheticContext(project_id, connector_id, run.id, now), count)
+    # duplicates to review, so the review queue can be exercised end to end in development
+    seed_resolution(conn, SyntheticContext(project_id, connector_id, run.id, now))
     snapshot = snapshot_businesses(
         conn,
         data_dir,
@@ -916,3 +921,112 @@ def seed_crawl(
         insert(conn, *records)
         audit(conn, AuditAction.CREATE, EntityType.JOB, job.id, actor=ACTOR_DEV_SEED)
     return CrawlFixture(job_id=job.id, source_run_id=run.id, rendered_url_id=contact.id)
+
+
+# ---- entity resolution (phase 06) ---------------------------------------------------------------
+
+#: One plumber written two ways (merged automatically, with two different phones to show a
+#: conflict), one bakery that moved (sent to review) and a generic name in two states (distinct).
+SYNTHETIC_RESOLUTION_ROWS: tuple[Mapping[str, str], ...] = (
+    {"name": "Synthetic Plumbing 0100 LLC", "address": "100 Example Ave Suite 4", "city": "Austin",
+     "state": "TX", "zip": "78701", "phone": "(512) 555-0110", "category": "Plumbing",
+     "website": "http://www.synthetic-plumbing-0100.example/?utm_source=seed"},
+    {"name": "Synthetic Plumbing 0100, Inc.", "address": "100 Example Avenue, Ste 4",
+     "city": "Austin", "state": "Texas", "zip": "78701-2233", "phone": "512.555.0111",
+     "category": "Plumbing, Heating, and Air-Conditioning Contractors",
+     "website": "https://synthetic-plumbing-0100.example"},
+    {"name": "Synthetic Bakery 0200", "address": "12 Sample Mill Rd", "city": "Denver",
+     "state": "CO", "zip": "80202", "phone": "(303) 555-0140", "category": "Bakery",
+     "website": "synthetic-bakery-0200.example", "email": "info@synthetic-bakery-0200.example"},
+    {"name": "Synthetic Bakery 0200 LLC", "address": "880 Demo Market St", "city": "Denver",
+     "state": "CO", "zip": "80205", "phone": "303-555-0140", "category": "Retail Bakeries",
+     "website": "https://synthetic-bakery-0200.example/"},
+    {"name": "Synthetic Cleaning Services", "address": "10 Fixture Ln", "city": "Houston",
+     "state": "TX", "zip": "77002", "phone": "(713) 555-0130"},
+    {"name": "Synthetic Cleaning Services", "address": "22 Fixture Ln", "city": "Tampa",
+     "state": "FL", "zip": "33602", "phone": "(813) 555-0131"},
+)  # fmt: skip
+
+
+def insert_candidates(
+    conn: sqlite3.Connection,
+    ctx: SyntheticContext,
+    rows: Sequence[Mapping[str, str]],
+    *,
+    campaign_id: str | None = None,
+) -> list[str]:
+    """Discovery candidates over raw records, the way a finished run stores them (test data).
+
+    Each row needs a `name`; `address`, `city`, `state`, `zip`, `website`, `phone`, `email` and
+    `category` are optional. The whole row is kept in the raw payload.
+    """
+    now, ids = ctx.now, ctx.ids
+    records: list[Record] = []
+    candidate_ids: list[str] = []
+    for number, row in enumerate(rows, start=1):
+        raw_id = ids()
+        payload: JsonObject = {**row, "test_data": True, "_row": number, "_record": raw_id}
+        website = row.get("website")
+        raw = RawRecord(
+            id=raw_id,
+            source_run_id=ctx.source_run_id,
+            acquired_page_id=None,
+            connector_id=ctx.connector_id,
+            method=AcquisitionMethod.SYNTHETIC,
+            external_id=f"synthetic-candidate-{raw_id}",
+            source_url=None,
+            payload_json=payload,
+            payload_sha256=_sha256(orjson.dumps(payload, option=orjson.OPT_SORT_KEYS)),
+            acquired_at=now,
+            created_at=now,
+        )
+        candidate = DiscoveryCandidate(
+            id=ids(),
+            project_id=ctx.project_id,
+            campaign_id=campaign_id,
+            source_run_id=ctx.source_run_id,
+            raw_record_id=raw.id,
+            connector_id=ctx.connector_id,
+            dedup_key=dedup_key(
+                name=row["name"],
+                locality=row.get("city"),
+                region=row.get("state"),
+                domain=domain_of(website),
+            ),
+            duplicate_of_id=None,
+            name_raw=row["name"],
+            name_normalized=sort_key(row["name"]),
+            locality=row.get("city"),
+            region=row.get("state"),
+            postal_code=row.get("zip"),
+            country_code="US",
+            domain=domain_of(website),
+            website_url=website,
+            phone_raw=row.get("phone"),
+            category_raw=row.get("category"),
+            external_id=raw.external_id,
+            source_url=None,
+            discovered_at=now,
+            created_at=now,
+        )
+        records += [raw, candidate]
+        candidate_ids.append(candidate.id)
+    with atomic(conn):
+        insert(conn, *records)
+    return candidate_ids
+
+
+@dataclass(frozen=True, slots=True)
+class ResolutionFixture:
+    job_id: str
+    candidate_ids: list[str]
+
+
+def seed_resolution(conn: sqlite3.Connection, ctx: SyntheticContext) -> ResolutionFixture:
+    """The synthetic duplicates above, resolved by a finished run of the real engine."""
+    from research_engine.resolution import engine, store
+
+    candidate_ids = insert_candidates(conn, ctx, SYNTHETIC_RESOLUTION_ROWS)
+    created, _ = store.plan_runs(conn, ctx.project_id, actor=ACTOR_DEV_SEED)
+    engine.run_resolution(conn, created[0], lambda: False)
+    return ResolutionFixture(job_id=created[0], candidate_ids=candidate_ids)

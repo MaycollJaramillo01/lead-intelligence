@@ -7,6 +7,7 @@
 //! rejected while deserialising, and every page the worker returns is checked against the query
 //! that produced it before it reaches the UI.
 
+use std::collections::HashSet;
 use std::fmt;
 
 use chrono::{DateTime, Utc};
@@ -440,6 +441,7 @@ pub struct Observed<T> {
 
 /// Implemented by every observation so the detail check can verify ownership and provenance.
 pub trait Observation {
+    fn id(&self) -> &Id;
     fn business_id(&self) -> &Id;
     fn extraction_id(&self) -> &Id;
 }
@@ -447,6 +449,7 @@ pub trait Observation {
 macro_rules! observation {
     ($($record:ty),+) => {$(
         impl Observation for $record {
+            fn id(&self) -> &Id { &self.id }
             fn business_id(&self) -> &Id { &self.business_id }
             fn extraction_id(&self) -> &Id { &self.extraction_id }
         }
@@ -506,6 +509,8 @@ pub struct BusinessListItem {
     pub primary_category: Option<String>,
     pub source_count: u64,
     pub evidence_count: u64,
+    pub member_count: u64,
+    pub conflict_count: u64,
     pub last_seen_at: UtcTimestamp,
     pub is_synthetic: bool,
 }
@@ -529,6 +534,9 @@ pub struct BusinessDetail {
     pub contacts: Vec<Observed<ContactPoint>>,
     pub classifications: Vec<Observed<BusinessClassification>>,
     pub evidence: Vec<Observed<EvidenceItem>>,
+    pub members: Vec<ClusterMember>,
+    pub canonical: Vec<CanonicalValue>,
+    pub merges: Vec<BusinessMerge>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -607,34 +615,67 @@ impl DatasetPage {
     }
 }
 
-fn check_observations<T: Observation>(business: &Id, group: &[Observed<T>]) -> Result<(), String> {
+fn check_observations<T: Observation>(
+    members: &[&Id],
+    group: &[Observed<T>],
+    seen: &mut HashSet<Id>,
+) -> Result<(), String> {
     for observed in group {
-        if observed.value.business_id() != business {
+        if !members.contains(&observed.value.business_id()) {
             return Err(format!(
-                "an observation of business {} was returned for {business}",
+                "an observation of business {} does not belong to this business",
                 observed.value.business_id()
             ));
         }
         if observed.value.extraction_id() != &observed.provenance.extraction_id {
             return Err("an observation does not match its provenance".into());
         }
+        seen.insert(observed.value.id().clone());
     }
     Ok(())
 }
 
 impl BusinessDetail {
-    /// The detail must describe the requested business, and only it.
+    /// The detail must describe the requested business: its observations belong to it or to the
+    /// records merged into it, and every value it shows points at one of those observations.
     pub fn validate(&self, requested: &Id) -> Result<(), String> {
         let id = &self.business.id;
         if id != requested {
             return Err(format!("asked for business {requested}, received {id}"));
         }
-        check_observations(id, &self.names)?;
-        check_observations(id, &self.locations)?;
-        check_observations(id, &self.websites)?;
-        check_observations(id, &self.contacts)?;
-        check_observations(id, &self.classifications)?;
-        check_observations(id, &self.evidence)
+        let members: Vec<&Id> = self
+            .members
+            .iter()
+            .map(|member| &member.business_id)
+            .collect();
+        if !members.contains(&id) {
+            return Err("a business must be one of its own members".into());
+        }
+        if self.business.status == BusinessStatus::Merged && members.len() != 1 {
+            return Err("a merged record cannot have records of its own".into());
+        }
+        let mut seen = HashSet::new();
+        check_observations(&members, &self.names, &mut seen)?;
+        check_observations(&members, &self.locations, &mut seen)?;
+        check_observations(&members, &self.websites, &mut seen)?;
+        check_observations(&members, &self.contacts, &mut seen)?;
+        check_observations(&members, &self.classifications, &mut seen)?;
+        check_observations(&members, &self.evidence, &mut seen)?;
+        for value in &self.canonical {
+            if &value.business_id != id {
+                return Err(format!(
+                    "canonical value {} belongs to another business",
+                    value.id
+                ));
+            }
+            if !seen.contains(&value.observation_id) {
+                return Err(format!(
+                    "canonical value {} points at an observation this business does not hold",
+                    value.id
+                ));
+            }
+        }
+        Ok(())
     }
 }
 
@@ -1927,6 +1968,458 @@ impl CrawlUrlDetail {
     }
 }
 
+// ---- entity resolution (phase 06) ---------------------------------------------------------------
+// Mirrors the resolution section of `domain.py`. Pairs, clusters and the values a business shows.
+// The core checks that a queue page obeys its filters, that a pair detail describes that pair and
+// both of its records, and that a decision carries a usable reason.
+
+const MAX_REASON_CHARS: usize = 2000;
+const MAX_CODE_CHARS: usize = 64;
+
+contract_enum!(EntityType {
+    Project,
+    Campaign,
+    IcpProfile,
+    SourceConnector,
+    SourceRun,
+    RawRecord,
+    Business,
+    ContactPoint,
+    DecisionMaker,
+    EvidenceItem,
+    LatinoAssessment,
+    WebsiteAudit,
+    WebsiteFinding,
+    InferenceRun,
+    ScoringModel,
+    ScoreRun,
+    Job,
+    Dataset,
+    DatasetSnapshot,
+    Export,
+    Tag,
+    Note,
+    MatchCandidate,
+});
+contract_enum!(MatchOutcome {
+    AutoMerge,
+    ManualReview,
+    Distinct
+});
+contract_enum!(MatchStatus {
+    Pending,
+    Deferred,
+    Merged,
+    Separate
+});
+contract_enum!(MatchRisk { Low, Medium, High });
+contract_enum!(CanonicalField {
+    Name,
+    Location,
+    Website,
+    Phone,
+    Email,
+    Category
+});
+contract_enum!(SelectionMethod { Policy, Manual });
+contract_enum!(ReasonDirection { For, Against, Rule });
+contract_enum!(FieldAgreement {
+    Match,
+    Partial,
+    Conflict,
+    Missing
+});
+contract_enum!(MatchAction {
+    Merge,
+    KeepSeparate,
+    Defer,
+    Undo
+});
+
+fn check_reason(reason: &Option<String>) -> Result<(), String> {
+    match reason {
+        Some(text) if text.trim().is_empty() || text.chars().count() > MAX_REASON_CHARS => Err(
+            format!("a reason must say something, in at most {MAX_REASON_CHARS} characters"),
+        ),
+        _ => Ok(()),
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClusterMember {
+    pub business_id: Id,
+    pub display_name: String,
+    pub status: BusinessStatus,
+    pub connector_name: Option<String>,
+    pub connector_kind: Option<SourceKind>,
+    pub source_url: Option<String>,
+    pub external_id: Option<String>,
+    pub first_seen_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CanonicalValue {
+    pub id: Id,
+    pub business_id: Id,
+    pub field: CanonicalField,
+    pub observation_id: Id,
+    pub value: String,
+    pub method: SelectionMethod,
+    pub policy_version: String,
+    pub alternative_count: u32,
+    pub reason: String,
+    pub actor: String,
+    pub chosen_at: UtcTimestamp,
+    pub superseded_at: Option<UtcTimestamp>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BusinessMerge {
+    pub id: Id,
+    pub project_id: Id,
+    pub business_id: Id,
+    pub into_business_id: Id,
+    pub match_id: Option<Id>,
+    pub is_manual: bool,
+    pub score: Option<Confidence>,
+    pub rules_version: Option<String>,
+    pub explanation_json: Map<String, Value>,
+    pub actor: String,
+    pub merged_at: UtcTimestamp,
+    pub unmerged_at: Option<UtcTimestamp>,
+    pub unmerged_by: Option<String>,
+    pub unmerge_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResolutionStartRequest {
+    pub project_id: Option<Id>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResolutionStats {
+    pub records: u64,
+    pub ingested: u64,
+    pub observations: u64,
+    pub blocks: u64,
+    pub skipped_blocks: u64,
+    pub largest_block: u64,
+    pub pairs_compared: u64,
+    pub auto_merged: u64,
+    pub review: u64,
+    pub distinct: u64,
+    pub clusters: u64,
+    pub merged_records: u64,
+    pub manual_decisions: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResolutionRun {
+    pub job_id: Id,
+    pub project_id: Id,
+    pub project_name: String,
+    pub status: JobStatus,
+    pub stage: String,
+    pub progress_done: u64,
+    pub progress_total: Option<u64>,
+    pub normalizer_version: String,
+    pub rules_version: String,
+    pub stats: ResolutionStats,
+    pub requested_at: UtcTimestamp,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+    pub events: Vec<RunEvent>,
+    pub is_synthetic: bool,
+}
+
+impl ResolutionRun {
+    /// A run cannot report more progress than its total, nor more merged records than records.
+    pub fn validate(&self) -> Result<(), String> {
+        if let Some(total) = self.progress_total
+            && self.progress_done > total
+        {
+            return Err("progress cannot exceed its total".into());
+        }
+        let stats = &self.stats;
+        if stats.merged_records > stats.records || stats.clusters > stats.records {
+            return Err(format!(
+                "run {} reports more clusters or merged records than records",
+                self.job_id
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResolutionRunListQuery {
+    pub project_id: Option<Id>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl ResolutionRunListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResolutionRunPage {
+    pub items: Vec<ResolutionRun>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl ResolutionRunPage {
+    pub fn validate(&self, query: &ResolutionRunListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        if let Some(project) = &query.project_id
+            && let Some(other) = self.items.iter().find(|run| &run.project_id != project)
+        {
+            return Err(format!("run {} belongs to another project", other.job_id));
+        }
+        self.items.iter().try_for_each(ResolutionRun::validate)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MatchListQuery {
+    pub project_id: Option<Id>,
+    pub status: Option<MatchStatus>,
+    pub risk: Option<MatchRisk>,
+    pub min_score: Option<Confidence>,
+    pub connector_key: Option<String>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl MatchListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)?;
+        match &self.connector_key {
+            Some(key)
+                if key.len() > MAX_CODE_CHARS
+                    || !key.starts_with(|c: char| c.is_ascii_lowercase())
+                    || !key.bytes().all(|b| {
+                        b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'.'
+                    }) =>
+            {
+                Err(format!("{key:?} is not a source key"))
+            }
+            _ => Ok(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MatchSide {
+    pub business_id: Id,
+    pub root_business_id: Id,
+    pub display_name: String,
+    pub locality: Option<String>,
+    pub region: Option<String>,
+    pub connector_names: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MatchListItem {
+    pub id: Id,
+    pub project_id: Id,
+    pub left: MatchSide,
+    pub right: MatchSide,
+    pub score: Confidence,
+    pub outcome: MatchOutcome,
+    pub risk: MatchRisk,
+    pub status: MatchStatus,
+    pub is_manual: bool,
+    pub reasons: Vec<String>,
+    pub rules_version: String,
+    pub updated_at: UtcTimestamp,
+    pub is_synthetic: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MatchPage {
+    pub items: Vec<MatchListItem>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl MatchPage {
+    /// The queue obeys its filters, is ordered by score and names each pair once, in order.
+    pub fn validate(&self, query: &MatchListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        for item in &self.items {
+            let outside = query
+                .project_id
+                .as_ref()
+                .is_some_and(|project| &item.project_id != project)
+                || query.status.is_some_and(|status| item.status != status)
+                || query.risk.is_some_and(|risk| item.risk != risk)
+                || query.min_score.is_some_and(|min| item.score.0 < min.0);
+            if outside {
+                return Err(format!("pair {} does not match the filter", item.id));
+            }
+            if item.left.business_id.as_str() >= item.right.business_id.as_str() {
+                return Err(format!("pair {} is not in canonical order", item.id));
+            }
+        }
+        if self
+            .items
+            .windows(2)
+            .any(|pair| pair[0].score.0 < pair[1].score.0)
+        {
+            return Err("the queue is not ordered by score".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MatchDetailQuery {
+    pub match_id: Id,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MatchCandidate {
+    pub id: Id,
+    pub project_id: Id,
+    pub left_business_id: Id,
+    pub right_business_id: Id,
+    pub rules_version: String,
+    pub score: Confidence,
+    pub outcome: MatchOutcome,
+    pub risk: MatchRisk,
+    pub hard_conflict: bool,
+    pub status: MatchStatus,
+    pub is_manual: bool,
+    pub features_json: Map<String, Value>,
+    pub reasons_json: Map<String, Value>,
+    pub job_id: Option<Id>,
+    pub decided_by: String,
+    pub created_at: UtcTimestamp,
+    pub updated_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FieldComparison {
+    pub field: String,
+    pub left: Vec<String>,
+    pub right: Vec<String>,
+    pub agreement: FieldAgreement,
+    pub similarity: Option<Confidence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MatchReason {
+    pub code: String,
+    pub direction: ReasonDirection,
+    pub weight: f64,
+    pub detail: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ReviewDecision {
+    pub id: Id,
+    pub entity_type: EntityType,
+    pub entity_id: Id,
+    pub decision: String,
+    pub previous_value: Option<String>,
+    pub new_value: Option<String>,
+    pub reason: String,
+    pub actor: String,
+    pub decided_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MatchDetail {
+    #[serde(rename = "match")]
+    pub pair: MatchCandidate,
+    pub left: BusinessDetail,
+    pub right: BusinessDetail,
+    pub fields: Vec<FieldComparison>,
+    pub reasons: Vec<MatchReason>,
+    pub blocking_keys: Vec<String>,
+    pub decisions: Vec<ReviewDecision>,
+    pub merges: Vec<BusinessMerge>,
+}
+
+impl MatchDetail {
+    /// One pair, both of its records, and only decisions about that pair.
+    pub fn validate(&self, requested: &Id) -> Result<(), String> {
+        let pair = &self.pair;
+        if &pair.id != requested {
+            return Err(format!("asked for pair {requested}, received {}", pair.id));
+        }
+        self.left.validate(&pair.left_business_id)?;
+        self.right.validate(&pair.right_business_id)?;
+        match self.decisions.iter().find(|decision| {
+            decision.entity_type != EntityType::MatchCandidate || decision.entity_id != pair.id
+        }) {
+            Some(decision) => Err(format!("decision {} is not about this pair", decision.id)),
+            None => Ok(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MatchActionRequest {
+    pub match_id: Id,
+    pub action: MatchAction,
+    pub reason: Option<String>,
+}
+
+impl MatchActionRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        check_reason(&self.reason)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CanonicalChoiceRequest {
+    pub business_id: Id,
+    pub field: CanonicalField,
+    pub observation_id: Id,
+    pub reason: Option<String>,
+}
+
+impl CanonicalChoiceRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        check_reason(&self.reason)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2006,6 +2499,7 @@ mod tests {
                 "display_name": "Synthetic", "status": status, "lead_stage": "not_contacted",
                 "locality": null, "region": null, "primary_domain": null, "primary_phone": null,
                 "primary_category": null, "source_count": 1, "evidence_count": 0,
+                "member_count": 1, "conflict_count": 0,
                 "last_seen_at": "2026-01-01T00:00:00.000Z", "is_synthetic": true
             })
         };

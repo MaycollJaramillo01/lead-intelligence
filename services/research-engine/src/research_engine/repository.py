@@ -40,9 +40,11 @@ from research_engine.domain import (
     BusinessListItem,
     BusinessListQuery,
     BusinessLocation,
+    BusinessMerge,
     BusinessName,
     BusinessPage,
     BusinessSort,
+    BusinessStatus,
     Campaign,
     CampaignListItem,
     CampaignListQuery,
@@ -52,6 +54,8 @@ from research_engine.domain import (
     CandidateListItem,
     CandidateListQuery,
     CandidatePage,
+    CanonicalValue,
+    ClusterMember,
     ContactPoint,
     CrawlErrorGroup,
     CrawlMetrics,
@@ -394,26 +398,64 @@ _BUSINESS_SORT: dict[BusinessSort, tuple[str, str]] = {
     BusinessSort.LAST_SEEN: ("b.last_seen_at", "DESC"),
 }
 
+
+def _chosen(field: str, fallback: str) -> str:
+    """The observation a business shows for a field: its canonical value (phase 06), else the
+    record's own primary observation (businesses that never went through resolution)."""
+    return (
+        "coalesce((SELECT v.observation_id FROM canonical_values v "  # noqa: S608 - constants
+        f"WHERE v.business_id = b.id AND v.field = '{field}' AND v.superseded_at IS NULL), "
+        f"({fallback}))"
+    )
+
+
+#: Records whose observations describe business `b`: itself and every record merged into it.
+_CLUSTER_OF_B = "(o.business_id = b.id OR o.business_id IN (SELECT m.id FROM businesses m " \
+    "WHERE m.merged_into_id = b.id AND m.deleted_at IS NULL))"  # fmt: skip
+
 # One summary row per canonical business; also the source of dataset snapshots.
-BUSINESS_SUMMARY_SQL = """
+BUSINESS_SUMMARY_SQL = f"""
 SELECT b.id, b.project_id, b.display_name, b.status, b.lead_stage,
     l.locality, l.region, l.postal_code, w.domain AS primary_domain,
     coalesce(c.value_normalized, c.value_raw) AS primary_phone,
     cl.label_raw AS primary_category,
-    (SELECT count(DISTINCT x.raw_record_id) FROM business_names n
-        JOIN extractions x ON x.id = n.extraction_id WHERE n.business_id = b.id) AS source_count,
-    (SELECT count(*) FROM evidence_items e
-        WHERE e.business_id = b.id AND e.status = 'active') AS evidence_count,
-    b.first_seen_at, b.last_seen_at, p.is_synthetic, {key} AS sort_value
+    (SELECT count(DISTINCT x.raw_record_id) FROM business_names o
+        JOIN extractions x ON x.id = o.extraction_id WHERE {_CLUSTER_OF_B}) AS source_count,
+    (SELECT count(*) FROM evidence_items o WHERE o.status = 'active' AND {_CLUSTER_OF_B})
+        AS evidence_count,
+    1 + (SELECT count(*) FROM businesses m WHERE m.merged_into_id = b.id AND m.deleted_at IS NULL)
+        AS member_count,
+    (SELECT count(*) FROM canonical_values v WHERE v.business_id = b.id
+        AND v.superseded_at IS NULL AND v.alternative_count > 1) AS conflict_count,
+    b.first_seen_at, b.last_seen_at, p.is_synthetic, {{key}} AS sort_value
 FROM businesses b
 JOIN projects p ON p.id = b.project_id
-LEFT JOIN business_locations l ON l.business_id = b.id AND l.is_primary = 1
-LEFT JOIN websites w ON w.business_id = b.id AND w.is_primary = 1
-LEFT JOIN contact_points c ON c.business_id = b.id AND c.contact_type = 'phone'
-    AND c.is_primary = 1 AND c.deleted_at IS NULL
-LEFT JOIN business_classifications cl ON cl.business_id = b.id AND cl.kind = 'category'
-    AND cl.is_primary = 1
-"""
+LEFT JOIN business_locations l ON l.id = {
+    _chosen(
+        "location",
+        "SELECT x.id FROM business_locations x WHERE x.business_id = b.id AND x.is_primary = 1",
+    )
+}
+LEFT JOIN websites w ON w.id = {
+    _chosen(
+        "website", "SELECT x.id FROM websites x WHERE x.business_id = b.id AND x.is_primary = 1"
+    )
+}
+LEFT JOIN contact_points c ON c.id = {
+    _chosen(
+        "phone",
+        "SELECT x.id FROM contact_points x WHERE x.business_id = b.id AND x.contact_type = 'phone' "
+        "AND x.is_primary = 1 AND x.deleted_at IS NULL",
+    )
+}
+LEFT JOIN business_classifications cl ON cl.id = {
+    _chosen(
+        "category",
+        "SELECT x.id FROM business_classifications x WHERE x.business_id = b.id "
+        "AND x.kind = 'category' AND x.is_primary = 1",
+    )
+}
+"""  # noqa: S608 - fixed SQL, no input
 
 
 def list_businesses(conn: sqlite3.Connection, query: BusinessListQuery) -> BusinessPage:
@@ -424,8 +466,14 @@ def list_businesses(conn: sqlite3.Connection, query: BusinessListQuery) -> Busin
     if query.status is not None:
         where.append("b.status = ?")
         params.append(query.status.value)
+    else:  # a merged record is shown inside the business it belongs to, not as a business
+        where.append("b.status <> 'merged'")
     if (match := fts_query(query.search)) is not None:
-        where.append("b.seq IN (SELECT rowid FROM business_search WHERE business_search MATCH ?)")
+        # a name or place of any record of the cluster finds the business it belongs to
+        where.append(
+            "b.id IN (SELECT coalesce(m.merged_into_id, m.id) FROM businesses m "
+            "WHERE m.seq IN (SELECT rowid FROM business_search WHERE business_search MATCH ?))"
+        )
         params.append(match)
     (total,) = conn.execute(
         "SELECT count(*) FROM businesses b JOIN projects p ON p.id = b.project_id "  # noqa: S608
@@ -466,26 +514,54 @@ _PROVENANCE = """
 """
 
 
+#: Observations of the newest extraction of each extractor over a raw record (phase 06): an older
+#: normaliser version stays stored as history but no longer describes the business.
+CURRENT_EXTRACTION = (
+    "NOT EXISTS (SELECT 1 FROM extractions x2 WHERE x2.raw_record_id = x.raw_record_id "
+    "AND x2.extractor = x.extractor AND x2.extracted_at > x.extracted_at)"
+)
+
+
 def _observed[ObservedT: Observed[Any]](
     conn: sqlite3.Connection,
     model: type[Record],
     wrapper: type[ObservedT],
-    business_id: str,
+    business_ids: list[str],
     live_only: bool = False,
 ) -> list[ObservedT]:
+    placeholders = ", ".join("?" * len(business_ids))
     rows = conn.execute(
         f"SELECT {_columns(model, 'f')}, {_PROVENANCE} FROM {model.TABLE} f "  # noqa: S608
         "JOIN extractions x ON x.id = f.extraction_id "
         "JOIN raw_records r ON r.id = x.raw_record_id "
         "JOIN source_connectors sc ON sc.id = r.connector_id "
-        f"WHERE f.business_id = ?{' AND f.deleted_at IS NULL' if live_only else ''} "
+        f"WHERE f.business_id IN ({placeholders}) AND {CURRENT_EXTRACTION}"
+        f"{' AND f.deleted_at IS NULL' if live_only else ''} "
         "ORDER BY f.confidence DESC, f.id",
-        (business_id,),
+        business_ids,
     ).fetchall()
     return [
         wrapper(value=from_row(model, row), provenance=from_row(Provenance, row, prefix="p_"))
         for row in rows
     ]
+
+
+def _cluster_members(conn: sqlite3.Connection, business: Business) -> list[ClusterMember]:
+    """The business and the records merged into it, each with the source its name came from."""
+    rows = conn.execute(
+        "SELECT b.id AS business_id, b.display_name, b.status, b.first_seen_at, "
+        "sc.name AS connector_name, sc.kind AS connector_kind, r.source_url, r.external_id "
+        "FROM businesses b "
+        "LEFT JOIN business_names n ON n.id = (SELECT n2.id FROM business_names n2 "
+        "WHERE n2.business_id = b.id ORDER BY n2.is_primary DESC, n2.id LIMIT 1) "
+        "LEFT JOIN extractions x ON x.id = n.extraction_id "
+        "LEFT JOIN raw_records r ON r.id = x.raw_record_id "
+        "LEFT JOIN source_connectors sc ON sc.id = r.connector_id "
+        "WHERE b.id = ? OR (? AND b.merged_into_id = ? AND b.deleted_at IS NULL) "
+        "ORDER BY b.id = ? DESC, b.first_seen_at, b.id",
+        (business.id, business.status is not BusinessStatus.MERGED, business.id, business.id),
+    ).fetchall()
+    return [ClusterMember.model_validate(dict(row)) for row in rows]
 
 
 def get_business_detail(conn: sqlite3.Connection, business_id: str) -> BusinessDetail:
@@ -497,17 +573,33 @@ def get_business_detail(conn: sqlite3.Connection, business_id: str) -> BusinessD
     ).fetchone()
     if row is None:
         raise NotFoundError(f"business {business_id} not found")
+    business = from_row(Business, row)
+    members = _cluster_members(conn, business)
+    ids = [member.business_id for member in members]
+    placeholders = ", ".join("?" * len(ids))
+    canonical = conn.execute(
+        f"SELECT {_columns(CanonicalValue)} FROM canonical_values "  # noqa: S608
+        "WHERE business_id = ? AND superseded_at IS NULL ORDER BY field",
+        (business.id,),
+    ).fetchall()
+    merges = conn.execute(
+        f"SELECT {_columns(BusinessMerge)} FROM business_merges "  # noqa: S608
+        f"WHERE business_id IN ({placeholders}) OR into_business_id IN ({placeholders}) "
+        "ORDER BY merged_at DESC, id DESC LIMIT 100",
+        [*ids, *ids],
+    ).fetchall()
     return BusinessDetail(
-        business=from_row(Business, row),
+        business=business,
         is_synthetic=bool(row["is_synthetic"]),
-        names=_observed(conn, BusinessName, ObservedName, business_id),
-        locations=_observed(conn, BusinessLocation, ObservedLocation, business_id),
-        websites=_observed(conn, Website, ObservedWebsite, business_id),
-        contacts=_observed(conn, ContactPoint, ObservedContact, business_id, live_only=True),
-        classifications=_observed(
-            conn, BusinessClassification, ObservedClassification, business_id
-        ),
-        evidence=_observed(conn, EvidenceItem, ObservedEvidence, business_id),
+        names=_observed(conn, BusinessName, ObservedName, ids),
+        locations=_observed(conn, BusinessLocation, ObservedLocation, ids),
+        websites=_observed(conn, Website, ObservedWebsite, ids),
+        contacts=_observed(conn, ContactPoint, ObservedContact, ids, live_only=True),
+        classifications=_observed(conn, BusinessClassification, ObservedClassification, ids),
+        evidence=_observed(conn, EvidenceItem, ObservedEvidence, ids),
+        members=members,
+        canonical=[from_row(CanonicalValue, value) for value in canonical],
+        merges=[from_row(BusinessMerge, merge) for merge in merges],
     )
 
 

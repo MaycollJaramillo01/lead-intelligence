@@ -12,6 +12,9 @@ its source, and how the stores are kept safe. Delivered in phase 03; later phase
   a reference a source returned, not a business and not a lead. See [discovery.md](discovery.md).
 - Web acquisition (phase 05) adds `crawl_urls` (`0004_web_acquisition.sql`): the frontier and fetch
   log of a site crawl, final once decided. See [crawling.md](crawling.md).
+- Entity resolution (phase 06) adds `entity_records`, `match_candidates`, `business_merges` and
+  `canonical_values` (`0005_entity_resolution.sql`): every candidate becomes a record business, and
+  records of the same entity are merged into a root, reversibly. See [resolution.md](resolution.md).
 - Access: [`repository.py`](../services/research-engine/src/research_engine/repository.py) (SQLite) and
   [`datasets.py`](../services/research-engine/src/research_engine/datasets.py) (DuckDB + Parquet).
   Nothing else runs SQL against the model; the UI never does (D-004).
@@ -56,6 +59,10 @@ flowchart LR
     websites --> web_pages
     contact_points --> contact_validations
     extractions --> evidence_items --> businesses
+    discovery_candidates -. entity_records .-> businesses
+    businesses -. merged_into_id .-> businesses
+    match_candidates --> business_merges --> businesses
+    businesses --> canonical_values
   end
   subgraph analysis[Assessments, AI and scoring]
     evidence_items --> latino_assessments
@@ -142,7 +149,8 @@ Staying on the same value is always allowed. Enumerations that are results rathe
 
 | Enumeration                       | Allowed changes                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `business_status`                 | candidate → active, closed, merged · active → closed, merged · closed → active, merged · merged → active (unmerge; `merged_into_id` required while merged)                                                                                                                                                                                                                               |
+| `business_status`                 | candidate → active, closed, merged · active → closed, merged · closed → active, merged · merged → active, candidate, closed (unmerge back to the status before the merge; `merged_into_id` required while merged)                                                                                                                                                                        |
+| `match_status`                    | pending → merged, separate, deferred · deferred → pending, merged, separate · merged → pending, separate · separate → pending, merged                                                                                                                                                                                                                                                    |
 | `source_run_status`, `job_status` | queued → running, cancelled · running → paused, succeeded, failed, cancelled · paused → running, cancelled · failed → queued (retry)                                                                                                                                                                                                                                                     |
 | `evidence_status`                 | active → stale, contradicted, revoked · stale → active, revoked · contradicted → active, revoked · revoked is final                                                                                                                                                                                                                                                                      |
 | `validation_status`               | any result → any other, except suppressed → observed only (a suppression is lifted explicitly)                                                                                                                                                                                                                                                                                           |
@@ -156,8 +164,9 @@ Other enumerations: `evidence_type`, `evidence_strength`, `latino_status`, `cont
 `entity_type`, `audit_action`, `name_kind`, `service_area_kind`, `classification_kind`, `page_kind`,
 `contact_origin`, `conversion_element_kind`, `assessment_method`, `evidence_role`,
 `explanation_kind`, `event_level`, `export_format`, `crawl_target` (phase 05, when `source_kind`
-also gained `business_website`). Values are listed in `domain.py`; adding one is a
-forward migration that inserts a row.
+also gained `business_website`), `match_outcome`, `match_risk`, `canonical_field` and
+`selection_method` (phase 06, when `entity_type` gained `match_candidate`). Values are listed in
+`domain.py`; adding one is a forward migration that inserts a row.
 
 ## 6. Data dictionary
 
@@ -201,6 +210,18 @@ soft-deletable ones have `deleted_at?` + `deleted_reason?`.
 | `decision_makers`          | People only when published by a legitimate business source | `id`, `business_id`, `extraction_id`, `full_name_raw`, `full_name_normalized`, `role_raw`?, `role_normalized`?, `published_context`?, `confidence`, `observed_at`                                                                                                                                                                                                                                                                                                   |
 | `contact_points`           | Phones, emails, contact/booking forms, social profiles     | `id`, `business_id`, `location_id`?, `decision_maker_id`?, `contact_type` (contact_type), `value_raw`, `value_normalized`?, `origin` (contact_origin: published, user_import, hypothesis), `platform`? (social only), `web_page_id`?, `role_or_department`?, `published_context`?, `is_primary`, `validation_status` (validation_status), `validated_at`?, `do_not_contact` + `suppression_reason`?, `confidence`, `extraction_id`, `first_seen_at`, `last_seen_at` |
 | `contact_validations`      | **Immutable** history of validation results                | `id`, `contact_point_id` → contact_points, `status` (validation_status), `method`, `validator_version`, `detail_json`?, `validated_at`, `expires_at`?                                                                                                                                                                                                                                                                                                               |
+
+### Entity resolution (phase 06)
+
+| Table              | Purpose                                                                          | Columns                                                                                                                                                                                                                                                                                                    |
+| ------------------ | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `entity_records`   | **Immutable** record business of each candidate                                  | `candidate_id` → discovery_candidates (key), `business_id` → businesses (unique), `project_id` → projects                                                                                                                                                                                                  |
+| `match_candidates` | A pair the rules looked at; the pair never changes, its evidence and status may  | `id`, `project_id`, `left_business_id` < `right_business_id` (unique pair), `rules_version`, `score` (0–1), `outcome` (match_outcome), `risk` (match_risk), `hard_conflict`, `status` (match_status), `is_manual`, `features_json`, `reasons_json`, `job_id`? → jobs, `decided_by`                         |
+| `business_merges`  | History of a record joining a root; only the unmerge is written after the insert | `id`, `project_id`, `business_id`, `into_business_id`, `match_id`? → match_candidates, `is_manual`, `score`?, `rules_version`?, `explanation_json` (previous status, the pair's features and reasons), `actor`, `merged_at`, `unmerged_at`?, `unmerged_by`?, `unmerge_reason`? (one open merge per record) |
+| `canonical_values` | The observation a business shows per field; superseded, never overwritten        | `id`, `business_id`, `field` (canonical_field), `observation_id` (polymorphic by field), `value`, `method` (selection_method), `policy_version`, `alternative_count` (> 1 is a conflict), `reason`, `actor`, `chosen_at`, `superseded_at`? (one current per business and field)                            |
+
+Human decisions on pairs and canonical values are `review_decisions` (`entity_type`
+`match_candidate` or `business`); merges and unmerges are also in `audit_log`.
 
 ### Evidence and assessments
 
@@ -289,6 +310,10 @@ load and the Parquet copy; a test compares the three.
   name, every observed name and the places of each business; triggers keep it in sync, its row key
   is `businesses.seq` (stable across `VACUUM`). User input is reduced to words and each word becomes
   a quoted prefix term, so FTS syntax never reaches the index.
+- **Canonical listing (phase 06).** Lists hide `merged` records unless that status is asked for; a
+  search match on any record of a cluster returns its root. The row shows the canonical value of each
+  field (or the record's own primary observation when resolution never ran), `member_count` and
+  `conflict_count`. Observations of an older normaliser version are hidden from details.
 - Measured on 20,000 synthetic businesses (180,000 observation rows): first page 20 ms, page 51
   18 ms, search 29 ms, last-seen order 15 ms, detail 2 ms; ingestion ~800 businesses/s with every
   constraint and the search index active (`test_performance_on_a_synthetic_dataset`).

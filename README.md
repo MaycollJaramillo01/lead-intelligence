@@ -7,14 +7,15 @@ commercial need, ICP fit and an explanation of why each one is worth contacting.
 
 Everything runs on this machine. No cloud service or LLM API is required.
 
-> **Status: Phase 05 — web acquisition.** Discovery (phase 04) finds candidate references from
-> interchangeable sources. The Research Center crawls their websites, or addresses you type, in two
-> levels: plain HTTP first, Chromium only when a page verifiably needs JavaScript. The crawler reads
-> robots.txt first, only visits public addresses, keeps a gentle pace per host, stays within page,
-> byte, time and request budgets, and never works around a CAPTCHA, a login or a block. Every page
-> keeps its bytes, how it was fetched and the raw findings parsed from it; crawls pause, resume and
-> survive a restart without fetching anything twice. Nothing is scored yet: qualification arrives in
-> later phases. The phase plan lives in [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
+> **Status: Phase 06 — normalisation and entity resolution.** Discovery (phase 04) finds candidate
+> references from interchangeable sources and the Research Center (phase 05) crawls their websites
+> within robots.txt, budgets and a gentle pace. Every candidate now becomes normalised observations
+> that keep the value as acquired, and records of the same business are merged by explainable rules:
+> blocking, weighted features and safety rules that never merge on a shared phone, a franchise
+> branch or a generic name alone. Ambiguous pairs wait in a review queue with the evidence of both
+> records side by side; every merge can be undone, and each field of a business shows its most
+> trusted value while conflicts stay visible. Nothing is scored yet: qualification arrives in later
+> phases. The phase plan lives in [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
 
 ## Requirements
 
@@ -65,6 +66,7 @@ docs/                        Architecture, decisions and operations
 - [docs/data-model.md](docs/data-model.md) — model, provenance, data dictionary, backup and recovery
 - [docs/discovery.md](docs/discovery.md) — discovery engine: sources, criteria, runs, candidates
 - [docs/crawling.md](docs/crawling.md) — web acquisition: policies, SSRF, fallback, limits, metrics
+- [docs/resolution.md](docs/resolution.md) — normalisation, entity resolution, review, canonical values
 - [docs/ui-system.md](docs/ui-system.md) — design tokens, navigation map, shortcuts, components
 - [docs/decisions.md](docs/decisions.md) — technical decisions and their trade-offs
 - [docs/operations.md](docs/operations.md) — configuration, logs, troubleshooting

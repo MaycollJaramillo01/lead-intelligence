@@ -49,7 +49,8 @@ export type EntityType =
   | "dataset_snapshot"
   | "export"
   | "tag"
-  | "note";
+  | "note"
+  | "match_candidate";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "JsonValue".
@@ -156,6 +157,16 @@ export type EvidenceStrength = "strong" | "moderate" | "weak";
  * via the `definition` "EvidenceStatus".
  */
 export type EvidenceStatus = "active" | "stale" | "contradicted" | "revoked";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CanonicalField".
+ */
+export type CanonicalField = "name" | "location" | "website" | "phone" | "email" | "category";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SelectionMethod".
+ */
+export type SelectionMethod = "policy" | "manual";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "BusinessSort".
@@ -315,6 +326,11 @@ export type ExportStatus = "pending" | "running" | "succeeded" | "failed" | "can
 export type ExportFormat = "csv" | "xlsx" | "json" | "jsonl" | "parquet";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FieldAgreement".
+ */
+export type FieldAgreement = "match" | "partial" | "conflict" | "missing";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ImportFormat".
  */
 export type ImportFormat = "csv" | "tsv" | "json" | "jsonl";
@@ -340,6 +356,35 @@ export type LatinoStatus =
   | "probable_latino_owned"
   | "spanish_market_affinity"
   | "unknown";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MatchAction".
+ */
+export type MatchAction = "merge" | "keep_separate" | "defer" | "undo";
+/**
+ * What the resolution rules recommend for a pair of records (phase 06).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MatchOutcome".
+ */
+export type MatchOutcome = "auto_merge" | "manual_review" | "distinct";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MatchRisk".
+ */
+export type MatchRisk = "low" | "medium" | "high";
+/**
+ * Where a pair stands: waiting for a person, put aside, merged, or kept separate.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MatchStatus".
+ */
+export type MatchStatus = "pending" | "deferred" | "merged" | "separate";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ReasonDirection".
+ */
+export type ReasonDirection = "for" | "against" | "rule";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ServiceAreaKind".
@@ -444,6 +489,10 @@ export interface BusinessClassification {
   created_at: string;
 }
 /**
+ * A business with every observation of every record resolved into it (phase 06), the value
+ * chosen for each field and the merge history. A record that is itself merged shows only its own
+ * observations; `business.merged_into_id` says where it belongs.
+ *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "BusinessDetail".
  */
@@ -456,6 +505,9 @@ export interface BusinessDetail {
   contacts: ObservedContact[];
   classifications: ObservedClassification[];
   evidence: ObservedEvidence[];
+  members: ClusterMember[];
+  canonical: CanonicalValue[];
+  merges: BusinessMerge[];
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -639,6 +691,70 @@ export interface EvidenceItem {
   updated_at: string;
 }
 /**
+ * A record resolved into a business, with the source it came from.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ClusterMember".
+ */
+export interface ClusterMember {
+  business_id: string;
+  display_name: string;
+  status: BusinessStatus;
+  connector_name: string | null;
+  connector_kind: SourceKind | null;
+  source_url: string | null;
+  external_id: string | null;
+  first_seen_at: string;
+}
+/**
+ * Which observation represents a cluster for one field, chosen by policy or by a person.
+ *
+ * `alternative_count` is how many different values the cluster holds for that field: above one,
+ * the business has a conflict the interface must show. Superseded, never overwritten.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CanonicalValue".
+ */
+export interface CanonicalValue {
+  id: string;
+  business_id: string;
+  field: CanonicalField;
+  observation_id: string;
+  value: string;
+  method: SelectionMethod;
+  policy_version: string;
+  alternative_count: number;
+  reason: string;
+  actor: string;
+  chosen_at: string;
+  superseded_at: string | null;
+}
+/**
+ * One record joining a cluster: why (a snapshot of the pair's explanation), by whom, and when
+ * it was undone. History: only the unmerge fields are ever written after the insert.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BusinessMerge".
+ */
+export interface BusinessMerge {
+  id: string;
+  project_id: string;
+  business_id: string;
+  into_business_id: string;
+  match_id: string | null;
+  is_manual: boolean;
+  score: number | null;
+  rules_version: string | null;
+  explanation_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  actor: string;
+  merged_at: string;
+  unmerged_at: string | null;
+  unmerged_by: string | null;
+  unmerge_reason: string | null;
+}
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "BusinessDetailQuery".
  */
@@ -662,6 +778,8 @@ export interface BusinessListItem {
   primary_category: string | null;
   source_count: number;
   evidence_count: number;
+  member_count: number;
+  conflict_count: number;
   last_seen_at: string;
   is_synthetic: boolean;
 }
@@ -1077,6 +1195,18 @@ export interface CandidatePage {
   items: CandidateListItem[];
   next_cursor: string | null;
   total: number;
+}
+/**
+ * Makes one observation the value a business shows for a field.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CanonicalChoiceRequest".
+ */
+export interface CanonicalChoiceRequest {
+  business_id: string;
+  field: CanonicalField;
+  observation_id: string;
+  reason: string | null;
 }
 /**
  * Which column of an imported file feeds which candidate field. Unmapped fields stay empty.
@@ -1810,6 +1940,18 @@ export interface DiscoveryStartRequest {
  */
 export interface EmptyPayload {}
 /**
+ * The record business a candidate became (phase 06). One per candidate, for ever.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EntityRecord".
+ */
+export interface EntityRecord {
+  candidate_id: string;
+  business_id: string;
+  project_id: string;
+  created_at: string;
+}
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "EntityTag".
  */
@@ -1879,6 +2021,17 @@ export interface Extraction {
   extractor: string;
   extractor_version: string;
   extracted_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FieldComparison".
+ */
+export interface FieldComparison {
+  field: string;
+  left: string[];
+  right: string[];
+  agreement: FieldAgreement;
+  similarity: number | null;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -2126,6 +2279,154 @@ export interface LatinoAssessmentEvidence {
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MatchActionRequest".
+ */
+export interface MatchActionRequest {
+  match_id: string;
+  action: MatchAction;
+  reason: string | null;
+}
+/**
+ * A pair of records the resolution rules looked at: the evidence, the outcome and its status.
+ *
+ * `features_json` holds the compared values and blocking keys, `reasons_json` every weight and
+ * rule that produced the score. The pair never changes; evidence is refreshed by a new run, and
+ * `status` follows the person who reviewed it (`is_manual`) or else the engine.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MatchCandidate".
+ */
+export interface MatchCandidate {
+  id: string;
+  project_id: string;
+  left_business_id: string;
+  right_business_id: string;
+  rules_version: string;
+  score: number;
+  outcome: MatchOutcome;
+  risk: MatchRisk;
+  hard_conflict: boolean;
+  status: MatchStatus;
+  is_manual: boolean;
+  features_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  reasons_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  job_id: string | null;
+  decided_by: string;
+  created_at: string;
+  updated_at: string;
+}
+/**
+ * One pair side by side: both records with their evidence, the comparison field by field, the
+ * reasons behind the score, and every decision and merge that touched it.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MatchDetail".
+ */
+export interface MatchDetail {
+  match: MatchCandidate;
+  left: BusinessDetail;
+  right: BusinessDetail;
+  fields: FieldComparison[];
+  reasons: MatchReason[];
+  blocking_keys: string[];
+  decisions: ReviewDecision[];
+  merges: BusinessMerge[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MatchReason".
+ */
+export interface MatchReason {
+  code: string;
+  direction: ReasonDirection;
+  weight: number;
+  detail: string | null;
+}
+/**
+ * A human decision with its mandatory reason. Never edited; a new decision supersedes it.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ReviewDecision".
+ */
+export interface ReviewDecision {
+  id: string;
+  entity_type: EntityType;
+  entity_id: string;
+  decision: string;
+  previous_value: string | null;
+  new_value: string | null;
+  reason: string;
+  actor: string;
+  decided_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MatchDetailQuery".
+ */
+export interface MatchDetailQuery {
+  match_id: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MatchListItem".
+ */
+export interface MatchListItem {
+  id: string;
+  project_id: string;
+  left: MatchSide;
+  right: MatchSide;
+  score: number;
+  outcome: MatchOutcome;
+  risk: MatchRisk;
+  status: MatchStatus;
+  is_manual: boolean;
+  reasons: string[];
+  rules_version: string;
+  updated_at: string;
+  is_synthetic: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MatchSide".
+ */
+export interface MatchSide {
+  business_id: string;
+  root_business_id: string;
+  display_name: string;
+  locality: string | null;
+  region: string | null;
+  connector_names: string[];
+}
+/**
+ * The review queue: pairs by score, filtered by status, risk, minimum score and source.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MatchListQuery".
+ */
+export interface MatchListQuery {
+  project_id: string | null;
+  status: MatchStatus | null;
+  risk: MatchRisk | null;
+  min_score: number | null;
+  connector_key: string | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MatchPage".
+ */
+export interface MatchPage {
+  items: MatchListItem[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "Note".
  */
 export interface Note {
@@ -2157,21 +2458,73 @@ export interface Project {
   deleted_reason: string | null;
 }
 /**
- * A human decision with its mandatory reason. Never edited; a new decision supersedes it.
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResolutionRun".
+ */
+export interface ResolutionRun {
+  job_id: string;
+  project_id: string;
+  project_name: string;
+  status: JobStatus;
+  stage: string;
+  progress_done: number;
+  progress_total: number | null;
+  normalizer_version: string;
+  rules_version: string;
+  stats: ResolutionStats;
+  requested_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  events: RunEvent[];
+  is_synthetic: boolean;
+}
+/**
+ * Counts of one resolution run, read back from its last checkpoint.
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ReviewDecision".
+ * via the `definition` "ResolutionStats".
  */
-export interface ReviewDecision {
-  id: string;
-  entity_type: EntityType;
-  entity_id: string;
-  decision: string;
-  previous_value: string | null;
-  new_value: string | null;
-  reason: string;
-  actor: string;
-  decided_at: string;
+export interface ResolutionStats {
+  records: number;
+  ingested: number;
+  observations: number;
+  blocks: number;
+  skipped_blocks: number;
+  largest_block: number;
+  pairs_compared: number;
+  auto_merged: number;
+  review: number;
+  distinct: number;
+  clusters: number;
+  merged_records: number;
+  manual_decisions: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResolutionRunListQuery".
+ */
+export interface ResolutionRunListQuery {
+  project_id: string | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResolutionRunPage".
+ */
+export interface ResolutionRunPage {
+  items: ResolutionRun[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * Resolves one project, or every live project when `project_id` is null (one job each).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResolutionStartRequest".
+ */
+export interface ResolutionStartRequest {
+  project_id: string | null;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema

@@ -393,6 +393,7 @@
     },
     "BusinessDetail": {
       "additionalProperties": false,
+      "description": "A business with every observation of every record resolved into it (phase 06), the value\nchosen for each field and the merge history. A record that is itself merged shows only its own\nobservations; `business.merged_into_id` says where it belongs.",
       "properties": {
         "business": {
           "$ref": "#/$defs/Business"
@@ -435,6 +436,24 @@
             "$ref": "#/$defs/ObservedEvidence"
           },
           "type": "array"
+        },
+        "members": {
+          "items": {
+            "$ref": "#/$defs/ClusterMember"
+          },
+          "type": "array"
+        },
+        "canonical": {
+          "items": {
+            "$ref": "#/$defs/CanonicalValue"
+          },
+          "type": "array"
+        },
+        "merges": {
+          "items": {
+            "$ref": "#/$defs/BusinessMerge"
+          },
+          "type": "array"
         }
       },
       "required": [
@@ -445,7 +464,10 @@
         "websites",
         "contacts",
         "classifications",
-        "evidence"
+        "evidence",
+        "members",
+        "canonical",
+        "merges"
       ],
       "title": "BusinessDetail",
       "type": "object"
@@ -542,6 +564,14 @@
           "minimum": 0,
           "type": "integer"
         },
+        "member_count": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "conflict_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
         "last_seen_at": {
           "format": "date-time",
           "type": "string"
@@ -563,6 +593,8 @@
         "primary_category",
         "source_count",
         "evidence_count",
+        "member_count",
+        "conflict_count",
         "last_seen_at",
         "is_synthetic"
       ],
@@ -783,6 +815,128 @@
         "created_at"
       ],
       "title": "BusinessLocation",
+      "type": "object"
+    },
+    "BusinessMerge": {
+      "additionalProperties": false,
+      "description": "One record joining a cluster: why (a snapshot of the pair's explanation), by whom, and when\nit was undone. History: only the unmerge fields are ever written after the insert.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "into_business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "match_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "is_manual": {
+          "type": "boolean"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rules_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "explanation_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "actor": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "merged_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "unmerged_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unmerged_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unmerge_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "business_id",
+        "into_business_id",
+        "match_id",
+        "is_manual",
+        "score",
+        "rules_version",
+        "explanation_json",
+        "actor",
+        "merged_at",
+        "unmerged_at",
+        "unmerged_by",
+        "unmerge_reason"
+      ],
+      "title": "BusinessMerge",
       "type": "object"
     },
     "BusinessName": {
@@ -1661,6 +1815,131 @@
       "title": "CandidatePage",
       "type": "object"
     },
+    "CanonicalChoiceRequest": {
+      "additionalProperties": false,
+      "description": "Makes one observation the value a business shows for a field.",
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "field": {
+          "$ref": "#/$defs/CanonicalField"
+        },
+        "observation_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "business_id",
+        "field",
+        "observation_id",
+        "reason"
+      ],
+      "title": "CanonicalChoiceRequest",
+      "type": "object"
+    },
+    "CanonicalField": {
+      "enum": [
+        "name",
+        "location",
+        "website",
+        "phone",
+        "email",
+        "category"
+      ],
+      "title": "CanonicalField",
+      "type": "string"
+    },
+    "CanonicalValue": {
+      "additionalProperties": false,
+      "description": "Which observation represents a cluster for one field, chosen by policy or by a person.\n\n`alternative_count` is how many different values the cluster holds for that field: above one,\nthe business has a conflict the interface must show. Superseded, never overwritten.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "field": {
+          "$ref": "#/$defs/CanonicalField"
+        },
+        "observation_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "method": {
+          "$ref": "#/$defs/SelectionMethod"
+        },
+        "policy_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "alternative_count": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "reason": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "actor": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "chosen_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "superseded_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "business_id",
+        "field",
+        "observation_id",
+        "value",
+        "method",
+        "policy_version",
+        "alternative_count",
+        "reason",
+        "actor",
+        "chosen_at",
+        "superseded_at"
+      ],
+      "title": "CanonicalValue",
+      "type": "object"
+    },
     "Capability": {
       "description": "What a source can actually do. The builder shows these; the engine enforces them.",
       "enum": [
@@ -1687,6 +1966,80 @@
       ],
       "title": "ClassificationKind",
       "type": "string"
+    },
+    "ClusterMember": {
+      "additionalProperties": false,
+      "description": "A record resolved into a business, with the source it came from.",
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/BusinessStatus"
+        },
+        "connector_name": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "connector_kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "external_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "first_seen_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_id",
+        "display_name",
+        "status",
+        "connector_name",
+        "connector_kind",
+        "source_url",
+        "external_id",
+        "first_seen_at"
+      ],
+      "title": "ClusterMember",
+      "type": "object"
     },
     "ColumnMapping": {
       "additionalProperties": false,
@@ -5076,6 +5429,36 @@
       "title": "EmptyPayload",
       "type": "object"
     },
+    "EntityRecord": {
+      "additionalProperties": false,
+      "description": "The record business a candidate became (phase 06). One per candidate, for ever.",
+      "properties": {
+        "candidate_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "business_id",
+        "project_id",
+        "created_at"
+      ],
+      "title": "EntityRecord",
+      "type": "object"
+    },
     "EntityTag": {
       "additionalProperties": false,
       "properties": {
@@ -5127,7 +5510,8 @@
         "dataset_snapshot",
         "export",
         "tag",
-        "note"
+        "note",
+        "match_candidate"
       ],
       "title": "EntityType",
       "type": "string"
@@ -5647,6 +6031,62 @@
         "extracted_at"
       ],
       "title": "Extraction",
+      "type": "object"
+    },
+    "FieldAgreement": {
+      "enum": [
+        "match",
+        "partial",
+        "conflict",
+        "missing"
+      ],
+      "title": "FieldAgreement",
+      "type": "string"
+    },
+    "FieldComparison": {
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "left": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "right": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "agreement": {
+          "$ref": "#/$defs/FieldAgreement"
+        },
+        "similarity": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "field",
+        "left",
+        "right",
+        "agreement",
+        "similarity"
+      ],
+      "title": "FieldComparison",
       "type": "object"
     },
     "GeoScope": {
@@ -6906,6 +7346,538 @@
       "title": "LeadStage",
       "type": "string"
     },
+    "MatchAction": {
+      "enum": [
+        "merge",
+        "keep_separate",
+        "defer",
+        "undo"
+      ],
+      "title": "MatchAction",
+      "type": "string"
+    },
+    "MatchActionRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "match_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/MatchAction"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "match_id",
+        "action",
+        "reason"
+      ],
+      "title": "MatchActionRequest",
+      "type": "object"
+    },
+    "MatchCandidate": {
+      "additionalProperties": false,
+      "description": "A pair of records the resolution rules looked at: the evidence, the outcome and its status.\n\n`features_json` holds the compared values and blocking keys, `reasons_json` every weight and\nrule that produced the score. The pair never changes; evidence is refreshed by a new run, and\n`status` follows the person who reviewed it (`is_manual`) or else the engine.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "left_business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "right_business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "rules_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "score": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "outcome": {
+          "$ref": "#/$defs/MatchOutcome"
+        },
+        "risk": {
+          "$ref": "#/$defs/MatchRisk"
+        },
+        "hard_conflict": {
+          "type": "boolean"
+        },
+        "status": {
+          "$ref": "#/$defs/MatchStatus"
+        },
+        "is_manual": {
+          "type": "boolean"
+        },
+        "features_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "reasons_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "job_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decided_by": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "left_business_id",
+        "right_business_id",
+        "rules_version",
+        "score",
+        "outcome",
+        "risk",
+        "hard_conflict",
+        "status",
+        "is_manual",
+        "features_json",
+        "reasons_json",
+        "job_id",
+        "decided_by",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "MatchCandidate",
+      "type": "object"
+    },
+    "MatchDetail": {
+      "additionalProperties": false,
+      "description": "One pair side by side: both records with their evidence, the comparison field by field, the\nreasons behind the score, and every decision and merge that touched it.",
+      "properties": {
+        "match": {
+          "$ref": "#/$defs/MatchCandidate"
+        },
+        "left": {
+          "$ref": "#/$defs/BusinessDetail"
+        },
+        "right": {
+          "$ref": "#/$defs/BusinessDetail"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/$defs/FieldComparison"
+          },
+          "type": "array"
+        },
+        "reasons": {
+          "items": {
+            "$ref": "#/$defs/MatchReason"
+          },
+          "type": "array"
+        },
+        "blocking_keys": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "decisions": {
+          "items": {
+            "$ref": "#/$defs/ReviewDecision"
+          },
+          "type": "array"
+        },
+        "merges": {
+          "items": {
+            "$ref": "#/$defs/BusinessMerge"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "match",
+        "left",
+        "right",
+        "fields",
+        "reasons",
+        "blocking_keys",
+        "decisions",
+        "merges"
+      ],
+      "title": "MatchDetail",
+      "type": "object"
+    },
+    "MatchDetailQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "match_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "match_id"
+      ],
+      "title": "MatchDetailQuery",
+      "type": "object"
+    },
+    "MatchListItem": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "left": {
+          "$ref": "#/$defs/MatchSide"
+        },
+        "right": {
+          "$ref": "#/$defs/MatchSide"
+        },
+        "score": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "outcome": {
+          "$ref": "#/$defs/MatchOutcome"
+        },
+        "risk": {
+          "$ref": "#/$defs/MatchRisk"
+        },
+        "status": {
+          "$ref": "#/$defs/MatchStatus"
+        },
+        "is_manual": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "rules_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "left",
+        "right",
+        "score",
+        "outcome",
+        "risk",
+        "status",
+        "is_manual",
+        "reasons",
+        "rules_version",
+        "updated_at",
+        "is_synthetic"
+      ],
+      "title": "MatchListItem",
+      "type": "object"
+    },
+    "MatchListQuery": {
+      "additionalProperties": false,
+      "description": "The review queue: pairs by score, filtered by status, risk, minimum score and source.",
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MatchStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "risk": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MatchRisk"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "min_score": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "connector_key": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "status",
+        "risk",
+        "min_score",
+        "connector_key",
+        "limit",
+        "cursor"
+      ],
+      "title": "MatchListQuery",
+      "type": "object"
+    },
+    "MatchOutcome": {
+      "description": "What the resolution rules recommend for a pair of records (phase 06).",
+      "enum": [
+        "auto_merge",
+        "manual_review",
+        "distinct"
+      ],
+      "title": "MatchOutcome",
+      "type": "string"
+    },
+    "MatchPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/MatchListItem"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "MatchPage",
+      "type": "object"
+    },
+    "MatchReason": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "direction": {
+          "$ref": "#/$defs/ReasonDirection"
+        },
+        "weight": {
+          "type": "number"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "code",
+        "direction",
+        "weight",
+        "detail"
+      ],
+      "title": "MatchReason",
+      "type": "object"
+    },
+    "MatchRisk": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "title": "MatchRisk",
+      "type": "string"
+    },
+    "MatchSide": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "root_business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "locality": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "connector_names": {
+          "items": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "business_id",
+        "root_business_id",
+        "display_name",
+        "locality",
+        "region",
+        "connector_names"
+      ],
+      "title": "MatchSide",
+      "type": "object"
+    },
+    "MatchStatus": {
+      "description": "Where a pair stands: waiting for a person, put aside, merged, or kept separate.",
+      "enum": [
+        "pending",
+        "deferred",
+        "merged",
+        "separate"
+      ],
+      "title": "MatchStatus",
+      "type": "string"
+    },
     "NameKind": {
       "enum": [
         "legal",
@@ -7500,6 +8472,296 @@
       "title": "RawRecord",
       "type": "object"
     },
+    "ReasonDirection": {
+      "enum": [
+        "for",
+        "against",
+        "rule"
+      ],
+      "title": "ReasonDirection",
+      "type": "string"
+    },
+    "ResolutionRun": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "stage": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "progress_done": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "progress_total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "normalizer_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "rules_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "stats": {
+          "$ref": "#/$defs/ResolutionStats"
+        },
+        "requested_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/RunEvent"
+          },
+          "type": "array"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job_id",
+        "project_id",
+        "project_name",
+        "status",
+        "stage",
+        "progress_done",
+        "progress_total",
+        "normalizer_version",
+        "rules_version",
+        "stats",
+        "requested_at",
+        "started_at",
+        "finished_at",
+        "events",
+        "is_synthetic"
+      ],
+      "title": "ResolutionRun",
+      "type": "object"
+    },
+    "ResolutionRunListQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "limit",
+        "cursor"
+      ],
+      "title": "ResolutionRunListQuery",
+      "type": "object"
+    },
+    "ResolutionRunPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ResolutionRun"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "ResolutionRunPage",
+      "type": "object"
+    },
+    "ResolutionStartRequest": {
+      "additionalProperties": false,
+      "description": "Resolves one project, or every live project when `project_id` is null (one job each).",
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id"
+      ],
+      "title": "ResolutionStartRequest",
+      "type": "object"
+    },
+    "ResolutionStats": {
+      "additionalProperties": false,
+      "description": "Counts of one resolution run, read back from its last checkpoint.",
+      "properties": {
+        "records": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ingested": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "observations": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "blocks": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped_blocks": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "largest_block": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pairs_compared": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "auto_merged": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "review": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "distinct": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "clusters": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "merged_records": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "manual_decisions": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "records",
+        "ingested",
+        "observations",
+        "blocks",
+        "skipped_blocks",
+        "largest_block",
+        "pairs_compared",
+        "auto_merged",
+        "review",
+        "distinct",
+        "clusters",
+        "merged_records",
+        "manual_decisions"
+      ],
+      "title": "ResolutionStats",
+      "type": "object"
+    },
     "ReviewDecision": {
       "additionalProperties": false,
       "description": "A human decision with its mandatory reason. Never edited; a new decision supersedes it.",
@@ -7882,6 +9144,14 @@
       ],
       "title": "ScoringModelVersion",
       "type": "object"
+    },
+    "SelectionMethod": {
+      "enum": [
+        "policy",
+        "manual"
+      ],
+      "title": "SelectionMethod",
+      "type": "string"
     },
     "ServiceArea": {
       "additionalProperties": false,

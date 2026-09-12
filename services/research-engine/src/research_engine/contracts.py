@@ -51,6 +51,13 @@ class MessageType(StrEnum):
     CRAWL_RUNS = "crawl.runs"
     CRAWL_URLS = "crawl.urls"
     CRAWL_URL = "crawl.url"
+    RESOLUTION_START = "resolution.start"
+    RESOLUTION_CONTROL = "resolution.control"
+    RESOLUTION_RUNS = "resolution.runs"
+    MATCHES_LIST = "matches.list"
+    MATCHES_GET = "matches.get"
+    MATCHES_ACT = "matches.act"
+    BUSINESSES_CHOOSE_VALUE = "businesses.choose_value"
     DEV_SEED_SYNTHETIC = "dev.seed_synthetic"
     # events (worker -> desktop core)
     WORKER_READY = "worker.ready"

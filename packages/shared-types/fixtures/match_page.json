@@ -1,0 +1,128 @@
+{
+  "items": [
+    {
+      "id": "01900000-0000-7000-8000-000000000169",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "left": {
+        "business_id": "01900000-0000-7000-8000-000000000118",
+        "root_business_id": "01900000-0000-7000-8000-000000000118",
+        "display_name": "Synthetic Plumbing 0100 LLC",
+        "locality": "Austin",
+        "region": "TX",
+        "connector_names": [
+          "Synthetic fixture source (test data)"
+        ]
+      },
+      "right": {
+        "business_id": "01900000-0000-7000-8000-000000000126",
+        "root_business_id": "01900000-0000-7000-8000-000000000118",
+        "display_name": "Synthetic Plumbing 0100, Inc.",
+        "locality": "Austin",
+        "region": "TX",
+        "connector_names": [
+          "Synthetic fixture source (test data)"
+        ]
+      },
+      "score": 0.997527,
+      "outcome": "auto_merge",
+      "risk": "low",
+      "status": "merged",
+      "is_manual": false,
+      "reasons": [
+        "same_name",
+        "same_domain",
+        "same_street",
+        "same_locality",
+        "same_postal_code",
+        "same_category",
+        "different_phone"
+      ],
+      "rules_version": "1.0.0",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "is_synthetic": true
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000000170",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "left": {
+        "business_id": "01900000-0000-7000-8000-000000000134",
+        "root_business_id": "01900000-0000-7000-8000-000000000134",
+        "display_name": "Synthetic Bakery 0200",
+        "locality": "Denver",
+        "region": "CO",
+        "connector_names": [
+          "Synthetic fixture source (test data)"
+        ]
+      },
+      "right": {
+        "business_id": "01900000-0000-7000-8000-000000000144",
+        "root_business_id": "01900000-0000-7000-8000-000000000144",
+        "display_name": "Synthetic Bakery 0200 LLC",
+        "locality": "Denver",
+        "region": "CO",
+        "connector_names": [
+          "Synthetic fixture source (test data)"
+        ]
+      },
+      "score": 0.982014,
+      "outcome": "manual_review",
+      "risk": "high",
+      "status": "pending",
+      "is_manual": false,
+      "reasons": [
+        "address_changed",
+        "same_name",
+        "same_domain",
+        "same_phone",
+        "same_locality",
+        "same_category",
+        "different_street"
+      ],
+      "rules_version": "1.0.0",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "is_synthetic": true
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000000168",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "left": {
+        "business_id": "01900000-0000-7000-8000-000000000090",
+        "root_business_id": "01900000-0000-7000-8000-000000000090",
+        "display_name": "Synthetic Bakery 0001",
+        "locality": "Austin",
+        "region": "TX",
+        "connector_names": [
+          "Synthetic fixture source (test data)"
+        ]
+      },
+      "right": {
+        "business_id": "01900000-0000-7000-8000-000000000110",
+        "root_business_id": "01900000-0000-7000-8000-000000000110",
+        "display_name": "Synthetic Bakery 0001",
+        "locality": "Austin",
+        "region": "TX",
+        "connector_names": [
+          "Synthetic fixture source (test data)"
+        ]
+      },
+      "score": 0.952574,
+      "outcome": "manual_review",
+      "risk": "medium",
+      "status": "pending",
+      "is_manual": false,
+      "reasons": [
+        "same_name",
+        "same_domain",
+        "same_locality",
+        "same_postal_code",
+        "same_category",
+        "different_phone"
+      ],
+      "rules_version": "1.0.0",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "is_synthetic": true
+    }
+  ],
+  "next_cursor": null,
+  "total": 3
+}

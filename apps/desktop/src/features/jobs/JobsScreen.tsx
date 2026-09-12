@@ -5,14 +5,14 @@ import { PageScroll, PageShell, Section } from "@/components/layout/page-chrome"
 import { StateBlock } from "@/components/states/StateBlock";
 import { JobProgress, type JobSummary } from "@/components/domain/JobProgress";
 import { Button } from "@/components/ui/button";
-import { formatDateTime, useLanguage, useT } from "@/lib/i18n";
+import { formatDateTime, useLanguage, useT, type TranslationKey } from "@/lib/i18n";
 import { desktop, toIpcError } from "@/lib/ipc";
 import { useLoaded } from "@/lib/useLoaded";
 
 const POLL_MS = 2000;
 const LISTED = 25;
 
-type JobKind = "discovery" | "crawl";
+type JobKind = "discovery" | "crawl" | "resolution";
 
 interface Listed {
   kind: JobKind;
@@ -22,7 +22,11 @@ interface Listed {
   detail: string;
 }
 
-const MODULE: Record<JobKind, string> = { discovery: "/discovery", crawl: "/research-center" };
+const MODULE: Record<JobKind, { path: string; name: TranslationKey }> = {
+  discovery: { path: "/discovery", name: "nav.discovery" },
+  crawl: { path: "/research-center", name: "nav.research_center" },
+  resolution: { path: "/businesses", name: "nav.businesses" },
+};
 
 /** Every job the worker knows, newest first, whichever engine runs it. Nothing here is simulated. */
 export function JobsScreen() {
@@ -32,9 +36,10 @@ export function JobsScreen() {
 
   const fetchJobs = useCallback(async (): Promise<Listed[]> => {
     const query = { project_id: null, campaign_id: null, limit: LISTED, cursor: null };
-    const [discovery, crawls] = await Promise.all([
+    const [discovery, crawls, resolutions] = await Promise.all([
       desktop.listDiscoveryRuns(query),
       desktop.listCrawlRuns(query),
+      desktop.listResolutionRuns({ project_id: null, limit: LISTED, cursor: null }),
     ]);
     const listed: Listed[] = [
       ...discovery.items.map((run) => ({
@@ -71,6 +76,24 @@ export function JobsScreen() {
           errors: run.metrics.pages_failed,
         },
       })),
+      ...resolutions.items.map((run) => ({
+        kind: "resolution" as const,
+        requestedAt: run.requested_at,
+        label: run.project_name,
+        detail: t("jobs.resolutionDetail", {
+          records: run.stats.records,
+          pairs: run.stats.pairs_compared,
+          clusters: run.stats.clusters,
+          review: run.stats.review,
+        }),
+        summary: {
+          id: run.job_id,
+          state: run.status,
+          done: run.progress_done,
+          total: run.progress_total,
+          errors: run.events.filter((event) => event.level === "error").length,
+        },
+      })),
     ];
     return listed.sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
   }, [t]);
@@ -92,7 +115,9 @@ export function JobsScreen() {
       const request = { job_id: job.summary.id, action: "cancel" as const };
       await (job.kind === "crawl"
         ? desktop.controlCrawl(request)
-        : desktop.controlDiscovery(request));
+        : job.kind === "resolution"
+          ? desktop.controlResolution(request)
+          : desktop.controlDiscovery(request));
       await reload();
     } catch (cause) {
       toast.error(t("discovery.controlFailed"), {
@@ -135,8 +160,8 @@ export function JobsScreen() {
                   />
                   <p className="flex flex-wrap gap-2 px-1 text-[11px] text-muted-foreground">
                     <span>{job.detail}</span>
-                    <Link to={MODULE[job.kind]} className="text-primary hover:underline">
-                      {t(job.kind === "crawl" ? "nav.research_center" : "nav.discovery")}
+                    <Link to={MODULE[job.kind].path} className="text-primary hover:underline">
+                      {t(MODULE[job.kind].name)}
                     </Link>
                   </p>
                 </li>

@@ -14,6 +14,7 @@ import {
   type CandidateDetailQuery,
   type CandidateListQuery,
   type CandidatePage,
+  type CanonicalChoiceRequest,
   type CommandError,
   type CrawlRun,
   type CrawlRunListQuery,
@@ -35,6 +36,15 @@ import {
   type DiscoveryStartRequest,
   type ImportPreview,
   type ImportPreviewRequest,
+  type MatchActionRequest,
+  type MatchDetail,
+  type MatchDetailQuery,
+  type MatchListQuery,
+  type MatchPage,
+  type ResolutionRun,
+  type ResolutionRunListQuery,
+  type ResolutionRunPage,
+  type ResolutionStartRequest,
   type SourceCatalog,
   type SourceCatalogQuery,
   type SyntheticSeedResult,
@@ -111,6 +121,17 @@ export const desktop = {
   listCrawlRuns: (query: CrawlRunListQuery) => call<CrawlRunPage>("list_crawl_runs", { query }),
   listCrawlUrls: (query: CrawlUrlListQuery) => call<CrawlUrlPage>("list_crawl_urls", { query }),
   getCrawlUrl: (query: CrawlUrlDetailQuery) => call<CrawlUrlDetail>("get_crawl_url", { query }),
+  startResolution: (request: ResolutionStartRequest) =>
+    call<ResolutionRunPage>("start_resolution", { request }),
+  controlResolution: (request: DiscoveryControlRequest) =>
+    call<ResolutionRun>("control_resolution", { request }),
+  listResolutionRuns: (query: ResolutionRunListQuery) =>
+    call<ResolutionRunPage>("list_resolution_runs", { query }),
+  listMatches: (query: MatchListQuery) => call<MatchPage>("list_matches", { query }),
+  getMatch: (query: MatchDetailQuery) => call<MatchDetail>("get_match", { query }),
+  actOnMatch: (request: MatchActionRequest) => call<MatchDetail>("act_on_match", { request }),
+  chooseCanonicalValue: (request: CanonicalChoiceRequest) =>
+    call<BusinessDetail>("choose_canonical_value", { request }),
   /** Development builds only; the desktop core refuses it in release builds. */
   seedSyntheticData: () => call<SyntheticSeedResult>("seed_synthetic_data"),
   onWorkerStatus: async (handler: (status: WorkerStatus) => void): Promise<UnlistenFn> => {

@@ -13,22 +13,27 @@ use crate::config::Environment;
 use crate::data::{
     BusinessDetail, BusinessDetailQuery, BusinessListQuery, BusinessPage, CampaignListQuery,
     CampaignPage, CampaignSaveRequest, CampaignSaved, CandidateDetail, CandidateDetailQuery,
-    CandidateListQuery, CandidatePage, CrawlRun, CrawlRunListQuery, CrawlRunPage,
-    CrawlStartRequest, CrawlUrlDetail, CrawlUrlDetailQuery, CrawlUrlListQuery, CrawlUrlPage,
-    CriteriaCheck, CriteriaCheckQuery, DatasetListQuery, DatasetPage, DiscoveryControlRequest,
-    DiscoveryRun, DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest, ImportPreview,
-    ImportPreviewRequest, SourceCatalog, SourceCatalogQuery, SyntheticSeedResult,
+    CandidateListQuery, CandidatePage, CanonicalChoiceRequest, CrawlRun, CrawlRunListQuery,
+    CrawlRunPage, CrawlStartRequest, CrawlUrlDetail, CrawlUrlDetailQuery, CrawlUrlListQuery,
+    CrawlUrlPage, CriteriaCheck, CriteriaCheckQuery, DatasetListQuery, DatasetPage,
+    DiscoveryControlRequest, DiscoveryRun, DiscoveryRunListQuery, DiscoveryRunPage,
+    DiscoveryStartRequest, ImportPreview, ImportPreviewRequest, MatchActionRequest, MatchDetail,
+    MatchDetailQuery, MatchListQuery, MatchPage, ResolutionRun, ResolutionRunListQuery,
+    ResolutionRunPage, ResolutionStartRequest, SourceCatalog, SourceCatalogQuery,
+    SyntheticSeedResult,
 };
 use crate::error::AppError;
 use crate::protocol::{
     ComponentState, CoreStatus, DiagnosticsReport, DiagnosticsResult, UiErrorReport, WorkerStatus,
 };
 use crate::worker::{
-    BUSINESSES_GET, BUSINESSES_LIST, CAMPAIGNS_LIST, CAMPAIGNS_SAVE, CAMPAIGNS_VALIDATE,
-    CRAWL_CONTROL, CRAWL_RUNS, CRAWL_START, CRAWL_URL, CRAWL_URLS, DATA_TIMEOUT, DATASETS_LIST,
-    DEV_SEED_SYNTHETIC, DIAGNOSTICS, DIAGNOSTICS_TIMEOUT, DISCOVERY_CANDIDATE,
-    DISCOVERY_CANDIDATES, DISCOVERY_CONTROL, DISCOVERY_RUNS, DISCOVERY_START, DISCOVERY_TIMEOUT,
-    IMPORT_TIMEOUT, SEED_TIMEOUT, SOURCES_LIST, SOURCES_PREVIEW_IMPORT, WorkerSupervisor,
+    BUSINESSES_CHOOSE_VALUE, BUSINESSES_GET, BUSINESSES_LIST, CAMPAIGNS_LIST, CAMPAIGNS_SAVE,
+    CAMPAIGNS_VALIDATE, CRAWL_CONTROL, CRAWL_RUNS, CRAWL_START, CRAWL_URL, CRAWL_URLS,
+    DATA_TIMEOUT, DATASETS_LIST, DEV_SEED_SYNTHETIC, DIAGNOSTICS, DIAGNOSTICS_TIMEOUT,
+    DISCOVERY_CANDIDATE, DISCOVERY_CANDIDATES, DISCOVERY_CONTROL, DISCOVERY_RUNS, DISCOVERY_START,
+    DISCOVERY_TIMEOUT, IMPORT_TIMEOUT, MATCHES_ACT, MATCHES_GET, MATCHES_LIST, RESOLUTION_CONTROL,
+    RESOLUTION_RUNS, RESOLUTION_START, RESOLUTION_TIMEOUT, SEED_TIMEOUT, SOURCES_LIST,
+    SOURCES_PREVIEW_IMPORT, WorkerSupervisor,
 };
 
 pub struct AppState {
@@ -491,6 +496,147 @@ pub async fn get_crawl_url(
         Ok(detail)
     }
     .instrument(ipc_span("get_crawl_url"))
+    .await
+}
+
+// ---- entity resolution (phase 06) ---------------------------------------------------------------
+
+/// Starts entity resolution for one project, or for every project with something to resolve. The
+/// runs continue inside the worker after this returns.
+#[tauri::command]
+pub async fn start_resolution(
+    state: State<'_, AppState>,
+    request: ResolutionStartRequest,
+) -> Result<ResolutionRunPage, AppError> {
+    async {
+        let page: ResolutionRunPage = state
+            .supervisor
+            .request_with(RESOLUTION_START, &request, DISCOVERY_TIMEOUT)
+            .await?;
+        page.items
+            .iter()
+            .try_for_each(ResolutionRun::validate)
+            .map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("start_resolution"))
+    .await
+}
+
+/// Pauses, resumes or cancels a resolution run; it stops between batches and stays resumable.
+#[tauri::command]
+pub async fn control_resolution(
+    state: State<'_, AppState>,
+    request: DiscoveryControlRequest,
+) -> Result<ResolutionRun, AppError> {
+    async {
+        let run: ResolutionRun = state
+            .supervisor
+            .request_with(RESOLUTION_CONTROL, &request, DISCOVERY_TIMEOUT)
+            .await?;
+        run.validate().map_err(AppError::Protocol)?;
+        Ok(run)
+    }
+    .instrument(ipc_span("control_resolution"))
+    .await
+}
+
+#[tauri::command]
+pub async fn list_resolution_runs(
+    state: State<'_, AppState>,
+    query: ResolutionRunListQuery,
+) -> Result<ResolutionRunPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: ResolutionRunPage = state
+            .supervisor
+            .request_with(RESOLUTION_RUNS, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_resolution_runs"))
+    .await
+}
+
+/// The review queue: pairs of records by score, filtered by status, risk, score and source.
+#[tauri::command]
+pub async fn list_matches(
+    state: State<'_, AppState>,
+    query: MatchListQuery,
+) -> Result<MatchPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: MatchPage = state
+            .supervisor
+            .request_with(MATCHES_LIST, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_matches"))
+    .await
+}
+
+/// One pair side by side, with the evidence, reasons and every decision about it.
+#[tauri::command]
+pub async fn get_match(
+    state: State<'_, AppState>,
+    query: MatchDetailQuery,
+) -> Result<MatchDetail, AppError> {
+    async {
+        let detail: MatchDetail = state
+            .supervisor
+            .request_with(MATCHES_GET, &query, DATA_TIMEOUT)
+            .await?;
+        detail
+            .validate(&query.match_id)
+            .map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("get_match"))
+    .await
+}
+
+/// Merge, keep separate, defer or undo one pair. Recorded with its reason and reversible.
+#[tauri::command]
+pub async fn act_on_match(
+    state: State<'_, AppState>,
+    request: MatchActionRequest,
+) -> Result<MatchDetail, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let detail: MatchDetail = state
+            .supervisor
+            .request_with(MATCHES_ACT, &request, RESOLUTION_TIMEOUT)
+            .await?;
+        detail
+            .validate(&request.match_id)
+            .map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("act_on_match"))
+    .await
+}
+
+/// Makes one observation the value a business shows for a field.
+#[tauri::command]
+pub async fn choose_canonical_value(
+    state: State<'_, AppState>,
+    request: CanonicalChoiceRequest,
+) -> Result<BusinessDetail, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let detail: BusinessDetail = state
+            .supervisor
+            .request_with(BUSINESSES_CHOOSE_VALUE, &request, RESOLUTION_TIMEOUT)
+            .await?;
+        detail
+            .validate(&request.business_id)
+            .map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("choose_canonical_value"))
     .await
 }
 

@@ -1,0 +1,895 @@
+{
+  "match": {
+    "id": "01900000-0000-7000-8000-000000000170",
+    "project_id": "01900000-0000-7000-8000-000000000001",
+    "left_business_id": "01900000-0000-7000-8000-000000000134",
+    "right_business_id": "01900000-0000-7000-8000-000000000144",
+    "rules_version": "1.0.0",
+    "score": 0.982014,
+    "outcome": "manual_review",
+    "risk": "high",
+    "hard_conflict": false,
+    "status": "pending",
+    "is_manual": false,
+    "features_json": {
+      "blocking_keys": [
+        "domain:synthetic-bakery-0200.example",
+        "fullname:synthetic bakery 0200",
+        "name:CO:denver:synthetic",
+        "phone:+13035550140"
+      ],
+      "fields": [
+        {
+          "agreement": "match",
+          "field": "name",
+          "left": [
+            "Synthetic Bakery 0200"
+          ],
+          "right": [
+            "Synthetic Bakery 0200 LLC"
+          ],
+          "similarity": 1.0
+        },
+        {
+          "agreement": "match",
+          "field": "website",
+          "left": [
+            "synthetic-bakery-0200.example"
+          ],
+          "right": [
+            "synthetic-bakery-0200.example"
+          ],
+          "similarity": null
+        },
+        {
+          "agreement": "match",
+          "field": "phone",
+          "left": [
+            "(303) 555-0140"
+          ],
+          "right": [
+            "(303) 555-0140"
+          ],
+          "similarity": null
+        },
+        {
+          "agreement": "conflict",
+          "field": "address",
+          "left": [
+            "12 Sample Mill Rd · Denver, CO, 80202"
+          ],
+          "right": [
+            "880 Demo Market St · Denver, CO, 80205"
+          ],
+          "similarity": null
+        },
+        {
+          "agreement": "match",
+          "field": "category",
+          "left": [
+            "bakery"
+          ],
+          "right": [
+            "bakery"
+          ],
+          "similarity": null
+        },
+        {
+          "agreement": "missing",
+          "field": "email_domain",
+          "left": [
+            "synthetic-bakery-0200.example"
+          ],
+          "right": [],
+          "similarity": null
+        }
+      ],
+      "prior": -5.0,
+      "rules_version": "1.0.0",
+      "thresholds": {
+        "auto_merge": 0.97,
+        "review": 0.25
+      },
+      "total": 4.0
+    },
+    "reasons_json": {
+      "reasons": [
+        {
+          "code": "same_name",
+          "detail": "Synthetic Bakery 0200 ~ Synthetic Bakery 0200 LLC (1.00)",
+          "direction": "for",
+          "weight": 3.5
+        },
+        {
+          "code": "same_domain",
+          "detail": "synthetic-bakery-0200.example",
+          "direction": "for",
+          "weight": 3.5
+        },
+        {
+          "code": "same_phone",
+          "detail": "(303) 555-0140",
+          "direction": "for",
+          "weight": 3.0
+        },
+        {
+          "code": "different_street",
+          "detail": null,
+          "direction": "against",
+          "weight": -2.5
+        },
+        {
+          "code": "same_locality",
+          "detail": null,
+          "direction": "for",
+          "weight": 1.0
+        },
+        {
+          "code": "same_category",
+          "detail": null,
+          "direction": "for",
+          "weight": 0.5
+        },
+        {
+          "code": "address_changed",
+          "detail": "same name or site and the same local phone at another address",
+          "direction": "rule",
+          "weight": 0.0
+        }
+      ]
+    },
+    "job_id": "01900000-0000-7000-8000-000000000085",
+    "decided_by": "resolution-engine",
+    "created_at": "2026-01-01T00:00:00.000Z",
+    "updated_at": "2026-01-01T00:00:00.000Z"
+  },
+  "left": {
+    "business": {
+      "id": "01900000-0000-7000-8000-000000000134",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Bakery 0200",
+      "name_sort_key": "synthetic bakery 0200",
+      "status": "candidate",
+      "lead_stage": "not_contacted",
+      "merged_into_id": null,
+      "first_seen_at": "2026-01-01T00:00:00.000Z",
+      "last_seen_at": "2026-01-01T00:00:00.000Z",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "deleted_at": null,
+      "deleted_reason": null
+    },
+    "is_synthetic": true,
+    "names": [
+      {
+        "value": {
+          "id": "01900000-0000-7000-8000-000000000136",
+          "business_id": "01900000-0000-7000-8000-000000000134",
+          "extraction_id": "01900000-0000-7000-8000-000000000135",
+          "name_raw": "Synthetic Bakery 0200",
+          "name_normalized": "synthetic bakery 0200",
+          "name_kind": "trade",
+          "is_primary": true,
+          "confidence": 0.7,
+          "observed_at": "2026-01-01T00:00:00.000Z",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        "provenance": {
+          "extraction_id": "01900000-0000-7000-8000-000000000135",
+          "extractor": "resolution.candidate",
+          "extractor_version": "1.0.0",
+          "extracted_at": "2026-01-01T00:00:00.000Z",
+          "raw_record_id": "01900000-0000-7000-8000-000000000077",
+          "source_run_id": "01900000-0000-7000-8000-000000000003",
+          "acquired_page_id": null,
+          "connector_key": "synthetic.fixture",
+          "connector_name": "Synthetic fixture source (test data)",
+          "connector_kind": "synthetic",
+          "method": "synthetic",
+          "source_url": null,
+          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000077",
+          "acquired_at": "2026-01-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "locations": [
+      {
+        "value": {
+          "id": "01900000-0000-7000-8000-000000000137",
+          "business_id": "01900000-0000-7000-8000-000000000134",
+          "extraction_id": "01900000-0000-7000-8000-000000000135",
+          "address_raw": "12 Sample Mill Rd, Denver, CO, 80202",
+          "street": "12 Sample Mill Rd",
+          "unit": null,
+          "locality": "Denver",
+          "region": "CO",
+          "postal_code": "80202",
+          "country_code": "US",
+          "latitude": null,
+          "longitude": null,
+          "is_primary": true,
+          "confidence": 0.7,
+          "observed_at": "2026-01-01T00:00:00.000Z",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        "provenance": {
+          "extraction_id": "01900000-0000-7000-8000-000000000135",
+          "extractor": "resolution.candidate",
+          "extractor_version": "1.0.0",
+          "extracted_at": "2026-01-01T00:00:00.000Z",
+          "raw_record_id": "01900000-0000-7000-8000-000000000077",
+          "source_run_id": "01900000-0000-7000-8000-000000000003",
+          "acquired_page_id": null,
+          "connector_key": "synthetic.fixture",
+          "connector_name": "Synthetic fixture source (test data)",
+          "connector_kind": "synthetic",
+          "method": "synthetic",
+          "source_url": null,
+          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000077",
+          "acquired_at": "2026-01-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "websites": [
+      {
+        "value": {
+          "id": "01900000-0000-7000-8000-000000000138",
+          "business_id": "01900000-0000-7000-8000-000000000134",
+          "extraction_id": "01900000-0000-7000-8000-000000000135",
+          "url_raw": "synthetic-bakery-0200.example",
+          "url_normalized": "https://synthetic-bakery-0200.example",
+          "domain": "synthetic-bakery-0200.example",
+          "is_primary": true,
+          "confidence": 0.7,
+          "observed_at": "2026-01-01T00:00:00.000Z",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        "provenance": {
+          "extraction_id": "01900000-0000-7000-8000-000000000135",
+          "extractor": "resolution.candidate",
+          "extractor_version": "1.0.0",
+          "extracted_at": "2026-01-01T00:00:00.000Z",
+          "raw_record_id": "01900000-0000-7000-8000-000000000077",
+          "source_run_id": "01900000-0000-7000-8000-000000000003",
+          "acquired_page_id": null,
+          "connector_key": "synthetic.fixture",
+          "connector_name": "Synthetic fixture source (test data)",
+          "connector_kind": "synthetic",
+          "method": "synthetic",
+          "source_url": null,
+          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000077",
+          "acquired_at": "2026-01-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "contacts": [
+      {
+        "value": {
+          "id": "01900000-0000-7000-8000-000000000139",
+          "business_id": "01900000-0000-7000-8000-000000000134",
+          "location_id": null,
+          "decision_maker_id": null,
+          "contact_type": "phone",
+          "value_raw": "(303) 555-0140",
+          "value_normalized": "+13035550140",
+          "origin": "published",
+          "platform": null,
+          "web_page_id": null,
+          "role_or_department": null,
+          "published_context": null,
+          "is_primary": true,
+          "validation_status": "structurally_valid",
+          "validated_at": "2026-01-01T00:00:00.000Z",
+          "do_not_contact": false,
+          "suppression_reason": null,
+          "confidence": 0.7,
+          "extraction_id": "01900000-0000-7000-8000-000000000135",
+          "first_seen_at": "2026-01-01T00:00:00.000Z",
+          "last_seen_at": "2026-01-01T00:00:00.000Z",
+          "created_at": "2026-01-01T00:00:00.000Z",
+          "updated_at": "2026-01-01T00:00:00.000Z",
+          "deleted_at": null,
+          "deleted_reason": null
+        },
+        "provenance": {
+          "extraction_id": "01900000-0000-7000-8000-000000000135",
+          "extractor": "resolution.candidate",
+          "extractor_version": "1.0.0",
+          "extracted_at": "2026-01-01T00:00:00.000Z",
+          "raw_record_id": "01900000-0000-7000-8000-000000000077",
+          "source_run_id": "01900000-0000-7000-8000-000000000003",
+          "acquired_page_id": null,
+          "connector_key": "synthetic.fixture",
+          "connector_name": "Synthetic fixture source (test data)",
+          "connector_kind": "synthetic",
+          "method": "synthetic",
+          "source_url": null,
+          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000077",
+          "acquired_at": "2026-01-01T00:00:00.000Z"
+        }
+      },
+      {
+        "value": {
+          "id": "01900000-0000-7000-8000-000000000141",
+          "business_id": "01900000-0000-7000-8000-000000000134",
+          "location_id": null,
+          "decision_maker_id": null,
+          "contact_type": "email",
+          "value_raw": "info@synthetic-bakery-0200.example",
+          "value_normalized": "info@synthetic-bakery-0200.example",
+          "origin": "published",
+          "platform": null,
+          "web_page_id": null,
+          "role_or_department": null,
+          "published_context": null,
+          "is_primary": true,
+          "validation_status": "structurally_valid",
+          "validated_at": "2026-01-01T00:00:00.000Z",
+          "do_not_contact": false,
+          "suppression_reason": null,
+          "confidence": 0.7,
+          "extraction_id": "01900000-0000-7000-8000-000000000135",
+          "first_seen_at": "2026-01-01T00:00:00.000Z",
+          "last_seen_at": "2026-01-01T00:00:00.000Z",
+          "created_at": "2026-01-01T00:00:00.000Z",
+          "updated_at": "2026-01-01T00:00:00.000Z",
+          "deleted_at": null,
+          "deleted_reason": null
+        },
+        "provenance": {
+          "extraction_id": "01900000-0000-7000-8000-000000000135",
+          "extractor": "resolution.candidate",
+          "extractor_version": "1.0.0",
+          "extracted_at": "2026-01-01T00:00:00.000Z",
+          "raw_record_id": "01900000-0000-7000-8000-000000000077",
+          "source_run_id": "01900000-0000-7000-8000-000000000003",
+          "acquired_page_id": null,
+          "connector_key": "synthetic.fixture",
+          "connector_name": "Synthetic fixture source (test data)",
+          "connector_kind": "synthetic",
+          "method": "synthetic",
+          "source_url": null,
+          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000077",
+          "acquired_at": "2026-01-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "classifications": [
+      {
+        "value": {
+          "id": "01900000-0000-7000-8000-000000000143",
+          "business_id": "01900000-0000-7000-8000-000000000134",
+          "extraction_id": "01900000-0000-7000-8000-000000000135",
+          "kind": "category",
+          "label_raw": "Bakery",
+          "taxonomy_key": "bakery",
+          "taxonomy_version": "2026.1",
+          "is_primary": true,
+          "confidence": 0.7,
+          "observed_at": "2026-01-01T00:00:00.000Z",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        "provenance": {
+          "extraction_id": "01900000-0000-7000-8000-000000000135",
+          "extractor": "resolution.candidate",
+          "extractor_version": "1.0.0",
+          "extracted_at": "2026-01-01T00:00:00.000Z",
+          "raw_record_id": "01900000-0000-7000-8000-000000000077",
+          "source_run_id": "01900000-0000-7000-8000-000000000003",
+          "acquired_page_id": null,
+          "connector_key": "synthetic.fixture",
+          "connector_name": "Synthetic fixture source (test data)",
+          "connector_kind": "synthetic",
+          "method": "synthetic",
+          "source_url": null,
+          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000077",
+          "acquired_at": "2026-01-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "evidence": [],
+    "members": [
+      {
+        "business_id": "01900000-0000-7000-8000-000000000134",
+        "display_name": "Synthetic Bakery 0200",
+        "status": "candidate",
+        "connector_name": "Synthetic fixture source (test data)",
+        "connector_kind": "synthetic",
+        "source_url": null,
+        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000077",
+        "first_seen_at": "2026-01-01T00:00:00.000Z"
+      }
+    ],
+    "canonical": [
+      {
+        "id": "01900000-0000-7000-8000-000000000214",
+        "business_id": "01900000-0000-7000-8000-000000000134",
+        "field": "category",
+        "observation_id": "01900000-0000-7000-8000-000000000143",
+        "value": "Bakery",
+        "method": "policy",
+        "policy_version": "1.0.0",
+        "alternative_count": 1,
+        "reason": "most trusted source (synthetic), then confidence; 1 distinct value(s) in the cluster",
+        "actor": "resolution-engine",
+        "chosen_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      },
+      {
+        "id": "01900000-0000-7000-8000-000000000213",
+        "business_id": "01900000-0000-7000-8000-000000000134",
+        "field": "email",
+        "observation_id": "01900000-0000-7000-8000-000000000141",
+        "value": "info@synthetic-bakery-0200.example",
+        "method": "policy",
+        "policy_version": "1.0.0",
+        "alternative_count": 1,
+        "reason": "most trusted source (synthetic), then confidence; 1 distinct value(s) in the cluster",
+        "actor": "resolution-engine",
+        "chosen_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      },
+      {
+        "id": "01900000-0000-7000-8000-000000000210",
+        "business_id": "01900000-0000-7000-8000-000000000134",
+        "field": "location",
+        "observation_id": "01900000-0000-7000-8000-000000000137",
+        "value": "12 Sample Mill Rd, Denver, CO 80202",
+        "method": "policy",
+        "policy_version": "1.0.0",
+        "alternative_count": 1,
+        "reason": "most trusted source (synthetic), then freshness; 1 distinct value(s) in the cluster",
+        "actor": "resolution-engine",
+        "chosen_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      },
+      {
+        "id": "01900000-0000-7000-8000-000000000209",
+        "business_id": "01900000-0000-7000-8000-000000000134",
+        "field": "name",
+        "observation_id": "01900000-0000-7000-8000-000000000136",
+        "value": "Synthetic Bakery 0200",
+        "method": "policy",
+        "policy_version": "1.0.0",
+        "alternative_count": 1,
+        "reason": "most trusted source (synthetic), then confidence; 1 distinct value(s) in the cluster",
+        "actor": "resolution-engine",
+        "chosen_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      },
+      {
+        "id": "01900000-0000-7000-8000-000000000212",
+        "business_id": "01900000-0000-7000-8000-000000000134",
+        "field": "phone",
+        "observation_id": "01900000-0000-7000-8000-000000000139",
+        "value": "+13035550140",
+        "method": "policy",
+        "policy_version": "1.0.0",
+        "alternative_count": 1,
+        "reason": "most trusted source (synthetic), then confidence; 1 distinct value(s) in the cluster",
+        "actor": "resolution-engine",
+        "chosen_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      },
+      {
+        "id": "01900000-0000-7000-8000-000000000211",
+        "business_id": "01900000-0000-7000-8000-000000000134",
+        "field": "website",
+        "observation_id": "01900000-0000-7000-8000-000000000138",
+        "value": "https://synthetic-bakery-0200.example",
+        "method": "policy",
+        "policy_version": "1.0.0",
+        "alternative_count": 1,
+        "reason": "most trusted source (synthetic), then confidence; 1 distinct value(s) in the cluster",
+        "actor": "resolution-engine",
+        "chosen_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      }
+    ],
+    "merges": []
+  },
+  "right": {
+    "business": {
+      "id": "01900000-0000-7000-8000-000000000144",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Bakery 0200 LLC",
+      "name_sort_key": "synthetic bakery 0200 llc",
+      "status": "candidate",
+      "lead_stage": "not_contacted",
+      "merged_into_id": null,
+      "first_seen_at": "2026-01-01T00:00:00.000Z",
+      "last_seen_at": "2026-01-01T00:00:00.000Z",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "deleted_at": null,
+      "deleted_reason": null
+    },
+    "is_synthetic": true,
+    "names": [
+      {
+        "value": {
+          "id": "01900000-0000-7000-8000-000000000146",
+          "business_id": "01900000-0000-7000-8000-000000000144",
+          "extraction_id": "01900000-0000-7000-8000-000000000145",
+          "name_raw": "Synthetic Bakery 0200 LLC",
+          "name_normalized": "synthetic bakery 0200",
+          "name_kind": "legal",
+          "is_primary": true,
+          "confidence": 0.7,
+          "observed_at": "2026-01-01T00:00:00.000Z",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        "provenance": {
+          "extraction_id": "01900000-0000-7000-8000-000000000145",
+          "extractor": "resolution.candidate",
+          "extractor_version": "1.0.0",
+          "extracted_at": "2026-01-01T00:00:00.000Z",
+          "raw_record_id": "01900000-0000-7000-8000-000000000079",
+          "source_run_id": "01900000-0000-7000-8000-000000000003",
+          "acquired_page_id": null,
+          "connector_key": "synthetic.fixture",
+          "connector_name": "Synthetic fixture source (test data)",
+          "connector_kind": "synthetic",
+          "method": "synthetic",
+          "source_url": null,
+          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000079",
+          "acquired_at": "2026-01-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "locations": [
+      {
+        "value": {
+          "id": "01900000-0000-7000-8000-000000000147",
+          "business_id": "01900000-0000-7000-8000-000000000144",
+          "extraction_id": "01900000-0000-7000-8000-000000000145",
+          "address_raw": "880 Demo Market St, Denver, CO, 80205",
+          "street": "880 Demo Market St",
+          "unit": null,
+          "locality": "Denver",
+          "region": "CO",
+          "postal_code": "80205",
+          "country_code": "US",
+          "latitude": null,
+          "longitude": null,
+          "is_primary": true,
+          "confidence": 0.7,
+          "observed_at": "2026-01-01T00:00:00.000Z",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        "provenance": {
+          "extraction_id": "01900000-0000-7000-8000-000000000145",
+          "extractor": "resolution.candidate",
+          "extractor_version": "1.0.0",
+          "extracted_at": "2026-01-01T00:00:00.000Z",
+          "raw_record_id": "01900000-0000-7000-8000-000000000079",
+          "source_run_id": "01900000-0000-7000-8000-000000000003",
+          "acquired_page_id": null,
+          "connector_key": "synthetic.fixture",
+          "connector_name": "Synthetic fixture source (test data)",
+          "connector_kind": "synthetic",
+          "method": "synthetic",
+          "source_url": null,
+          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000079",
+          "acquired_at": "2026-01-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "websites": [
+      {
+        "value": {
+          "id": "01900000-0000-7000-8000-000000000148",
+          "business_id": "01900000-0000-7000-8000-000000000144",
+          "extraction_id": "01900000-0000-7000-8000-000000000145",
+          "url_raw": "https://synthetic-bakery-0200.example/",
+          "url_normalized": "https://synthetic-bakery-0200.example",
+          "domain": "synthetic-bakery-0200.example",
+          "is_primary": true,
+          "confidence": 0.7,
+          "observed_at": "2026-01-01T00:00:00.000Z",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        "provenance": {
+          "extraction_id": "01900000-0000-7000-8000-000000000145",
+          "extractor": "resolution.candidate",
+          "extractor_version": "1.0.0",
+          "extracted_at": "2026-01-01T00:00:00.000Z",
+          "raw_record_id": "01900000-0000-7000-8000-000000000079",
+          "source_run_id": "01900000-0000-7000-8000-000000000003",
+          "acquired_page_id": null,
+          "connector_key": "synthetic.fixture",
+          "connector_name": "Synthetic fixture source (test data)",
+          "connector_kind": "synthetic",
+          "method": "synthetic",
+          "source_url": null,
+          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000079",
+          "acquired_at": "2026-01-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "contacts": [
+      {
+        "value": {
+          "id": "01900000-0000-7000-8000-000000000149",
+          "business_id": "01900000-0000-7000-8000-000000000144",
+          "location_id": null,
+          "decision_maker_id": null,
+          "contact_type": "phone",
+          "value_raw": "303-555-0140",
+          "value_normalized": "+13035550140",
+          "origin": "published",
+          "platform": null,
+          "web_page_id": null,
+          "role_or_department": null,
+          "published_context": null,
+          "is_primary": true,
+          "validation_status": "structurally_valid",
+          "validated_at": "2026-01-01T00:00:00.000Z",
+          "do_not_contact": false,
+          "suppression_reason": null,
+          "confidence": 0.7,
+          "extraction_id": "01900000-0000-7000-8000-000000000145",
+          "first_seen_at": "2026-01-01T00:00:00.000Z",
+          "last_seen_at": "2026-01-01T00:00:00.000Z",
+          "created_at": "2026-01-01T00:00:00.000Z",
+          "updated_at": "2026-01-01T00:00:00.000Z",
+          "deleted_at": null,
+          "deleted_reason": null
+        },
+        "provenance": {
+          "extraction_id": "01900000-0000-7000-8000-000000000145",
+          "extractor": "resolution.candidate",
+          "extractor_version": "1.0.0",
+          "extracted_at": "2026-01-01T00:00:00.000Z",
+          "raw_record_id": "01900000-0000-7000-8000-000000000079",
+          "source_run_id": "01900000-0000-7000-8000-000000000003",
+          "acquired_page_id": null,
+          "connector_key": "synthetic.fixture",
+          "connector_name": "Synthetic fixture source (test data)",
+          "connector_kind": "synthetic",
+          "method": "synthetic",
+          "source_url": null,
+          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000079",
+          "acquired_at": "2026-01-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "classifications": [
+      {
+        "value": {
+          "id": "01900000-0000-7000-8000-000000000151",
+          "business_id": "01900000-0000-7000-8000-000000000144",
+          "extraction_id": "01900000-0000-7000-8000-000000000145",
+          "kind": "category",
+          "label_raw": "Retail Bakeries",
+          "taxonomy_key": "bakery",
+          "taxonomy_version": "2026.1",
+          "is_primary": true,
+          "confidence": 0.7,
+          "observed_at": "2026-01-01T00:00:00.000Z",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        "provenance": {
+          "extraction_id": "01900000-0000-7000-8000-000000000145",
+          "extractor": "resolution.candidate",
+          "extractor_version": "1.0.0",
+          "extracted_at": "2026-01-01T00:00:00.000Z",
+          "raw_record_id": "01900000-0000-7000-8000-000000000079",
+          "source_run_id": "01900000-0000-7000-8000-000000000003",
+          "acquired_page_id": null,
+          "connector_key": "synthetic.fixture",
+          "connector_name": "Synthetic fixture source (test data)",
+          "connector_kind": "synthetic",
+          "method": "synthetic",
+          "source_url": null,
+          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000079",
+          "acquired_at": "2026-01-01T00:00:00.000Z"
+        }
+      }
+    ],
+    "evidence": [],
+    "members": [
+      {
+        "business_id": "01900000-0000-7000-8000-000000000144",
+        "display_name": "Synthetic Bakery 0200 LLC",
+        "status": "candidate",
+        "connector_name": "Synthetic fixture source (test data)",
+        "connector_kind": "synthetic",
+        "source_url": null,
+        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000079",
+        "first_seen_at": "2026-01-01T00:00:00.000Z"
+      }
+    ],
+    "canonical": [
+      {
+        "id": "01900000-0000-7000-8000-000000000219",
+        "business_id": "01900000-0000-7000-8000-000000000144",
+        "field": "category",
+        "observation_id": "01900000-0000-7000-8000-000000000151",
+        "value": "Retail Bakeries",
+        "method": "policy",
+        "policy_version": "1.0.0",
+        "alternative_count": 1,
+        "reason": "most trusted source (synthetic), then confidence; 1 distinct value(s) in the cluster",
+        "actor": "resolution-engine",
+        "chosen_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      },
+      {
+        "id": "01900000-0000-7000-8000-000000000216",
+        "business_id": "01900000-0000-7000-8000-000000000144",
+        "field": "location",
+        "observation_id": "01900000-0000-7000-8000-000000000147",
+        "value": "880 Demo Market St, Denver, CO 80205",
+        "method": "policy",
+        "policy_version": "1.0.0",
+        "alternative_count": 1,
+        "reason": "most trusted source (synthetic), then freshness; 1 distinct value(s) in the cluster",
+        "actor": "resolution-engine",
+        "chosen_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      },
+      {
+        "id": "01900000-0000-7000-8000-000000000215",
+        "business_id": "01900000-0000-7000-8000-000000000144",
+        "field": "name",
+        "observation_id": "01900000-0000-7000-8000-000000000146",
+        "value": "Synthetic Bakery 0200 LLC",
+        "method": "policy",
+        "policy_version": "1.0.0",
+        "alternative_count": 1,
+        "reason": "most trusted source (synthetic), then confidence; 1 distinct value(s) in the cluster",
+        "actor": "resolution-engine",
+        "chosen_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      },
+      {
+        "id": "01900000-0000-7000-8000-000000000218",
+        "business_id": "01900000-0000-7000-8000-000000000144",
+        "field": "phone",
+        "observation_id": "01900000-0000-7000-8000-000000000149",
+        "value": "+13035550140",
+        "method": "policy",
+        "policy_version": "1.0.0",
+        "alternative_count": 1,
+        "reason": "most trusted source (synthetic), then confidence; 1 distinct value(s) in the cluster",
+        "actor": "resolution-engine",
+        "chosen_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      },
+      {
+        "id": "01900000-0000-7000-8000-000000000217",
+        "business_id": "01900000-0000-7000-8000-000000000144",
+        "field": "website",
+        "observation_id": "01900000-0000-7000-8000-000000000148",
+        "value": "https://synthetic-bakery-0200.example",
+        "method": "policy",
+        "policy_version": "1.0.0",
+        "alternative_count": 1,
+        "reason": "most trusted source (synthetic), then confidence; 1 distinct value(s) in the cluster",
+        "actor": "resolution-engine",
+        "chosen_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      }
+    ],
+    "merges": []
+  },
+  "fields": [
+    {
+      "field": "name",
+      "left": [
+        "Synthetic Bakery 0200"
+      ],
+      "right": [
+        "Synthetic Bakery 0200 LLC"
+      ],
+      "agreement": "match",
+      "similarity": 1.0
+    },
+    {
+      "field": "website",
+      "left": [
+        "synthetic-bakery-0200.example"
+      ],
+      "right": [
+        "synthetic-bakery-0200.example"
+      ],
+      "agreement": "match",
+      "similarity": null
+    },
+    {
+      "field": "phone",
+      "left": [
+        "(303) 555-0140"
+      ],
+      "right": [
+        "(303) 555-0140"
+      ],
+      "agreement": "match",
+      "similarity": null
+    },
+    {
+      "field": "address",
+      "left": [
+        "12 Sample Mill Rd · Denver, CO, 80202"
+      ],
+      "right": [
+        "880 Demo Market St · Denver, CO, 80205"
+      ],
+      "agreement": "conflict",
+      "similarity": null
+    },
+    {
+      "field": "category",
+      "left": [
+        "bakery"
+      ],
+      "right": [
+        "bakery"
+      ],
+      "agreement": "match",
+      "similarity": null
+    },
+    {
+      "field": "email_domain",
+      "left": [
+        "synthetic-bakery-0200.example"
+      ],
+      "right": [],
+      "agreement": "missing",
+      "similarity": null
+    }
+  ],
+  "reasons": [
+    {
+      "code": "same_name",
+      "direction": "for",
+      "weight": 3.5,
+      "detail": "Synthetic Bakery 0200 ~ Synthetic Bakery 0200 LLC (1.00)"
+    },
+    {
+      "code": "same_domain",
+      "direction": "for",
+      "weight": 3.5,
+      "detail": "synthetic-bakery-0200.example"
+    },
+    {
+      "code": "same_phone",
+      "direction": "for",
+      "weight": 3.0,
+      "detail": "(303) 555-0140"
+    },
+    {
+      "code": "different_street",
+      "direction": "against",
+      "weight": -2.5,
+      "detail": null
+    },
+    {
+      "code": "same_locality",
+      "direction": "for",
+      "weight": 1.0,
+      "detail": null
+    },
+    {
+      "code": "same_category",
+      "direction": "for",
+      "weight": 0.5,
+      "detail": null
+    },
+    {
+      "code": "address_changed",
+      "direction": "rule",
+      "weight": 0.0,
+      "detail": "same name or site and the same local phone at another address"
+    }
+  ],
+  "blocking_keys": [
+    "domain:synthetic-bakery-0200.example",
+    "fullname:synthetic bakery 0200",
+    "name:CO:denver:synthetic",
+    "phone:+13035550140"
+  ],
+  "decisions": [],
+  "merges": []
+}

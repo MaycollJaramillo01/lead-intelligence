@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { FlaskConical, Search } from "lucide-react";
 import { toast } from "sonner";
 import { filterFieldsFrom } from "@/components/data/filters";
@@ -8,15 +8,60 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { buildBusinessColumns } from "@/features/businesses/columns";
 import { TableWorkspace } from "@/features/businesses/TableWorkspace";
+import { DuplicatesView } from "@/features/resolution/DuplicatesView";
 import { useT } from "@/lib/i18n";
 import { desktop, toIpcError } from "@/lib/ipc";
 import { useKeysetPages } from "@/lib/useKeysetPages";
+import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/ui";
 
 export const BUSINESS_PAGE_SIZE = 100;
 const SEARCH_DEBOUNCE_MS = 250;
 
+type View = "businesses" | "duplicates";
+
+function ViewToggle({ view, onChange }: { view: View; onChange: (view: View) => void }) {
+  const t = useT();
+  const options: Array<[View, string]> = [
+    ["businesses", t("resolution.viewBusinesses")],
+    ["duplicates", t("resolution.viewDuplicates")],
+  ];
+  return (
+    <div
+      role="group"
+      aria-label={t("resolution.viewLabel")}
+      className="flex h-7 overflow-hidden rounded-md border text-xs"
+    >
+      {options.map(([value, label]) => (
+        <button
+          key={value}
+          type="button"
+          aria-pressed={view === value}
+          onClick={() => onChange(value)}
+          className={cn(
+            "px-2",
+            view === value ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent/50",
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Canonical businesses, and the queue of possible duplicates that resolves them (phase 06). */
 export function BusinessesScreen() {
+  const [view, setView] = useState<View>("businesses");
+  const toggle = <ViewToggle view={view} onChange={setView} />;
+  return view === "duplicates" ? (
+    <DuplicatesView toggle={toggle} />
+  ) : (
+    <BusinessList toggle={toggle} />
+  );
+}
+
+function BusinessList({ toggle }: { toggle: ReactNode }) {
   const t = useT();
   const inspect = useUiStore((state) => state.inspect);
   const columns = useMemo(() => buildBusinessColumns(t), [t]);
@@ -98,6 +143,7 @@ export function BusinessesScreen() {
       emptyState={emptyState}
       actions={
         <>
+          {toggle}
           <div className="relative">
             <Search
               aria-hidden="true"

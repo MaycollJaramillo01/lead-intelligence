@@ -1,0 +1,110 @@
+{
+  "items": [
+    {
+      "job_id": "01900000-0000-7000-8000-000000000085",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "project_name": "Synthetic test workspace",
+      "status": "succeeded",
+      "stage": "done",
+      "progress_done": 13,
+      "progress_total": 13,
+      "normalizer_version": "1.0.0",
+      "rules_version": "1.0.0",
+      "stats": {
+        "records": 12,
+        "ingested": 9,
+        "observations": 43,
+        "blocks": 14,
+        "skipped_blocks": 0,
+        "largest_block": 5,
+        "pairs_compared": 13,
+        "auto_merged": 1,
+        "review": 2,
+        "distinct": 0,
+        "clusters": 1,
+        "merged_records": 1,
+        "manual_decisions": 0
+      },
+      "requested_at": "2026-01-01T00:00:00.000Z",
+      "started_at": "2026-01-01T00:00:00.000Z",
+      "finished_at": "2026-01-01T00:00:00.000Z",
+      "events": [
+        {
+          "level": "info",
+          "event": "run_succeeded",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "auto_merged": 1,
+            "blocks": 14,
+            "clusters": 1,
+            "distinct": 0,
+            "ingested": 9,
+            "largest_block": 5,
+            "manual_decisions": 0,
+            "merged_records": 1,
+            "observations": 43,
+            "pairs_compared": 13,
+            "records": 12,
+            "review": 2,
+            "skipped_blocks": 0
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "stage_finished",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "canonical_changes": 56,
+            "inserted": 3,
+            "merges": 1,
+            "refused": 0,
+            "retired": 0,
+            "stage": "apply",
+            "unmerges": 0,
+            "updated": 0
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "stage_started",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "pairs": 13,
+            "records": 12,
+            "stage": "compare"
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "stage_started",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "candidates": 9,
+            "stage": "ingest"
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "run_queued",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "project_id": "01900000-0000-7000-8000-000000000001"
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "is_synthetic": true
+    }
+  ],
+  "next_cursor": null,
+  "total": 1
+}

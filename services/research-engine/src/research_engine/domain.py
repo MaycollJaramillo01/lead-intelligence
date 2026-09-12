@@ -274,6 +274,7 @@ class EntityType(StrEnum):
     EXPORT = "export"
     TAG = "tag"
     NOTE = "note"
+    MATCH_CANDIDATE = "match_candidate"
 
 
 class AuditAction(StrEnum):
@@ -381,6 +382,43 @@ class CrawlTarget(StrEnum):
     SITEMAP = "sitemap"
 
 
+class MatchOutcome(StrEnum):
+    """What the resolution rules recommend for a pair of records (phase 06)."""
+
+    AUTO_MERGE = "auto_merge"
+    MANUAL_REVIEW = "manual_review"
+    DISTINCT = "distinct"
+
+
+class MatchStatus(StrEnum):
+    """Where a pair stands: waiting for a person, put aside, merged, or kept separate."""
+
+    PENDING = "pending"
+    DEFERRED = "deferred"
+    MERGED = "merged"
+    SEPARATE = "separate"
+
+
+class MatchRisk(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class CanonicalField(StrEnum):
+    NAME = "name"
+    LOCATION = "location"
+    WEBSITE = "website"
+    PHONE = "phone"
+    EMAIL = "email"
+    CATEGORY = "category"
+
+
+class SelectionMethod(StrEnum):
+    POLICY = "policy"
+    MANUAL = "manual"
+
+
 def _table_name(enum: type[StrEnum]) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "_", enum.__name__).lower()
 
@@ -419,6 +457,11 @@ ENUMS: dict[str, type[StrEnum]] = {
         ExportFormat,
         CrawlUrlStatus,
         CrawlTarget,
+        MatchOutcome,
+        MatchStatus,
+        MatchRisk,
+        CanonicalField,
+        SelectionMethod,
     )
 }
 
@@ -443,7 +486,13 @@ TRANSITIONS: dict[type[StrEnum], dict[str, frozenset[str]]] = {
             "candidate": ("active", "closed", "merged"),
             "active": ("closed", "merged"),
             "closed": ("active", "merged"),
-            "merged": ("active",),  # unmerge
+            "merged": ("active", "candidate", "closed"),  # unmerge: back to what it was before
+        },
+        MatchStatus: {
+            "pending": ("merged", "separate", "deferred"),
+            "deferred": ("pending", "merged", "separate"),
+            "merged": ("pending", "separate"),
+            "separate": ("pending", "merged"),
         },
         SourceRunStatus: _RUN_MACHINE,
         JobStatus: _RUN_MACHINE,
@@ -1356,6 +1405,88 @@ class AuditEntry(Record):
     detail_json: JsonObject | None
 
 
+class EntityRecord(Record):
+    """The record business a candidate became (phase 06). One per candidate, for ever."""
+
+    TABLE = "entity_records"
+    candidate_id: Id
+    business_id: Id
+    project_id: Id
+    created_at: UtcTimestamp
+
+
+class MatchCandidate(Record):
+    """A pair of records the resolution rules looked at: the evidence, the outcome and its status.
+
+    `features_json` holds the compared values and blocking keys, `reasons_json` every weight and
+    rule that produced the score. The pair never changes; evidence is refreshed by a new run, and
+    `status` follows the person who reviewed it (`is_manual`) or else the engine.
+    """
+
+    TABLE = "match_candidates"
+    ENTITY = EntityType.MATCH_CANDIDATE
+    id: Id
+    project_id: Id
+    left_business_id: Id
+    right_business_id: Id
+    rules_version: Label
+    score: Confidence
+    outcome: MatchOutcome
+    risk: MatchRisk
+    hard_conflict: bool
+    status: MatchStatus
+    is_manual: bool
+    features_json: JsonObject
+    reasons_json: JsonObject
+    job_id: Id | None
+    decided_by: Label
+    created_at: UtcTimestamp
+    updated_at: UtcTimestamp
+
+
+class BusinessMerge(Record):
+    """One record joining a cluster: why (a snapshot of the pair's explanation), by whom, and when
+    it was undone. History: only the unmerge fields are ever written after the insert."""
+
+    TABLE = "business_merges"
+    id: Id
+    project_id: Id
+    business_id: Id
+    into_business_id: Id
+    match_id: Id | None
+    is_manual: bool
+    score: Confidence | None
+    rules_version: str | None
+    explanation_json: JsonObject
+    actor: Label
+    merged_at: UtcTimestamp
+    unmerged_at: UtcTimestamp | None
+    unmerged_by: str | None
+    unmerge_reason: str | None
+
+
+class CanonicalValue(Record):
+    """Which observation represents a cluster for one field, chosen by policy or by a person.
+
+    `alternative_count` is how many different values the cluster holds for that field: above one,
+    the business has a conflict the interface must show. Superseded, never overwritten.
+    """
+
+    TABLE = "canonical_values"
+    id: Id
+    business_id: Id
+    field: CanonicalField
+    observation_id: Id
+    value: str
+    method: SelectionMethod
+    policy_version: Label
+    alternative_count: Annotated[int, Field(ge=1)]
+    reason: Annotated[str, Field(min_length=1)]
+    actor: Label
+    chosen_at: UtcTimestamp
+    superseded_at: UtcTimestamp | None
+
+
 RECORDS: tuple[type[Record], ...] = (
     Project,
     IcpProfile,
@@ -1411,6 +1542,10 @@ RECORDS: tuple[type[Record], ...] = (
     Note,
     ReviewDecision,
     AuditEntry,
+    EntityRecord,
+    MatchCandidate,
+    BusinessMerge,
+    CanonicalValue,
 )
 
 # ---- read models, queries and pages (IPC) ------------------------------------------------------
@@ -1496,6 +1631,10 @@ class BusinessListItem(Contract):
     primary_category: str | None
     source_count: Annotated[int, Field(ge=0)]
     evidence_count: Annotated[int, Field(ge=0)]
+    #: Records resolved into this business, itself included.
+    member_count: Annotated[int, Field(ge=1)]
+    #: Fields whose records disagree (different phones, addresses...): shown, never hidden.
+    conflict_count: Annotated[int, Field(ge=0)]
     last_seen_at: UtcTimestamp
     is_synthetic: bool
 
@@ -1512,7 +1651,24 @@ class BusinessDetailQuery(Contract):
     business_id: Id
 
 
+class ClusterMember(Contract):
+    """A record resolved into a business, with the source it came from."""
+
+    business_id: Id
+    display_name: str
+    status: BusinessStatus
+    connector_name: Label | None
+    connector_kind: SourceKind | None
+    source_url: str | None
+    external_id: str | None
+    first_seen_at: UtcTimestamp
+
+
 class BusinessDetail(Contract):
+    """A business with every observation of every record resolved into it (phase 06), the value
+    chosen for each field and the merge history. A record that is itself merged shows only its own
+    observations; `business.merged_into_id` says where it belongs."""
+
     business: Business
     is_synthetic: bool
     names: list[ObservedName]
@@ -1521,6 +1677,9 @@ class BusinessDetail(Contract):
     contacts: list[ObservedContact]
     classifications: list[ObservedClassification]
     evidence: list[ObservedEvidence]
+    members: list[ClusterMember]
+    canonical: list[CanonicalValue]
+    merges: list[BusinessMerge]
 
 
 class DatasetListQuery(Contract):
@@ -2272,6 +2431,182 @@ class CrawlUrlDetail(Contract):
     duplicate_of: CrawlUrl | None
 
 
+# ---- entity resolution (phase 06) ---------------------------------------------------------------
+# Normalised observations resolved into canonical businesses. The engine recommends; people decide
+# what is ambiguous, and every decision can be explained and undone.
+
+
+class ReasonDirection(StrEnum):
+    FOR = "for"
+    AGAINST = "against"
+    RULE = "rule"
+
+
+class FieldAgreement(StrEnum):
+    MATCH = "match"
+    PARTIAL = "partial"
+    CONFLICT = "conflict"
+    MISSING = "missing"
+
+
+class MatchAction(StrEnum):
+    MERGE = "merge"
+    KEEP_SEPARATE = "keep_separate"
+    DEFER = "defer"
+    #: Reverts the latest decision on the pair, whatever it was.
+    UNDO = "undo"
+
+
+ReviewReason = Annotated[str, Field(min_length=1, max_length=2000)]
+
+
+class ResolutionStartRequest(Contract):
+    """Resolves one project, or every live project when `project_id` is null (one job each)."""
+
+    project_id: Id | None
+
+
+class ResolutionStats(Contract):
+    """Counts of one resolution run, read back from its last checkpoint."""
+
+    records: Annotated[int, Field(ge=0)]
+    ingested: Annotated[int, Field(ge=0)]
+    observations: Annotated[int, Field(ge=0)]
+    blocks: Annotated[int, Field(ge=0)]
+    skipped_blocks: Annotated[int, Field(ge=0)]
+    largest_block: Annotated[int, Field(ge=0)]
+    pairs_compared: Annotated[int, Field(ge=0)]
+    auto_merged: Annotated[int, Field(ge=0)]
+    review: Annotated[int, Field(ge=0)]
+    distinct: Annotated[int, Field(ge=0)]
+    clusters: Annotated[int, Field(ge=0)]
+    merged_records: Annotated[int, Field(ge=0)]
+    manual_decisions: Annotated[int, Field(ge=0)]
+
+
+class ResolutionRun(Contract):
+    job_id: Id
+    project_id: Id
+    project_name: Label
+    status: JobStatus
+    stage: Code
+    progress_done: Annotated[int, Field(ge=0)]
+    progress_total: Annotated[int, Field(ge=0)] | None
+    normalizer_version: Label
+    rules_version: Label
+    stats: ResolutionStats
+    requested_at: UtcTimestamp
+    started_at: UtcTimestamp | None
+    finished_at: UtcTimestamp | None
+    events: list[RunEvent]
+    is_synthetic: bool
+
+
+class ResolutionRunListQuery(Contract):
+    project_id: Id | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class ResolutionRunPage(Contract):
+    items: list[ResolutionRun]
+    next_cursor: Cursor | None
+    total: Annotated[int, Field(ge=0)]
+
+
+class MatchListQuery(Contract):
+    """The review queue: pairs by score, filtered by status, risk, minimum score and source."""
+
+    project_id: Id | None
+    status: MatchStatus | None
+    risk: MatchRisk | None
+    min_score: Confidence | None
+    connector_key: Code | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class MatchSide(Contract):
+    business_id: Id
+    #: The business this record currently belongs to (itself when it is not merged).
+    root_business_id: Id
+    display_name: str
+    locality: str | None
+    region: str | None
+    connector_names: list[Label]
+
+
+class MatchListItem(Contract):
+    id: Id
+    project_id: Id
+    left: MatchSide
+    right: MatchSide
+    score: Confidence
+    outcome: MatchOutcome
+    risk: MatchRisk
+    status: MatchStatus
+    is_manual: bool
+    #: Reason codes, rules first, then agreements, then conflicts.
+    reasons: list[Code]
+    rules_version: Label
+    updated_at: UtcTimestamp
+    is_synthetic: bool
+
+
+class MatchPage(Contract):
+    items: list[MatchListItem]
+    next_cursor: Cursor | None
+    total: Annotated[int, Field(ge=0)]
+
+
+class MatchDetailQuery(Contract):
+    match_id: Id
+
+
+class FieldComparison(Contract):
+    field: Code
+    left: list[str]
+    right: list[str]
+    agreement: FieldAgreement
+    similarity: Confidence | None
+
+
+class MatchReason(Contract):
+    code: Code
+    direction: ReasonDirection
+    weight: float
+    detail: str | None
+
+
+class MatchDetail(Contract):
+    """One pair side by side: both records with their evidence, the comparison field by field, the
+    reasons behind the score, and every decision and merge that touched it."""
+
+    match: MatchCandidate
+    left: BusinessDetail
+    right: BusinessDetail
+    fields: list[FieldComparison]
+    reasons: list[MatchReason]
+    blocking_keys: list[str]
+    decisions: list[ReviewDecision]
+    merges: list[BusinessMerge]
+
+
+class MatchActionRequest(Contract):
+    match_id: Id
+    action: MatchAction
+    reason: ReviewReason | None
+
+
+class CanonicalChoiceRequest(Contract):
+    """Makes one observation the value a business shows for a field."""
+
+    business_id: Id
+    field: CanonicalField
+    observation_id: Id
+    reason: ReviewReason | None
+
+
 DATA_MODELS: tuple[type[Contract], ...] = (
     *RECORDS,
     Provenance,
@@ -2318,4 +2653,14 @@ DATA_MODELS: tuple[type[Contract], ...] = (
     CrawlUrlPage,
     CrawlUrlDetailQuery,
     CrawlUrlDetail,
+    ResolutionStartRequest,
+    ResolutionRun,
+    ResolutionRunListQuery,
+    ResolutionRunPage,
+    MatchListQuery,
+    MatchPage,
+    MatchDetailQuery,
+    MatchDetail,
+    MatchActionRequest,
+    CanonicalChoiceRequest,
 )

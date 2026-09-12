@@ -38,6 +38,7 @@ from research_engine.domain import (
     CandidateDetailQuery,
     CandidateListQuery,
     CandidatePage,
+    CanonicalChoiceRequest,
     CrawlRun,
     CrawlRunListQuery,
     CrawlRunPage,
@@ -57,6 +58,15 @@ from research_engine.domain import (
     DiscoveryStartRequest,
     ImportPreview,
     ImportPreviewRequest,
+    MatchActionRequest,
+    MatchDetail,
+    MatchDetailQuery,
+    MatchListQuery,
+    MatchPage,
+    ResolutionRun,
+    ResolutionRunListQuery,
+    ResolutionRunPage,
+    ResolutionStartRequest,
     SourceCatalog,
     SourceCatalogQuery,
     SourceInfo,
@@ -65,6 +75,8 @@ from research_engine.domain import (
 )
 from research_engine.gpu import probe_gpu
 from research_engine.ollama import probe_ollama
+from research_engine.resolution import store as resolution
+from research_engine.resolution.engine import ResolutionService
 from research_engine.settings import Settings
 from research_engine.storage import check_duckdb, check_sqlite
 from research_engine.testdata import seed_synthetic_workspace
@@ -86,6 +98,8 @@ class Context:
     discovery: DiscoveryService
     #: Owns the running crawls; see crawl/engine.py.
     crawl: CrawlService
+    #: Owns the running entity resolution jobs; see resolution/engine.py.
+    resolution: ResolutionService
 
 
 @dataclass(frozen=True, slots=True)
@@ -252,6 +266,45 @@ async def _crawl_url(ctx: Context, query: CrawlUrlDetailQuery) -> CrawlUrlDetail
     )
 
 
+# ---- entity resolution (phase 06) ---------------------------------------------------------------
+
+
+async def _resolution_start(ctx: Context, request: ResolutionStartRequest) -> ResolutionRunPage:
+    return await ctx.resolution.start(request)
+
+
+async def _resolution_control(ctx: Context, request: DiscoveryControlRequest) -> ResolutionRun:
+    return await ctx.resolution.control(request)
+
+
+async def _resolution_runs(ctx: Context, query: ResolutionRunListQuery) -> ResolutionRunPage:
+    return await _with_store(ctx, lambda conn: resolution.list_resolution_runs(conn, query))
+
+
+async def _matches_list(ctx: Context, query: MatchListQuery) -> MatchPage:
+    return await _with_store(ctx, lambda conn: resolution.list_matches(conn, query))
+
+
+async def _matches_get(ctx: Context, query: MatchDetailQuery) -> MatchDetail:
+    return await _with_store(ctx, lambda conn: resolution.get_match_detail(conn, query.match_id))
+
+
+async def _matches_act(ctx: Context, request: MatchActionRequest) -> MatchDetail:
+    def act(conn: sqlite3.Connection) -> MatchDetail:
+        resolution.act_on_match(conn, request, actor=ACTOR_UI)
+        return resolution.get_match_detail(conn, request.match_id)
+
+    return await _with_store(ctx, act)
+
+
+async def _businesses_choose_value(ctx: Context, request: CanonicalChoiceRequest) -> BusinessDetail:
+    def choose(conn: sqlite3.Connection) -> BusinessDetail:
+        resolution.choose_canonical(conn, request, actor=ACTOR_UI)
+        return repository.get_business_detail(conn, request.business_id)
+
+    return await _with_store(ctx, choose)
+
+
 ROUTES: dict[str, Route] = {
     MessageType.HEALTH: Route(EmptyPayload, _health, timeout_s=2.0),
     MessageType.DIAGNOSTICS: Route(EmptyPayload, _diagnostics, timeout_s=20.0),
@@ -282,5 +335,17 @@ ROUTES: dict[str, Route] = {
     MessageType.CRAWL_RUNS: Route(CrawlRunListQuery, _crawl_runs, timeout_s=15.0),
     MessageType.CRAWL_URLS: Route(CrawlUrlListQuery, _crawl_urls, timeout_s=15.0),
     MessageType.CRAWL_URL: Route(CrawlUrlDetailQuery, _crawl_url, timeout_s=10.0),
+    MessageType.RESOLUTION_START: Route(ResolutionStartRequest, _resolution_start, timeout_s=30.0),
+    MessageType.RESOLUTION_CONTROL: Route(
+        DiscoveryControlRequest, _resolution_control, timeout_s=30.0
+    ),
+    MessageType.RESOLUTION_RUNS: Route(ResolutionRunListQuery, _resolution_runs, timeout_s=15.0),
+    MessageType.MATCHES_LIST: Route(MatchListQuery, _matches_list, timeout_s=15.0),
+    MessageType.MATCHES_GET: Route(MatchDetailQuery, _matches_get, timeout_s=10.0),
+    # a decision recomputes the clusters of the whole project
+    MessageType.MATCHES_ACT: Route(MatchActionRequest, _matches_act, timeout_s=60.0),
+    MessageType.BUSINESSES_CHOOSE_VALUE: Route(
+        CanonicalChoiceRequest, _businesses_choose_value, timeout_s=60.0
+    ),
     MessageType.DEV_SEED_SYNTHETIC: Route(EmptyPayload, _dev_seed_synthetic, timeout_s=60.0),
 }

@@ -38,6 +38,16 @@ export function buildBusinessColumns(t: Translator): ColumnDef<BusinessListItem>
       cell: ({ row }) => (
         <span className="flex min-w-0 items-center gap-1.5">
           <Text value={row.original.display_name} />
+          {row.original.member_count > 1 && (
+            <span className="shrink-0 rounded border px-1 text-[10px] text-muted-foreground">
+              {t("businesses.records", { n: row.original.member_count })}
+            </span>
+          )}
+          {row.original.conflict_count > 0 && (
+            <span className="shrink-0 rounded border border-warn/60 px-1 text-[10px] text-warn">
+              {t("businesses.conflicts", { n: row.original.conflict_count })}
+            </span>
+          )}
           {row.original.is_synthetic && <TestDataBadge />}
         </span>
       ),

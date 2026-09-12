@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BusinessDetail, BusinessListItem, BusinessPage } from "@lead/shared-types";
+import clusterFixture from "@lead/shared-types/fixtures/business_cluster_detail.json";
 import detailFixture from "@lead/shared-types/fixtures/business_detail.json";
 import pageFixture from "@lead/shared-types/fixtures/business_page.json";
 import seedFixture from "@lead/shared-types/fixtures/synthetic_seed_result.json";
@@ -15,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   listBusinesses: vi.fn<typeof desktop.listBusinesses>(),
   getBusiness: vi.fn<typeof desktop.getBusiness>(),
   seedSyntheticData: vi.fn<typeof desktop.seedSyntheticData>(),
+  chooseCanonicalValue: vi.fn<typeof desktop.chooseCanonicalValue>(),
 }));
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
@@ -131,6 +133,49 @@ describe("BusinessesScreen", () => {
         detail.evidence.length,
     );
     expect(within(inspector).getByText("+13055550101")).toBeTruthy();
+  });
+
+  it("shows the records behind a business, its conflicts, and lets a person choose what it shows", async () => {
+    const cluster = clusterFixture as BusinessDetail;
+    const listed: BusinessListItem = {
+      ...first,
+      id: cluster.business.id,
+      display_name: cluster.business.display_name,
+      member_count: cluster.members.length,
+      conflict_count: 1,
+    };
+    mocks.listBusinesses.mockResolvedValue({ items: [listed], next_cursor: null, total: 1 });
+    mocks.getBusiness.mockResolvedValue(cluster);
+    mocks.chooseCanonicalValue.mockResolvedValue(cluster);
+    const user = userEvent.setup();
+    renderScreen();
+
+    expect(await screen.findByText("2 records")).toBeTruthy();
+    expect(screen.getByText("1 conflicts")).toBeTruthy();
+    await user.click(screen.getByText(cluster.business.display_name));
+    const inspector = screen.getByRole("complementary", { name: "Inspector" });
+    expect(
+      await within(inspector).findByText("Records resolved into this business (2)"),
+    ).toBeTruthy();
+    expect(within(inspector).getByText("2 different values")).toBeTruthy();
+
+    const shown = cluster.canonical.find((value) => value.field === "phone");
+    const other = cluster.contacts.find(
+      (contact) =>
+        contact.value.contact_type === "phone" && contact.value.id !== shown?.observation_id,
+    );
+    if (!other?.value.value_normalized) throw new Error("the fixture holds two phones");
+    const item = within(inspector).getByText(other.value.value_normalized).closest("li");
+    if (!(item instanceof HTMLElement)) throw new Error("the other phone is listed");
+    await user.click(within(item).getByRole("button", { name: "Show this value" }));
+    await waitFor(() =>
+      expect(mocks.chooseCanonicalValue).toHaveBeenCalledWith({
+        business_id: cluster.business.id,
+        field: "phone",
+        observation_id: other.value.id,
+        reason: null,
+      }),
+    );
   });
 
   it("offers the synthetic seed only as a marked development action", async () => {

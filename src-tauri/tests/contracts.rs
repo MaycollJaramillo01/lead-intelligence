@@ -8,10 +8,12 @@ use std::fs;
 
 use lead_intelligence_lib::data::{
     BusinessDetail, BusinessListQuery, BusinessPage, CampaignListQuery, CampaignPage,
-    CampaignSaved, CandidateDetail, CandidateListQuery, CandidatePage, CrawlRunListQuery,
-    CrawlRunPage, CrawlStartRequest, CrawlUrlDetail, CrawlUrlListQuery, CrawlUrlPage,
-    CrawlUrlStatus, CriteriaCheck, DatasetListQuery, DatasetPage, DiscoveryRunListQuery,
-    DiscoveryRunPage, DiscoveryStartRequest, Id, ImportPreview, SourceCatalog, SourceHealth,
+    CampaignSaved, CandidateDetail, CandidateListQuery, CandidatePage, CanonicalChoiceRequest,
+    CrawlRunListQuery, CrawlRunPage, CrawlStartRequest, CrawlUrlDetail, CrawlUrlListQuery,
+    CrawlUrlPage, CrawlUrlStatus, CriteriaCheck, DatasetListQuery, DatasetPage,
+    DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest, Id, ImportPreview,
+    MatchActionRequest, MatchDetail, MatchListQuery, MatchPage, MatchStatus,
+    ResolutionRunListQuery, ResolutionRunPage, ResolutionStartRequest, SourceCatalog, SourceHealth,
     SyntheticSeedResult,
 };
 use lead_intelligence_lib::protocol::{
@@ -296,6 +298,117 @@ fn tampered_crawl_payloads_are_rejected() {
 }
 
 #[test]
+fn resolution_fixtures_round_trip_and_pass_validation() {
+    round_trip::<ResolutionStartRequest>("resolution_start_request.json");
+    let run_query: ResolutionRunListQuery = round_trip("resolution_run_list_query.json");
+    run_query.validate().expect("fixture query is valid");
+    let runs: ResolutionRunPage = round_trip("resolution_run_page.json");
+    runs.validate(&run_query)
+        .expect("fixture run page matches its query");
+    assert!(runs.items.iter().any(|run| run.stats.clusters > 0));
+
+    let match_query: MatchListQuery = round_trip("match_list_query.json");
+    match_query.validate().expect("fixture query is valid");
+    let pairs: MatchPage = round_trip("match_page.json");
+    pairs
+        .validate(&match_query)
+        .expect("fixture queue matches its query");
+    assert!(
+        pairs
+            .items
+            .iter()
+            .any(|item| item.status == MatchStatus::Pending),
+        "an ambiguous pair waits for a person"
+    );
+
+    let detail: MatchDetail = round_trip("match_detail.json");
+    detail
+        .validate(&detail.pair.id.clone())
+        .expect("fixture detail describes its own pair");
+    assert!(!detail.fields.is_empty() && !detail.reasons.is_empty());
+
+    let action: MatchActionRequest = round_trip("match_action_request.json");
+    action.validate().expect("fixture action is valid");
+    assert_eq!(action.match_id, detail.pair.id);
+
+    let cluster: BusinessDetail = round_trip("business_cluster_detail.json");
+    cluster
+        .validate(&cluster.business.id.clone())
+        .expect("fixture cluster describes itself");
+    assert!(cluster.members.len() > 1);
+    assert!(
+        cluster
+            .canonical
+            .iter()
+            .any(|value| value.alternative_count > 1),
+        "a conflict inside a cluster stays visible"
+    );
+
+    let choice: CanonicalChoiceRequest = round_trip("canonical_choice_request.json");
+    choice.validate().expect("fixture choice is valid");
+    assert_eq!(choice.business_id, cluster.business.id);
+}
+
+type ResolutionMutation = (&'static str, fn(&mut Value));
+
+#[test]
+fn tampered_resolution_payloads_are_rejected() {
+    let original: Value = serde_json::from_str(&fixture_text("match_page.json")).expect("JSON");
+    let mutations: [ResolutionMutation; 3] = [
+        ("unknown field", |v| v["items"][0]["surprise"] = true.into()),
+        ("unknown outcome", |v| {
+            v["items"][0]["outcome"] = "probably".into()
+        }),
+        ("score above one", |v| v["items"][0]["score"] = 1.5.into()),
+    ];
+    for (label, mutate) in mutations {
+        let mut tampered = original.clone();
+        mutate(&mut tampered);
+        assert!(
+            serde_json::from_value::<MatchPage>(tampered).is_err(),
+            "accepted a payload with {label}"
+        );
+    }
+
+    // a queue that shows pairs its filter excluded is refused before it reaches the interface
+    let merged_only: MatchListQuery = serde_json::from_value(json!({
+        "project_id": null, "status": "merged", "risk": null, "min_score": null,
+        "connector_key": null, "limit": 50, "cursor": null
+    }))
+    .expect("valid query");
+    let page: MatchPage = serde_json::from_value(original).expect("page");
+    assert!(page.validate(&merged_only).is_err());
+
+    // an observation of another business, or a value pointing outside the cluster, is refused
+    let cluster: Value =
+        serde_json::from_str(&fixture_text("business_cluster_detail.json")).expect("JSON");
+    let stranger = "01900000-0000-7000-8000-000000009999";
+    let mut foreign = cluster.clone();
+    foreign["names"][0]["value"]["business_id"] = stranger.into();
+    let foreign: BusinessDetail = serde_json::from_value(foreign).expect("still a detail");
+    assert!(foreign.validate(&foreign.business.id.clone()).is_err());
+    let mut pointer = cluster;
+    pointer["canonical"][0]["observation_id"] = stranger.into();
+    let pointer: BusinessDetail = serde_json::from_value(pointer).expect("still a detail");
+    assert!(pointer.validate(&pointer.business.id.clone()).is_err());
+
+    let detail: MatchDetail =
+        serde_json::from_str(&fixture_text("match_detail.json")).expect("detail");
+    let other = Id::parse(stranger).expect("id");
+    assert!(
+        detail.validate(&other).is_err(),
+        "a detail for another pair is refused"
+    );
+
+    let mut action: MatchActionRequest =
+        serde_json::from_str(&fixture_text("match_action_request.json")).expect("action");
+    action.reason = Some("   ".into());
+    assert!(action.validate().is_err(), "a blank reason is refused");
+    action.reason = Some("x".repeat(2001));
+    assert!(action.validate().is_err(), "an endless reason is refused");
+}
+
+#[test]
 fn every_fixture_is_covered() {
     let dir = common::repo_root().join("packages/shared-types/fixtures");
     let mut names: Vec<String> = fs::read_dir(dir)
@@ -313,6 +426,7 @@ fn every_fixture_is_covered() {
     assert_eq!(
         names,
         [
+            "business_cluster_detail.json",
             "business_detail.json",
             "business_list_query.json",
             "business_page.json",
@@ -322,6 +436,7 @@ fn every_fixture_is_covered() {
             "candidate_detail.json",
             "candidate_list_query.json",
             "candidate_page.json",
+            "canonical_choice_request.json",
             "crawl_run_list_query.json",
             "crawl_run_page.json",
             "crawl_start_request.json",
@@ -341,6 +456,13 @@ fn every_fixture_is_covered() {
             "envelope.result.diagnostics.json",
             "envelope.result.error.json",
             "import_preview.json",
+            "match_action_request.json",
+            "match_detail.json",
+            "match_list_query.json",
+            "match_page.json",
+            "resolution_run_list_query.json",
+            "resolution_run_page.json",
+            "resolution_start_request.json",
             "source_catalog.json",
             "synthetic_seed_result.json",
             "ui_error_report.json",

@@ -31,6 +31,8 @@ const LIST_ITEM_KEYS = {
   primary_category: true,
   source_count: true,
   evidence_count: true,
+  member_count: true,
+  conflict_count: true,
   last_seen_at: true,
   is_synthetic: true,
 } satisfies Record<keyof BusinessListItem, true>;
@@ -77,6 +79,9 @@ const DETAIL_KEYS = {
   contacts: true,
   classifications: true,
   evidence: true,
+  members: true,
+  canonical: true,
+  merges: true,
 } satisfies Record<keyof BusinessDetail, true>;
 
 const DATASET_ITEM_KEYS = {

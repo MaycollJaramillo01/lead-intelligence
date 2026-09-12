@@ -35,10 +35,13 @@ from research_engine.handlers import ROUTES, Context, NotAllowedError, health
 from research_engine.logs import configure_logging, request_id_var
 from research_engine.repository import (
     InvalidCursorError,
+    InvalidTransitionError,
     NotFoundError,
     StoreUnavailableError,
     connect,
 )
+from research_engine.resolution.engine import ResolutionService
+from research_engine.resolution.store import ResolutionError
 from research_engine.settings import Settings
 from research_engine.storage import check_duckdb, check_sqlite
 
@@ -96,8 +99,14 @@ class Worker:
             CrawlerSettings(data_dir=settings.data_dir, user_agent=USER_AGENT),
             lambda: connect(settings.data_dir),
         )
+        self._resolution = ResolutionService(lambda: connect(settings.data_dir))
         self._ctx = Context(
-            settings, datetime.now(UTC), self._request_shutdown, self._discovery, self._crawl
+            settings,
+            datetime.now(UTC),
+            self._request_shutdown,
+            self._discovery,
+            self._crawl,
+            self._resolution,
         )
 
     async def run(self) -> None:
@@ -110,7 +119,12 @@ class Worker:
         for check in (check_sqlite, check_duckdb):
             store = await asyncio.to_thread(check, self._settings.data_dir)
             logger.info("store checked", extra={"engine": store.engine, "state": store.state})
-        for name, engine in (("discovery", self._discovery), ("crawl", self._crawl)):
+        engines: tuple[tuple[str, DiscoveryService | CrawlService | ResolutionService], ...] = (
+            ("discovery", self._discovery),
+            ("crawl", self._crawl),
+            ("resolution", self._resolution),
+        )
+        for name, engine in engines:
             try:
                 paused = await engine.recover()
             except Exception:
@@ -146,6 +160,7 @@ class Worker:
             self._stopping = True
             await self._discovery.shutdown()
             await self._crawl.shutdown()
+            await self._resolution.shutdown()
             await self._drain()
         logger.info("worker stopped")
 
@@ -261,7 +276,13 @@ class Worker:
             raise WorkerError(ErrorCode.NOT_FOUND, str(exc)) from exc
         except NotAllowedError as exc:
             raise WorkerError(ErrorCode.NOT_ALLOWED, str(exc)) from exc
-        except (InvalidCursorError, DiscoveryStartError, CrawlStartError) as exc:
+        except (
+            InvalidCursorError,
+            InvalidTransitionError,
+            DiscoveryStartError,
+            CrawlStartError,
+            ResolutionError,
+        ) as exc:
             raise WorkerError(ErrorCode.INVALID_PAYLOAD, str(exc)) from exc
         return result.model_dump(mode="json")
 
