@@ -9,7 +9,11 @@ use std::sync::{Arc, Mutex};
 use chrono::Utc;
 use lead_intelligence_lib::commands::{AppState, CoreInfo};
 use lead_intelligence_lib::config::Environment;
-use lead_intelligence_lib::data::{BusinessDetail, BusinessPage, DatasetPage, SyntheticSeedResult};
+use lead_intelligence_lib::data::{
+    BusinessDetail, BusinessPage, CampaignSaved, CandidateDetail, CandidatePage, CriteriaCheck,
+    DatasetPage, DiscoveryRun, DiscoveryRunPage, ImportPreview, JobStatus, SourceCatalog,
+    SourceRunStatus, SyntheticSeedResult,
+};
 use lead_intelligence_lib::protocol::{
     CommandError, CommandErrorCode, ComponentState, DiagnosticsReport, WorkerState,
 };
@@ -186,6 +190,198 @@ fn data_commands_serve_real_store_queries_through_ipc() {
         mock_app(supervisor.clone(), data.path(), Environment::Production);
     let refused = invoke(&release, "seed_synthetic_data", json!({})).expect_err("release build");
     assert_eq!(command_error(refused).code, CommandErrorCode::NotAllowed);
+
+    tauri::async_runtime::block_on(supervisor.stop());
+}
+
+const IMPORT_CSV: &str = concat!(
+    "name,city,state,zip,website,phone,category\n",
+    "Panaderia El Sol,Austin,TX,78701,https://panaderia-el-sol.example,(512) 555-0101,Bakery\n",
+    "Techo Seguro Roofing,Miami,FL,33130,techo-seguro.example,(305) 555-0102,Roofing\n",
+    "Panaderia El Sol,Austin,TX,78701,https://panaderia-el-sol.example,(512) 555-0101,Bakery\n",
+);
+
+fn file_import_criteria() -> serde_json::Value {
+    json!({
+        "schema_version": 1,
+        "geography": [{
+            "country_code": "US", "region": "TX", "metro": null,
+            "locality": "Austin", "postal_code": null, "radius_km": null
+        }],
+        "verticals": [], "categories": [], "services": [], "keywords": [],
+        "exclusions": { "names": [], "domains": [], "categories": [], "postal_codes": [] },
+        "market_languages": ["es"], "size_proxies": [], "freshness_since": null,
+        "strategy": "broad",
+        "sources": [{
+            "connector_key": "file.import", "priority": 50, "max_records": null, "config_json": {}
+        }],
+        "limits": { "max_candidates": 100, "max_requests": 10, "max_pages_per_source": 5 }
+    })
+}
+
+/// Polls the run listing the way the interface does, until the run stops moving.
+fn settled_run(
+    webview: &tauri::WebviewWindow<tauri::test::MockRuntime>,
+    campaign_id: &str,
+) -> DiscoveryRun {
+    for _ in 0..200 {
+        let page: DiscoveryRunPage = invoke(
+            webview,
+            "list_discovery_runs",
+            json!({ "query": {
+                "project_id": null, "campaign_id": campaign_id, "limit": 10, "cursor": null
+            }}),
+        )
+        .expect("runs")
+        .deserialize()
+        .expect("typed runs");
+        let run = page.items.into_iter().next().expect("one run");
+        let working = run.sources.iter().any(|source| {
+            matches!(
+                source.status,
+                SourceRunStatus::Queued | SourceRunStatus::Running
+            )
+        });
+        if !working && !matches!(run.status, JobStatus::Queued | JobStatus::Running) {
+            return run;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    panic!("the discovery run never settled");
+}
+
+#[test]
+fn the_discovery_flow_runs_end_to_end_through_ipc() {
+    let data = tempfile::tempdir().expect("temp dir");
+    let supervisor = WorkerSupervisor::new(common::real_worker(data.path()), common::quiet());
+    tauri::async_runtime::block_on(supervisor.start()).expect("worker starts");
+    let (_app, webview) = mock_app(supervisor.clone(), data.path(), Environment::Development);
+
+    // 1. the catalogue is real: every source states its terms, its limits and its health
+    let catalog: SourceCatalog = invoke(
+        &webview,
+        "list_sources",
+        json!({ "query": {"project_id": null} }),
+    )
+    .expect("sources")
+    .deserialize()
+    .expect("typed catalogue");
+    assert!(catalog.sources.len() >= 4);
+    let keyed = catalog
+        .sources
+        .iter()
+        .find(|source| source.metadata.requires_credentials)
+        .expect("one source needs credentials");
+    assert!(!keyed.enabled, "a source without its key is not enabled");
+
+    // 2. the file the operator picked is previewed before anything is stored
+    let preview: ImportPreview = invoke(
+        &webview,
+        "preview_import",
+        json!({ "request": {
+            "format": null, "filename": "leads.csv", "content": IMPORT_CSV, "mapping": null
+        }}),
+    )
+    .expect("preview")
+    .deserialize()
+    .expect("typed preview");
+    assert_eq!((preview.total_rows, preview.usable_rows), (3, 3));
+    assert_eq!(preview.suggested_mapping.name.as_deref(), Some("name"));
+
+    // 3. a campaign is stored with its criteria, and its warnings come back with it
+    let saved: CampaignSaved = invoke(
+        &webview,
+        "save_campaign",
+        json!({ "request": {
+            "campaign_id": null, "project_id": null, "name": "IPC import",
+            "objective": "Exercise the flow", "criteria": file_import_criteria()
+        }}),
+    )
+    .expect("campaign saved")
+    .deserialize()
+    .expect("typed campaign");
+    assert!(
+        saved
+            .problems
+            .iter()
+            .any(|problem| problem.code == "language_is_a_signal"),
+        "market language must be reported as a signal, not as proof"
+    );
+    let campaign_id = saved.campaign.id.to_string();
+
+    // 4. validation with an estimate, marked as an estimate
+    let check: CriteriaCheck = invoke(
+        &webview,
+        "validate_criteria",
+        json!({ "query": {
+            "project_id": null, "criteria": file_import_criteria(), "with_estimates": true
+        }}),
+    )
+    .expect("validated")
+    .deserialize()
+    .expect("typed check");
+    assert_eq!(check.estimates.len(), 1);
+    assert!(!check.estimates[0].basis.is_empty());
+
+    // 5. the run itself, with the file travelling once
+    let started: DiscoveryRun = invoke(
+        &webview,
+        "start_discovery",
+        json!({ "request": {
+            "campaign_id": campaign_id,
+            "connector_keys": [],
+            "inputs": { "file.import": {
+                "filename": "leads.csv", "format": "csv", "content": IMPORT_CSV, "mapping": null
+            }}
+        }}),
+    )
+    .expect("run started")
+    .deserialize()
+    .expect("typed run");
+    assert_eq!(started.campaign_name, "IPC import");
+
+    let run = settled_run(&webview, &campaign_id);
+    assert_eq!(run.status, JobStatus::Succeeded);
+    assert_eq!((run.candidate_count, run.duplicate_count), (2, 1));
+
+    // 6. candidates, without the repeat unless it is asked for
+    let candidates: CandidatePage = invoke(
+        &webview,
+        "list_candidates",
+        json!({ "query": {
+            "project_id": null, "campaign_id": campaign_id, "source_run_id": null,
+            "search": null, "include_duplicates": false, "limit": 50, "cursor": null
+        }}),
+    )
+    .expect("candidates")
+    .deserialize()
+    .expect("typed candidates");
+    assert_eq!(candidates.total, 2);
+    assert!(candidates.items.iter().all(|item| !item.is_duplicate));
+
+    // 7. the raw record behind one of them, with its provenance
+    let detail: CandidateDetail = invoke(
+        &webview,
+        "get_candidate",
+        json!({ "query": { "candidate_id": candidates.items[0].id } }),
+    )
+    .expect("candidate detail")
+    .deserialize()
+    .expect("typed detail");
+    assert_eq!(detail.connector.key, "file.import");
+    assert!(detail.raw_record.payload_json.contains_key("name"));
+    assert!(detail.acquired_page.expect("page").artifact_path.is_some());
+
+    // 8. a run that cannot start says why, instead of starting a useless one
+    let refused = invoke(
+        &webview,
+        "start_discovery",
+        json!({ "request": {
+            "campaign_id": campaign_id, "connector_keys": [], "inputs": {}
+        }}),
+    )
+    .expect_err("no file, no run");
+    assert_eq!(command_error(refused).code, CommandErrorCode::InvalidInput);
 
     tauri::async_runtime::block_on(supervisor.stop());
 }

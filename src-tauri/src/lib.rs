@@ -33,6 +33,16 @@ pub fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Build
         commands::list_businesses,
         commands::get_business,
         commands::list_datasets,
+        commands::list_sources,
+        commands::preview_import,
+        commands::list_campaigns,
+        commands::save_campaign,
+        commands::validate_criteria,
+        commands::start_discovery,
+        commands::control_discovery,
+        commands::list_discovery_runs,
+        commands::list_candidates,
+        commands::get_candidate,
         commands::seed_synthetic_data
     ])
 }

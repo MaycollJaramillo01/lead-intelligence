@@ -1034,6 +1034,642 @@
       "title": "Campaign",
       "type": "object"
     },
+    "CampaignListItem": {
+      "additionalProperties": false,
+      "description": "A campaign with its criteria and what its runs have produced so far.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "objective": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "criteria": {
+          "$ref": "#/$defs/DiscoveryCriteria"
+        },
+        "run_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "candidate_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "last_run_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_run_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JobStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "name",
+        "objective",
+        "criteria",
+        "run_count",
+        "candidate_count",
+        "last_run_at",
+        "last_run_status",
+        "created_at",
+        "updated_at",
+        "is_synthetic"
+      ],
+      "title": "CampaignListItem",
+      "type": "object"
+    },
+    "CampaignListQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "limit",
+        "cursor"
+      ],
+      "title": "CampaignListQuery",
+      "type": "object"
+    },
+    "CampaignPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CampaignListItem"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "CampaignPage",
+      "type": "object"
+    },
+    "CampaignSaveRequest": {
+      "additionalProperties": false,
+      "description": "Creates a campaign when `campaign_id` is null, otherwise replaces its editable fields.",
+      "properties": {
+        "campaign_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "objective": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "criteria": {
+          "$ref": "#/$defs/DiscoveryCriteria"
+        }
+      },
+      "required": [
+        "campaign_id",
+        "project_id",
+        "name",
+        "objective",
+        "criteria"
+      ],
+      "title": "CampaignSaveRequest",
+      "type": "object"
+    },
+    "CampaignSaved": {
+      "additionalProperties": false,
+      "description": "The stored campaign plus what validation says about it; problems never block a draft.",
+      "properties": {
+        "campaign": {
+          "$ref": "#/$defs/CampaignListItem"
+        },
+        "problems": {
+          "items": {
+            "$ref": "#/$defs/CriteriaProblem"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "campaign",
+        "problems"
+      ],
+      "title": "CampaignSaved",
+      "type": "object"
+    },
+    "CandidateDetail": {
+      "additionalProperties": false,
+      "description": "The candidate with the whole chain behind it, down to the payload as it was received.",
+      "properties": {
+        "candidate": {
+          "$ref": "#/$defs/DiscoveryCandidate"
+        },
+        "campaign_name": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "connector": {
+          "$ref": "#/$defs/SourceConnector"
+        },
+        "source_run": {
+          "$ref": "#/$defs/SourceRun"
+        },
+        "source_query": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceQuery"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acquired_page": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AcquiredPage"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "raw_record": {
+          "$ref": "#/$defs/RawRecord"
+        },
+        "duplicate_of": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DiscoveryCandidate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "candidate",
+        "campaign_name",
+        "connector",
+        "source_run",
+        "source_query",
+        "acquired_page",
+        "raw_record",
+        "duplicate_of"
+      ],
+      "title": "CandidateDetail",
+      "type": "object"
+    },
+    "CandidateDetailQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate_id"
+      ],
+      "title": "CandidateDetailQuery",
+      "type": "object"
+    },
+    "CandidateListItem": {
+      "additionalProperties": false,
+      "description": "A candidate reference. It is not a lead and carries no score: phase 04 only finds it.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "campaign_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "campaign_name": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "connector_key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "connector_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "connector_kind": {
+          "$ref": "#/$defs/SourceKind"
+        },
+        "name_raw": {
+          "type": "string"
+        },
+        "locality": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "postal_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phone_raw": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "category_raw": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "external_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "is_duplicate": {
+          "type": "boolean"
+        },
+        "duplicate_of_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "discovered_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "campaign_id",
+        "campaign_name",
+        "source_run_id",
+        "connector_key",
+        "connector_name",
+        "connector_kind",
+        "name_raw",
+        "locality",
+        "region",
+        "postal_code",
+        "domain",
+        "phone_raw",
+        "category_raw",
+        "source_url",
+        "external_id",
+        "is_duplicate",
+        "duplicate_of_id",
+        "discovered_at"
+      ],
+      "title": "CandidateListItem",
+      "type": "object"
+    },
+    "CandidateListQuery": {
+      "additionalProperties": false,
+      "description": "Candidates never cross campaigns: a listing is scoped by campaign or by run.",
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "campaign_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "search": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "include_duplicates": {
+          "type": "boolean"
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "campaign_id",
+        "source_run_id",
+        "search",
+        "include_duplicates",
+        "limit",
+        "cursor"
+      ],
+      "title": "CandidateListQuery",
+      "type": "object"
+    },
+    "CandidatePage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CandidateListItem"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "CandidatePage",
+      "type": "object"
+    },
+    "Capability": {
+      "description": "What a source can actually do. The builder shows these; the engine enforces them.",
+      "enum": [
+        "pagination",
+        "estimate",
+        "checkpoint",
+        "geography_region",
+        "geography_locality",
+        "geography_postal_code",
+        "geography_radius",
+        "vertical_naics",
+        "category_terms",
+        "keyword_search",
+        "freshness",
+        "size_proxy"
+      ],
+      "title": "Capability",
+      "type": "string"
+    },
     "ClassificationKind": {
       "enum": [
         "category",
@@ -1041,6 +1677,137 @@
       ],
       "title": "ClassificationKind",
       "type": "string"
+    },
+    "ColumnMapping": {
+      "additionalProperties": false,
+      "description": "Which column of an imported file feeds which candidate field. Unmapped fields stay empty.",
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "locality": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "postal_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "country_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "website_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "external_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "locality",
+        "region",
+        "postal_code",
+        "country_code",
+        "domain",
+        "website_url",
+        "phone",
+        "category",
+        "external_id",
+        "source_url"
+      ],
+      "title": "ColumnMapping",
+      "type": "object"
     },
     "CommandError": {
       "additionalProperties": false,
@@ -1149,6 +1916,51 @@
         "error"
       ],
       "title": "ComponentState",
+      "type": "string"
+    },
+    "ConfigField": {
+      "additionalProperties": false,
+      "description": "One setting a source needs. Secrets live in the connector configuration, not in criteria.",
+      "properties": {
+        "key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ConfigFieldKind"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "help": {
+          "maxLength": 400,
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "kind",
+        "required",
+        "help"
+      ],
+      "title": "ConfigField",
+      "type": "object"
+    },
+    "ConfigFieldKind": {
+      "enum": [
+        "text",
+        "number",
+        "secret",
+        "file_text"
+      ],
+      "title": "ConfigFieldKind",
       "type": "string"
     },
     "ContactOrigin": {
@@ -1578,6 +2390,95 @@
         "uptime_s"
       ],
       "title": "CoreStatus",
+      "type": "object"
+    },
+    "CriteriaCheck": {
+      "additionalProperties": false,
+      "description": "Validation of one criteria document. `estimates` are marked estimates, never counts.",
+      "properties": {
+        "problems": {
+          "items": {
+            "$ref": "#/$defs/CriteriaProblem"
+          },
+          "type": "array"
+        },
+        "estimates": {
+          "items": {
+            "$ref": "#/$defs/SourceEstimate"
+          },
+          "type": "array"
+        },
+        "checked_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "problems",
+        "estimates",
+        "checked_at"
+      ],
+      "title": "CriteriaCheck",
+      "type": "object"
+    },
+    "CriteriaCheckQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "criteria": {
+          "$ref": "#/$defs/DiscoveryCriteria"
+        },
+        "with_estimates": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "project_id",
+        "criteria",
+        "with_estimates"
+      ],
+      "title": "CriteriaCheckQuery",
+      "type": "object"
+    },
+    "CriteriaProblem": {
+      "additionalProperties": false,
+      "description": "One reason a campaign cannot run (error) or deserves a second look (warning).",
+      "properties": {
+        "severity": {
+          "$ref": "#/$defs/ProblemSeverity"
+        },
+        "code": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "path": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "severity",
+        "code",
+        "path",
+        "message"
+      ],
+      "title": "CriteriaProblem",
       "type": "object"
     },
     "DatabaseStatus": {
@@ -2148,6 +3049,722 @@
       "title": "DiagnosticsResult",
       "type": "object"
     },
+    "DiscoveryCandidate": {
+      "additionalProperties": false,
+      "description": "A discovered reference, not a business: the light projection of one raw record (phase 04).\n\n`dedup_key` is the connector's cheap identity guess; a row repeating a key already seen in the\nsame campaign points at the first one through `duplicate_of_id`. Nothing is merged here - entity\nresolution is phase 06.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "campaign_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "raw_record_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "connector_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "dedup_key": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "duplicate_of_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name_raw": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "name_normalized": {
+          "type": "string"
+        },
+        "locality": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "postal_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "country_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "website_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phone_raw": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "category_raw": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "external_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "discovered_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "campaign_id",
+        "source_run_id",
+        "raw_record_id",
+        "connector_id",
+        "dedup_key",
+        "duplicate_of_id",
+        "name_raw",
+        "name_normalized",
+        "locality",
+        "region",
+        "postal_code",
+        "country_code",
+        "domain",
+        "website_url",
+        "phone_raw",
+        "category_raw",
+        "external_id",
+        "source_url",
+        "discovered_at",
+        "created_at"
+      ],
+      "title": "DiscoveryCandidate",
+      "type": "object"
+    },
+    "DiscoveryControlRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/RunControlAction"
+        }
+      },
+      "required": [
+        "job_id",
+        "action"
+      ],
+      "title": "DiscoveryControlRequest",
+      "type": "object"
+    },
+    "DiscoveryCriteria": {
+      "additionalProperties": false,
+      "description": "What a campaign looks for, stored verbatim in `campaigns.criteria_json`.",
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "geography": {
+          "items": {
+            "$ref": "#/$defs/GeoScope"
+          },
+          "maxItems": 25,
+          "type": "array"
+        },
+        "verticals": {
+          "items": {
+            "pattern": "^\\d{2,6}$",
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "categories": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "services": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "keywords": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "exclusions": {
+          "$ref": "#/$defs/Exclusions"
+        },
+        "market_languages": {
+          "items": {
+            "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "size_proxies": {
+          "items": {
+            "$ref": "#/$defs/SizeProxy"
+          },
+          "type": "array"
+        },
+        "freshness_since": {
+          "anyOf": [
+            {
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "strategy": {
+          "$ref": "#/$defs/DiscoveryStrategy"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceSelection"
+          },
+          "type": "array"
+        },
+        "limits": {
+          "$ref": "#/$defs/DiscoveryLimits"
+        }
+      },
+      "required": [
+        "schema_version",
+        "geography",
+        "verticals",
+        "categories",
+        "services",
+        "keywords",
+        "exclusions",
+        "market_languages",
+        "size_proxies",
+        "freshness_since",
+        "strategy",
+        "sources",
+        "limits"
+      ],
+      "title": "DiscoveryCriteria",
+      "type": "object"
+    },
+    "DiscoveryLimits": {
+      "additionalProperties": false,
+      "description": "Hard ceilings for one run. The engine stops at the first one reached and says which.",
+      "properties": {
+        "max_candidates": {
+          "maximum": 100000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "max_requests": {
+          "maximum": 5000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "max_pages_per_source": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_candidates",
+        "max_requests",
+        "max_pages_per_source"
+      ],
+      "title": "DiscoveryLimits",
+      "type": "object"
+    },
+    "DiscoveryRun": {
+      "additionalProperties": false,
+      "description": "One discovery job: its sources, its totals and the last things it said.",
+      "properties": {
+        "job_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "campaign_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "campaign_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "progress_done": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "progress_total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidate_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "duplicate_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "request_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "error_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "requested_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/DiscoverySourceRun"
+          },
+          "type": "array"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/RunEvent"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "job_id",
+        "project_id",
+        "campaign_id",
+        "campaign_name",
+        "status",
+        "progress_done",
+        "progress_total",
+        "candidate_count",
+        "duplicate_count",
+        "request_count",
+        "error_count",
+        "requested_at",
+        "started_at",
+        "finished_at",
+        "sources",
+        "events"
+      ],
+      "title": "DiscoveryRun",
+      "type": "object"
+    },
+    "DiscoveryRunListQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "campaign_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "campaign_id",
+        "limit",
+        "cursor"
+      ],
+      "title": "DiscoveryRunListQuery",
+      "type": "object"
+    },
+    "DiscoveryRunPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/DiscoveryRun"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "DiscoveryRunPage",
+      "type": "object"
+    },
+    "DiscoverySourceRun": {
+      "additionalProperties": false,
+      "description": "What one source did inside a run. `cursor` is where a resume would continue.",
+      "properties": {
+        "source_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "connector_key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "connector_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "connector_kind": {
+          "$ref": "#/$defs/SourceKind"
+        },
+        "status": {
+          "$ref": "#/$defs/SourceRunStatus"
+        },
+        "pages_done": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "records_seen": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "candidate_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "duplicate_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "request_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error_message": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "source_run_id",
+        "connector_key",
+        "connector_name",
+        "connector_kind",
+        "status",
+        "pages_done",
+        "records_seen",
+        "candidate_count",
+        "duplicate_count",
+        "request_count",
+        "cursor",
+        "error_code",
+        "error_message",
+        "started_at",
+        "finished_at"
+      ],
+      "title": "DiscoverySourceRun",
+      "type": "object"
+    },
+    "DiscoveryStartRequest": {
+      "additionalProperties": false,
+      "description": "Starts one discovery job for a campaign.\n\n`inputs` carry what a run needs but a campaign cannot hold: the text of an imported file, a\nlist of manual seeds. They are keyed by connector and stored with the run.",
+      "properties": {
+        "campaign_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "connector_keys": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "inputs": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/$defs/JsonValue"
+            },
+            "type": "object"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "campaign_id",
+        "connector_keys",
+        "inputs"
+      ],
+      "title": "DiscoveryStartRequest",
+      "type": "object"
+    },
+    "DiscoveryStrategy": {
+      "description": "Broad first (cast wide, filter later) or narrow (only the tightest matches).",
+      "enum": [
+        "broad",
+        "narrow"
+      ],
+      "title": "DiscoveryStrategy",
+      "type": "string"
+    },
     "EmptyPayload": {
       "additionalProperties": false,
       "description": "Payload of requests that take no parameters (health, diagnostics, shutdown).",
@@ -2473,6 +4090,54 @@
       "title": "EvidenceType",
       "type": "string"
     },
+    "Exclusions": {
+      "additionalProperties": false,
+      "description": "Filtered out before a candidate is stored, so an excluded name never reaches the list.",
+      "properties": {
+        "names": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "domains": {
+          "items": {
+            "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9-]+)+$",
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "categories": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "postal_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9 -]{1,11}$",
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        }
+      },
+      "required": [
+        "names",
+        "domains",
+        "categories",
+        "postal_codes"
+      ],
+      "title": "Exclusions",
+      "type": "object"
+    },
     "ExplanationKind": {
       "enum": [
         "reason",
@@ -2678,6 +4343,84 @@
         "extracted_at"
       ],
       "title": "Extraction",
+      "type": "object"
+    },
+    "GeoScope": {
+      "additionalProperties": false,
+      "description": "One place to search. Sources declare how deep they can go (`Capability.GEOGRAPHY_*`).",
+      "properties": {
+        "country_code": {
+          "pattern": "^[A-Z]{2}$",
+          "type": "string"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{2}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metro": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "locality": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "postal_code": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9 -]{1,11}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "radius_km": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 500,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "country_code",
+        "region",
+        "metro",
+        "locality",
+        "postal_code",
+        "radius_km"
+      ],
+      "title": "GeoScope",
       "type": "object"
     },
     "GpuDevice": {
@@ -2947,6 +4690,187 @@
         "created_at"
       ],
       "title": "IcpProfileVersion",
+      "type": "object"
+    },
+    "ImportFormat": {
+      "enum": [
+        "csv",
+        "tsv",
+        "json",
+        "jsonl"
+      ],
+      "title": "ImportFormat",
+      "type": "string"
+    },
+    "ImportPreview": {
+      "additionalProperties": false,
+      "description": "What the file holds and what the mapping would make of it. Nothing is stored yet.",
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/ImportFormat"
+        },
+        "columns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "suggested_mapping": {
+          "$ref": "#/$defs/ColumnMapping"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/ImportPreviewRow"
+          },
+          "type": "array"
+        },
+        "total_rows": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "usable_rows": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "problems": {
+          "items": {
+            "$ref": "#/$defs/ImportProblem"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "format",
+        "columns",
+        "suggested_mapping",
+        "rows",
+        "total_rows",
+        "usable_rows",
+        "problems"
+      ],
+      "title": "ImportPreview",
+      "type": "object"
+    },
+    "ImportPreviewRequest": {
+      "additionalProperties": false,
+      "description": "Preview of a file the operator picked. The content travels once, inside this request.",
+      "properties": {
+        "format": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ImportFormat"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "filename": {
+          "maxLength": 260,
+          "minLength": 1,
+          "type": "string"
+        },
+        "content": {
+          "maxLength": 4000000,
+          "type": "string"
+        },
+        "mapping": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ColumnMapping"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "format",
+        "filename",
+        "content",
+        "mapping"
+      ],
+      "title": "ImportPreviewRequest",
+      "type": "object"
+    },
+    "ImportPreviewRow": {
+      "additionalProperties": false,
+      "properties": {
+        "row": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "values": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "name_raw": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "row",
+        "values",
+        "name_raw",
+        "problem"
+      ],
+      "title": "ImportPreviewRow",
+      "type": "object"
+    },
+    "ImportProblem": {
+      "additionalProperties": false,
+      "description": "A row the import cannot use, named by its line so the operator can fix the file.",
+      "properties": {
+        "row": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "code": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "row",
+        "code",
+        "message"
+      ],
+      "title": "ImportProblem",
       "type": "object"
     },
     "InferenceEvidence": {
@@ -4009,6 +5933,14 @@
       "title": "PageKind",
       "type": "string"
     },
+    "ProblemSeverity": {
+      "enum": [
+        "error",
+        "warning"
+      ],
+      "title": "ProblemSeverity",
+      "type": "string"
+    },
     "Project": {
       "additionalProperties": false,
       "description": "A local workspace. Synthetic projects hold test data only.",
@@ -4330,6 +6262,78 @@
         "decided_at"
       ],
       "title": "ReviewDecision",
+      "type": "object"
+    },
+    "RunControlAction": {
+      "enum": [
+        "pause",
+        "resume",
+        "cancel"
+      ],
+      "title": "RunControlAction",
+      "type": "string"
+    },
+    "RunEvent": {
+      "additionalProperties": false,
+      "description": "One line of a run's log: progress, a limit reached, or a structured error.",
+      "properties": {
+        "level": {
+          "$ref": "#/$defs/EventLevel"
+        },
+        "event": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retryable": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "detail_json": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "level",
+        "event",
+        "error_code",
+        "retryable",
+        "detail_json",
+        "created_at"
+      ],
+      "title": "RunEvent",
       "type": "object"
     },
     "ScoreExplanation": {
@@ -4671,6 +6675,59 @@
       "title": "ShutdownResult",
       "type": "object"
     },
+    "SizeProxy": {
+      "description": "Observable stand-ins for company size. No source is asked to guess one it cannot see.",
+      "enum": [
+        "award_volume",
+        "employee_band",
+        "revenue_band",
+        "location_count"
+      ],
+      "title": "SizeProxy",
+      "type": "string"
+    },
+    "SourceCatalog": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceInfo"
+          },
+          "type": "array"
+        },
+        "checked_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sources",
+        "checked_at"
+      ],
+      "title": "SourceCatalog",
+      "type": "object"
+    },
+    "SourceCatalogQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id"
+      ],
+      "title": "SourceCatalogQuery",
+      "type": "object"
+    },
     "SourceConnector": {
       "additionalProperties": false,
       "properties": {
@@ -4828,6 +6885,179 @@
       "title": "SourceConnectorConfig",
       "type": "object"
     },
+    "SourceEstimate": {
+      "additionalProperties": false,
+      "description": "Always an estimate, never a promise. `value` is null when the source cannot count.",
+      "properties": {
+        "connector_key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "connector_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "supported": {
+          "type": "boolean"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "basis": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "unsupported_fields": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "connector_key",
+        "connector_name",
+        "supported",
+        "value",
+        "basis",
+        "unsupported_fields"
+      ],
+      "title": "SourceEstimate",
+      "type": "object"
+    },
+    "SourceHealth": {
+      "description": "Whether this source could run right now, and why not when it could not.",
+      "enum": [
+        "ready",
+        "needs_configuration",
+        "disabled",
+        "unavailable"
+      ],
+      "title": "SourceHealth",
+      "type": "string"
+    },
+    "SourceInfo": {
+      "additionalProperties": false,
+      "description": "One registered source: what it is, what it may do and whether it could run right now.",
+      "properties": {
+        "connector_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/SourceMetadata"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "health": {
+          "$ref": "#/$defs/SourceHealth"
+        },
+        "health_detail": {
+          "anyOf": [
+            {
+              "maxLength": 400,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requests_per_minute": {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        "daily_request_budget": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_concurrency": {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        "last_run_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_run_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceRunStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_error_code": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_error_message": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "connector_id",
+        "metadata",
+        "enabled",
+        "health",
+        "health_detail",
+        "requests_per_minute",
+        "daily_request_budget",
+        "max_concurrency",
+        "last_run_at",
+        "last_run_status",
+        "last_error_code",
+        "last_error_message"
+      ],
+      "title": "SourceInfo",
+      "type": "object"
+    },
     "SourceKind": {
       "enum": [
         "official_api",
@@ -4842,6 +7072,100 @@
       ],
       "title": "SourceKind",
       "type": "string"
+    },
+    "SourceMetadata": {
+      "additionalProperties": false,
+      "description": "Everything the app can say about a source without running it.",
+      "properties": {
+        "key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/SourceKind"
+        },
+        "version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "capabilities": {
+          "items": {
+            "$ref": "#/$defs/Capability"
+          },
+          "type": "array"
+        },
+        "terms_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "terms_summary": {
+          "maxLength": 600,
+          "minLength": 1,
+          "type": "string"
+        },
+        "requires_credentials": {
+          "type": "boolean"
+        },
+        "automation_allowed": {
+          "type": "boolean"
+        },
+        "default_requests_per_minute": {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        "default_daily_request_budget": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "default_page_size": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "config_fields": {
+          "items": {
+            "$ref": "#/$defs/ConfigField"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "kind",
+        "version",
+        "capabilities",
+        "terms_url",
+        "terms_summary",
+        "requires_credentials",
+        "automation_allowed",
+        "default_requests_per_minute",
+        "default_daily_request_budget",
+        "default_page_size",
+        "config_fields"
+      ],
+      "title": "SourceMetadata",
+      "type": "object"
     },
     "SourceQuery": {
       "additionalProperties": false,
@@ -5043,6 +7367,48 @@
       ],
       "title": "SourceRunStatus",
       "type": "string"
+    },
+    "SourceSelection": {
+      "additionalProperties": false,
+      "description": "A connector this campaign uses. `config_json` holds per-campaign settings, never secrets.",
+      "properties": {
+        "connector_key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "priority": {
+          "maximum": 100,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_records": {
+          "anyOf": [
+            {
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "config_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "connector_key",
+        "priority",
+        "max_records",
+        "config_json"
+      ],
+      "title": "SourceSelection",
+      "type": "object"
     },
     "SyntheticSeedResult": {
       "additionalProperties": false,

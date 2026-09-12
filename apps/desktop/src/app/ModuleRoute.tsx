@@ -3,6 +3,9 @@ import type { NavItem } from "@/app/navigation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SystemScreen } from "@/features/diagnostics/SystemScreen";
 import { BusinessesScreen } from "@/features/businesses/BusinessesScreen";
+import { CampaignsScreen } from "@/features/campaigns/CampaignsScreen";
+import { DiscoveryScreen } from "@/features/discovery/DiscoveryScreen";
+import { SourcesScreen } from "@/features/sources/SourcesScreen";
 import { LeadExplorerScreen } from "@/features/businesses/LeadExplorerScreen";
 import { DatasetsScreen } from "@/features/datasets/DatasetsScreen";
 import { JobsScreen } from "@/features/jobs/JobsScreen";
@@ -13,6 +16,9 @@ import { SettingsScreen } from "@/features/settings/SettingsScreen";
 /** Modules that exist today. Everything else renders its honest "not configured" page. */
 const SCREENS: Record<string, ComponentType> = {
   overview: OverviewScreen,
+  discovery: DiscoveryScreen,
+  campaigns: CampaignsScreen,
+  sources: SourcesScreen,
   businesses: BusinessesScreen,
   "lead-explorer": LeadExplorerScreen,
   jobs: JobsScreen,

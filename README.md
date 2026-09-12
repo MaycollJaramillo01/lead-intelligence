@@ -7,10 +7,12 @@ commercial need, ICP fit and an explanation of why each one is worth contacting.
 
 Everything runs on this machine. No cloud service or LLM API is required.
 
-> **Status: Phase 03 — data model and persistence.** The canonical model is in place: 52 tables with
-> provenance for every value, state machines, audit, keyset pagination, full-text search, DuckDB and
-> Parquet snapshots, backups and recovery. Businesses and Datasets read real queries (empty until
-> discovery arrives in phase 04); modules that do not exist yet say so. The phase plan lives in
+> **Status: Phase 04 — discovery engine.** Campaigns are written in a versioned criteria schema and
+> run against interchangeable source adapters: a local CSV/TSV/JSON import, manual seeds, the public
+> USAspending.gov API and a deliberately disabled template for sources that need an API key. Runs
+> page, checkpoint, pause, resume, cancel and survive a restart; every candidate keeps the raw record
+> it came from. Candidates are references, not leads: qualification arrives in later phases. Modules
+> that do not exist yet say so. The phase plan lives in
 > [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
 
 ## Requirements

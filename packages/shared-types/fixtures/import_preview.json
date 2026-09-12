@@ -1,0 +1,72 @@
+{
+  "format": "csv",
+  "columns": [
+    "name",
+    "city",
+    "state",
+    "zip",
+    "website",
+    "phone",
+    "category"
+  ],
+  "suggested_mapping": {
+    "name": "name",
+    "locality": "city",
+    "region": "state",
+    "postal_code": "zip",
+    "country_code": null,
+    "domain": null,
+    "website_url": "website",
+    "phone": "phone",
+    "category": "category",
+    "external_id": null,
+    "source_url": null
+  },
+  "rows": [
+    {
+      "row": 1,
+      "values": {
+        "name": "Synthetic Bakery 0001",
+        "city": "Austin",
+        "state": "TX",
+        "zip": "78701",
+        "website": "https://synthetic-bakery-0001.example",
+        "phone": "(512) 555-0101",
+        "category": "Bakery"
+      },
+      "name_raw": "Synthetic Bakery 0001",
+      "problem": null
+    },
+    {
+      "row": 2,
+      "values": {
+        "name": "Synthetic Roofing 0002",
+        "city": "Miami",
+        "state": "FL",
+        "zip": "33130",
+        "website": "https://synthetic-roofing-0002.example",
+        "phone": "(305) 555-0102",
+        "category": "Roofing"
+      },
+      "name_raw": "Synthetic Roofing 0002",
+      "problem": null
+    },
+    {
+      "row": 3,
+      "values": {
+        "name": "Synthetic Bakery 0001",
+        "city": "Austin",
+        "state": "TX",
+        "zip": "78701",
+        "website": "https://synthetic-bakery-0001.example",
+        "phone": "(512) 555-0103",
+        "category": "Bakery"
+      },
+      "name_raw": "Synthetic Bakery 0001",
+      "problem": null
+    }
+  ],
+  "total_rows": 3,
+  "usable_rows": 3,
+  "problems": []
+}

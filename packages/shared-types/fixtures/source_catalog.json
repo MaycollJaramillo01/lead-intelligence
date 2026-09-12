@@ -1,0 +1,170 @@
+{
+  "sources": [
+    {
+      "connector_id": "01900000-0000-7000-8000-000000000047",
+      "metadata": {
+        "key": "file.import",
+        "name": "Local file import (CSV, TSV, JSON, JSONL)",
+        "kind": "file_import",
+        "version": "1.0.0",
+        "capabilities": [
+          "pagination",
+          "checkpoint",
+          "estimate"
+        ],
+        "terms_url": null,
+        "terms_summary": "The operator supplies the file and is responsible for having the right to use it. Nothing is fetched: the file is copied into the workspace and read from there.",
+        "requires_credentials": false,
+        "automation_allowed": true,
+        "default_requests_per_minute": 600,
+        "default_daily_request_budget": null,
+        "default_page_size": 200,
+        "config_fields": [
+          {
+            "key": "file",
+            "label": "File",
+            "kind": "file_text",
+            "required": true,
+            "help": "CSV, TSV, JSON or JSONL. XLSX is not supported; export it as CSV first."
+          }
+        ]
+      },
+      "enabled": true,
+      "health": "ready",
+      "health_detail": null,
+      "requests_per_minute": 600,
+      "daily_request_budget": null,
+      "max_concurrency": 1,
+      "last_run_at": null,
+      "last_run_status": null,
+      "last_error_code": null,
+      "last_error_message": null
+    },
+    {
+      "connector_id": "01900000-0000-7000-8000-000000000048",
+      "metadata": {
+        "key": "manual.seeds",
+        "name": "Manual seeds (URLs, domains, names)",
+        "kind": "manual_seed",
+        "version": "1.0.0",
+        "capabilities": [
+          "pagination",
+          "checkpoint",
+          "estimate"
+        ],
+        "terms_url": null,
+        "terms_summary": "Entries the operator types or pastes. Nothing is fetched and nothing is verified: a seed is a reference to look into, not a confirmed business.",
+        "requires_credentials": false,
+        "automation_allowed": true,
+        "default_requests_per_minute": 600,
+        "default_daily_request_budget": null,
+        "default_page_size": 200,
+        "config_fields": [
+          {
+            "key": "seeds",
+            "label": "Seeds",
+            "kind": "text",
+            "required": true,
+            "help": "One URL, domain or business name per line. 'Name, City ST' is understood."
+          }
+        ]
+      },
+      "enabled": true,
+      "health": "ready",
+      "health_detail": null,
+      "requests_per_minute": 600,
+      "daily_request_budget": null,
+      "max_concurrency": 1,
+      "last_run_at": null,
+      "last_run_status": null,
+      "last_error_code": null,
+      "last_error_message": null
+    },
+    {
+      "connector_id": "01900000-0000-7000-8000-000000000049",
+      "metadata": {
+        "key": "usaspending.recipients",
+        "name": "USAspending.gov award recipients",
+        "kind": "official_api",
+        "version": "1.0.0",
+        "capabilities": [
+          "pagination",
+          "checkpoint",
+          "estimate",
+          "geography_region",
+          "geography_locality",
+          "geography_postal_code",
+          "vertical_naics",
+          "freshness",
+          "size_proxy"
+        ],
+        "terms_url": "https://api.usaspending.gov/",
+        "terms_summary": "Official US government API over public-domain federal spending data. No credentials and no account are required; the published guidance is simply to query gently, so this connector ships with a conservative rate limit and a daily budget.",
+        "requires_credentials": false,
+        "automation_allowed": true,
+        "default_requests_per_minute": 30,
+        "default_daily_request_budget": 2000,
+        "default_page_size": 100,
+        "config_fields": []
+      },
+      "enabled": true,
+      "health": "ready",
+      "health_detail": null,
+      "requests_per_minute": 30,
+      "daily_request_budget": 2000,
+      "max_concurrency": 1,
+      "last_run_at": null,
+      "last_run_status": null,
+      "last_error_code": null,
+      "last_error_message": null
+    },
+    {
+      "connector_id": "01900000-0000-7000-8000-000000000050",
+      "metadata": {
+        "key": "directory.api_template",
+        "name": "Business directory API (template, not configured)",
+        "kind": "directory",
+        "version": "1.0.0",
+        "capabilities": [
+          "pagination",
+          "geography_locality",
+          "category_terms"
+        ],
+        "terms_url": null,
+        "terms_summary": "A directory that only allows automated access through its own API. It needs a key the operator obtains and terms they accept; this app never works around either.",
+        "requires_credentials": true,
+        "automation_allowed": true,
+        "default_requests_per_minute": 10,
+        "default_daily_request_budget": 500,
+        "default_page_size": 50,
+        "config_fields": [
+          {
+            "key": "base_url",
+            "label": "API base URL",
+            "kind": "text",
+            "required": true,
+            "help": "The documented endpoint of the directory's own API."
+          },
+          {
+            "key": "api_key",
+            "label": "API key",
+            "kind": "secret",
+            "required": true,
+            "help": "Issued to the operator by the directory. Stored with the connector, never inside a campaign."
+          }
+        ]
+      },
+      "enabled": false,
+      "health": "needs_configuration",
+      "health_detail": "synthetic fixture: not configured",
+      "requests_per_minute": 10,
+      "daily_request_budget": 500,
+      "max_concurrency": 1,
+      "last_run_at": null,
+      "last_run_status": null,
+      "last_error_code": null,
+      "last_error_message": null
+    }
+  ],
+  "checked_at": "2026-01-01T00:00:00.000Z"
+}

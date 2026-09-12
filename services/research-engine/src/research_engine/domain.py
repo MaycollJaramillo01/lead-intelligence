@@ -24,7 +24,7 @@ import time
 import unicodedata
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 from uuid import UUID
 
 from pydantic import AfterValidator, AwareDatetime, Field, JsonValue, PlainSerializer
@@ -662,6 +662,39 @@ class Extraction(Record):
     extracted_at: UtcTimestamp
 
 
+class DiscoveryCandidate(Record):
+    """A discovered reference, not a business: the light projection of one raw record (phase 04).
+
+    `dedup_key` is the connector's cheap identity guess; a row repeating a key already seen in the
+    same campaign points at the first one through `duplicate_of_id`. Nothing is merged here - entity
+    resolution is phase 06.
+    """
+
+    TABLE = "discovery_candidates"
+    id: Id
+    project_id: Id
+    campaign_id: Id | None
+    source_run_id: Id
+    raw_record_id: Id
+    connector_id: Id
+    dedup_key: Label
+    duplicate_of_id: Id | None
+    name_raw: Label
+    name_normalized: str
+    locality: str | None
+    region: str | None
+    postal_code: str | None
+    country_code: str | None
+    domain: str | None
+    website_url: str | None
+    phone_raw: str | None
+    category_raw: str | None
+    external_id: str | None
+    source_url: str | None
+    discovered_at: UtcTimestamp
+    created_at: UtcTimestamp
+
+
 class Business(Record):
     """Canonical business. Display values are chosen from observations, which keep raw values."""
 
@@ -1267,6 +1300,7 @@ RECORDS: tuple[type[Record], ...] = (
     AcquiredPage,
     RawRecord,
     Extraction,
+    DiscoveryCandidate,
     Business,
     BusinessName,
     BusinessLocation,
@@ -1449,6 +1483,521 @@ class SyntheticSeedResult(Contract):
     created: bool
 
 
+# ---- discovery: criteria DSL (phase 04) ---------------------------------------------------------
+# `campaigns.criteria_json` holds one `DiscoveryCriteria` document and `criteria_schema_version`
+# says which version it follows, so a campaign stored today keeps its meaning after the schema
+# grows. Criteria are data, never free text. `market_languages` and `size_proxies` are signals to
+# look for, never a claim about a business.
+
+DISCOVERY_CRITERIA_SCHEMA_VERSION = 1
+MAX_GEOGRAPHIES = 25
+MAX_TERMS = 50
+MAX_SOURCES = 12
+#: An imported file travels once, inside one IPC frame; bigger files need a path-based connector.
+MAX_IMPORT_CHARS = 4_000_000
+
+CountryCode = Annotated[str, Field(pattern=r"^[A-Z]{2}$")]
+RegionCode = Annotated[str, Field(pattern=r"^[A-Z]{2}$")]
+PostalCode = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9 -]{1,11}$")]
+NaicsCode = Annotated[str, Field(pattern=r"^\d{2,6}$")]
+LanguageTag = Annotated[str, Field(pattern=r"^[a-z]{2}(-[A-Z]{2})?$")]
+DomainName = Annotated[str, Field(pattern=r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9-]+)+$")]
+IsoDate = Annotated[str, Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")]
+Term = Annotated[str, Field(min_length=1, max_length=120)]
+Terms = Annotated[list[Term], Field(max_length=MAX_TERMS)]
+Message = Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class DiscoveryStrategy(StrEnum):
+    """Broad first (cast wide, filter later) or narrow (only the tightest matches)."""
+
+    BROAD = "broad"
+    NARROW = "narrow"
+
+
+class SizeProxy(StrEnum):
+    """Observable stand-ins for company size. No source is asked to guess one it cannot see."""
+
+    AWARD_VOLUME = "award_volume"
+    EMPLOYEE_BAND = "employee_band"
+    REVENUE_BAND = "revenue_band"
+    LOCATION_COUNT = "location_count"
+
+
+class ProblemSeverity(StrEnum):
+    ERROR = "error"
+    WARNING = "warning"
+
+
+class GeoScope(Contract):
+    """One place to search. Sources declare how deep they can go (`Capability.GEOGRAPHY_*`)."""
+
+    country_code: CountryCode
+    region: RegionCode | None
+    metro: Term | None
+    locality: Term | None
+    postal_code: PostalCode | None
+    radius_km: Annotated[float, Field(gt=0, le=500)] | None
+
+
+class Exclusions(Contract):
+    """Filtered out before a candidate is stored, so an excluded name never reaches the list."""
+
+    names: Terms
+    domains: Annotated[list[DomainName], Field(max_length=MAX_TERMS)]
+    categories: Terms
+    postal_codes: Annotated[list[PostalCode], Field(max_length=MAX_TERMS)]
+
+
+class DiscoveryLimits(Contract):
+    """Hard ceilings for one run. The engine stops at the first one reached and says which."""
+
+    max_candidates: Annotated[int, Field(ge=1, le=100_000)]
+    max_requests: Annotated[int, Field(ge=1, le=5_000)]
+    max_pages_per_source: Annotated[int, Field(ge=1, le=500)]
+
+
+class SourceSelection(Contract):
+    """A connector this campaign uses. `config_json` holds per-campaign settings, never secrets."""
+
+    connector_key: Code
+    priority: Annotated[int, Field(ge=0, le=100)]
+    max_records: Annotated[int, Field(ge=1, le=100_000)] | None
+    config_json: JsonObject
+
+
+class DiscoveryCriteria(Contract):
+    """What a campaign looks for, stored verbatim in `campaigns.criteria_json`."""
+
+    schema_version: Literal[1]
+    geography: Annotated[list[GeoScope], Field(max_length=MAX_GEOGRAPHIES)]
+    verticals: Annotated[list[NaicsCode], Field(max_length=MAX_TERMS)]
+    categories: Terms
+    services: Terms
+    keywords: Terms
+    exclusions: Exclusions
+    # affinity signals to look for; never evidence of ownership (that is phase 07)
+    market_languages: Annotated[list[LanguageTag], Field(max_length=MAX_TERMS)]
+    size_proxies: list[SizeProxy]
+    freshness_since: IsoDate | None
+    strategy: DiscoveryStrategy
+    # a draft may have none, and `check_criteria` is what refuses to run without one or with
+    # more than MAX_SOURCES; a bound here would generate a tuple type in TypeScript
+    sources: list[SourceSelection]
+    limits: DiscoveryLimits
+
+
+class CriteriaProblem(Contract):
+    """One reason a campaign cannot run (error) or deserves a second look (warning)."""
+
+    severity: ProblemSeverity
+    code: Code
+    path: Annotated[str, Field(max_length=120)]
+    message: Message
+
+
+def empty_criteria() -> DiscoveryCriteria:
+    """The starting point of a new campaign: a valid shape with nothing invented in it."""
+    return DiscoveryCriteria(
+        schema_version=DISCOVERY_CRITERIA_SCHEMA_VERSION,
+        geography=[],
+        verticals=[],
+        categories=[],
+        services=[],
+        keywords=[],
+        exclusions=Exclusions(names=[], domains=[], categories=[], postal_codes=[]),
+        market_languages=[],
+        size_proxies=[],
+        freshness_since=None,
+        strategy=DiscoveryStrategy.BROAD,
+        sources=[],
+        limits=DiscoveryLimits(max_candidates=1000, max_requests=200, max_pages_per_source=50),
+    )
+
+
+# ---- discovery: sources, runs and candidates (IPC) ----------------------------------------------
+
+
+class Capability(StrEnum):
+    """What a source can actually do. The builder shows these; the engine enforces them."""
+
+    PAGINATION = "pagination"
+    ESTIMATE = "estimate"
+    CHECKPOINT = "checkpoint"
+    GEOGRAPHY_REGION = "geography_region"
+    GEOGRAPHY_LOCALITY = "geography_locality"
+    GEOGRAPHY_POSTAL_CODE = "geography_postal_code"
+    GEOGRAPHY_RADIUS = "geography_radius"
+    VERTICAL_NAICS = "vertical_naics"
+    CATEGORY_TERMS = "category_terms"
+    KEYWORD_SEARCH = "keyword_search"
+    FRESHNESS = "freshness"
+    SIZE_PROXY = "size_proxy"
+
+
+class DiscoveryErrorCode(StrEnum):
+    """Why a page did not arrive. The engine retries the transient ones and only those."""
+
+    RATE_LIMITED = "rate_limited"
+    AUTH_REQUIRED = "auth_required"
+    BLOCKED = "blocked"
+    INVALID_QUERY = "invalid_query"
+    SCHEMA_CHANGED = "schema_changed"
+    NETWORK_ERROR = "network_error"
+    SOURCE_UNAVAILABLE = "source_unavailable"
+
+
+class ConfigFieldKind(StrEnum):
+    TEXT = "text"
+    NUMBER = "number"
+    SECRET = "secret"  # noqa: S105 - the kind of a field, not a credential
+    FILE_TEXT = "file_text"
+
+
+class SourceHealth(StrEnum):
+    """Whether this source could run right now, and why not when it could not."""
+
+    READY = "ready"
+    NEEDS_CONFIGURATION = "needs_configuration"
+    DISABLED = "disabled"
+    UNAVAILABLE = "unavailable"
+
+
+class ImportFormat(StrEnum):
+    CSV = "csv"
+    TSV = "tsv"
+    JSON = "json"
+    JSONL = "jsonl"
+
+
+class RunControlAction(StrEnum):
+    PAUSE = "pause"
+    RESUME = "resume"
+    CANCEL = "cancel"
+
+
+class ConfigField(Contract):
+    """One setting a source needs. Secrets live in the connector configuration, not in criteria."""
+
+    key: Code
+    label: Label
+    kind: ConfigFieldKind
+    required: bool
+    help: Annotated[str, Field(max_length=400)]
+
+
+class SourceMetadata(Contract):
+    """Everything the app can say about a source without running it."""
+
+    key: Code
+    name: Label
+    kind: SourceKind
+    version: Label
+    capabilities: list[Capability]
+    terms_url: str | None
+    terms_summary: Annotated[str, Field(min_length=1, max_length=600)]
+    requires_credentials: bool
+    #: False when the source forbids automated access; the registry keeps those disabled.
+    automation_allowed: bool
+    #: Conservative defaults; a `source_connector_configs` row overrides them per project.
+    default_requests_per_minute: Annotated[int, Field(gt=0)]
+    default_daily_request_budget: Annotated[int, Field(gt=0)] | None
+    default_page_size: Annotated[int, Field(ge=1, le=MAX_PAGE_SIZE)]
+    config_fields: list[ConfigField]
+
+
+class SourceInfo(Contract):
+    """One registered source: what it is, what it may do and whether it could run right now."""
+
+    connector_id: Id
+    metadata: SourceMetadata
+    enabled: bool
+    health: SourceHealth
+    health_detail: Annotated[str, Field(max_length=400)] | None
+    requests_per_minute: Annotated[int, Field(gt=0)]
+    daily_request_budget: Annotated[int, Field(gt=0)] | None
+    max_concurrency: Annotated[int, Field(gt=0)]
+    last_run_at: UtcTimestamp | None
+    last_run_status: SourceRunStatus | None
+    last_error_code: Code | None
+    last_error_message: Annotated[str, Field(max_length=2000)] | None
+
+
+class SourceCatalogQuery(Contract):
+    project_id: Id | None
+
+
+class SourceCatalog(Contract):
+    sources: list[SourceInfo]
+    checked_at: UtcTimestamp
+
+
+class CampaignListQuery(Contract):
+    project_id: Id | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class CampaignListItem(Contract):
+    """A campaign with its criteria and what its runs have produced so far."""
+
+    id: Id
+    project_id: Id
+    name: Label
+    objective: str | None
+    criteria: DiscoveryCriteria
+    run_count: Annotated[int, Field(ge=0)]
+    candidate_count: Annotated[int, Field(ge=0)]
+    last_run_at: UtcTimestamp | None
+    last_run_status: JobStatus | None
+    created_at: UtcTimestamp
+    updated_at: UtcTimestamp
+    is_synthetic: bool
+
+
+class CampaignPage(Contract):
+    items: list[CampaignListItem]
+    next_cursor: Cursor | None
+    total: Annotated[int, Field(ge=0)]
+
+
+class CampaignSaveRequest(Contract):
+    """Creates a campaign when `campaign_id` is null, otherwise replaces its editable fields."""
+
+    campaign_id: Id | None
+    project_id: Id | None
+    name: Label
+    objective: str | None
+    criteria: DiscoveryCriteria
+
+
+class CampaignSaved(Contract):
+    """The stored campaign plus what validation says about it; problems never block a draft."""
+
+    campaign: CampaignListItem
+    problems: list[CriteriaProblem]
+
+
+class SourceEstimate(Contract):
+    """Always an estimate, never a promise. `value` is null when the source cannot count."""
+
+    connector_key: Code
+    connector_name: Label
+    supported: bool
+    value: Annotated[int, Field(ge=0)] | None
+    basis: Annotated[str, Field(min_length=1, max_length=300)]
+    unsupported_fields: list[Code]
+
+
+class CriteriaCheckQuery(Contract):
+    project_id: Id | None
+    criteria: DiscoveryCriteria
+    #: Estimates cost a request per source; a builder that only validates asks for none.
+    with_estimates: bool
+
+
+class CriteriaCheck(Contract):
+    """Validation of one criteria document. `estimates` are marked estimates, never counts."""
+
+    problems: list[CriteriaProblem]
+    estimates: list[SourceEstimate]
+    checked_at: UtcTimestamp
+
+
+class DiscoveryStartRequest(Contract):
+    """Starts one discovery job for a campaign.
+
+    `inputs` carry what a run needs but a campaign cannot hold: the text of an imported file, a
+    list of manual seeds. They are keyed by connector and stored with the run.
+    """
+
+    campaign_id: Id
+    #: Empty means every source the campaign selected.
+    connector_keys: list[Code]
+    inputs: dict[str, JsonObject]
+
+
+class DiscoveryControlRequest(Contract):
+    job_id: Id
+    action: RunControlAction
+
+
+class RunEvent(Contract):
+    """One line of a run's log: progress, a limit reached, or a structured error."""
+
+    level: EventLevel
+    event: Code
+    error_code: Code | None
+    retryable: bool | None
+    detail_json: JsonObject | None
+    created_at: UtcTimestamp
+
+
+class DiscoverySourceRun(Contract):
+    """What one source did inside a run. `cursor` is where a resume would continue."""
+
+    source_run_id: Id
+    connector_key: Code
+    connector_name: Label
+    connector_kind: SourceKind
+    status: SourceRunStatus
+    pages_done: Annotated[int, Field(ge=0)]
+    records_seen: Annotated[int, Field(ge=0)]
+    candidate_count: Annotated[int, Field(ge=0)]
+    duplicate_count: Annotated[int, Field(ge=0)]
+    request_count: Annotated[int, Field(ge=0)]
+    cursor: str | None
+    error_code: Code | None
+    error_message: Annotated[str, Field(max_length=2000)] | None
+    started_at: UtcTimestamp | None
+    finished_at: UtcTimestamp | None
+
+
+class DiscoveryRun(Contract):
+    """One discovery job: its sources, its totals and the last things it said."""
+
+    job_id: Id
+    project_id: Id
+    campaign_id: Id
+    campaign_name: Label
+    status: JobStatus
+    progress_done: Annotated[int, Field(ge=0)]
+    progress_total: Annotated[int, Field(ge=0)] | None
+    candidate_count: Annotated[int, Field(ge=0)]
+    duplicate_count: Annotated[int, Field(ge=0)]
+    request_count: Annotated[int, Field(ge=0)]
+    error_count: Annotated[int, Field(ge=0)]
+    requested_at: UtcTimestamp
+    started_at: UtcTimestamp | None
+    finished_at: UtcTimestamp | None
+    sources: list[DiscoverySourceRun]
+    events: list[RunEvent]
+
+
+class DiscoveryRunListQuery(Contract):
+    project_id: Id | None
+    campaign_id: Id | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class DiscoveryRunPage(Contract):
+    items: list[DiscoveryRun]
+    next_cursor: Cursor | None
+    total: Annotated[int, Field(ge=0)]
+
+
+class CandidateListQuery(Contract):
+    """Candidates never cross campaigns: a listing is scoped by campaign or by run."""
+
+    project_id: Id | None
+    campaign_id: Id | None
+    source_run_id: Id | None
+    search: Annotated[str, Field(max_length=200)] | None
+    include_duplicates: bool
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class CandidateListItem(Contract):
+    """A candidate reference. It is not a lead and carries no score: phase 04 only finds it."""
+
+    id: Id
+    campaign_id: Id | None
+    campaign_name: Label | None
+    source_run_id: Id
+    connector_key: Code
+    connector_name: Label
+    connector_kind: SourceKind
+    name_raw: str
+    locality: str | None
+    region: str | None
+    postal_code: str | None
+    domain: str | None
+    phone_raw: str | None
+    category_raw: str | None
+    source_url: str | None
+    external_id: str | None
+    is_duplicate: bool
+    duplicate_of_id: Id | None
+    discovered_at: UtcTimestamp
+
+
+class CandidatePage(Contract):
+    items: list[CandidateListItem]
+    next_cursor: Cursor | None
+    total: Annotated[int, Field(ge=0)]
+
+
+class CandidateDetailQuery(Contract):
+    candidate_id: Id
+
+
+class CandidateDetail(Contract):
+    """The candidate with the whole chain behind it, down to the payload as it was received."""
+
+    candidate: DiscoveryCandidate
+    campaign_name: Label | None
+    connector: SourceConnector
+    source_run: SourceRun
+    source_query: SourceQuery | None
+    acquired_page: AcquiredPage | None
+    raw_record: RawRecord
+    duplicate_of: DiscoveryCandidate | None
+
+
+class ColumnMapping(Contract):
+    """Which column of an imported file feeds which candidate field. Unmapped fields stay empty."""
+
+    name: str | None
+    locality: str | None
+    region: str | None
+    postal_code: str | None
+    country_code: str | None
+    domain: str | None
+    website_url: str | None
+    phone: str | None
+    category: str | None
+    external_id: str | None
+    source_url: str | None
+
+
+class ImportPreviewRequest(Contract):
+    """Preview of a file the operator picked. The content travels once, inside this request."""
+
+    format: ImportFormat | None
+    filename: Annotated[str, Field(min_length=1, max_length=260)]
+    content: Annotated[str, Field(max_length=MAX_IMPORT_CHARS)]
+    mapping: ColumnMapping | None
+
+
+class ImportProblem(Contract):
+    """A row the import cannot use, named by its line so the operator can fix the file."""
+
+    row: Annotated[int, Field(ge=1)] | None
+    code: Code
+    message: Message
+
+
+class ImportPreviewRow(Contract):
+    row: Annotated[int, Field(ge=1)]
+    values: dict[str, str]
+    name_raw: str | None
+    problem: Message | None
+
+
+class ImportPreview(Contract):
+    """What the file holds and what the mapping would make of it. Nothing is stored yet."""
+
+    format: ImportFormat
+    columns: list[str]
+    suggested_mapping: ColumnMapping
+    rows: list[ImportPreviewRow]
+    total_rows: Annotated[int, Field(ge=0)]
+    usable_rows: Annotated[int, Field(ge=0)]
+    problems: list[ImportProblem]
+
+
 DATA_MODELS: tuple[type[Contract], ...] = (
     *RECORDS,
     Provenance,
@@ -1465,4 +2014,26 @@ DATA_MODELS: tuple[type[Contract], ...] = (
     DatasetListQuery,
     DatasetPage,
     SyntheticSeedResult,
+    DiscoveryCriteria,
+    CriteriaProblem,
+    SourceMetadata,
+    SourceCatalogQuery,
+    SourceCatalog,
+    CampaignListQuery,
+    CampaignPage,
+    CampaignSaveRequest,
+    CampaignSaved,
+    CriteriaCheckQuery,
+    CriteriaCheck,
+    DiscoveryStartRequest,
+    DiscoveryControlRequest,
+    DiscoveryRun,
+    DiscoveryRunListQuery,
+    DiscoveryRunPage,
+    CandidateListQuery,
+    CandidatePage,
+    CandidateDetailQuery,
+    CandidateDetail,
+    ImportPreviewRequest,
+    ImportPreview,
 )

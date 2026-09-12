@@ -1,0 +1,14 @@
+{
+  "campaign_id": "01900000-0000-7000-8000-000000000033",
+  "connector_keys": [
+    "file.import"
+  ],
+  "inputs": {
+    "file.import": {
+      "filename": "synthetic-import.csv",
+      "format": "csv",
+      "content": "name,city,state,zip,website,phone,category\nSynthetic Bakery 0001,Austin,TX,78701,https://synthetic-bakery-0001.example,(512) 555-0101,Bakery\nSynthetic Roofing 0002,Miami,FL,33130,https://synthetic-roofing-0002.example,(305) 555-0102,Roofing\nSynthetic Bakery 0001,Austin,TX,78701,https://synthetic-bakery-0001.example,(512) 555-0103,Bakery\n",
+      "mapping": null
+    }
+  }
+}

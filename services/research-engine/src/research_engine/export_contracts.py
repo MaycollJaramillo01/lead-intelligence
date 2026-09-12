@@ -50,20 +50,39 @@ from research_engine.contracts import (
     WorkerStatus,
 )
 from research_engine.datasets import BUSINESS_SNAPSHOT_TABLE, SNAPSHOT_SCHEMA_VERSION
+from research_engine.discovery import registry
+from research_engine.discovery.sources import file_import
 from research_engine.domain import (
     DATA_MODELS,
     BusinessListQuery,
     BusinessSort,
+    CampaignListQuery,
+    CampaignSaved,
+    CandidateListQuery,
+    CriteriaCheck,
+    CriteriaProblem,
     Dataset,
     DatasetListQuery,
     DatasetSnapshot,
+    DiscoveryRunListQuery,
+    DiscoveryStartRequest,
+    ImportPreviewRequest,
+    ProblemSeverity,
+    SourceCatalog,
+    SourceEstimate,
+    SourceHealth,
+    SourceInfo,
     SyntheticSeedResult,
 )
 from research_engine.storage import check_sqlite
 from research_engine.testdata import (
     SYNTHETIC_DATASET_NAME,
+    SYNTHETIC_IMPORT_CSV,
+    SYNTHETIC_IMPORT_FILE,
+    DiscoveryFixture,
     SyntheticContext,
     seed_businesses,
+    seed_discovery,
     synthetic_connector,
     synthetic_project,
     synthetic_run,
@@ -329,6 +348,10 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
             business_page = repository.list_businesses(conn, business_query)
             detail = repository.get_business_detail(conn, business_page.items[0].id)
             dataset_page = repository.list_datasets(conn, dataset_query)
+            seeded = seed_discovery(
+                conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids)
+            )
+            discovery = build_discovery_fixtures(conn, project.id, ids, seeded)
         finally:
             conn.close()
     return {
@@ -346,6 +369,116 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
                 created=True,
             )
         ),
+        **discovery,
+    }
+
+
+def build_discovery_fixtures(
+    conn: Any, project_id: str, ids: Callable[[], str], seeded: DiscoveryFixture
+) -> dict[str, dict[str, Any]]:
+    """Discovery shapes, read back through the real repository queries where there is one."""
+    campaign_query = CampaignListQuery(project_id=project_id, limit=50, cursor=None)
+    campaign_page = repository.list_campaigns(conn, campaign_query)
+    run_query = DiscoveryRunListQuery(
+        project_id=project_id, campaign_id=seeded.campaign_id, limit=25, cursor=None
+    )
+    run_page = repository.list_discovery_runs(conn, run_query)
+    candidate_query = CandidateListQuery(
+        project_id=project_id,
+        campaign_id=seeded.campaign_id,
+        source_run_id=None,
+        search=None,
+        include_duplicates=True,
+        limit=50,
+        cursor=None,
+    )
+    candidate_page = repository.list_candidates(conn, candidate_query)
+    detail = repository.get_candidate_detail(conn, seeded.candidate_ids[-1])
+    catalog = SourceCatalog(
+        sources=[
+            SourceInfo(
+                connector_id=ids(),
+                metadata=source.metadata,
+                enabled=not source.metadata.requires_credentials,
+                health=(
+                    SourceHealth.NEEDS_CONFIGURATION
+                    if source.metadata.requires_credentials
+                    else SourceHealth.READY
+                ),
+                health_detail=(
+                    "synthetic fixture: not configured"
+                    if source.metadata.requires_credentials
+                    else None
+                ),
+                requests_per_minute=source.metadata.default_requests_per_minute,
+                daily_request_budget=source.metadata.default_daily_request_budget,
+                max_concurrency=1,
+                last_run_at=None,
+                last_run_status=None,
+                last_error_code=None,
+                last_error_message=None,
+            )
+            for source in registry.SOURCES.values()
+        ],
+        checked_at=_T0,
+    )
+    check = CriteriaCheck(
+        problems=[
+            CriteriaProblem(
+                severity=ProblemSeverity.WARNING,
+                code="language_is_a_signal",
+                path="market_languages",
+                message=("Market language is an affinity signal, never evidence of ownership."),
+            )
+        ],
+        estimates=[
+            SourceEstimate(
+                connector_key="file.import",
+                connector_name="Local file import (CSV, TSV, JSON, JSONL)",
+                supported=True,
+                value=3,
+                basis="rows in the imported file, before the mapping",
+                unsupported_fields=["categories"],
+            )
+        ],
+        checked_at=_T0,
+    )
+    preview = file_import.preview(
+        ImportPreviewRequest(
+            format=None,
+            filename=SYNTHETIC_IMPORT_FILE,
+            content=SYNTHETIC_IMPORT_CSV,
+            mapping=None,
+        )
+    )
+    return {
+        "source_catalog.json": _dump(catalog),
+        "campaign_list_query.json": _dump(campaign_query),
+        "campaign_page.json": _dump(campaign_page),
+        "campaign_saved.json": _dump(
+            CampaignSaved(campaign=campaign_page.items[0], problems=check.problems)
+        ),
+        "criteria_check.json": _dump(check),
+        "discovery_start_request.json": _dump(
+            DiscoveryStartRequest(
+                campaign_id=seeded.campaign_id,
+                connector_keys=["file.import"],
+                inputs={
+                    "file.import": {
+                        "filename": SYNTHETIC_IMPORT_FILE,
+                        "format": "csv",
+                        "content": SYNTHETIC_IMPORT_CSV,
+                        "mapping": None,
+                    }
+                },
+            )
+        ),
+        "discovery_run_list_query.json": _dump(run_query),
+        "discovery_run_page.json": _dump(run_page),
+        "candidate_list_query.json": _dump(candidate_query),
+        "candidate_page.json": _dump(candidate_page),
+        "candidate_detail.json": _dump(detail),
+        "import_preview.json": _dump(preview),
     }
 
 

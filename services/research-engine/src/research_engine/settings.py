@@ -19,6 +19,8 @@ class Settings:
     ollama_timeout_s: float
     # development builds only: enables the synthetic test-data seed (LEAD_DEV_TOOLS=1)
     dev_tools: bool = False
+    # LEAD_DISCOVERY_OFFLINE=1: sources that need the network refuse instead of reaching out
+    discovery_offline: bool = False
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] = os.environ) -> Self:
@@ -44,6 +46,10 @@ class Settings:
         if dev_tools not in {"0", "1"}:
             raise ValueError(f"LEAD_DEV_TOOLS must be 0 or 1, got {dev_tools!r}")
 
+        offline = env.get("LEAD_DISCOVERY_OFFLINE", "0").strip()
+        if offline not in {"0", "1"}:
+            raise ValueError(f"LEAD_DISCOVERY_OFFLINE must be 0 or 1, got {offline!r}")
+
         data_dir = env.get("LEAD_DATA_DIR", "").strip()
         return cls(
             data_dir=Path(data_dir) if data_dir else None,
@@ -51,4 +57,5 @@ class Settings:
             ollama_url=ollama_url,
             ollama_timeout_s=timeout,
             dev_tools=dev_tools == "1",
+            discovery_offline=offline == "1",
         )

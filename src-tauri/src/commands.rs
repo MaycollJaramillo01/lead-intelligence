@@ -11,16 +11,23 @@ use uuid::Uuid;
 
 use crate::config::Environment;
 use crate::data::{
-    BusinessDetail, BusinessDetailQuery, BusinessListQuery, BusinessPage, DatasetListQuery,
-    DatasetPage, SyntheticSeedResult,
+    BusinessDetail, BusinessDetailQuery, BusinessListQuery, BusinessPage, CampaignListQuery,
+    CampaignPage, CampaignSaveRequest, CampaignSaved, CandidateDetail, CandidateDetailQuery,
+    CandidateListQuery, CandidatePage, CriteriaCheck, CriteriaCheckQuery, DatasetListQuery,
+    DatasetPage, DiscoveryControlRequest, DiscoveryRun, DiscoveryRunListQuery, DiscoveryRunPage,
+    DiscoveryStartRequest, ImportPreview, ImportPreviewRequest, SourceCatalog, SourceCatalogQuery,
+    SyntheticSeedResult,
 };
 use crate::error::AppError;
 use crate::protocol::{
     ComponentState, CoreStatus, DiagnosticsReport, DiagnosticsResult, UiErrorReport, WorkerStatus,
 };
 use crate::worker::{
-    BUSINESSES_GET, BUSINESSES_LIST, DATA_TIMEOUT, DATASETS_LIST, DEV_SEED_SYNTHETIC, DIAGNOSTICS,
-    DIAGNOSTICS_TIMEOUT, SEED_TIMEOUT, WorkerSupervisor,
+    BUSINESSES_GET, BUSINESSES_LIST, CAMPAIGNS_LIST, CAMPAIGNS_SAVE, CAMPAIGNS_VALIDATE,
+    DATA_TIMEOUT, DATASETS_LIST, DEV_SEED_SYNTHETIC, DIAGNOSTICS, DIAGNOSTICS_TIMEOUT,
+    DISCOVERY_CANDIDATE, DISCOVERY_CANDIDATES, DISCOVERY_CONTROL, DISCOVERY_RUNS, DISCOVERY_START,
+    DISCOVERY_TIMEOUT, IMPORT_TIMEOUT, SEED_TIMEOUT, SOURCES_LIST, SOURCES_PREVIEW_IMPORT,
+    WorkerSupervisor,
 };
 
 pub struct AppState {
@@ -200,6 +207,193 @@ pub async fn seed_synthetic_data(
             .await
     }
     .instrument(ipc_span("seed_synthetic_data"))
+    .await
+}
+
+// ---- discovery (phase 04) ----------------------------------------------------------------------
+
+/// Every source this build ships, with its capabilities, terms, limits and whether it could run.
+#[tauri::command]
+pub async fn list_sources(
+    state: State<'_, AppState>,
+    query: SourceCatalogQuery,
+) -> Result<SourceCatalog, AppError> {
+    async {
+        let catalog: SourceCatalog = state
+            .supervisor
+            .request_with(SOURCES_LIST, &query, DATA_TIMEOUT)
+            .await?;
+        catalog.validate().map_err(AppError::Protocol)?;
+        Ok(catalog)
+    }
+    .instrument(ipc_span("list_sources"))
+    .await
+}
+
+/// What a file the operator picked holds, and what the mapping would make of it. Stores nothing.
+#[tauri::command]
+pub async fn preview_import(
+    state: State<'_, AppState>,
+    request: ImportPreviewRequest,
+) -> Result<ImportPreview, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let preview: ImportPreview = state
+            .supervisor
+            .request_with(SOURCES_PREVIEW_IMPORT, &request, IMPORT_TIMEOUT)
+            .await?;
+        preview.validate().map_err(AppError::Protocol)?;
+        Ok(preview)
+    }
+    .instrument(ipc_span("preview_import"))
+    .await
+}
+
+#[tauri::command]
+pub async fn list_campaigns(
+    state: State<'_, AppState>,
+    query: CampaignListQuery,
+) -> Result<CampaignPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: CampaignPage = state
+            .supervisor
+            .request_with(CAMPAIGNS_LIST, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_campaigns"))
+    .await
+}
+
+/// Creates or replaces one campaign. A draft with problems is still saved; it just cannot run.
+#[tauri::command]
+pub async fn save_campaign(
+    state: State<'_, AppState>,
+    request: CampaignSaveRequest,
+) -> Result<CampaignSaved, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        state
+            .supervisor
+            .request_with(CAMPAIGNS_SAVE, &request, DATA_TIMEOUT)
+            .await
+    }
+    .instrument(ipc_span("save_campaign"))
+    .await
+}
+
+/// Validates criteria and, when asked, collects one marked estimate per source.
+#[tauri::command]
+pub async fn validate_criteria(
+    state: State<'_, AppState>,
+    query: CriteriaCheckQuery,
+) -> Result<CriteriaCheck, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let check: CriteriaCheck = state
+            .supervisor
+            .request_with(CAMPAIGNS_VALIDATE, &query, DISCOVERY_TIMEOUT)
+            .await?;
+        check.validate().map_err(AppError::Protocol)?;
+        Ok(check)
+    }
+    .instrument(ipc_span("validate_criteria"))
+    .await
+}
+
+/// Starts one discovery run. It keeps running inside the worker after this returns.
+#[tauri::command]
+pub async fn start_discovery(
+    state: State<'_, AppState>,
+    request: DiscoveryStartRequest,
+) -> Result<DiscoveryRun, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let run: DiscoveryRun = state
+            .supervisor
+            .request_with(DISCOVERY_START, &request, DISCOVERY_TIMEOUT)
+            .await?;
+        run.validate().map_err(AppError::Protocol)?;
+        Ok(run)
+    }
+    .instrument(ipc_span("start_discovery"))
+    .await
+}
+
+/// Pauses, resumes or cancels a run. The decision is stored, so it survives a restart.
+#[tauri::command]
+pub async fn control_discovery(
+    state: State<'_, AppState>,
+    request: DiscoveryControlRequest,
+) -> Result<DiscoveryRun, AppError> {
+    async {
+        let run: DiscoveryRun = state
+            .supervisor
+            .request_with(DISCOVERY_CONTROL, &request, DATA_TIMEOUT)
+            .await?;
+        run.validate().map_err(AppError::Protocol)?;
+        Ok(run)
+    }
+    .instrument(ipc_span("control_discovery"))
+    .await
+}
+
+#[tauri::command]
+pub async fn list_discovery_runs(
+    state: State<'_, AppState>,
+    query: DiscoveryRunListQuery,
+) -> Result<DiscoveryRunPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: DiscoveryRunPage = state
+            .supervisor
+            .request_with(DISCOVERY_RUNS, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_discovery_runs"))
+    .await
+}
+
+/// One keyset page of candidates. They are references, never leads: nothing here is qualified.
+#[tauri::command]
+pub async fn list_candidates(
+    state: State<'_, AppState>,
+    query: CandidateListQuery,
+) -> Result<CandidatePage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: CandidatePage = state
+            .supervisor
+            .request_with(DISCOVERY_CANDIDATES, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_candidates"))
+    .await
+}
+
+/// A candidate with the chain behind it, down to the payload exactly as it was received.
+#[tauri::command]
+pub async fn get_candidate(
+    state: State<'_, AppState>,
+    query: CandidateDetailQuery,
+) -> Result<CandidateDetail, AppError> {
+    async {
+        let detail: CandidateDetail = state
+            .supervisor
+            .request_with(DISCOVERY_CANDIDATE, &query, DATA_TIMEOUT)
+            .await?;
+        detail
+            .validate(&query.candidate_id)
+            .map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("get_candidate"))
     .await
 }
 

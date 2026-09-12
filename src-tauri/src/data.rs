@@ -637,6 +637,867 @@ impl BusinessDetail {
     }
 }
 
+// ---- discovery (phase 04) ----------------------------------------------------------------------
+// Mirrors the discovery section of `domain.py`. The criteria a campaign is written in, the sources
+// that can run it, the runs themselves and the candidates they find. Same rules as above: unknown
+// fields and unknown enumeration values are refused, and every page is checked against its query.
+
+pub const MAX_IMPORT_CHARS: usize = 4_000_000;
+const MAX_TERMS: usize = 50;
+const MAX_GEOGRAPHIES: usize = 25;
+const MAX_SOURCES: usize = 12;
+const CRITERIA_SCHEMA_VERSION: u32 = 1;
+
+contract_enum!(DiscoveryStrategy { Broad, Narrow });
+contract_enum!(SizeProxy {
+    AwardVolume,
+    EmployeeBand,
+    RevenueBand,
+    LocationCount
+});
+contract_enum!(ProblemSeverity { Error, Warning });
+contract_enum!(Capability {
+    Pagination,
+    Estimate,
+    Checkpoint,
+    GeographyRegion,
+    GeographyLocality,
+    GeographyPostalCode,
+    GeographyRadius,
+    VerticalNaics,
+    CategoryTerms,
+    KeywordSearch,
+    Freshness,
+    SizeProxy,
+});
+contract_enum!(ConfigFieldKind {
+    Text,
+    Number,
+    Secret,
+    FileText
+});
+contract_enum!(SourceHealth {
+    Ready,
+    NeedsConfiguration,
+    Disabled,
+    Unavailable
+});
+contract_enum!(ImportFormat {
+    Csv,
+    Tsv,
+    Json,
+    Jsonl
+});
+contract_enum!(RunControlAction {
+    Pause,
+    Resume,
+    Cancel
+});
+contract_enum!(JobStatus {
+    Queued,
+    Running,
+    Paused,
+    Succeeded,
+    Failed,
+    Cancelled
+});
+contract_enum!(SourceRunStatus {
+    Queued,
+    Running,
+    Paused,
+    Succeeded,
+    Failed,
+    Cancelled
+});
+contract_enum!(EventLevel {
+    Debug,
+    Info,
+    Warning,
+    Error
+});
+
+// ---- criteria ------------------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GeoScope {
+    pub country_code: String,
+    pub region: Option<String>,
+    pub metro: Option<String>,
+    pub locality: Option<String>,
+    pub postal_code: Option<String>,
+    pub radius_km: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Exclusions {
+    pub names: Vec<String>,
+    pub domains: Vec<String>,
+    pub categories: Vec<String>,
+    pub postal_codes: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DiscoveryLimits {
+    pub max_candidates: u32,
+    pub max_requests: u32,
+    pub max_pages_per_source: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SourceSelection {
+    pub connector_key: String,
+    pub priority: u32,
+    pub max_records: Option<u32>,
+    pub config_json: Map<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DiscoveryCriteria {
+    pub schema_version: u32,
+    pub geography: Vec<GeoScope>,
+    pub verticals: Vec<String>,
+    pub categories: Vec<String>,
+    pub services: Vec<String>,
+    pub keywords: Vec<String>,
+    pub exclusions: Exclusions,
+    pub market_languages: Vec<String>,
+    pub size_proxies: Vec<SizeProxy>,
+    pub freshness_since: Option<String>,
+    pub strategy: DiscoveryStrategy,
+    pub sources: Vec<SourceSelection>,
+    pub limits: DiscoveryLimits,
+}
+
+impl DiscoveryCriteria {
+    /// Bounds the core checks the worker would repeat anyway, so a malformed campaign never
+    /// reaches it. Everything semantic (does this source support this filter?) belongs there.
+    pub fn validate(&self) -> Result<(), String> {
+        if self.schema_version != CRITERIA_SCHEMA_VERSION {
+            return Err(format!(
+                "criteria schema version {} (this build writes {CRITERIA_SCHEMA_VERSION})",
+                self.schema_version
+            ));
+        }
+        if self.geography.len() > MAX_GEOGRAPHIES {
+            return Err(format!("at most {MAX_GEOGRAPHIES} places can be searched"));
+        }
+        if self.sources.len() > MAX_SOURCES {
+            return Err(format!("at most {MAX_SOURCES} sources can be selected"));
+        }
+        let too_many = [
+            &self.verticals,
+            &self.categories,
+            &self.services,
+            &self.keywords,
+        ]
+        .iter()
+        .any(|list| list.len() > MAX_TERMS);
+        if too_many {
+            return Err(format!("at most {MAX_TERMS} terms per list"));
+        }
+        if self.limits.max_candidates == 0 || self.limits.max_requests == 0 {
+            return Err("limits must be greater than zero".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CriteriaProblem {
+    pub severity: ProblemSeverity,
+    pub code: String,
+    pub path: String,
+    pub message: String,
+}
+
+// ---- sources -------------------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConfigField {
+    pub key: String,
+    pub label: String,
+    pub kind: ConfigFieldKind,
+    pub required: bool,
+    pub help: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SourceMetadata {
+    pub key: String,
+    pub name: String,
+    pub kind: SourceKind,
+    pub version: String,
+    pub capabilities: Vec<Capability>,
+    pub terms_url: Option<String>,
+    pub terms_summary: String,
+    pub requires_credentials: bool,
+    pub automation_allowed: bool,
+    pub default_requests_per_minute: u32,
+    pub default_daily_request_budget: Option<u32>,
+    pub default_page_size: u32,
+    pub config_fields: Vec<ConfigField>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SourceInfo {
+    pub connector_id: Id,
+    pub metadata: SourceMetadata,
+    pub enabled: bool,
+    pub health: SourceHealth,
+    pub health_detail: Option<String>,
+    pub requests_per_minute: u32,
+    pub daily_request_budget: Option<u32>,
+    pub max_concurrency: u32,
+    pub last_run_at: Option<UtcTimestamp>,
+    pub last_run_status: Option<SourceRunStatus>,
+    pub last_error_code: Option<String>,
+    pub last_error_message: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SourceCatalogQuery {
+    pub project_id: Option<Id>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SourceCatalog {
+    pub sources: Vec<SourceInfo>,
+    pub checked_at: UtcTimestamp,
+}
+
+impl SourceCatalog {
+    /// A source the UI could offer without its terms, or with a rate limit of zero, would be a
+    /// promise this app cannot keep.
+    pub fn validate(&self) -> Result<(), String> {
+        for source in &self.sources {
+            if source.metadata.terms_summary.trim().is_empty() {
+                return Err(format!(
+                    "source {} has no terms summary",
+                    source.metadata.key
+                ));
+            }
+            if source.requests_per_minute == 0 {
+                return Err(format!("source {} has no rate limit", source.metadata.key));
+            }
+        }
+        Ok(())
+    }
+}
+
+// ---- campaigns -----------------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CampaignListQuery {
+    pub project_id: Option<Id>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl CampaignListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CampaignListItem {
+    pub id: Id,
+    pub project_id: Id,
+    pub name: String,
+    pub objective: Option<String>,
+    pub criteria: DiscoveryCriteria,
+    pub run_count: u64,
+    pub candidate_count: u64,
+    pub last_run_at: Option<UtcTimestamp>,
+    pub last_run_status: Option<JobStatus>,
+    pub created_at: UtcTimestamp,
+    pub updated_at: UtcTimestamp,
+    pub is_synthetic: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CampaignPage {
+    pub items: Vec<CampaignListItem>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl CampaignPage {
+    pub fn validate(&self, query: &CampaignListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        match &query.project_id {
+            Some(project) if self.items.iter().any(|item| &item.project_id != project) => {
+                Err("page contains campaigns of another project".into())
+            }
+            _ => Ok(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CampaignSaveRequest {
+    pub campaign_id: Option<Id>,
+    pub project_id: Option<Id>,
+    pub name: String,
+    pub objective: Option<String>,
+    pub criteria: DiscoveryCriteria,
+}
+
+impl CampaignSaveRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.name.trim().is_empty() || self.name.chars().count() > 300 {
+            return Err("a campaign needs a name of at most 300 characters".into());
+        }
+        self.criteria.validate()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CampaignSaved {
+    pub campaign: CampaignListItem,
+    pub problems: Vec<CriteriaProblem>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SourceEstimate {
+    pub connector_key: String,
+    pub connector_name: String,
+    pub supported: bool,
+    pub value: Option<u64>,
+    pub basis: String,
+    pub unsupported_fields: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CriteriaCheckQuery {
+    pub project_id: Option<Id>,
+    pub criteria: DiscoveryCriteria,
+    pub with_estimates: bool,
+}
+
+impl CriteriaCheckQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        self.criteria.validate()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CriteriaCheck {
+    pub problems: Vec<CriteriaProblem>,
+    pub estimates: Vec<SourceEstimate>,
+    pub checked_at: UtcTimestamp,
+}
+
+impl CriteriaCheck {
+    /// An estimate is an estimate: a source that says it cannot count must not report a number.
+    pub fn validate(&self) -> Result<(), String> {
+        match self
+            .estimates
+            .iter()
+            .find(|estimate| !estimate.supported && estimate.value.is_some())
+        {
+            Some(estimate) => Err(format!(
+                "source {} reports a count it cannot produce",
+                estimate.connector_key
+            )),
+            None => Ok(()),
+        }
+    }
+}
+
+// ---- runs ----------------------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DiscoveryStartRequest {
+    pub campaign_id: Id,
+    pub connector_keys: Vec<String>,
+    pub inputs: Map<String, Value>,
+}
+
+impl DiscoveryStartRequest {
+    /// The imported file travels inside this request; anything larger needs another way in.
+    pub fn validate(&self) -> Result<(), String> {
+        for (key, input) in &self.inputs {
+            let object = input
+                .as_object()
+                .ok_or_else(|| format!("input for '{key}' must be an object"))?;
+            if let Some(content) = object.get("content").and_then(Value::as_str)
+                && content.len() > MAX_IMPORT_CHARS
+            {
+                return Err(format!(
+                    "the file for '{key}' is larger than {MAX_IMPORT_CHARS} characters"
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DiscoveryControlRequest {
+    pub job_id: Id,
+    pub action: RunControlAction,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RunEvent {
+    pub level: EventLevel,
+    pub event: String,
+    pub error_code: Option<String>,
+    pub retryable: Option<bool>,
+    pub detail_json: Option<Map<String, Value>>,
+    pub created_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DiscoverySourceRun {
+    pub source_run_id: Id,
+    pub connector_key: String,
+    pub connector_name: String,
+    pub connector_kind: SourceKind,
+    pub status: SourceRunStatus,
+    pub pages_done: u64,
+    pub records_seen: u64,
+    pub candidate_count: u64,
+    pub duplicate_count: u64,
+    pub request_count: u64,
+    pub cursor: Option<String>,
+    pub error_code: Option<String>,
+    pub error_message: Option<String>,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DiscoveryRun {
+    pub job_id: Id,
+    pub project_id: Id,
+    pub campaign_id: Id,
+    pub campaign_name: String,
+    pub status: JobStatus,
+    pub progress_done: u64,
+    pub progress_total: Option<u64>,
+    pub candidate_count: u64,
+    pub duplicate_count: u64,
+    pub request_count: u64,
+    pub error_count: u64,
+    pub requested_at: UtcTimestamp,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+    pub sources: Vec<DiscoverySourceRun>,
+    pub events: Vec<RunEvent>,
+}
+
+impl DiscoveryRun {
+    /// The totals must be the sum of the sources': a run cannot claim more than its parts found.
+    pub fn validate(&self) -> Result<(), String> {
+        let candidates: u64 = self
+            .sources
+            .iter()
+            .map(|source| source.candidate_count)
+            .sum();
+        if candidates != self.candidate_count {
+            return Err(format!(
+                "run reports {} candidates but its sources found {candidates}",
+                self.candidate_count
+            ));
+        }
+        match self.progress_total {
+            Some(total) if self.progress_done > total => {
+                Err("progress cannot exceed its total".into())
+            }
+            _ => Ok(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DiscoveryRunListQuery {
+    pub project_id: Option<Id>,
+    pub campaign_id: Option<Id>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl DiscoveryRunListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DiscoveryRunPage {
+    pub items: Vec<DiscoveryRun>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl DiscoveryRunPage {
+    pub fn validate(&self, query: &DiscoveryRunListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        if let Some(campaign) = &query.campaign_id
+            && let Some(other) = self.items.iter().find(|run| &run.campaign_id != campaign)
+        {
+            return Err(format!("run {} belongs to another campaign", other.job_id));
+        }
+        self.items.iter().try_for_each(DiscoveryRun::validate)
+    }
+}
+
+// ---- candidates ----------------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CandidateListQuery {
+    pub project_id: Option<Id>,
+    pub campaign_id: Option<Id>,
+    pub source_run_id: Option<Id>,
+    pub search: Option<String>,
+    pub include_duplicates: bool,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl CandidateListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)?;
+        match &self.search {
+            Some(search) if search.chars().count() > MAX_SEARCH_CHARS => Err(format!(
+                "search must be at most {MAX_SEARCH_CHARS} characters"
+            )),
+            _ => Ok(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CandidateListItem {
+    pub id: Id,
+    pub campaign_id: Option<Id>,
+    pub campaign_name: Option<String>,
+    pub source_run_id: Id,
+    pub connector_key: String,
+    pub connector_name: String,
+    pub connector_kind: SourceKind,
+    pub name_raw: String,
+    pub locality: Option<String>,
+    pub region: Option<String>,
+    pub postal_code: Option<String>,
+    pub domain: Option<String>,
+    pub phone_raw: Option<String>,
+    pub category_raw: Option<String>,
+    pub source_url: Option<String>,
+    pub external_id: Option<String>,
+    pub is_duplicate: bool,
+    pub duplicate_of_id: Option<Id>,
+    pub discovered_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CandidatePage {
+    pub items: Vec<CandidateListItem>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl CandidatePage {
+    /// Candidates never cross campaigns, and a listing that excludes duplicates must not show one.
+    pub fn validate(&self, query: &CandidateListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        if let Some(campaign) = &query.campaign_id
+            && let Some(other) = self
+                .items
+                .iter()
+                .find(|item| item.campaign_id.as_ref() != Some(campaign))
+        {
+            return Err(format!(
+                "candidate {} belongs to another campaign",
+                other.id
+            ));
+        }
+        if !query.include_duplicates && self.items.iter().any(|item| item.is_duplicate) {
+            return Err("page contains duplicates the query excluded".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CandidateDetailQuery {
+    pub candidate_id: Id,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DiscoveryCandidate {
+    pub id: Id,
+    pub project_id: Id,
+    pub campaign_id: Option<Id>,
+    pub source_run_id: Id,
+    pub raw_record_id: Id,
+    pub connector_id: Id,
+    pub dedup_key: String,
+    pub duplicate_of_id: Option<Id>,
+    pub name_raw: String,
+    pub name_normalized: String,
+    pub locality: Option<String>,
+    pub region: Option<String>,
+    pub postal_code: Option<String>,
+    pub country_code: Option<String>,
+    pub domain: Option<String>,
+    pub website_url: Option<String>,
+    pub phone_raw: Option<String>,
+    pub category_raw: Option<String>,
+    pub external_id: Option<String>,
+    pub source_url: Option<String>,
+    pub discovered_at: UtcTimestamp,
+    pub created_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SourceConnector {
+    pub id: Id,
+    pub key: String,
+    pub name: String,
+    pub kind: SourceKind,
+    pub connector_version: String,
+    pub terms_url: Option<String>,
+    pub requires_credentials: bool,
+    pub enabled: bool,
+    pub created_at: UtcTimestamp,
+    pub updated_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SourceRun {
+    pub id: Id,
+    pub project_id: Id,
+    pub campaign_id: Option<Id>,
+    pub connector_id: Id,
+    pub connector_version: String,
+    pub config_id: Option<Id>,
+    pub job_id: Option<Id>,
+    pub status: SourceRunStatus,
+    pub effective_config_json: Map<String, Value>,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+    pub error_code: Option<String>,
+    pub error_message: Option<String>,
+    pub created_at: UtcTimestamp,
+    pub updated_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SourceQuery {
+    pub id: Id,
+    pub source_run_id: Id,
+    pub query_json: Map<String, Value>,
+    pub cursor: Option<String>,
+    pub issued_at: UtcTimestamp,
+    pub result_count: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AcquiredPage {
+    pub id: Id,
+    pub source_run_id: Id,
+    pub source_query_id: Option<Id>,
+    pub url: String,
+    pub final_url: Option<String>,
+    pub http_status: Option<u16>,
+    pub content_type: Option<String>,
+    pub content_sha256: Option<String>,
+    pub byte_size: Option<u64>,
+    pub artifact_path: Option<String>,
+    pub fetched_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RawRecord {
+    pub id: Id,
+    pub source_run_id: Id,
+    pub acquired_page_id: Option<Id>,
+    pub connector_id: Id,
+    pub method: AcquisitionMethod,
+    pub external_id: Option<String>,
+    pub source_url: Option<String>,
+    pub payload_json: Map<String, Value>,
+    pub payload_sha256: String,
+    pub acquired_at: UtcTimestamp,
+    pub created_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CandidateDetail {
+    pub candidate: DiscoveryCandidate,
+    pub campaign_name: Option<String>,
+    pub connector: SourceConnector,
+    pub source_run: SourceRun,
+    pub source_query: Option<SourceQuery>,
+    pub acquired_page: Option<AcquiredPage>,
+    pub raw_record: RawRecord,
+    pub duplicate_of: Option<DiscoveryCandidate>,
+}
+
+impl CandidateDetail {
+    /// The chain has to hold: the candidate, its raw record, its run and its connector are one.
+    pub fn validate(&self, requested: &Id) -> Result<(), String> {
+        if &self.candidate.id != requested {
+            return Err(format!(
+                "asked for candidate {requested}, received {}",
+                self.candidate.id
+            ));
+        }
+        if self.candidate.raw_record_id != self.raw_record.id {
+            return Err("the candidate does not match its raw record".into());
+        }
+        if self.raw_record.source_run_id != self.source_run.id {
+            return Err("the raw record does not belong to that source run".into());
+        }
+        if self.candidate.connector_id != self.connector.id {
+            return Err("the candidate does not match its connector".into());
+        }
+        match &self.acquired_page {
+            Some(page) if page.source_run_id != self.source_run.id => {
+                Err("the acquired page belongs to another run".into())
+            }
+            _ => Ok(()),
+        }
+    }
+}
+
+// ---- file import ---------------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ColumnMapping {
+    pub name: Option<String>,
+    pub locality: Option<String>,
+    pub region: Option<String>,
+    pub postal_code: Option<String>,
+    pub country_code: Option<String>,
+    pub domain: Option<String>,
+    pub website_url: Option<String>,
+    pub phone: Option<String>,
+    pub category: Option<String>,
+    pub external_id: Option<String>,
+    pub source_url: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ImportPreviewRequest {
+    pub format: Option<ImportFormat>,
+    pub filename: String,
+    pub content: String,
+    pub mapping: Option<ColumnMapping>,
+}
+
+impl ImportPreviewRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.filename.trim().is_empty() {
+            return Err("the file needs a name".into());
+        }
+        if self.content.chars().count() > MAX_IMPORT_CHARS {
+            return Err(format!(
+                "the file is larger than {MAX_IMPORT_CHARS} characters; split it or export less"
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ImportProblem {
+    pub row: Option<u64>,
+    pub code: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ImportPreviewRow {
+    pub row: u64,
+    pub values: Map<String, Value>,
+    pub name_raw: Option<String>,
+    pub problem: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ImportPreview {
+    pub format: ImportFormat,
+    pub columns: Vec<String>,
+    pub suggested_mapping: ColumnMapping,
+    pub rows: Vec<ImportPreviewRow>,
+    pub total_rows: u64,
+    pub usable_rows: u64,
+    pub problems: Vec<ImportProblem>,
+}
+
+impl ImportPreview {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.usable_rows > self.total_rows {
+            return Err("more usable rows than rows".into());
+        }
+        if self.rows.len() as u64 > self.total_rows {
+            return Err("the sample holds more rows than the file".into());
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

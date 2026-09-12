@@ -154,6 +154,55 @@ export type EvidenceStatus = "active" | "stale" | "contradicted" | "revoked";
  */
 export type BusinessSort = "name" | "last_seen";
 /**
+ * Observable stand-ins for company size. No source is asked to guess one it cannot see.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SizeProxy".
+ */
+export type SizeProxy = "award_volume" | "employee_band" | "revenue_band" | "location_count";
+/**
+ * Broad first (cast wide, filter later) or narrow (only the tightest matches).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DiscoveryStrategy".
+ */
+export type DiscoveryStrategy = "broad" | "narrow";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "JobStatus".
+ */
+export type JobStatus = "queued" | "running" | "paused" | "succeeded" | "failed" | "cancelled";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ProblemSeverity".
+ */
+export type ProblemSeverity = "error" | "warning";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SourceRunStatus".
+ */
+export type SourceRunStatus =
+  "queued" | "running" | "paused" | "succeeded" | "failed" | "cancelled";
+/**
+ * What a source can actually do. The builder shows these; the engine enforces them.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Capability".
+ */
+export type Capability =
+  | "pagination"
+  | "estimate"
+  | "checkpoint"
+  | "geography_region"
+  | "geography_locality"
+  | "geography_postal_code"
+  | "geography_radius"
+  | "vertical_naics"
+  | "category_terms"
+  | "keyword_search"
+  | "freshness"
+  | "size_proxy";
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "CommandErrorCode".
  */
@@ -171,6 +220,11 @@ export type CommandErrorCode =
  * via the `definition` "ComponentState".
  */
 export type ComponentState = "ok" | "degraded" | "unavailable" | "error";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ConfigFieldKind".
+ */
+export type ConfigFieldKind = "text" | "number" | "secret" | "file_text";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ConversionElementKind".
@@ -191,6 +245,16 @@ export type ConversionElementKind =
 export type WorkerState = "stopped" | "starting" | "running" | "stopping" | "restarting" | "failed";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "RunControlAction".
+ */
+export type RunControlAction = "pause" | "resume" | "cancel";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EventLevel".
+ */
+export type EventLevel = "debug" | "info" | "warning" | "error";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ErrorCode".
  */
 export type ErrorCode =
@@ -204,11 +268,6 @@ export type ErrorCode =
   | "timeout"
   | "shutting_down"
   | "internal";
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "EventLevel".
- */
-export type EventLevel = "debug" | "info" | "warning" | "error";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "EvidenceRole".
@@ -231,6 +290,11 @@ export type ExportStatus = "pending" | "running" | "succeeded" | "failed" | "can
 export type ExportFormat = "csv" | "xlsx" | "json" | "jsonl" | "parquet";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ImportFormat".
+ */
+export type ImportFormat = "csv" | "tsv" | "json" | "jsonl";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "InferenceStatus".
  */
 export type InferenceStatus =
@@ -241,11 +305,6 @@ export type InferenceStatus =
   | "invalid_output"
   | "failed"
   | "cancelled";
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "JobStatus".
- */
-export type JobStatus = "queued" | "running" | "paused" | "succeeded" | "failed" | "cancelled";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "LatinoStatus".
@@ -267,11 +326,12 @@ export type PageKind = "home" | "about" | "contact" | "services" | "other";
  */
 export type ServiceAreaKind = "city" | "county" | "state" | "postal_code" | "metro" | "radius";
 /**
+ * Whether this source could run right now, and why not when it could not.
+ *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "SourceRunStatus".
+ * via the `definition` "SourceHealth".
  */
-export type SourceRunStatus =
-  "queued" | "running" | "paused" | "succeeded" | "failed" | "cancelled";
+export type SourceHealth = "ready" | "needs_configuration" | "disabled" | "unavailable";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "WebsiteFindingResult".
@@ -642,6 +702,382 @@ export interface Campaign {
   deleted_reason: string | null;
 }
 /**
+ * A campaign with its criteria and what its runs have produced so far.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CampaignListItem".
+ */
+export interface CampaignListItem {
+  id: string;
+  project_id: string;
+  name: string;
+  objective: string | null;
+  criteria: DiscoveryCriteria;
+  run_count: number;
+  candidate_count: number;
+  last_run_at: string | null;
+  last_run_status: JobStatus | null;
+  created_at: string;
+  updated_at: string;
+  is_synthetic: boolean;
+}
+/**
+ * What a campaign looks for, stored verbatim in `campaigns.criteria_json`.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DiscoveryCriteria".
+ */
+export interface DiscoveryCriteria {
+  schema_version: 1;
+  /**
+   * @maxItems 25
+   */
+  geography: GeoScope[];
+  /**
+   * @maxItems 50
+   */
+  verticals: string[];
+  /**
+   * @maxItems 50
+   */
+  categories: string[];
+  /**
+   * @maxItems 50
+   */
+  services: string[];
+  /**
+   * @maxItems 50
+   */
+  keywords: string[];
+  exclusions: Exclusions;
+  /**
+   * @maxItems 50
+   */
+  market_languages: string[];
+  size_proxies: SizeProxy[];
+  freshness_since: string | null;
+  strategy: DiscoveryStrategy;
+  sources: SourceSelection[];
+  limits: DiscoveryLimits;
+}
+/**
+ * One place to search. Sources declare how deep they can go (`Capability.GEOGRAPHY_*`).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "GeoScope".
+ */
+export interface GeoScope {
+  country_code: string;
+  region: string | null;
+  metro: string | null;
+  locality: string | null;
+  postal_code: string | null;
+  radius_km: number | null;
+}
+/**
+ * Filtered out before a candidate is stored, so an excluded name never reaches the list.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Exclusions".
+ */
+export interface Exclusions {
+  /**
+   * @maxItems 50
+   */
+  names: string[];
+  /**
+   * @maxItems 50
+   */
+  domains: string[];
+  /**
+   * @maxItems 50
+   */
+  categories: string[];
+  /**
+   * @maxItems 50
+   */
+  postal_codes: string[];
+}
+/**
+ * A connector this campaign uses. `config_json` holds per-campaign settings, never secrets.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SourceSelection".
+ */
+export interface SourceSelection {
+  connector_key: string;
+  priority: number;
+  max_records: number | null;
+  config_json: {
+    [k: string]: JsonValue | undefined;
+  };
+}
+/**
+ * Hard ceilings for one run. The engine stops at the first one reached and says which.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DiscoveryLimits".
+ */
+export interface DiscoveryLimits {
+  max_candidates: number;
+  max_requests: number;
+  max_pages_per_source: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CampaignListQuery".
+ */
+export interface CampaignListQuery {
+  project_id: string | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CampaignPage".
+ */
+export interface CampaignPage {
+  items: CampaignListItem[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * Creates a campaign when `campaign_id` is null, otherwise replaces its editable fields.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CampaignSaveRequest".
+ */
+export interface CampaignSaveRequest {
+  campaign_id: string | null;
+  project_id: string | null;
+  name: string;
+  objective: string | null;
+  criteria: DiscoveryCriteria;
+}
+/**
+ * The stored campaign plus what validation says about it; problems never block a draft.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CampaignSaved".
+ */
+export interface CampaignSaved {
+  campaign: CampaignListItem;
+  problems: CriteriaProblem[];
+}
+/**
+ * One reason a campaign cannot run (error) or deserves a second look (warning).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CriteriaProblem".
+ */
+export interface CriteriaProblem {
+  severity: ProblemSeverity;
+  code: string;
+  path: string;
+  message: string;
+}
+/**
+ * The candidate with the whole chain behind it, down to the payload as it was received.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CandidateDetail".
+ */
+export interface CandidateDetail {
+  candidate: DiscoveryCandidate;
+  campaign_name: string | null;
+  connector: SourceConnector;
+  source_run: SourceRun;
+  source_query: SourceQuery | null;
+  acquired_page: AcquiredPage | null;
+  raw_record: RawRecord;
+  duplicate_of: DiscoveryCandidate | null;
+}
+/**
+ * A discovered reference, not a business: the light projection of one raw record (phase 04).
+ *
+ * `dedup_key` is the connector's cheap identity guess; a row repeating a key already seen in the
+ * same campaign points at the first one through `duplicate_of_id`. Nothing is merged here - entity
+ * resolution is phase 06.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DiscoveryCandidate".
+ */
+export interface DiscoveryCandidate {
+  id: string;
+  project_id: string;
+  campaign_id: string | null;
+  source_run_id: string;
+  raw_record_id: string;
+  connector_id: string;
+  dedup_key: string;
+  duplicate_of_id: string | null;
+  name_raw: string;
+  name_normalized: string;
+  locality: string | null;
+  region: string | null;
+  postal_code: string | null;
+  country_code: string | null;
+  domain: string | null;
+  website_url: string | null;
+  phone_raw: string | null;
+  category_raw: string | null;
+  external_id: string | null;
+  source_url: string | null;
+  discovered_at: string;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SourceConnector".
+ */
+export interface SourceConnector {
+  id: string;
+  key: string;
+  name: string;
+  kind: SourceKind;
+  connector_version: string;
+  terms_url: string | null;
+  requires_credentials: boolean;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SourceRun".
+ */
+export interface SourceRun {
+  id: string;
+  project_id: string;
+  campaign_id: string | null;
+  connector_id: string;
+  connector_version: string;
+  config_id: string | null;
+  job_id: string | null;
+  status: SourceRunStatus;
+  effective_config_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  started_at: string | null;
+  finished_at: string | null;
+  error_code: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SourceQuery".
+ */
+export interface SourceQuery {
+  id: string;
+  source_run_id: string;
+  query_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  cursor: string | null;
+  issued_at: string;
+  result_count: number | null;
+}
+/**
+ * Immutable payload exactly as acquired. Either `source_url` or `external_id` identifies it.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "RawRecord".
+ */
+export interface RawRecord {
+  id: string;
+  source_run_id: string;
+  acquired_page_id: string | null;
+  connector_id: string;
+  method: AcquisitionMethod;
+  external_id: string | null;
+  source_url: string | null;
+  payload_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  payload_sha256: string;
+  acquired_at: string;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CandidateDetailQuery".
+ */
+export interface CandidateDetailQuery {
+  candidate_id: string;
+}
+/**
+ * A candidate reference. It is not a lead and carries no score: phase 04 only finds it.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CandidateListItem".
+ */
+export interface CandidateListItem {
+  id: string;
+  campaign_id: string | null;
+  campaign_name: string | null;
+  source_run_id: string;
+  connector_key: string;
+  connector_name: string;
+  connector_kind: SourceKind;
+  name_raw: string;
+  locality: string | null;
+  region: string | null;
+  postal_code: string | null;
+  domain: string | null;
+  phone_raw: string | null;
+  category_raw: string | null;
+  source_url: string | null;
+  external_id: string | null;
+  is_duplicate: boolean;
+  duplicate_of_id: string | null;
+  discovered_at: string;
+}
+/**
+ * Candidates never cross campaigns: a listing is scoped by campaign or by run.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CandidateListQuery".
+ */
+export interface CandidateListQuery {
+  project_id: string | null;
+  campaign_id: string | null;
+  source_run_id: string | null;
+  search: string | null;
+  include_duplicates: boolean;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CandidatePage".
+ */
+export interface CandidatePage {
+  items: CandidateListItem[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * Which column of an imported file feeds which candidate field. Unmapped fields stay empty.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ColumnMapping".
+ */
+export interface ColumnMapping {
+  name: string | null;
+  locality: string | null;
+  region: string | null;
+  postal_code: string | null;
+  country_code: string | null;
+  domain: string | null;
+  website_url: string | null;
+  phone: string | null;
+  category: string | null;
+  external_id: string | null;
+  source_url: string | null;
+}
+/**
  * Error shape every Tauri command rejects with.
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -663,6 +1099,19 @@ export interface ComponentScore {
   weight: number;
   contribution: number | null;
   confidence: number | null;
+}
+/**
+ * One setting a source needs. Secrets live in the connector configuration, not in criteria.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ConfigField".
+ */
+export interface ConfigField {
+  key: string;
+  label: string;
+  kind: ConfigFieldKind;
+  required: boolean;
+  help: string;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -710,6 +1159,40 @@ export interface CoreStatus {
   config_warnings: string[];
   started_at: string;
   uptime_s: number;
+}
+/**
+ * Validation of one criteria document. `estimates` are marked estimates, never counts.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CriteriaCheck".
+ */
+export interface CriteriaCheck {
+  problems: CriteriaProblem[];
+  estimates: SourceEstimate[];
+  checked_at: string;
+}
+/**
+ * Always an estimate, never a promise. `value` is null when the source cannot count.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SourceEstimate".
+ */
+export interface SourceEstimate {
+  connector_key: string;
+  connector_name: string;
+  supported: boolean;
+  value: number | null;
+  basis: string;
+  unsupported_fields: string[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CriteriaCheckQuery".
+ */
+export interface CriteriaCheckQuery {
+  project_id: string | null;
+  criteria: DiscoveryCriteria;
+  with_estimates: boolean;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -927,6 +1410,116 @@ export interface GpuDevice {
   driver_version: string | null;
 }
 /**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DiscoveryControlRequest".
+ */
+export interface DiscoveryControlRequest {
+  job_id: string;
+  action: RunControlAction;
+}
+/**
+ * One discovery job: its sources, its totals and the last things it said.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DiscoveryRun".
+ */
+export interface DiscoveryRun {
+  job_id: string;
+  project_id: string;
+  campaign_id: string;
+  campaign_name: string;
+  status: JobStatus;
+  progress_done: number;
+  progress_total: number | null;
+  candidate_count: number;
+  duplicate_count: number;
+  request_count: number;
+  error_count: number;
+  requested_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  sources: DiscoverySourceRun[];
+  events: RunEvent[];
+}
+/**
+ * What one source did inside a run. `cursor` is where a resume would continue.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DiscoverySourceRun".
+ */
+export interface DiscoverySourceRun {
+  source_run_id: string;
+  connector_key: string;
+  connector_name: string;
+  connector_kind: SourceKind;
+  status: SourceRunStatus;
+  pages_done: number;
+  records_seen: number;
+  candidate_count: number;
+  duplicate_count: number;
+  request_count: number;
+  cursor: string | null;
+  error_code: string | null;
+  error_message: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+}
+/**
+ * One line of a run's log: progress, a limit reached, or a structured error.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "RunEvent".
+ */
+export interface RunEvent {
+  level: EventLevel;
+  event: string;
+  error_code: string | null;
+  retryable: boolean | null;
+  detail_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DiscoveryRunListQuery".
+ */
+export interface DiscoveryRunListQuery {
+  project_id: string | null;
+  campaign_id: string | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DiscoveryRunPage".
+ */
+export interface DiscoveryRunPage {
+  items: DiscoveryRun[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * Starts one discovery job for a campaign.
+ *
+ * `inputs` carry what a run needs but a campaign cannot hold: the text of an imported file, a
+ * list of manual seeds. They are keyed by connector and stored with the run.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DiscoveryStartRequest".
+ */
+export interface DiscoveryStartRequest {
+  campaign_id: string;
+  connector_keys: string[];
+  inputs: {
+    [k: string]:
+      | {
+          [k: string]: JsonValue | undefined;
+        }
+      | undefined;
+  };
+}
+/**
  * Payload of requests that take no parameters (health, diagnostics, shutdown).
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -1034,6 +1627,56 @@ export interface IcpProfileVersion {
   schema_version: number;
   created_by: string;
   created_at: string;
+}
+/**
+ * What the file holds and what the mapping would make of it. Nothing is stored yet.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ImportPreview".
+ */
+export interface ImportPreview {
+  format: ImportFormat;
+  columns: string[];
+  suggested_mapping: ColumnMapping;
+  rows: ImportPreviewRow[];
+  total_rows: number;
+  usable_rows: number;
+  problems: ImportProblem[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ImportPreviewRow".
+ */
+export interface ImportPreviewRow {
+  row: number;
+  values: {
+    [k: string]: string | undefined;
+  };
+  name_raw: string | null;
+  problem: string | null;
+}
+/**
+ * A row the import cannot use, named by its line so the operator can fix the file.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ImportProblem".
+ */
+export interface ImportProblem {
+  row: number | null;
+  code: string;
+  message: string;
+}
+/**
+ * Preview of a file the operator picked. The content travels once, inside this request.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ImportPreviewRequest".
+ */
+export interface ImportPreviewRequest {
+  format: ImportFormat | null;
+  filename: string;
+  content: string;
+  mapping: ColumnMapping | null;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -1231,27 +1874,6 @@ export interface Project {
   deleted_reason: string | null;
 }
 /**
- * Immutable payload exactly as acquired. Either `source_url` or `external_id` identifies it.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "RawRecord".
- */
-export interface RawRecord {
-  id: string;
-  source_run_id: string;
-  acquired_page_id: string | null;
-  connector_id: string;
-  method: AcquisitionMethod;
-  external_id: string | null;
-  source_url: string | null;
-  payload_json: {
-    [k: string]: JsonValue | undefined;
-  };
-  payload_sha256: string;
-  acquired_at: string;
-  created_at: string;
-}
-/**
  * A human decision with its mandatory reason. Never edited; a new decision supersedes it.
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -1348,19 +1970,59 @@ export interface ShutdownResult {
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "SourceConnector".
+ * via the `definition` "SourceCatalog".
  */
-export interface SourceConnector {
-  id: string;
+export interface SourceCatalog {
+  sources: SourceInfo[];
+  checked_at: string;
+}
+/**
+ * One registered source: what it is, what it may do and whether it could run right now.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SourceInfo".
+ */
+export interface SourceInfo {
+  connector_id: string;
+  metadata: SourceMetadata;
+  enabled: boolean;
+  health: SourceHealth;
+  health_detail: string | null;
+  requests_per_minute: number;
+  daily_request_budget: number | null;
+  max_concurrency: number;
+  last_run_at: string | null;
+  last_run_status: SourceRunStatus | null;
+  last_error_code: string | null;
+  last_error_message: string | null;
+}
+/**
+ * Everything the app can say about a source without running it.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SourceMetadata".
+ */
+export interface SourceMetadata {
   key: string;
   name: string;
   kind: SourceKind;
-  connector_version: string;
+  version: string;
+  capabilities: Capability[];
   terms_url: string | null;
+  terms_summary: string;
   requires_credentials: boolean;
-  enabled: boolean;
-  created_at: string;
-  updated_at: string;
+  automation_allowed: boolean;
+  default_requests_per_minute: number;
+  default_daily_request_budget: number | null;
+  default_page_size: number;
+  config_fields: ConfigField[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SourceCatalogQuery".
+ */
+export interface SourceCatalogQuery {
+  project_id: string | null;
 }
 /**
  * Effective configuration and limits of a connector, globally or for one project.
@@ -1380,43 +2042,6 @@ export interface SourceConnectorConfig {
   max_concurrency: number | null;
   created_at: string;
   superseded_at: string | null;
-}
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "SourceQuery".
- */
-export interface SourceQuery {
-  id: string;
-  source_run_id: string;
-  query_json: {
-    [k: string]: JsonValue | undefined;
-  };
-  cursor: string | null;
-  issued_at: string;
-  result_count: number | null;
-}
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "SourceRun".
- */
-export interface SourceRun {
-  id: string;
-  project_id: string;
-  campaign_id: string | null;
-  connector_id: string;
-  connector_version: string;
-  config_id: string | null;
-  job_id: string | null;
-  status: SourceRunStatus;
-  effective_config_json: {
-    [k: string]: JsonValue | undefined;
-  };
-  started_at: string | null;
-  finished_at: string | null;
-  error_code: string | null;
-  error_message: string | null;
-  created_at: string;
-  updated_at: string;
 }
 /**
  * Development-only seed. `created` is false when the synthetic workspace already existed.

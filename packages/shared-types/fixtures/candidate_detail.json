@@ -1,0 +1,190 @@
+{
+  "candidate": {
+    "id": "01900000-0000-7000-8000-000000000044",
+    "project_id": "01900000-0000-7000-8000-000000000001",
+    "campaign_id": "01900000-0000-7000-8000-000000000033",
+    "source_run_id": "01900000-0000-7000-8000-000000000036",
+    "raw_record_id": "01900000-0000-7000-8000-000000000043",
+    "connector_id": "01900000-0000-7000-8000-000000000002",
+    "dedup_key": "name:synthetic bakery 0001|austin tx",
+    "duplicate_of_id": "01900000-0000-7000-8000-000000000040",
+    "name_raw": "Synthetic Bakery 0001",
+    "name_normalized": "synthetic bakery 0001",
+    "locality": "Austin",
+    "region": "TX",
+    "postal_code": "78701",
+    "country_code": "US",
+    "domain": "synthetic-bakery-0001.example",
+    "website_url": "https://synthetic-bakery-0001.example",
+    "phone_raw": "(512) 555-0103",
+    "category_raw": "Bakery",
+    "external_id": "synthetic-import.csv#row=3",
+    "source_url": null,
+    "discovered_at": "2026-01-01T00:00:00.000Z",
+    "created_at": "2026-01-01T00:00:00.000Z"
+  },
+  "campaign_name": "Synthetic discovery campaign",
+  "connector": {
+    "id": "01900000-0000-7000-8000-000000000002",
+    "key": "synthetic.fixture",
+    "name": "Synthetic fixture source (test data)",
+    "kind": "synthetic",
+    "connector_version": "1.0.0",
+    "terms_url": null,
+    "requires_credentials": false,
+    "enabled": true,
+    "created_at": "2026-01-01T00:00:00.000Z",
+    "updated_at": "2026-01-01T00:00:00.000Z"
+  },
+  "source_run": {
+    "id": "01900000-0000-7000-8000-000000000036",
+    "project_id": "01900000-0000-7000-8000-000000000001",
+    "campaign_id": "01900000-0000-7000-8000-000000000033",
+    "connector_id": "01900000-0000-7000-8000-000000000002",
+    "connector_version": "1.0.0",
+    "config_id": null,
+    "job_id": "01900000-0000-7000-8000-000000000034",
+    "status": "succeeded",
+    "effective_config_json": {
+      "connector_key": "synthetic.fixture",
+      "connector_version": "1.0.0",
+      "criteria": {
+        "categories": [
+          "Bakery"
+        ],
+        "exclusions": {
+          "categories": [],
+          "domains": [],
+          "names": [],
+          "postal_codes": []
+        },
+        "freshness_since": null,
+        "geography": [
+          {
+            "country_code": "US",
+            "locality": "Austin",
+            "metro": null,
+            "postal_code": null,
+            "radius_km": null,
+            "region": "TX"
+          }
+        ],
+        "keywords": [],
+        "limits": {
+          "max_candidates": 100,
+          "max_pages_per_source": 5,
+          "max_requests": 10
+        },
+        "market_languages": [
+          "es"
+        ],
+        "schema_version": 1,
+        "services": [],
+        "size_proxies": [],
+        "sources": [
+          {
+            "config_json": {},
+            "connector_key": "file.import",
+            "max_records": 100,
+            "priority": 50
+          }
+        ],
+        "strategy": "broad",
+        "verticals": [
+          "722"
+        ]
+      },
+      "daily_request_budget": null,
+      "page_size": 200,
+      "requests_per_minute": 600,
+      "run_input": {
+        "artifact_path": "imports/synthetic-import.csv"
+      },
+      "selection": {
+        "config_json": {},
+        "connector_key": "file.import",
+        "max_records": 100,
+        "priority": 50
+      }
+    },
+    "started_at": "2026-01-01T00:00:00.000Z",
+    "finished_at": "2026-01-01T00:00:00.000Z",
+    "error_code": null,
+    "error_message": null,
+    "created_at": "2026-01-01T00:00:00.000Z",
+    "updated_at": "2026-01-01T00:00:00.000Z"
+  },
+  "source_query": {
+    "id": "01900000-0000-7000-8000-000000000037",
+    "source_run_id": "01900000-0000-7000-8000-000000000036",
+    "query_json": {
+      "connector_key": "synthetic.fixture",
+      "cursor": null,
+      "page_size": 200,
+      "request_url": "file:imports/synthetic-import.csv#rows=0"
+    },
+    "cursor": null,
+    "issued_at": "2026-01-01T00:00:00.000Z",
+    "result_count": 3
+  },
+  "acquired_page": {
+    "id": "01900000-0000-7000-8000-000000000038",
+    "source_run_id": "01900000-0000-7000-8000-000000000036",
+    "source_query_id": "01900000-0000-7000-8000-000000000037",
+    "url": "file:imports/synthetic-import.csv#rows=0",
+    "final_url": null,
+    "http_status": null,
+    "content_type": null,
+    "content_sha256": "3ed07aa566c5467b7d643a7db844ca20f6857dcbbd4fbef0c221876a590dc1ce",
+    "byte_size": 339,
+    "artifact_path": "imports/synthetic-import.csv",
+    "fetched_at": "2026-01-01T00:00:00.000Z"
+  },
+  "raw_record": {
+    "id": "01900000-0000-7000-8000-000000000043",
+    "source_run_id": "01900000-0000-7000-8000-000000000036",
+    "acquired_page_id": "01900000-0000-7000-8000-000000000038",
+    "connector_id": "01900000-0000-7000-8000-000000000002",
+    "method": "file_import",
+    "external_id": "synthetic-import.csv#row=3",
+    "source_url": null,
+    "payload_json": {
+      "_row": 3,
+      "_source_file": "synthetic-import.csv",
+      "category": "Bakery",
+      "city": "Austin",
+      "name": "Synthetic Bakery 0001",
+      "phone": "(512) 555-0103",
+      "state": "TX",
+      "website": "https://synthetic-bakery-0001.example",
+      "zip": "78701"
+    },
+    "payload_sha256": "ef7b76f96089691f122c4f0aee84ac7d500a92c168a4179325d3dec39d139393",
+    "acquired_at": "2026-01-01T00:00:00.000Z",
+    "created_at": "2026-01-01T00:00:00.000Z"
+  },
+  "duplicate_of": {
+    "id": "01900000-0000-7000-8000-000000000040",
+    "project_id": "01900000-0000-7000-8000-000000000001",
+    "campaign_id": "01900000-0000-7000-8000-000000000033",
+    "source_run_id": "01900000-0000-7000-8000-000000000036",
+    "raw_record_id": "01900000-0000-7000-8000-000000000039",
+    "connector_id": "01900000-0000-7000-8000-000000000002",
+    "dedup_key": "name:synthetic bakery 0001|austin tx",
+    "duplicate_of_id": null,
+    "name_raw": "Synthetic Bakery 0001",
+    "name_normalized": "synthetic bakery 0001",
+    "locality": "Austin",
+    "region": "TX",
+    "postal_code": "78701",
+    "country_code": "US",
+    "domain": "synthetic-bakery-0001.example",
+    "website_url": "https://synthetic-bakery-0001.example",
+    "phone_raw": "(512) 555-0101",
+    "category_raw": "Bakery",
+    "external_id": "synthetic-import.csv#row=1",
+    "source_url": null,
+    "discovered_at": "2026-01-01T00:00:00.000Z",
+    "created_at": "2026-01-01T00:00:00.000Z"
+  }
+}

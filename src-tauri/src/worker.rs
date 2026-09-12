@@ -33,6 +33,16 @@ pub const DIAGNOSTICS: &str = "diagnostics";
 pub const BUSINESSES_LIST: &str = "businesses.list";
 pub const BUSINESSES_GET: &str = "businesses.get";
 pub const DATASETS_LIST: &str = "datasets.list";
+pub const SOURCES_LIST: &str = "sources.list";
+pub const SOURCES_PREVIEW_IMPORT: &str = "sources.preview_import";
+pub const CAMPAIGNS_LIST: &str = "campaigns.list";
+pub const CAMPAIGNS_SAVE: &str = "campaigns.save";
+pub const CAMPAIGNS_VALIDATE: &str = "campaigns.validate";
+pub const DISCOVERY_START: &str = "discovery.start";
+pub const DISCOVERY_CONTROL: &str = "discovery.control";
+pub const DISCOVERY_RUNS: &str = "discovery.runs";
+pub const DISCOVERY_CANDIDATES: &str = "discovery.candidates";
+pub const DISCOVERY_CANDIDATE: &str = "discovery.candidate";
 pub const DEV_SEED_SYNTHETIC: &str = "dev.seed_synthetic";
 const SHUTDOWN: &str = "shutdown";
 
@@ -41,6 +51,10 @@ pub const DIAGNOSTICS_TIMEOUT: Duration = Duration::from_secs(25);
 /// Store reads are bounded at 10 s by the worker; the synthetic seed at 60 s.
 pub const DATA_TIMEOUT: Duration = Duration::from_secs(15);
 pub const SEED_TIMEOUT: Duration = Duration::from_secs(70);
+/// Validating a campaign and starting a run may ask a source for an estimate; the worker
+/// bounds both at 60 s. Reading an imported file is bounded at 30 s.
+pub const DISCOVERY_TIMEOUT: Duration = Duration::from_secs(70);
+pub const IMPORT_TIMEOUT: Duration = Duration::from_secs(40);
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 const READER_DRAIN_TIMEOUT: Duration = Duration::from_secs(2);
 const HEALTH_FAILURES_BEFORE_RESTART: u32 = 2;

@@ -19,6 +19,7 @@ from uuid import UUID, uuid4
 import orjson
 from pydantic import ValidationError
 
+from research_engine import __version__
 from research_engine.contracts import (
     MAX_LINE_BYTES,
     PROTOCOL_VERSION,
@@ -28,15 +29,23 @@ from research_engine.contracts import (
     ErrorInfo,
     MessageType,
 )
+from research_engine.discovery.engine import DiscoveryService, DiscoveryStartError, EngineSettings
 from research_engine.handlers import ROUTES, Context, NotAllowedError, health
 from research_engine.logs import configure_logging, request_id_var
-from research_engine.repository import InvalidCursorError, NotFoundError, StoreUnavailableError
+from research_engine.repository import (
+    InvalidCursorError,
+    NotFoundError,
+    StoreUnavailableError,
+    connect,
+)
 from research_engine.settings import Settings
 from research_engine.storage import check_duckdb, check_sqlite
 
 logger = logging.getLogger("research_engine.worker")
 
 SHUTDOWN_GRACE_S: Final = 5.0
+#: Identifies this app to every public source it queries, as their guidance asks.
+USER_AGENT: Final = f"LeadIntelligence/{__version__} (local desktop research tool)"
 _OVERSIZE: Final = b"\x00oversize"  # sentinel frame, cannot be valid JSON
 
 
@@ -74,7 +83,15 @@ class Worker:
         self._stopping = False
         self._stop = asyncio.Event()
         self._tasks: set[asyncio.Task[None]] = set()
-        self._ctx = Context(settings, datetime.now(UTC), self._request_shutdown)
+        self._discovery = DiscoveryService(
+            EngineSettings(
+                data_dir=settings.data_dir,
+                user_agent=USER_AGENT,
+                offline=settings.discovery_offline,
+            ),
+            lambda: connect(settings.data_dir),
+        )
+        self._ctx = Context(settings, datetime.now(UTC), self._request_shutdown, self._discovery)
 
     async def run(self) -> None:
         loop = asyncio.get_running_loop()
@@ -86,6 +103,13 @@ class Worker:
         for check in (check_sqlite, check_duckdb):
             store = await asyncio.to_thread(check, self._settings.data_dir)
             logger.info("store checked", extra={"engine": store.engine, "state": store.state})
+        try:
+            paused = await self._discovery.recover()
+        except Exception:
+            logger.warning("interrupted discovery runs could not be recovered", exc_info=True)
+        else:
+            if paused:
+                logger.info("interrupted discovery runs paused", extra={"jobs": paused})
         self._send(
             uuid4(), MessageType.WORKER_READY, payload=health(self._ctx).model_dump(mode="json")
         )
@@ -112,6 +136,7 @@ class Worker:
         finally:
             stop_wait.cancel()
             self._stopping = True
+            await self._discovery.shutdown()
             await self._drain()
         logger.info("worker stopped")
 
@@ -227,7 +252,7 @@ class Worker:
             raise WorkerError(ErrorCode.NOT_FOUND, str(exc)) from exc
         except NotAllowedError as exc:
             raise WorkerError(ErrorCode.NOT_ALLOWED, str(exc)) from exc
-        except InvalidCursorError as exc:
+        except (InvalidCursorError, DiscoveryStartError) as exc:
             raise WorkerError(ErrorCode.INVALID_PAYLOAD, str(exc)) from exc
         return result.model_dump(mode="json")
 

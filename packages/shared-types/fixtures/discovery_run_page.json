@@ -1,0 +1,53 @@
+{
+  "items": [
+    {
+      "job_id": "01900000-0000-7000-8000-000000000034",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "campaign_id": "01900000-0000-7000-8000-000000000033",
+      "campaign_name": "Synthetic discovery campaign",
+      "status": "succeeded",
+      "progress_done": 2,
+      "progress_total": 2,
+      "candidate_count": 2,
+      "duplicate_count": 1,
+      "request_count": 1,
+      "error_count": 0,
+      "requested_at": "2026-01-01T00:00:00.000Z",
+      "started_at": "2026-01-01T00:00:00.000Z",
+      "finished_at": "2026-01-01T00:00:00.000Z",
+      "sources": [
+        {
+          "source_run_id": "01900000-0000-7000-8000-000000000036",
+          "connector_key": "synthetic.fixture",
+          "connector_name": "Synthetic fixture source (test data)",
+          "connector_kind": "synthetic",
+          "status": "succeeded",
+          "pages_done": 1,
+          "records_seen": 3,
+          "candidate_count": 2,
+          "duplicate_count": 1,
+          "request_count": 1,
+          "cursor": null,
+          "error_code": null,
+          "error_message": null,
+          "started_at": "2026-01-01T00:00:00.000Z",
+          "finished_at": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "events": [
+        {
+          "level": "info",
+          "event": "source_exhausted",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "connector_key": "synthetic.fixture"
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        }
+      ]
+    }
+  ],
+  "next_cursor": null,
+  "total": 1
+}

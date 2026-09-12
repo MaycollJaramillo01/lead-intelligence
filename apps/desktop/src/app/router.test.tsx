@@ -2,8 +2,9 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DiagnosticsReport } from "@lead/shared-types";
+import type { DiagnosticsReport, SourceCatalog } from "@lead/shared-types";
 import reportFixture from "@lead/shared-types/fixtures/diagnostics_report.json";
+import catalogFixture from "@lead/shared-types/fixtures/source_catalog.json";
 import { createTestRouter } from "@/app/router";
 import { NAV_ITEMS } from "@/app/navigation";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,6 +20,10 @@ const mocks = vi.hoisted(() => ({
   onWorkerStatus: vi.fn<typeof desktop.onWorkerStatus>(),
   listBusinesses: vi.fn<typeof desktop.listBusinesses>(),
   listDatasets: vi.fn<typeof desktop.listDatasets>(),
+  listSources: vi.fn<typeof desktop.listSources>(),
+  listCampaigns: vi.fn<typeof desktop.listCampaigns>(),
+  listDiscoveryRuns: vi.fn<typeof desktop.listDiscoveryRuns>(),
+  listCandidates: vi.fn<typeof desktop.listCandidates>(),
 }));
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
@@ -46,6 +51,10 @@ describe("application shell", () => {
     mocks.reportUiError.mockResolvedValue(null);
     mocks.listBusinesses.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
     mocks.listDatasets.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
+    mocks.listSources.mockResolvedValue(catalogFixture as SourceCatalog);
+    mocks.listCampaigns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
+    mocks.listDiscoveryRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
+    mocks.listCandidates.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
   });
 
   it("shows every module in the sidebar, grouped in sections", () => {
@@ -77,10 +86,16 @@ describe("application shell", () => {
     expect(mocks.listDatasets).toHaveBeenCalledWith({ project_id: null, limit: 100, cursor: null });
   });
 
+  it("serves the acquisition modules from real queries", async () => {
+    renderApp("/sources");
+    expect(await screen.findByText("USAspending.gov award recipients")).toBeTruthy();
+    expect(mocks.listSources).toHaveBeenCalledWith({ project_id: null });
+  });
+
   it("says clearly when a module is not configured yet", async () => {
-    renderApp("/discovery");
+    renderApp("/research-center");
     expect(await screen.findByText("This module is not configured yet")).toBeTruthy();
-    expect(screen.getByText("Planned for phase 4")).toBeTruthy();
+    expect(screen.getByText("Planned for phase 5")).toBeTruthy();
     expect(screen.getAllByText("Not configured").length).toBeGreaterThan(0);
   });
 

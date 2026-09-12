@@ -7,8 +7,10 @@ mod common;
 use std::fs;
 
 use lead_intelligence_lib::data::{
-    BusinessDetail, BusinessListQuery, BusinessPage, DatasetListQuery, DatasetPage,
-    SyntheticSeedResult,
+    BusinessDetail, BusinessListQuery, BusinessPage, CampaignListQuery, CampaignPage,
+    CampaignSaved, CandidateDetail, CandidateListQuery, CandidatePage, CriteriaCheck,
+    DatasetListQuery, DatasetPage, DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest,
+    ImportPreview, SourceCatalog, SourceHealth, SyntheticSeedResult,
 };
 use lead_intelligence_lib::protocol::{
     DATA_CONTRACT_VERSION, DiagnosticsReport, DiagnosticsResult, Envelope, HealthResult,
@@ -16,7 +18,7 @@ use lead_intelligence_lib::protocol::{
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use serde_json::Value;
+use serde_json::{Value, json};
 
 fn fixture_text(name: &str) -> String {
     let path = common::repo_root()
@@ -116,6 +118,110 @@ fn tampered_data_payloads_are_rejected() {
 }
 
 #[test]
+fn discovery_fixtures_round_trip_and_pass_validation() {
+    let catalog: SourceCatalog = round_trip("source_catalog.json");
+    catalog.validate().expect("fixture catalogue is usable");
+    assert!(
+        catalog
+            .sources
+            .iter()
+            .any(|source| source.metadata.requires_credentials
+                && source.health == SourceHealth::NeedsConfiguration),
+        "a source needing credentials must say so instead of looking ready"
+    );
+
+    let campaign_query: CampaignListQuery = round_trip("campaign_list_query.json");
+    campaign_query.validate().expect("fixture query is valid");
+    let campaigns: CampaignPage = round_trip("campaign_page.json");
+    campaigns
+        .validate(&campaign_query)
+        .expect("fixture page matches its query");
+    campaigns.items[0]
+        .criteria
+        .validate()
+        .expect("fixture criteria are valid");
+
+    let saved: CampaignSaved = round_trip("campaign_saved.json");
+    assert_eq!(saved.campaign.id, campaigns.items[0].id);
+
+    let check: CriteriaCheck = round_trip("criteria_check.json");
+    check.validate().expect("fixture check is consistent");
+
+    let start: DiscoveryStartRequest = round_trip("discovery_start_request.json");
+    start.validate().expect("fixture request is valid");
+
+    let run_query: DiscoveryRunListQuery = round_trip("discovery_run_list_query.json");
+    run_query.validate().expect("fixture query is valid");
+    let runs: DiscoveryRunPage = round_trip("discovery_run_page.json");
+    runs.validate(&run_query)
+        .expect("fixture run page matches its query");
+
+    let candidate_query: CandidateListQuery = round_trip("candidate_list_query.json");
+    candidate_query.validate().expect("fixture query is valid");
+    let candidates: CandidatePage = round_trip("candidate_page.json");
+    candidates
+        .validate(&candidate_query)
+        .expect("fixture candidate page matches its query");
+
+    let detail: CandidateDetail = round_trip("candidate_detail.json");
+    detail
+        .validate(&detail.candidate.id.clone())
+        .expect("fixture detail describes its own candidate");
+    assert!(
+        detail.candidate.duplicate_of_id.is_some() && detail.duplicate_of.is_some(),
+        "the fixture candidate repeats an earlier one, and says which"
+    );
+
+    let preview: ImportPreview = round_trip("import_preview.json");
+    preview.validate().expect("fixture preview is consistent");
+    assert_eq!(preview.suggested_mapping.name.as_deref(), Some("name"));
+}
+
+type DiscoveryMutation = (&'static str, fn(&mut Value));
+
+#[test]
+fn tampered_discovery_payloads_are_rejected() {
+    let original: Value = serde_json::from_str(&fixture_text("candidate_page.json")).expect("JSON");
+    let mutations: [DiscoveryMutation; 3] = [
+        ("unknown field", |v| v["items"][0]["surprise"] = true.into()),
+        ("unknown source kind", |v| {
+            v["items"][0]["connector_kind"] = "telepathy".into()
+        }),
+        ("malformed cursor", |v| {
+            v["next_cursor"] = "not a cursor".into()
+        }),
+    ];
+    for (label, mutate) in mutations {
+        let mut tampered = original.clone();
+        mutate(&mut tampered);
+        assert!(
+            serde_json::from_value::<CandidatePage>(tampered).is_err(),
+            "accepted a payload with {label}"
+        );
+    }
+
+    // a page that hides a duplicate behind a filter that excluded them, and a run that inflates
+    // its own totals, are both refused before they can reach the interface
+    let query: CandidateListQuery = serde_json::from_value(json!({
+        "project_id": null, "campaign_id": null, "source_run_id": null, "search": null,
+        "include_duplicates": false, "limit": 50, "cursor": null
+    }))
+    .expect("valid query");
+    let page: CandidatePage =
+        serde_json::from_str(&fixture_text("candidate_page.json")).expect("page");
+    assert!(
+        page.validate(&query).is_err(),
+        "the fixture page includes duplicates, so a filtered query must refuse it"
+    );
+
+    let mut runs: Value =
+        serde_json::from_str(&fixture_text("discovery_run_page.json")).expect("JSON");
+    runs["items"][0]["candidate_count"] = 999.into();
+    let inflated: DiscoveryRunPage = serde_json::from_value(runs).expect("still a page");
+    assert!(inflated.items[0].validate().is_err());
+}
+
+#[test]
 fn every_fixture_is_covered() {
     let dir = common::repo_root().join("packages/shared-types/fixtures");
     let mut names: Vec<String> = fs::read_dir(dir)
@@ -136,14 +242,26 @@ fn every_fixture_is_covered() {
             "business_detail.json",
             "business_list_query.json",
             "business_page.json",
+            "campaign_list_query.json",
+            "campaign_page.json",
+            "campaign_saved.json",
+            "candidate_detail.json",
+            "candidate_list_query.json",
+            "candidate_page.json",
+            "criteria_check.json",
             "dataset_list_query.json",
             "dataset_page.json",
             "diagnostics_report.json",
             "diagnostics_report.worker_down.json",
+            "discovery_run_list_query.json",
+            "discovery_run_page.json",
+            "discovery_start_request.json",
             "envelope.event.ready.json",
             "envelope.request.health.json",
             "envelope.result.diagnostics.json",
             "envelope.result.error.json",
+            "import_preview.json",
+            "source_catalog.json",
             "synthetic_seed_result.json",
             "ui_error_report.json",
         ],

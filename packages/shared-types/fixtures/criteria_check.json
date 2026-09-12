@@ -1,0 +1,23 @@
+{
+  "problems": [
+    {
+      "severity": "warning",
+      "code": "language_is_a_signal",
+      "path": "market_languages",
+      "message": "Market language is an affinity signal, never evidence of ownership."
+    }
+  ],
+  "estimates": [
+    {
+      "connector_key": "file.import",
+      "connector_name": "Local file import (CSV, TSV, JSON, JSONL)",
+      "supported": true,
+      "value": 3,
+      "basis": "rows in the imported file, before the mapping",
+      "unsupported_fields": [
+        "categories"
+      ]
+    }
+  ],
+  "checked_at": "2026-01-01T00:00:00.000Z"
+}

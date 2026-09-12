@@ -55,9 +55,11 @@ contracts:check` (part of `pnpm check` and `pnpm build`) fails when generated fi
 ```
 
 - Requests (core → worker): `health`, `diagnostics`, `shutdown`, `businesses.list`,
-  `businesses.get`, `datasets.list` and, in development builds only, `dev.seed_synthetic`. The answer
-  echoes `request_id` with type `<request>.result` and carries either `payload` or `error`, never
-  both.
+  `businesses.get`, `datasets.list`, the discovery set (`sources.list`, `sources.preview_import`,
+  `campaigns.list`, `campaigns.save`, `campaigns.validate`, `discovery.start`, `discovery.control`,
+  `discovery.runs`, `discovery.candidates`, `discovery.candidate`) and, in development builds only,
+  `dev.seed_synthetic`. The answer echoes `request_id` with type `<request>.result` and carries
+  either `payload` or `error`, never both.
 - Events (worker → core): `worker.ready` (handshake, carries a health payload) and
   `worker.protocol_error` (malformed input; correlated to the request id when recoverable).
 - Errors: `{code, message, retryable}` with codes `invalid_message`, `unsupported_protocol`,
@@ -117,6 +119,22 @@ InspectorPanel ─ desktop.getBusiness({business_id}) → get_business → busin
   ← BusinessDetail with a Provenance block per value; detail.validate(id) checks ownership
 DatasetsScreen ─ desktop.listDatasets → list_datasets → datasets.list → dataset + latest snapshot
 ```
+
+## Data flow: a discovery run
+
+```text
+DiscoveryScreen ─ desktop.startDiscovery({campaign_id, inputs})                    (apps/desktop)
+  → invoke("start_discovery", {request}) → commands::start_discovery (validates the payload size)
+  → supervisor.request_with("discovery.start", request, 70 s)                       (src-tauri)
+  → worker: criteria validated against the source catalogue, job + source_run + job_task created,
+    the imported file written under imports/<run>/, then the run continues in the background
+  ← DiscoveryRun (the run as it stands), checked against its own source totals
+  ⟳ desktop.listDiscoveryRuns / listCandidates while the run is moving (the UI polls, the worker
+    never pushes), then desktop.getCandidate for the raw record and its provenance
+```
+
+The engine is described in [discovery.md](discovery.md): adapters, criteria, limits, retries,
+checkpoints and how a paused or interrupted run resumes.
 
 Worker errors keep their meaning across the boundary: `not_found` → `CommandError.not_found`,
 `not_allowed` → `not_allowed`, `invalid_payload` → `invalid_input`; anything else is `worker_error`

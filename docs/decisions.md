@@ -234,3 +234,83 @@ touched.
 → UI → inspector with provenance) only in development: the core refuses `seed_synthetic_data`
 outside `Environment::Development` and passes `LEAD_DEV_TOOLS=1` to the worker only then; the worker
 refuses without it. Everything seeded is flagged `is_synthetic` and labelled in the UI.
+
+## D-024 · One adapter per source behind a common contract (phase 04)
+
+**Decision.** Every source implements `DiscoverySource` (metadata, `validate_config`, `estimate`,
+`discover`, `checkpoint`) and is stateless: the engine owns cursors, transactions, limits, retries,
+rate limits and provenance. A source is registered in `discovery/registry.py`, which is also what
+creates and updates its `source_connectors` row.
+
+**Why.** A monolithic scraper cannot be reasoned about, rate-limited or tested per source. With this
+split, adding a source is one small module plus one registry line, and the engine's guarantees
+(no repeated page, provenance, limits) hold for it automatically.
+
+**Consequence.** Capabilities are data: the campaign builder reads them to tell the operator which
+criteria a source will ignore, instead of silently dropping them.
+
+## D-025 · Enablement is a rule, not a list (phase 04)
+
+**Decision.** A source is enabled when it allows automated access and needs no credentials it does
+not have. A source that forbids automation stays disabled whatever the database says; a source that
+needs a key is `needs_configuration` until the operator configures it, and refuses with
+`auth_required`. The shipped `directory.api_template` is exactly that: registered, visible, and
+deliberately not working.
+
+**Why.** The prompt forbids CAPTCHA solving, unauthorised authentication, bypassing restrictions and
+rotating identities. A rule in code cannot be forgotten the way a checklist can, and a visible
+template documents what a keyed connector must declare without inventing an endpoint or a key.
+
+## D-026 · USAspending.gov as the first live source (phase 04)
+
+**Decision.** The public structured source that proves the engine end to end is the USAspending.gov
+award-search API: US federal award recipients, public domain, no credentials, real pagination, and
+filters for state, city, ZIP, NAICS and date. Its default rate limit is 30 requests a minute with a
+daily budget of 2000, deliberately below anything the API asks for.
+
+**Why.** It exercises pagination, checkpoints, `Retry-After`, resume and structured errors against a
+real API rather than a mock, and it is legal to query without an account. Its records are a signal
+(the business exists, sells B2B/B2G, is registered), never proof of anything else, and the award
+payload is kept so the claim can be checked later.
+
+**Trade-off.** It only covers businesses that hold federal awards. Directories with wider coverage
+need an API key and terms the operator accepts, which is what the template is for.
+
+## D-027 · One page, one transaction, checkpoint last (phase 04)
+
+**Decision.** A page's `source_query`, `acquired_page`, `raw_records`, `discovery_candidates` and its
+`job_checkpoint` are written in a single transaction, with the checkpoint last. The checkpoint holds
+the next cursor and the counters (pages, records, candidates, repeats, requests).
+
+**Why.** It makes "do not repeat a page on resume" a property of the database rather than of the
+code path: a crash either stored the whole page and its cursor, or neither.
+
+**Consequence.** Progress is read back from the checkpoint instead of being recounted, and a run
+interrupted by a restart is `paused` (with a `run_interrupted` event), never silently restarted -
+an app that resumed network activity by itself at startup would be a surprise.
+
+## D-028 · Candidates are a separate, immutable table (phase 04)
+
+**Decision.** `discovery_candidates` (migration 0003) is the light projection of one immutable
+`raw_record`: a name, a place, maybe a domain or a phone, a `dedup_key` and a `duplicate_of_id`.
+Immutable and permanent, like the raw record it projects. It carries no business id and no score.
+
+**Why.** Phase 04 must find references without claiming they are leads. Keeping them out of
+`businesses` means entity resolution (phase 06) starts from evidence instead of from guesses already
+written into the canonical table.
+
+**Consequence.** A repeat is linked, never merged, and never across campaigns: two campaigns that
+find the same business each keep their own candidate with their own lineage.
+
+## D-029 · An imported file travels once and is stored as an artifact (phase 04)
+
+**Decision.** The operator picks a file with the WebView's own file input; its text travels in one
+IPC frame (at most 4 000 000 characters), and the worker writes it under `imports/<source run>/`
+before the run starts, recording it as an `acquired_page` with its sha256 and size. Only the path is
+kept in the run's configuration.
+
+**Why.** No new dependency or capability for a file dialog, the bytes a candidate came from stay on
+disk next to it, and a paused import resumes by row offset without the text travelling again.
+
+**Trade-off.** A file larger than the cap is refused with an explanation instead of being truncated.
+A path-based connector for bigger imports is a later addition; the ceiling is stated in the UI.

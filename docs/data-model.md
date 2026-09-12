@@ -5,8 +5,11 @@ its source, and how the stores are kept safe. Delivered in phase 03; later phase
 
 - Source of truth: [`research_engine/domain.py`](../services/research-engine/src/research_engine/domain.py)
   (Pydantic: enumerations, state machines, records, queries and pages).
-- Schema: [`migrations/sqlite/0002_core_model.sql`](../services/research-engine/src/research_engine/migrations/sqlite/0002_core_model.sql)
+- Schema: [`migrations/sqlite/0002_core_model.sql`](../services/research-engine/src/research_engine/migrations/sqlite/0002_core_model.sql),
+  [`migrations/sqlite/0003_discovery_candidates.sql`](../services/research-engine/src/research_engine/migrations/sqlite/0003_discovery_candidates.sql)
   and [`migrations/duckdb/0002_business_snapshots.sql`](../services/research-engine/src/research_engine/migrations/duckdb/0002_business_snapshots.sql).
+- Discovery (phase 04) adds `discovery_candidates`, the immutable light projection of a raw record:
+  a reference a source returned, not a business and not a lead. See [discovery.md](discovery.md).
 - Access: [`repository.py`](../services/research-engine/src/research_engine/repository.py) (SQLite) and
   [`datasets.py`](../services/research-engine/src/research_engine/datasets.py) (DuckDB + Parquet).
   Nothing else runs SQL against the model; the UI never does (D-004).

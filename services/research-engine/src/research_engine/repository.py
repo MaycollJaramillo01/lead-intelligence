@@ -43,15 +43,32 @@ from research_engine.domain import (
     BusinessName,
     BusinessPage,
     BusinessSort,
+    Campaign,
+    CampaignListItem,
+    CampaignListQuery,
+    CampaignPage,
+    CampaignSaveRequest,
+    CandidateDetail,
+    CandidateListItem,
+    CandidateListQuery,
+    CandidatePage,
     ContactPoint,
     Dataset,
     DatasetListItem,
     DatasetListQuery,
     DatasetPage,
     DatasetSnapshot,
+    DiscoveryCandidate,
+    DiscoveryCriteria,
+    DiscoveryRun,
+    DiscoveryRunListQuery,
+    DiscoveryRunPage,
+    DiscoverySourceRun,
     EntityType,
     EvidenceItem,
     Extraction,
+    Job,
+    JobTask,
     JsonObject,
     Observed,
     ObservedClassification,
@@ -60,20 +77,26 @@ from research_engine.domain import (
     ObservedLocation,
     ObservedName,
     ObservedWebsite,
+    Project,
     Provenance,
     RawRecord,
     Record,
+    RunEvent,
     SourceConnector,
+    SourceQuery,
     SourceRun,
     Website,
     can_transition,
     format_ts,
     new_id,
+    sort_key,
     utc_now,
 )
 from research_engine.storage import SQLITE_FILE, bundled_migrations, open_sqlite
 
 ACTOR_SYSTEM = "system"
+#: `jobs.kind` of a discovery run; the engine and the repository must agree on it.
+DISCOVERY_JOB_KIND = "discovery"
 
 
 class StoreUnavailableError(RuntimeError):
@@ -536,3 +559,479 @@ def list_datasets(conn: sqlite3.Connection, query: DatasetListQuery) -> DatasetP
         else None
     )
     return DatasetPage(items=items, next_cursor=next_cursor, total=total)
+
+
+# ---- discovery: campaigns, runs and candidates (phase 04) --------------------------------------
+
+DEFAULT_PROJECT_NAME = "Local workspace"
+RUN_EVENT_LIMIT = 50
+
+
+def ensure_default_project(conn: sqlite3.Connection, *, actor: str = ACTOR_SYSTEM) -> Project:
+    """The workspace a campaign belongs to when the operator has not made one yet.
+
+    Created on first use, never synthetic, and audited like any other project. The synthetic seed
+    keeps its own separate project, so test data can never end up in a real campaign.
+    """
+    row = conn.execute(
+        f"SELECT {_columns(Project)} FROM projects "  # noqa: S608 - names from the model
+        "WHERE is_synthetic = 0 AND deleted_at IS NULL ORDER BY created_at, id LIMIT 1"
+    ).fetchone()
+    if row is not None:
+        return from_row(Project, row)
+    now = utc_now()
+    project = Project(
+        id=new_id(),
+        name=DEFAULT_PROJECT_NAME,
+        description="Created automatically for the first campaign of this installation.",
+        is_synthetic=False,
+        created_at=now,
+        updated_at=now,
+        deleted_at=None,
+        deleted_reason=None,
+    )
+    with atomic(conn):
+        insert(conn, project)
+        audit(conn, AuditAction.CREATE, EntityType.PROJECT, project.id, actor=actor)
+    return project
+
+
+def save_campaign(conn: sqlite3.Connection, request: CampaignSaveRequest, *, actor: str) -> str:
+    """Creates or updates one campaign and returns its id. The criteria are stored verbatim."""
+    now = utc_now()
+    criteria = request.criteria.model_dump(mode="json")
+    with atomic(conn):
+        if request.campaign_id is None:
+            project_id = request.project_id or ensure_default_project(conn, actor=actor).id
+            campaign = Campaign(
+                id=new_id(),
+                project_id=project_id,
+                icp_profile_version_id=None,
+                name=request.name,
+                objective=request.objective,
+                criteria_json=criteria,
+                criteria_schema_version=request.criteria.schema_version,
+                created_at=now,
+                updated_at=now,
+                deleted_at=None,
+                deleted_reason=None,
+            )
+            insert(conn, campaign)
+            audit(conn, AuditAction.CREATE, EntityType.CAMPAIGN, campaign.id, actor=actor)
+            return campaign.id
+        current = get(conn, Campaign, request.campaign_id)
+        if current.deleted_at is not None:
+            raise NotFoundError(f"campaign {request.campaign_id} has been deleted")
+        conn.execute(
+            "UPDATE campaigns SET name = ?, objective = ?, criteria_json = ?, "
+            "criteria_schema_version = ?, updated_at = ? WHERE id = ?",
+            (
+                request.name,
+                request.objective,
+                _db_value("criteria_json", criteria),
+                request.criteria.schema_version,
+                format_ts(now),
+                current.id,
+            ),
+        )
+        audit(
+            conn,
+            AuditAction.UPDATE,
+            EntityType.CAMPAIGN,
+            current.id,
+            actor=actor,
+            detail={"name": request.name},
+        )
+        return current.id
+
+
+_CAMPAIGN_SUMMARY_SQL = """
+SELECT c.id, c.project_id, c.name, c.objective, c.criteria_json, c.created_at, c.updated_at,
+    p.is_synthetic,
+    (SELECT count(*) FROM jobs j WHERE j.project_id = c.project_id
+        AND json_extract(j.params_json, '$.campaign_id') = c.id) AS run_count,
+    (SELECT count(*) FROM discovery_candidates dc
+        WHERE dc.campaign_id = c.id AND dc.duplicate_of_id IS NULL) AS candidate_count,
+    (SELECT j.requested_at FROM jobs j WHERE json_extract(j.params_json, '$.campaign_id') = c.id
+        ORDER BY j.requested_at DESC, j.id DESC LIMIT 1) AS last_run_at,
+    (SELECT j.status FROM jobs j WHERE json_extract(j.params_json, '$.campaign_id') = c.id
+        ORDER BY j.requested_at DESC, j.id DESC LIMIT 1) AS last_run_status
+FROM campaigns c
+JOIN projects p ON p.id = c.project_id
+"""
+
+
+def _campaign_item(row: Mapping[str, Any]) -> CampaignListItem:
+    return CampaignListItem(
+        id=row["id"],
+        project_id=row["project_id"],
+        name=row["name"],
+        objective=row["objective"],
+        criteria=DiscoveryCriteria.model_validate(orjson.loads(row["criteria_json"])),
+        run_count=row["run_count"],
+        candidate_count=row["candidate_count"],
+        last_run_at=row["last_run_at"],
+        last_run_status=row["last_run_status"],
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
+        is_synthetic=bool(row["is_synthetic"]),
+    )
+
+
+def get_campaign_item(conn: sqlite3.Connection, campaign_id: str) -> CampaignListItem:
+    row = conn.execute(
+        f"{_CAMPAIGN_SUMMARY_SQL} WHERE c.id = ? AND c.deleted_at IS NULL", (campaign_id,)
+    ).fetchone()
+    if row is None:
+        raise NotFoundError(f"campaign {campaign_id} not found")
+    return _campaign_item(row)
+
+
+def list_campaigns(conn: sqlite3.Connection, query: CampaignListQuery) -> CampaignPage:
+    where, params = ["c.deleted_at IS NULL", "p.deleted_at IS NULL"], list[object]()
+    if query.project_id is not None:
+        where.append("c.project_id = ?")
+        params.append(query.project_id)
+    (total,) = conn.execute(
+        "SELECT count(*) FROM campaigns c JOIN projects p ON p.id = c.project_id "  # noqa: S608
+        f"WHERE {' AND '.join(where)}",
+        params,
+    ).fetchone()
+    if query.cursor is not None:
+        last_key, last_id = decode_cursor(query.cursor, "campaign")
+        where.append("(c.created_at, c.id) < (?, ?)")
+        params += [last_key, last_id]
+    rows = conn.execute(
+        f"{_CAMPAIGN_SUMMARY_SQL} WHERE {' AND '.join(where)} "
+        "ORDER BY c.created_at DESC, c.id DESC LIMIT ?",
+        [*params, query.limit + 1],
+    ).fetchall()
+    page = rows[: query.limit]
+    next_cursor = (
+        encode_cursor("campaign", page[-1]["created_at"], page[-1]["id"])
+        if len(rows) > query.limit
+        else None
+    )
+    return CampaignPage(
+        items=[_campaign_item(row) for row in page], next_cursor=next_cursor, total=total
+    )
+
+
+# ---- runs ---------------------------------------------------------------------------------------
+
+
+def source_runs_of_job(conn: sqlite3.Connection, job_id: str) -> list[SourceRun]:
+    rows = conn.execute(
+        f"SELECT {_columns(SourceRun)} FROM source_runs WHERE job_id = ? "  # noqa: S608
+        "ORDER BY created_at, id",
+        (job_id,),
+    ).fetchall()
+    return [from_row(SourceRun, row) for row in rows]
+
+
+def last_source_run(
+    conn: sqlite3.Connection, connector_id: str, project_id: str | None
+) -> SourceRun | None:
+    where, params = ["connector_id = ?"], [connector_id]
+    if project_id is not None:
+        where.append("project_id = ?")
+        params.append(project_id)
+    row = conn.execute(
+        f"SELECT {_columns(SourceRun)} FROM source_runs "  # noqa: S608
+        f"WHERE {' AND '.join(where)} ORDER BY created_at DESC, id DESC LIMIT 1",
+        params,
+    ).fetchone()
+    return from_row(SourceRun, row) if row else None
+
+
+def task_of(conn: sqlite3.Connection, job_id: str, task_key: str) -> JobTask:
+    row = conn.execute(
+        f"SELECT {_columns(JobTask)} FROM job_tasks WHERE job_id = ? AND task_key = ?",  # noqa: S608
+        (job_id, task_key),
+    ).fetchone()
+    if row is None:
+        raise NotFoundError(f"job {job_id} has no task '{task_key}'")
+    return from_row(JobTask, row)
+
+
+def latest_checkpoint(conn: sqlite3.Connection, task_id: str) -> JsonObject | None:
+    """The newest checkpoint of one task: its cursor and its counters."""
+    row = conn.execute(
+        "SELECT state_json FROM job_checkpoints WHERE task_id = ? ORDER BY created_at DESC, id DESC"
+        " LIMIT 1",
+        (task_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    state = orjson.loads(row["state_json"])
+    return state if isinstance(state, dict) else None
+
+
+def raw_record_exists(conn: sqlite3.Connection, source_run_id: str, payload_sha256: str) -> bool:
+    """True when this run already stored this exact payload: the same page twice, or a repeat."""
+    row = conn.execute(
+        "SELECT 1 FROM raw_records WHERE source_run_id = ? AND payload_sha256 = ?",
+        (source_run_id, payload_sha256),
+    ).fetchone()
+    return row is not None
+
+
+def candidate_with_key(conn: sqlite3.Connection, campaign_id: str, dedup_key: str) -> str | None:
+    """The first candidate of this campaign with that key, if any. Never crosses campaigns."""
+    row = conn.execute(
+        "SELECT id FROM discovery_candidates WHERE campaign_id = ? AND dedup_key = ? "
+        "AND duplicate_of_id IS NULL ORDER BY created_at, id LIMIT 1",
+        (campaign_id, dedup_key),
+    ).fetchone()
+    return row["id"] if row else None
+
+
+def requests_today(conn: sqlite3.Connection, connector_id: str) -> int:
+    """Requests this connector has issued since midnight UTC, for its daily budget."""
+    (count,) = conn.execute(
+        "SELECT count(*) FROM source_queries q JOIN source_runs r ON r.id = q.source_run_id "
+        "WHERE r.connector_id = ? AND q.issued_at >= ?",
+        (connector_id, format_ts(utc_now())[:10] + "T00:00:00.000Z"),
+    ).fetchone()
+    return int(count)
+
+
+def candidate_count_for_job(conn: sqlite3.Connection, job_id: str) -> int:
+    (count,) = conn.execute(
+        "SELECT count(*) FROM discovery_candidates c JOIN source_runs r ON r.id = c.source_run_id "
+        "WHERE r.job_id = ? AND c.duplicate_of_id IS NULL",
+        (job_id,),
+    ).fetchone()
+    return int(count)
+
+
+def _counter(value: object) -> int:
+    """A counter read back from a checkpoint, which is JSON and so could hold anything."""
+    return value if isinstance(value, int) and value >= 0 else 0
+
+
+def _source_run_views(conn: sqlite3.Connection, job_id: str) -> list[DiscoverySourceRun]:
+    views: list[DiscoverySourceRun] = []
+    for run in source_runs_of_job(conn, job_id):
+        connector = get(conn, SourceConnector, run.connector_id)
+        try:
+            state = latest_checkpoint(conn, task_of(conn, job_id, connector.key).id) or {}
+        except NotFoundError:
+            state = {}
+        counts = conn.execute(
+            "SELECT count(*) AS total, "
+            "sum(CASE WHEN duplicate_of_id IS NULL THEN 1 ELSE 0 END) AS unique_count "
+            "FROM discovery_candidates WHERE source_run_id = ?",
+            (run.id,),
+        ).fetchone()
+        (requests,) = conn.execute(
+            "SELECT count(*) FROM source_queries WHERE source_run_id = ?", (run.id,)
+        ).fetchone()
+        unique = int(counts["unique_count"] or 0)
+        cursor = state.get("cursor")
+        views.append(
+            DiscoverySourceRun(
+                source_run_id=run.id,
+                connector_key=connector.key,
+                connector_name=connector.name,
+                connector_kind=connector.kind,
+                status=run.status,
+                pages_done=_counter(state.get("pages_done")),
+                records_seen=_counter(state.get("records_seen")),
+                candidate_count=unique,
+                duplicate_count=int(counts["total"] or 0) - unique,
+                request_count=int(requests),
+                cursor=cursor if isinstance(cursor, str) else None,
+                error_code=run.error_code,
+                error_message=run.error_message,
+                started_at=run.started_at,
+                finished_at=run.finished_at,
+            )
+        )
+    return views
+
+
+def _run_events(conn: sqlite3.Connection, job_id: str) -> list[RunEvent]:
+    rows = conn.execute(
+        "SELECT level, event, error_code, retryable, detail_json, created_at FROM job_events "
+        "WHERE job_id = ? ORDER BY created_at DESC, id DESC LIMIT ?",
+        (job_id, RUN_EVENT_LIMIT),
+    ).fetchall()
+    return [from_row(RunEvent, row) for row in rows]
+
+
+def _discovery_run(conn: sqlite3.Connection, job: Job) -> DiscoveryRun:
+    campaign_id = str(job.params_json.get("campaign_id") or "")
+    campaign = get(conn, Campaign, campaign_id)
+    sources = _source_run_views(conn, job.id)
+    (errors,) = conn.execute(
+        "SELECT count(*) FROM job_events WHERE job_id = ? AND level = 'error'", (job.id,)
+    ).fetchone()
+    return DiscoveryRun(
+        job_id=job.id,
+        project_id=job.project_id,
+        campaign_id=campaign.id,
+        campaign_name=campaign.name,
+        status=job.status,
+        progress_done=job.progress_done,
+        progress_total=job.progress_total,
+        candidate_count=sum(source.candidate_count for source in sources),
+        duplicate_count=sum(source.duplicate_count for source in sources),
+        request_count=sum(source.request_count for source in sources),
+        error_count=int(errors),
+        requested_at=job.requested_at,
+        started_at=job.started_at,
+        finished_at=job.finished_at,
+        sources=sources,
+        events=_run_events(conn, job.id),
+    )
+
+
+def get_discovery_run(conn: sqlite3.Connection, job_id: str) -> DiscoveryRun:
+    job = get(conn, Job, job_id)
+    if job.kind != DISCOVERY_JOB_KIND:
+        raise NotFoundError(f"job {job_id} is not a discovery run")
+    return _discovery_run(conn, job)
+
+
+def list_discovery_runs(conn: sqlite3.Connection, query: DiscoveryRunListQuery) -> DiscoveryRunPage:
+    where, params = ["j.kind = ?"], [DISCOVERY_JOB_KIND]
+    if query.project_id is not None:
+        where.append("j.project_id = ?")
+        params.append(query.project_id)
+    if query.campaign_id is not None:
+        where.append("json_extract(j.params_json, '$.campaign_id') = ?")
+        params.append(query.campaign_id)
+    (total,) = conn.execute(
+        f"SELECT count(*) FROM jobs j WHERE {' AND '.join(where)}",  # noqa: S608
+        params,
+    ).fetchone()
+    if query.cursor is not None:
+        last_key, last_id = decode_cursor(query.cursor, "run")
+        where.append("(j.requested_at, j.id) < (?, ?)")
+        params += [last_key, last_id]
+    rows = conn.execute(
+        f"SELECT {_columns(Job, 'j')} FROM jobs j WHERE {' AND '.join(where)} "  # noqa: S608
+        "ORDER BY j.requested_at DESC, j.id DESC LIMIT ?",
+        [*params, query.limit + 1],
+    ).fetchall()
+    page = rows[: query.limit]
+    next_cursor = (
+        encode_cursor("run", page[-1]["requested_at"], page[-1]["id"])
+        if len(rows) > query.limit
+        else None
+    )
+    return DiscoveryRunPage(
+        items=[_discovery_run(conn, from_row(Job, row)) for row in page],
+        next_cursor=next_cursor,
+        total=total,
+    )
+
+
+# ---- candidates ---------------------------------------------------------------------------------
+
+_CANDIDATE_SQL = """
+SELECT dc.id, dc.campaign_id, cp.name AS campaign_name, dc.source_run_id, sc.key AS connector_key,
+    sc.name AS connector_name, sc.kind AS connector_kind, dc.name_raw, dc.locality, dc.region,
+    dc.postal_code, dc.domain, dc.phone_raw, dc.category_raw, dc.source_url, dc.external_id,
+    dc.duplicate_of_id, dc.discovered_at
+FROM discovery_candidates dc
+JOIN source_connectors sc ON sc.id = dc.connector_id
+LEFT JOIN campaigns cp ON cp.id = dc.campaign_id
+"""
+
+
+def _candidate_item(row: Mapping[str, Any]) -> CandidateListItem:
+    return CandidateListItem(
+        id=row["id"],
+        campaign_id=row["campaign_id"],
+        campaign_name=row["campaign_name"],
+        source_run_id=row["source_run_id"],
+        connector_key=row["connector_key"],
+        connector_name=row["connector_name"],
+        connector_kind=row["connector_kind"],
+        name_raw=row["name_raw"],
+        locality=row["locality"],
+        region=row["region"],
+        postal_code=row["postal_code"],
+        domain=row["domain"],
+        phone_raw=row["phone_raw"],
+        category_raw=row["category_raw"],
+        source_url=row["source_url"],
+        external_id=row["external_id"],
+        is_duplicate=row["duplicate_of_id"] is not None,
+        duplicate_of_id=row["duplicate_of_id"],
+        discovered_at=row["discovered_at"],
+    )
+
+
+def list_candidates(conn: sqlite3.Connection, query: CandidateListQuery) -> CandidatePage:
+    where, params = ["1 = 1"], list[object]()
+    if query.project_id is not None:
+        where.append("dc.project_id = ?")
+        params.append(query.project_id)
+    if query.campaign_id is not None:
+        where.append("dc.campaign_id = ?")
+        params.append(query.campaign_id)
+    if query.source_run_id is not None:
+        where.append("dc.source_run_id = ?")
+        params.append(query.source_run_id)
+    if not query.include_duplicates:
+        where.append("dc.duplicate_of_id IS NULL")
+    if search := sort_key(query.search or ""):
+        # ponytail: substring match on the tidied name; add an FTS index if candidate lists grow
+        for character in ("\\", "%", "_"):
+            search = search.replace(character, "\\" + character)
+        where.append("dc.name_normalized LIKE ? ESCAPE '\\'")
+        params.append(f"%{search}%")
+    (total,) = conn.execute(
+        f"SELECT count(*) FROM discovery_candidates dc WHERE {' AND '.join(where)}",  # noqa: S608
+        params,
+    ).fetchone()
+    if query.cursor is not None:
+        last_key, last_id = decode_cursor(query.cursor, "candidate")
+        where.append("(dc.discovered_at, dc.id) < (?, ?)")
+        params += [last_key, last_id]
+    rows = conn.execute(
+        f"{_CANDIDATE_SQL} WHERE {' AND '.join(where)} "
+        "ORDER BY dc.discovered_at DESC, dc.id DESC LIMIT ?",
+        [*params, query.limit + 1],
+    ).fetchall()
+    page = rows[: query.limit]
+    next_cursor = (
+        encode_cursor("candidate", page[-1]["discovered_at"], page[-1]["id"])
+        if len(rows) > query.limit
+        else None
+    )
+    return CandidatePage(
+        items=[_candidate_item(row) for row in page], next_cursor=next_cursor, total=total
+    )
+
+
+def get_candidate_detail(conn: sqlite3.Connection, candidate_id: str) -> CandidateDetail:
+    """The candidate and the whole chain behind it, down to the payload as it was received."""
+    candidate = get(conn, DiscoveryCandidate, candidate_id)
+    raw = get(conn, RawRecord, candidate.raw_record_id)
+    page = (
+        get(conn, AcquiredPage, raw.acquired_page_id) if raw.acquired_page_id is not None else None
+    )
+    query = None
+    if page is not None and page.source_query_id is not None:
+        query = get(conn, SourceQuery, page.source_query_id)
+    campaign = (
+        get(conn, Campaign, candidate.campaign_id) if candidate.campaign_id is not None else None
+    )
+    return CandidateDetail(
+        candidate=candidate,
+        campaign_name=campaign.name if campaign else None,
+        connector=get(conn, SourceConnector, candidate.connector_id),
+        source_run=get(conn, SourceRun, candidate.source_run_id),
+        source_query=query,
+        acquired_page=page,
+        raw_record=raw,
+        duplicate_of=(
+            get(conn, DiscoveryCandidate, candidate.duplicate_of_id)
+            if candidate.duplicate_of_id is not None
+            else None
+        ),
+    )
