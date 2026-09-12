@@ -43,6 +43,11 @@ pub const DISCOVERY_CONTROL: &str = "discovery.control";
 pub const DISCOVERY_RUNS: &str = "discovery.runs";
 pub const DISCOVERY_CANDIDATES: &str = "discovery.candidates";
 pub const DISCOVERY_CANDIDATE: &str = "discovery.candidate";
+pub const CRAWL_START: &str = "crawl.start";
+pub const CRAWL_CONTROL: &str = "crawl.control";
+pub const CRAWL_RUNS: &str = "crawl.runs";
+pub const CRAWL_URLS: &str = "crawl.urls";
+pub const CRAWL_URL: &str = "crawl.url";
 pub const DEV_SEED_SYNTHETIC: &str = "dev.seed_synthetic";
 const SHUTDOWN: &str = "shutdown";
 

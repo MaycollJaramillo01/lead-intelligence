@@ -16,7 +16,10 @@
                                    │ repositories, datasets  │── Parquet data/datasets/…
                                    └───────────┬────────────┘   backups  data/backups/
                                                ├── HTTP → Ollama (127.0.0.1:11434, optional)
-                                               └── nvidia-smi + nvcuda.dll (optional)
+                                               ├── nvidia-smi + nvcuda.dll (optional)
+                                               ├── HTTPS → public websites and APIs (guarded)
+                                               └── Playwright driver → Chromium (on demand,
+                                                   in the worker's kill-on-close job object)
 ```
 
 | Layer         | Owns                                                                 | Never does                                       |
@@ -57,7 +60,8 @@ contracts:check` (part of `pnpm check` and `pnpm build`) fails when generated fi
 - Requests (core → worker): `health`, `diagnostics`, `shutdown`, `businesses.list`,
   `businesses.get`, `datasets.list`, the discovery set (`sources.list`, `sources.preview_import`,
   `campaigns.list`, `campaigns.save`, `campaigns.validate`, `discovery.start`, `discovery.control`,
-  `discovery.runs`, `discovery.candidates`, `discovery.candidate`) and, in development builds only,
+  `discovery.runs`, `discovery.candidates`, `discovery.candidate`), the crawl set (`crawl.start`,
+  `crawl.control`, `crawl.runs`, `crawl.urls`, `crawl.url`) and, in development builds only,
   `dev.seed_synthetic`. The answer echoes `request_id` with type `<request>.result` and carries
   either `payload` or `error`, never both.
 - Events (worker → core): `worker.ready` (handshake, carries a health payload) and
@@ -135,6 +139,23 @@ DiscoveryScreen ─ desktop.startDiscovery({campaign_id, inputs})               
 
 The engine is described in [discovery.md](discovery.md): adapters, criteria, limits, retries,
 checkpoints and how a paused or interrupted run resumes.
+
+## Data flow: a crawl
+
+```text
+ResearchCenterScreen ─ desktop.startCrawl({campaign_id?, urls, settings})           (apps/desktop)
+  → invoke("start_crawl") → commands::start_crawl: settings bounds, addresses       (src-tauri)
+  → worker: sites from the campaign's candidates and the addresses; job + one source_run, job_task,
+    robots.txt row and home row per site; the crawl continues in the background.
+    Per site: robots.txt → sitemaps → pages by priority. Each URL is one transaction:
+    guarded HTTP fetch ─(criterion?)→ Chromium render → acquired_page + raw_record + crawl_url
+  ⟳ desktop.listCrawlRuns / listCrawlUrls while a crawl moves (metrics aggregated from crawl_urls,
+    in-flight URLs from the worker's memory), desktop.getCrawlUrl for one URL and its provenance
+JobsScreen ─ listDiscoveryRuns + listCrawlRuns; cancel goes to the engine that owns the job
+```
+
+The crawler is described in [crawling.md](crawling.md): policies, SSRF guard, fallback criteria,
+limits, scheduling, metrics and reason codes.
 
 Worker errors keep their meaning across the boundary: `not_found` → `CommandError.not_found`,
 `not_allowed` → `not_allowed`, `invalid_payload` → `invalid_input`; anything else is `worker_error`

@@ -29,6 +29,19 @@ Precedence, later wins:
 | `LEAD_WORKER_PROGRAM` | `worker.program`  | path to a worker executable |
 | `LEAD_OLLAMA_URL`     | `ollama.base_url` | `http://127.0.0.1:11434`    |
 
+Crawl limits are not configuration: each crawl carries its own `CrawlSettings`, bounded by the safe
+limits in [crawling.md](crawling.md) section 6.
+
+### Browser for the crawler
+
+The crawler renders a page in Chromium only when a criterion asks for it. It uses Playwright's own
+Chromium when installed, otherwise Microsoft Edge (present on Windows 11) or Google Chrome. To
+install Playwright's build (optional, about 150 MB from Microsoft's CDN):
+
+```bash
+uv run --directory services/research-engine playwright install chromium
+```
+
 Invalid values never stop the app: the override layers are ignored, built-in defaults are used, and
 the Desktop Core row of the diagnostics screen shows the warning. Put secrets nowhere in these
 files.
@@ -42,37 +55,41 @@ files.
 
 ## Tests
 
-| Suite  | Command          | Notes                                                                                                                                  |
-| ------ | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Python | `pnpm test:py`   | spawns the real worker; tests marked `local_services` use the real Ollama / NVIDIA driver and skip with an explicit reason when absent |
-| Rust   | `pnpm test:rust` | unit tests, contract round-trips, supervisor against the real worker and scripted failure modes, IPC through Tauri's mock runtime      |
-| TS     | `pnpm test:ts`   | adapters, store, diagnostics screen (jsdom)                                                                                            |
+| Suite  | Command          | Notes                                                                                                                                                                                                    |
+| ------ | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Python | `pnpm test:py`   | spawns the real worker; tests marked `local_services` use the real Ollama / NVIDIA driver and skip with an explicit reason when absent; crawl tests run against a local fixture site and launch Chromium |
+| Rust   | `pnpm test:rust` | unit tests, contract round-trips, supervisor against the real worker and scripted failure modes, IPC through Tauri's mock runtime                                                                        |
+| TS     | `pnpm test:ts`   | adapters, store, diagnostics screen (jsdom)                                                                                                                                                              |
 
 Run only the tests that need local services: `uv run --directory services/research-engine pytest -m local_services -rs`.
 
 ## Troubleshooting
 
-| Symptom                                                      | Cause / fix                                                                                                                                           |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Python Worker: `worker executable not found`                 | Development virtualenv missing: `pnpm run setup`.                                                                                                     |
-| Python Worker: `Failed` with a traceback                     | Read the stderr tail on the diagnostics screen and the `worker` records in the log.                                                                   |
-| Python Worker: `automatic restarts exhausted`                | The worker crashed 3 times in 5 minutes; fix the cause, then press **Restart worker**.                                                                |
-| Ollama: `installed but not running`                          | Start Ollama (tray app or `ollama serve`). Nothing is downloaded automatically.                                                                       |
-| GPU: `nvidia-smi not found`                                  | No NVIDIA driver; local AI will use the CPU.                                                                                                          |
-| DuckDB: `could not set lock on file`                         | Another app instance (or tool) has the database open. Close it (single-instance lock: phase 14).                                                      |
-| SQLite: `degraded · recovered from backup …`                 | The store was damaged and replaced by the named backup; the damaged file is kept as `lead.sqlite3.corrupt-<utc>`. Changes after that backup are lost. |
-| SQLite: `… is damaged … and no usable backup exists`         | Follow **Recover a damaged database** below.                                                                                                          |
-| SQLite/DuckDB: `… is at schema vN, this build needs vM`      | A migration failed at startup (see the error on System and in the log). The store is unchanged and a backup was taken before the attempt.             |
-| Businesses: `the cursor does not belong to …`                | The list was paged with a cursor from another sort or a stale build; reload the screen.                                                               |
-| `uv` fails with `os error 1921` when run from a packaged app | Cache entries created inside an MSIX-virtualised process. Retry with `uv --no-cache …` or clear the affected entries with `uv cache clean <package>`. |
-| `git` reports _dubious ownership_                            | The `.git` directory belongs to another Windows account; use `git -c safe.directory=<repo> …` or add the exception yourself.                          |
+| Symptom                                                             | Cause / fix                                                                                                                                           |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Python Worker: `worker executable not found`                        | Development virtualenv missing: `pnpm run setup`.                                                                                                     |
+| Python Worker: `Failed` with a traceback                            | Read the stderr tail on the diagnostics screen and the `worker` records in the log.                                                                   |
+| Python Worker: `automatic restarts exhausted`                       | The worker crashed 3 times in 5 minutes; fix the cause, then press **Restart worker**.                                                                |
+| Ollama: `installed but not running`                                 | Start Ollama (tray app or `ollama serve`). Nothing is downloaded automatically.                                                                       |
+| GPU: `nvidia-smi not found`                                         | No NVIDIA driver; local AI will use the CPU.                                                                                                          |
+| DuckDB: `could not set lock on file`                                | Another app instance (or tool) has the database open. Close it (single-instance lock: phase 14).                                                      |
+| SQLite: `degraded · recovered from backup …`                        | The store was damaged and replaced by the named backup; the damaged file is kept as `lead.sqlite3.corrupt-<utc>`. Changes after that backup are lost. |
+| SQLite: `… is damaged … and no usable backup exists`                | Follow **Recover a damaged database** below.                                                                                                          |
+| SQLite/DuckDB: `… is at schema vN, this build needs vM`             | A migration failed at startup (see the error on System and in the log). The store is unchanged and a backup was taken before the attempt.             |
+| Businesses: `the cursor does not belong to …`                       | The list was paged with a cursor from another sort or a stale build; reload the screen.                                                               |
+| Research Center: sites fail with `Private or local address refused` | The address resolves to this machine or the local network; the crawler only visits public internet addresses, by design.                              |
+| Research Center: `No browser available`                             | Neither Playwright's Chromium, Edge nor Chrome could start, or free memory is under 2 GiB; pages stay as fetched over HTTP.                           |
+| Research Center: `robots.txt unreadable: nothing allowed`           | The site's robots.txt answered 5xx or 429, or did not answer; RFC 9309 says to fetch nothing. Try again later.                                        |
+| `uv` fails with `os error 1921` when run from a packaged app        | Cache entries created inside an MSIX-virtualised process. Retry with `uv --no-cache …` or clear the affected entries with `uv cache clean <package>`. |
+| `git` reports _dubious ownership_                                   | The `.git` directory belongs to another Windows account; use `git -c safe.directory=<repo> …` or add the exception yourself.                          |
 
 ## Data, backups and recovery
 
 Details in [data-model.md](data-model.md). In short:
 
 - `data/lead.sqlite3` (operational), `data/analytics.duckdb` (analytics), `data/datasets/` (Parquet
-  snapshots) and `data/backups/` (verified backups, newest 10 per engine) all live under the data
+  snapshots), `data/artifacts/web/` (crawled bodies, rendered pages and screenshots, stored once
+  per sha256) and `data/backups/` (verified backups, newest 10 per engine) all live under the data
   directory; every path stored in the database is relative to it, so the folder can be moved whole.
 - A backup is taken automatically before migrations run on a store that already has data.
 - Take a manual backup while the app runs (development shell, from the repository root):

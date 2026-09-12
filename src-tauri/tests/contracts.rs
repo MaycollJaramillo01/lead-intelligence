@@ -8,9 +8,11 @@ use std::fs;
 
 use lead_intelligence_lib::data::{
     BusinessDetail, BusinessListQuery, BusinessPage, CampaignListQuery, CampaignPage,
-    CampaignSaved, CandidateDetail, CandidateListQuery, CandidatePage, CriteriaCheck,
-    DatasetListQuery, DatasetPage, DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest,
-    ImportPreview, SourceCatalog, SourceHealth, SyntheticSeedResult,
+    CampaignSaved, CandidateDetail, CandidateListQuery, CandidatePage, CrawlRunListQuery,
+    CrawlRunPage, CrawlStartRequest, CrawlUrlDetail, CrawlUrlListQuery, CrawlUrlPage,
+    CrawlUrlStatus, CriteriaCheck, DatasetListQuery, DatasetPage, DiscoveryRunListQuery,
+    DiscoveryRunPage, DiscoveryStartRequest, Id, ImportPreview, SourceCatalog, SourceHealth,
+    SyntheticSeedResult,
 };
 use lead_intelligence_lib::protocol::{
     DATA_CONTRACT_VERSION, DiagnosticsReport, DiagnosticsResult, Envelope, HealthResult,
@@ -222,6 +224,78 @@ fn tampered_discovery_payloads_are_rejected() {
 }
 
 #[test]
+fn crawl_fixtures_round_trip_and_pass_validation() {
+    let start: CrawlStartRequest = round_trip("crawl_start_request.json");
+    start.validate().expect("fixture request is valid");
+
+    let run_query: CrawlRunListQuery = round_trip("crawl_run_list_query.json");
+    run_query.validate().expect("fixture query is valid");
+    let runs: CrawlRunPage = round_trip("crawl_run_page.json");
+    runs.validate(&run_query)
+        .expect("fixture crawl page matches its query");
+    let run = &runs.items[0];
+    assert!(run.metrics.browser_fallbacks > 0 && !run.errors.is_empty());
+
+    let url_query: CrawlUrlListQuery = round_trip("crawl_url_list_query.json");
+    url_query.validate().expect("fixture query is valid");
+    let urls: CrawlUrlPage = round_trip("crawl_url_page.json");
+    urls.validate(&url_query)
+        .expect("fixture url page matches its query");
+    assert!(
+        urls.items
+            .iter()
+            .any(|item| item.status == CrawlUrlStatus::Skipped && item.reason.is_some()),
+        "a skipped url says which policy skipped it"
+    );
+
+    let detail: CrawlUrlDetail = round_trip("crawl_url_detail.json");
+    detail
+        .validate(&detail.crawl_url.id.clone())
+        .expect("fixture detail describes its own url");
+    assert_eq!(
+        detail.crawl_url.fallback_reason.as_deref(),
+        Some("empty_shell")
+    );
+}
+
+#[test]
+fn tampered_crawl_payloads_are_rejected() {
+    let mut settings: Value =
+        serde_json::from_str(&fixture_text("crawl_start_request.json")).expect("JSON");
+    settings["settings"]["requests_per_minute_per_host"] = 10_000.into();
+    let hurried: CrawlStartRequest = serde_json::from_value(settings).expect("still a request");
+    assert!(
+        hurried.validate().is_err(),
+        "the core refuses to hammer a host"
+    );
+
+    let empty: CrawlStartRequest = serde_json::from_value(json!({
+        "project_id": null, "campaign_id": null, "urls": [],
+        "settings": serde_json::from_str::<Value>(&fixture_text("crawl_start_request.json"))
+            .expect("JSON")["settings"].clone()
+    }))
+    .expect("a request");
+    assert!(empty.validate().is_err(), "nothing to crawl is refused");
+
+    let mut runs: Value = serde_json::from_str(&fixture_text("crawl_run_page.json")).expect("JSON");
+    runs["items"][0]["metrics"]["pages_fetched"] = 999.into();
+    let inflated: CrawlRunPage = serde_json::from_value(runs).expect("still a page");
+    assert!(inflated.items[0].validate().is_err(), "totals must add up");
+
+    let mut urls: Value = serde_json::from_str(&fixture_text("crawl_url_page.json")).expect("JSON");
+    urls["items"][0]["status"] = "downloaded".into();
+    assert!(serde_json::from_value::<CrawlUrlPage>(urls).is_err());
+
+    let detail: CrawlUrlDetail =
+        serde_json::from_str(&fixture_text("crawl_url_detail.json")).expect("detail");
+    let other = Id::parse("01900000-0000-7000-8000-000000009999").expect("id");
+    assert!(
+        detail.validate(&other).is_err(),
+        "a detail for another url is refused"
+    );
+}
+
+#[test]
 fn every_fixture_is_covered() {
     let dir = common::repo_root().join("packages/shared-types/fixtures");
     let mut names: Vec<String> = fs::read_dir(dir)
@@ -248,6 +322,12 @@ fn every_fixture_is_covered() {
             "candidate_detail.json",
             "candidate_list_query.json",
             "candidate_page.json",
+            "crawl_run_list_query.json",
+            "crawl_run_page.json",
+            "crawl_start_request.json",
+            "crawl_url_detail.json",
+            "crawl_url_list_query.json",
+            "crawl_url_page.json",
             "criteria_check.json",
             "dataset_list_query.json",
             "dataset_page.json",

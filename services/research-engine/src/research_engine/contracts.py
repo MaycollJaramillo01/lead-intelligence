@@ -46,6 +46,11 @@ class MessageType(StrEnum):
     DISCOVERY_RUNS = "discovery.runs"
     DISCOVERY_CANDIDATES = "discovery.candidates"
     DISCOVERY_CANDIDATE = "discovery.candidate"
+    CRAWL_START = "crawl.start"
+    CRAWL_CONTROL = "crawl.control"
+    CRAWL_RUNS = "crawl.runs"
+    CRAWL_URLS = "crawl.urls"
+    CRAWL_URL = "crawl.url"
     DEV_SEED_SYNTHETIC = "dev.seed_synthetic"
     # events (worker -> desktop core)
     WORKER_READY = "worker.ready"

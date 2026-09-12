@@ -27,7 +27,7 @@ import logging
 import random
 import re
 import sqlite3
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final
@@ -35,7 +35,7 @@ from typing import Final
 import httpx
 import orjson
 
-from research_engine import repository
+from research_engine import jobs, repository
 from research_engine.discovery import registry
 from research_engine.discovery.sources.base import (
     DiscoveryError,
@@ -61,7 +61,6 @@ from research_engine.domain import (
     ImportFormat,
     Job,
     JobCheckpoint,
-    JobEvent,
     JobStatus,
     JobTask,
     JsonObject,
@@ -97,7 +96,6 @@ MAX_BACKOFF_S: Final = 60.0
 SLEEP_SLICE_S: Final = 1.0
 IMPORT_DIR: Final = "imports"
 _SAFE_NAME: Final = re.compile(r"[^A-Za-z0-9._-]+")
-_OPEN_RUNS: Final = (SourceRunStatus.QUEUED, SourceRunStatus.RUNNING, SourceRunStatus.PAUSED)
 
 #: How a source's records were acquired, for `raw_records.method`.
 _METHOD: Final[dict[SourceKind, AcquisitionMethod]] = {
@@ -395,7 +393,12 @@ class DiscoveryService:
 
     async def control(self, request: DiscoveryControlRequest) -> DiscoveryRun:
         """Pause, resume or cancel. Written to the store first, so a restart keeps the decision."""
-        await self._in_store(lambda conn: _apply_control(conn, request))
+
+        def apply(conn: sqlite3.Connection) -> None:
+            jobs.live_job(conn, request.job_id, JOB_KIND)
+            jobs.apply_control(conn, request.job_id, request.action, ACTOR)
+
+        await self._in_store(apply)
         if request.action is RunControlAction.RESUME:
             self._spawn(request.job_id)
         else:
@@ -414,7 +417,7 @@ class DiscoveryService:
 
     async def recover(self) -> int:
         """At startup: a job left running belonged to a worker that is gone. Pause it, say so."""
-        return await self._in_store(_pause_interrupted)
+        return await self._in_store(lambda conn: jobs.pause_interrupted(conn, JOB_KIND, ACTOR))
 
     async def shutdown(self) -> None:
         """Stops the loops and leaves every in-flight run paused, never half-written."""
@@ -427,7 +430,9 @@ class DiscoveryService:
         self._tasks.clear()
         for job_id in job_ids:
             with contextlib.suppress(Exception):
-                await self._in_store(lambda conn: _pause_job(conn, job_id, "worker_stopping"))  # noqa: B023
+                await self._in_store(
+                    lambda conn: jobs.pause_job(conn, job_id, "worker_stopping", ACTOR)  # noqa: B023
+                )
 
     # ---- background execution ------------------------------------------------------------
 
@@ -470,7 +475,7 @@ class DiscoveryService:
             raise
         except Exception:
             logger.exception("discovery job failed", extra={"job_id": job_id})
-            await self._in_store(lambda conn: _fail_job(conn, job_id, "internal error"))
+            await self._in_store(lambda conn: jobs.fail_job(conn, job_id, "internal error", ACTOR))
         finally:
             self._wake.pop(job_id, None)
             if client is not None:
@@ -483,7 +488,7 @@ class DiscoveryService:
         plan = await self._in_store(lambda conn: _load_plan(conn, job_id))
         if plan is None:
             return
-        await self._in_store(lambda conn: _mark_job_running(conn, job_id))
+        await self._in_store(lambda conn: jobs.mark_running(conn, job_id, ACTOR))
         for unit in plan.units:
             if await self._status(job_id) is not JobStatus.RUNNING:
                 break
@@ -629,7 +634,7 @@ class DiscoveryService:
         retryable: bool | None = None,
     ) -> None:
         await self._in_store(
-            lambda conn: _write_event(
+            lambda conn: jobs.write_event(
                 conn, job_id, task_id, name, level, detail, error_code, retryable
             )
         )
@@ -864,18 +869,6 @@ def _load_plan(conn: sqlite3.Connection, job_id: str) -> _Plan | None:
 # ---- store writes -------------------------------------------------------------------------------
 
 
-def _mark_job_running(conn: sqlite3.Connection, job_id: str) -> None:
-    job = repository.get(conn, Job, job_id)
-    now = format_ts(utc_now())
-    with repository.atomic(conn):
-        if job.status in (JobStatus.QUEUED, JobStatus.PAUSED):
-            repository.change_status(conn, Job, job_id, JobStatus.RUNNING, actor=ACTOR)
-        if job.started_at is None:
-            conn.execute(
-                "UPDATE jobs SET started_at = ?, updated_at = ? WHERE id = ?", (now, now, job_id)
-            )
-
-
 def _requeue(conn: sqlite3.Connection, unit: _Unit) -> None:
     """A failed source is resumable: it goes back to queued before it runs again."""
     task = repository.get(conn, JobTask, unit.task_id)
@@ -1082,108 +1075,6 @@ def _persist_page(conn: sqlite3.Connection, plan: _Plan, unit: _Unit, page: Disc
         )
 
 
-def _write_event(
-    conn: sqlite3.Connection,
-    job_id: str,
-    task_id: str | None,
-    name: str,
-    level: EventLevel,
-    detail: JsonObject | None,
-    error_code: str | None,
-    retryable: bool | None,
-) -> None:
-    repository.insert(
-        conn,
-        JobEvent(
-            id=new_id(),
-            job_id=job_id,
-            task_id=task_id,
-            level=level,
-            event=name,
-            error_code=error_code,
-            retryable=retryable,
-            detail_json=detail,
-            created_at=utc_now(),
-        ),
-    )
-
-
-def _open_runs(conn: sqlite3.Connection, job_id: str) -> Sequence[SourceRun]:
-    return [run for run in repository.source_runs_of_job(conn, job_id) if run.status in _OPEN_RUNS]
-
-
-def _apply_control(conn: sqlite3.Connection, request: DiscoveryControlRequest) -> None:
-    job = repository.get(conn, Job, request.job_id)
-    target = {
-        RunControlAction.PAUSE: JobStatus.PAUSED,
-        RunControlAction.RESUME: JobStatus.RUNNING,
-        RunControlAction.CANCEL: JobStatus.CANCELLED,
-    }[request.action]
-    if job.status is target:
-        return
-    with repository.atomic(conn):
-        repository.change_status(conn, Job, job.id, target, actor=ACTOR)
-        for run in _open_runs(conn, job.id):
-            if target is JobStatus.CANCELLED:
-                repository.change_status(
-                    conn, SourceRun, run.id, SourceRunStatus.CANCELLED, actor=ACTOR
-                )
-            elif target is JobStatus.PAUSED and run.status is SourceRunStatus.RUNNING:
-                repository.change_status(
-                    conn, SourceRun, run.id, SourceRunStatus.PAUSED, actor=ACTOR
-                )
-        _write_event(
-            conn, job.id, None, f"run_{request.action.value}", EventLevel.INFO, None, None, None
-        )
-
-
-def _pause_job(conn: sqlite3.Connection, job_id: str, reason: str) -> None:
-    job = repository.get(conn, Job, job_id)
-    if job.status is not JobStatus.RUNNING:
-        return
-    with repository.atomic(conn):
-        repository.change_status(conn, Job, job_id, JobStatus.PAUSED, actor=ACTOR)
-        for run in _open_runs(conn, job_id):
-            if run.status is SourceRunStatus.RUNNING:
-                repository.change_status(
-                    conn, SourceRun, run.id, SourceRunStatus.PAUSED, actor=ACTOR
-                )
-        _write_event(
-            conn,
-            job_id,
-            None,
-            "run_interrupted",
-            EventLevel.WARNING,
-            {"reason": reason},
-            None,
-            None,
-        )
-
-
-def _fail_job(conn: sqlite3.Connection, job_id: str, message: str) -> None:
-    job = repository.get(conn, Job, job_id)
-    if job.status not in (JobStatus.RUNNING, JobStatus.QUEUED):
-        return
-    now = format_ts(utc_now())
-    with repository.atomic(conn):
-        if job.status is JobStatus.QUEUED:
-            repository.change_status(conn, Job, job_id, JobStatus.RUNNING, actor=ACTOR)
-        repository.change_status(conn, Job, job_id, JobStatus.FAILED, actor=ACTOR)
-        conn.execute(
-            "UPDATE jobs SET finished_at = ?, updated_at = ? WHERE id = ?", (now, now, job_id)
-        )
-        _write_event(
-            conn,
-            job_id,
-            None,
-            "run_failed",
-            EventLevel.ERROR,
-            {"message": message},
-            "internal",
-            False,
-        )
-
-
 def _settle_job(conn: sqlite3.Connection, job_id: str) -> None:
     """The pass is over: the job takes the outcome of its source runs, or stays paused."""
     job = repository.get(conn, Job, job_id)
@@ -1191,8 +1082,8 @@ def _settle_job(conn: sqlite3.Connection, job_id: str) -> None:
         return
     runs = repository.source_runs_of_job(conn, job_id)
     statuses = {run.status for run in runs}
-    if statuses & set(_OPEN_RUNS):
-        _pause_job(conn, job_id, "stopped_before_finishing")
+    if statuses & set(jobs.OPEN_RUNS):
+        jobs.pause_job(conn, job_id, "stopped_before_finishing", ACTOR)
         return
     target = JobStatus.FAILED if statuses == {SourceRunStatus.FAILED} else JobStatus.SUCCEEDED
     done = repository.candidate_count_for_job(conn, job_id)
@@ -1204,14 +1095,4 @@ def _settle_job(conn: sqlite3.Connection, job_id: str) -> None:
             "updated_at = ? WHERE id = ?",
             (now, done, done, now, job_id),
         )
-        _write_event(conn, job_id, None, f"run_{target.value}", EventLevel.INFO, None, None, None)
-
-
-def _pause_interrupted(conn: sqlite3.Connection) -> int:
-    """Jobs the previous worker left running. They stay resumable, never silently restarted."""
-    rows = conn.execute(
-        "SELECT id FROM jobs WHERE kind = ? AND status = 'running'", (JOB_KIND,)
-    ).fetchall()
-    for row in rows:
-        _pause_job(conn, row["id"], "worker_restarted")
-    return len(rows)
+        jobs.write_event(conn, job_id, None, f"run_{target.value}", EventLevel.INFO)

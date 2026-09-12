@@ -10,9 +10,10 @@ use chrono::Utc;
 use lead_intelligence_lib::commands::{AppState, CoreInfo};
 use lead_intelligence_lib::config::Environment;
 use lead_intelligence_lib::data::{
-    BusinessDetail, BusinessPage, CampaignSaved, CandidateDetail, CandidatePage, CriteriaCheck,
-    DatasetPage, DiscoveryRun, DiscoveryRunPage, ImportPreview, JobStatus, SourceCatalog,
-    SourceRunStatus, SyntheticSeedResult,
+    BusinessDetail, BusinessPage, CampaignSaved, CandidateDetail, CandidatePage, CrawlRun,
+    CrawlRunPage, CrawlUrlDetail, CrawlUrlPage, CriteriaCheck, DatasetPage, DiscoveryRun,
+    DiscoveryRunPage, ImportPreview, JobStatus, SourceCatalog, SourceRunStatus,
+    SyntheticSeedResult,
 };
 use lead_intelligence_lib::protocol::{
     CommandError, CommandErrorCode, ComponentState, DiagnosticsReport, WorkerState,
@@ -382,6 +383,134 @@ fn the_discovery_flow_runs_end_to_end_through_ipc() {
     )
     .expect_err("no file, no run");
     assert_eq!(command_error(refused).code, CommandErrorCode::InvalidInput);
+
+    tauri::async_runtime::block_on(supervisor.stop());
+}
+
+fn crawl_settings() -> serde_json::Value {
+    json!({
+        "max_sites": 10, "max_pages_per_site": 5, "max_depth": 1,
+        "max_bytes_per_site": 1_000_000, "max_seconds_per_site": 60, "max_requests": 50,
+        "requests_per_minute_per_host": 60, "per_host_concurrency": 1,
+        "include_subdomains": false, "include_paths": [], "exclude_paths": [],
+        "browser": "never", "screenshots": false
+    })
+}
+
+/// Crawls addresses that must never be fetched: loopback, a local name and the cloud metadata
+/// endpoint. The whole flow runs through IPC and the real worker, and nothing leaves the machine.
+#[test]
+fn the_crawl_flow_runs_end_to_end_through_ipc() {
+    let data = tempfile::tempdir().expect("temp dir");
+    let supervisor = WorkerSupervisor::new(common::real_worker(data.path()), common::quiet());
+    tauri::async_runtime::block_on(supervisor.start()).expect("worker starts");
+    let (_app, webview) = mock_app(supervisor.clone(), data.path(), Environment::Development);
+
+    // 1. the core refuses a crawl with nothing to crawl, or one that would hammer a host
+    let empty = invoke(
+        &webview,
+        "start_crawl",
+        json!({ "request": {
+            "project_id": null, "campaign_id": null, "urls": [], "settings": crawl_settings()
+        }}),
+    )
+    .expect_err("nothing to crawl");
+    assert_eq!(command_error(empty).code, CommandErrorCode::InvalidInput);
+    let mut hurried = crawl_settings();
+    hurried["requests_per_minute_per_host"] = 5000.into();
+    let too_fast = invoke(
+        &webview,
+        "start_crawl",
+        json!({ "request": {
+            "project_id": null, "campaign_id": null, "urls": ["https://example.com"],
+            "settings": hurried
+        }}),
+    )
+    .expect_err("too fast for a host");
+    assert_eq!(command_error(too_fast).code, CommandErrorCode::InvalidInput);
+
+    // 2. a crawl of private targets starts, and every site is refused by the SSRF guard
+    let started: CrawlRun = invoke(
+        &webview,
+        "start_crawl",
+        json!({ "request": {
+            "project_id": null, "campaign_id": null,
+            "urls": ["http://127.0.0.1:9/", "localhost:9", "http://169.254.169.254/latest/meta-data/"],
+            "settings": crawl_settings()
+        }}),
+    )
+    .expect("crawl started")
+    .deserialize()
+    .expect("typed run");
+    assert_eq!(started.site_count, 3);
+
+    let mut run = started;
+    for _ in 0..200 {
+        let page: CrawlRunPage = invoke(
+            &webview,
+            "list_crawl_runs",
+            json!({ "query": { "project_id": null, "campaign_id": null, "limit": 10, "cursor": null }}),
+        )
+        .expect("runs")
+        .deserialize()
+        .expect("typed runs");
+        run = page.items.into_iter().next().expect("one crawl");
+        if !matches!(run.status, JobStatus::Queued | JobStatus::Running) {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    assert_eq!(run.status, JobStatus::Failed);
+    assert_eq!(run.sites_done, 3);
+    assert!(
+        run.sites
+            .iter()
+            .all(|site| site.error_code.as_deref() == Some("unsafe_target")),
+        "{:?}",
+        run.sites
+    );
+    assert_eq!(run.metrics.pages_fetched, 0);
+
+    // 3. every refused URL is on record, with the reason and its detail
+    let urls: CrawlUrlPage = invoke(
+        &webview,
+        "list_crawl_urls",
+        json!({ "query": {
+            "job_id": run.job_id, "source_run_id": null, "status": null, "limit": 50, "cursor": null
+        }}),
+    )
+    .expect("urls")
+    .deserialize()
+    .expect("typed urls");
+    assert!(!urls.items.is_empty());
+    let robots = urls
+        .items
+        .iter()
+        .find(|item| item.url.ends_with("/robots.txt"))
+        .expect("robots.txt is always the first request");
+    assert_eq!(robots.reason.as_deref(), Some("unsafe_target"));
+    let detail: CrawlUrlDetail = invoke(
+        &webview,
+        "get_crawl_url",
+        json!({ "query": { "crawl_url_id": robots.id } }),
+    )
+    .expect("detail")
+    .deserialize()
+    .expect("typed detail");
+    assert_eq!(detail.job_id, run.job_id);
+    assert!(
+        detail.acquired_page.is_none(),
+        "nothing was received from a refused target"
+    );
+
+    // 4. a discovery job id is not a crawl
+    let control = invoke(
+        &webview,
+        "control_crawl",
+        json!({ "request": { "job_id": "01900000-0000-7000-8000-000000000001", "action": "cancel" } }),
+    )
+    .expect_err("unknown crawl");
+    assert_eq!(command_error(control).code, CommandErrorCode::NotFound);
 
     tauri::async_runtime::block_on(supervisor.stop());
 }

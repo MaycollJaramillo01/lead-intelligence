@@ -7,24 +7,26 @@ commercial need, ICP fit and an explanation of why each one is worth contacting.
 
 Everything runs on this machine. No cloud service or LLM API is required.
 
-> **Status: Phase 04 — discovery engine.** Campaigns are written in a versioned criteria schema and
-> run against interchangeable source adapters: a local CSV/TSV/JSON import, manual seeds, the public
-> USAspending.gov API and a deliberately disabled template for sources that need an API key. Runs
-> page, checkpoint, pause, resume, cancel and survive a restart; every candidate keeps the raw record
-> it came from. Candidates are references, not leads: qualification arrives in later phases. Modules
-> that do not exist yet say so. The phase plan lives in
-> [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
+> **Status: Phase 05 — web acquisition.** Discovery (phase 04) finds candidate references from
+> interchangeable sources. The Research Center crawls their websites, or addresses you type, in two
+> levels: plain HTTP first, Chromium only when a page verifiably needs JavaScript. The crawler reads
+> robots.txt first, only visits public addresses, keeps a gentle pace per host, stays within page,
+> byte, time and request budgets, and never works around a CAPTCHA, a login or a block. Every page
+> keeps its bytes, how it was fetched and the raw findings parsed from it; crawls pause, resume and
+> survive a restart without fetching anything twice. Nothing is scored yet: qualification arrives in
+> later phases. The phase plan lives in [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
 
 ## Requirements
 
-| Tool                                           | Version  | Notes                                                        |
-| ---------------------------------------------- | -------- | ------------------------------------------------------------ |
-| Windows 11 x64                                 | —        | WebView2 ships with Windows 11                               |
-| Node.js                                        | ≥ 22     |                                                              |
-| pnpm                                           | 11       | `npm i -g pnpm`                                              |
-| Rust (rustup, `stable-x86_64-pc-windows-msvc`) | ≥ 1.88   | needs Visual Studio Build Tools (C++ workload + Windows SDK) |
-| uv                                             | ≥ 0.5    | installs Python 3.12 and the worker's locked virtualenv      |
-| Ollama, NVIDIA driver                          | optional | detected at runtime; the app works without them              |
+| Tool                                           | Version  | Notes                                                           |
+| ---------------------------------------------- | -------- | --------------------------------------------------------------- |
+| Windows 11 x64                                 | —        | WebView2 ships with Windows 11                                  |
+| Node.js                                        | ≥ 22     |                                                                 |
+| pnpm                                           | 11       | `npm i -g pnpm`                                                 |
+| Rust (rustup, `stable-x86_64-pc-windows-msvc`) | ≥ 1.88   | needs Visual Studio Build Tools (C++ workload + Windows SDK)    |
+| uv                                             | ≥ 0.5    | installs Python 3.12 and the worker's locked virtualenv         |
+| Ollama, NVIDIA driver                          | optional | detected at runtime; the app works without them                 |
+| Chromium (Playwright's, Edge or Chrome)        | optional | only for pages that need JavaScript; Edge ships with Windows 11 |
 
 ## Commands
 
@@ -61,6 +63,8 @@ docs/                        Architecture, decisions and operations
 
 - [docs/architecture.md](docs/architecture.md) — layers, processes, contracts, data flow
 - [docs/data-model.md](docs/data-model.md) — model, provenance, data dictionary, backup and recovery
+- [docs/discovery.md](docs/discovery.md) — discovery engine: sources, criteria, runs, candidates
+- [docs/crawling.md](docs/crawling.md) — web acquisition: policies, SSRF, fallback, limits, metrics
 - [docs/ui-system.md](docs/ui-system.md) — design tokens, navigation map, shortcuts, components
 - [docs/decisions.md](docs/decisions.md) — technical decisions and their trade-offs
 - [docs/operations.md](docs/operations.md) — configuration, logs, troubleshooting

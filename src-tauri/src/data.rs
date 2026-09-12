@@ -207,6 +207,7 @@ contract_enum!(SourceKind {
     FileImport,
     ManualSeed,
     Synthetic,
+    BusinessWebsite,
 });
 contract_enum!(AcquisitionMethod {
     ApiRequest,
@@ -1493,6 +1494,434 @@ impl ImportPreview {
         }
         if self.rows.len() as u64 > self.total_rows {
             return Err("the sample holds more rows than the file".into());
+        }
+        Ok(())
+    }
+}
+
+// ---- web acquisition (phase 05) ------------------------------------------------------------------
+// Mirrors the crawl section of `domain.py`. The core bounds a crawl before the worker sees it, and
+// checks that what comes back adds up: a run cannot report more pages or requests than its sites.
+
+const MAX_CRAWL_SEEDS: usize = 200;
+const MAX_PATH_RULES: usize = 25;
+const MAX_PATH_RULE_CHARS: usize = 200;
+const MAX_URL_CHARS: usize = 2048;
+
+contract_enum!(PageKind {
+    Home,
+    About,
+    Contact,
+    Services,
+    Other
+});
+contract_enum!(CrawlTarget {
+    Page,
+    Robots,
+    Sitemap
+});
+contract_enum!(CrawlUrlStatus {
+    Queued,
+    Fetched,
+    Skipped,
+    Failed
+});
+contract_enum!(BrowserMode {
+    Never,
+    Auto,
+    Always
+});
+
+fn within<T: PartialOrd + fmt::Display>(
+    name: &str,
+    value: T,
+    low: T,
+    high: T,
+) -> Result<(), String> {
+    if value < low || value > high {
+        return Err(format!(
+            "{name} must be between {low} and {high}, got {value}"
+        ));
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CrawlSettings {
+    pub max_sites: u32,
+    pub max_pages_per_site: u32,
+    pub max_depth: u32,
+    pub max_bytes_per_site: u64,
+    pub max_seconds_per_site: u32,
+    pub max_requests: u32,
+    pub requests_per_minute_per_host: u32,
+    pub per_host_concurrency: u32,
+    pub include_subdomains: bool,
+    pub include_paths: Vec<String>,
+    pub exclude_paths: Vec<String>,
+    pub browser: BrowserMode,
+    pub screenshots: bool,
+}
+
+impl CrawlSettings {
+    /// The same safe limits as the worker's contract (docs/crawling.md).
+    pub fn validate(&self) -> Result<(), String> {
+        within("max_sites", self.max_sites, 1, 500)?;
+        within("max_pages_per_site", self.max_pages_per_site, 1, 100)?;
+        within("max_depth", self.max_depth, 0, 4)?;
+        within(
+            "max_bytes_per_site",
+            self.max_bytes_per_site,
+            65_536,
+            100_000_000,
+        )?;
+        within("max_seconds_per_site", self.max_seconds_per_site, 10, 1_800)?;
+        within("max_requests", self.max_requests, 1, 20_000)?;
+        within(
+            "requests_per_minute_per_host",
+            self.requests_per_minute_per_host,
+            1,
+            120,
+        )?;
+        within("per_host_concurrency", self.per_host_concurrency, 1, 4)?;
+        for rules in [&self.include_paths, &self.exclude_paths] {
+            if rules.len() > MAX_PATH_RULES {
+                return Err(format!("at most {MAX_PATH_RULES} path rules per list"));
+            }
+            if let Some(bad) = rules
+                .iter()
+                .find(|rule| !rule.starts_with('/') || rule.chars().count() > MAX_PATH_RULE_CHARS)
+            {
+                return Err(format!(
+                    "path rule {bad:?} must start with '/' and be short"
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CrawlStartRequest {
+    pub project_id: Option<Id>,
+    pub campaign_id: Option<Id>,
+    pub urls: Vec<String>,
+    pub settings: CrawlSettings,
+}
+
+impl CrawlStartRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.campaign_id.is_none() && self.urls.is_empty() {
+            return Err("choose a campaign or give at least one website address".into());
+        }
+        if self.urls.len() > MAX_CRAWL_SEEDS {
+            return Err(format!("at most {MAX_CRAWL_SEEDS} addresses per crawl"));
+        }
+        if let Some(bad) = self
+            .urls
+            .iter()
+            .find(|url| url.trim().is_empty() || url.chars().count() > MAX_URL_CHARS)
+        {
+            return Err(format!("address {bad:?} is empty or too long"));
+        }
+        self.settings.validate()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CrawlErrorGroup {
+    pub reason: String,
+    pub count: u64,
+    pub example_url: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CrawlMetrics {
+    pub requests: u64,
+    pub pages_fetched: u64,
+    pub pages_failed: u64,
+    pub urls_skipped: u64,
+    pub queued: u64,
+    pub bytes: u64,
+    pub cache_hits: u64,
+    pub retries: u64,
+    pub blocked: u64,
+    pub http_pages: u64,
+    pub browser_pages: u64,
+    pub browser_fallbacks: u64,
+    pub duplicates: u64,
+    pub pages_per_minute: Option<f64>,
+    pub latency_p50_ms: Option<u64>,
+    pub latency_p95_ms: Option<u64>,
+    pub latency_max_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CrawlSite {
+    pub source_run_id: Id,
+    pub site: String,
+    pub root_url: String,
+    pub candidate_id: Option<Id>,
+    pub status: SourceRunStatus,
+    pub pages_fetched: u64,
+    pub pages_failed: u64,
+    pub urls_skipped: u64,
+    pub queued: u64,
+    pub bytes: u64,
+    pub requests: u64,
+    pub browser_pages: u64,
+    pub error_code: Option<String>,
+    pub error_message: Option<String>,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CrawlRun {
+    pub job_id: Id,
+    pub project_id: Id,
+    pub campaign_id: Option<Id>,
+    pub campaign_name: Option<String>,
+    pub status: JobStatus,
+    pub settings: CrawlSettings,
+    pub site_count: u64,
+    pub sites_done: u64,
+    pub metrics: CrawlMetrics,
+    pub errors: Vec<CrawlErrorGroup>,
+    pub in_flight: Vec<String>,
+    pub sites: Vec<CrawlSite>,
+    pub events: Vec<RunEvent>,
+    pub requested_at: UtcTimestamp,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+}
+
+impl CrawlRun {
+    /// The totals are the sum of the sites', and a page is either fetched over HTTP or rendered.
+    pub fn validate(&self) -> Result<(), String> {
+        if self.site_count != self.sites.len() as u64 || self.sites_done > self.site_count {
+            return Err(format!(
+                "run reports {} of {} sites for {} listed",
+                self.sites_done,
+                self.site_count,
+                self.sites.len()
+            ));
+        }
+        let metrics = &self.metrics;
+        let pages: u64 = self.sites.iter().map(|site| site.pages_fetched).sum();
+        let requests: u64 = self.sites.iter().map(|site| site.requests).sum();
+        if pages != metrics.pages_fetched || requests != metrics.requests {
+            return Err("the run's totals are not the sum of its sites".into());
+        }
+        if metrics.http_pages + metrics.browser_pages != metrics.pages_fetched {
+            return Err("fetched pages are neither HTTP nor rendered".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CrawlRunListQuery {
+    pub project_id: Option<Id>,
+    pub campaign_id: Option<Id>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl CrawlRunListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CrawlRunPage {
+    pub items: Vec<CrawlRun>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl CrawlRunPage {
+    pub fn validate(&self, query: &CrawlRunListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        if let Some(campaign) = &query.campaign_id
+            && let Some(other) = self
+                .items
+                .iter()
+                .find(|run| run.campaign_id.as_ref() != Some(campaign))
+        {
+            return Err(format!(
+                "crawl {} belongs to another campaign",
+                other.job_id
+            ));
+        }
+        self.items.iter().try_for_each(CrawlRun::validate)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CrawlUrlListQuery {
+    pub job_id: Id,
+    pub source_run_id: Option<Id>,
+    pub status: Option<CrawlUrlStatus>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl CrawlUrlListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CrawlUrlItem {
+    pub id: Id,
+    pub source_run_id: Id,
+    pub site: String,
+    pub url: String,
+    pub target: CrawlTarget,
+    pub page_kind: PageKind,
+    pub depth: u32,
+    pub status: CrawlUrlStatus,
+    pub reason: Option<String>,
+    pub method: Option<AcquisitionMethod>,
+    pub http_status: Option<u16>,
+    pub byte_size: Option<u64>,
+    pub fetch_ms: Option<u64>,
+    pub browser_ms: Option<u64>,
+    pub fallback_reason: Option<String>,
+    pub duplicate_of_id: Option<Id>,
+    pub title: Option<String>,
+    pub updated_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CrawlUrlPage {
+    pub items: Vec<CrawlUrlItem>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl CrawlUrlPage {
+    pub fn validate(&self, query: &CrawlUrlListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        let foreign = self.items.iter().find(|item| {
+            query
+                .source_run_id
+                .as_ref()
+                .is_some_and(|run| &item.source_run_id != run)
+                || query.status.is_some_and(|status| item.status != status)
+        });
+        match foreign {
+            Some(item) => Err(format!("url {} does not match the filter", item.id)),
+            None => Ok(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CrawlUrlDetailQuery {
+    pub crawl_url_id: Id,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CrawlUrl {
+    pub id: Id,
+    pub source_run_id: Id,
+    pub candidate_id: Option<Id>,
+    pub discovered_from_id: Option<Id>,
+    pub url: String,
+    pub target: CrawlTarget,
+    pub page_kind: PageKind,
+    pub depth: u32,
+    pub priority: i64,
+    pub status: CrawlUrlStatus,
+    pub reason: Option<String>,
+    pub method: Option<AcquisitionMethod>,
+    pub final_url: Option<String>,
+    pub http_status: Option<u16>,
+    pub content_type: Option<String>,
+    pub byte_size: Option<u64>,
+    pub body_sha256: Option<String>,
+    pub content_sha256: Option<String>,
+    pub duplicate_of_id: Option<Id>,
+    pub acquired_page_id: Option<Id>,
+    pub raw_record_id: Option<Id>,
+    pub request_count: u64,
+    pub retry_count: u64,
+    pub fetch_ms: Option<u64>,
+    pub browser_ms: Option<u64>,
+    pub fallback_reason: Option<String>,
+    pub redirects_json: Option<Map<String, Value>>,
+    pub headers_json: Option<Map<String, Value>>,
+    pub screenshot_path: Option<String>,
+    pub error_message: Option<String>,
+    pub created_at: UtcTimestamp,
+    pub updated_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CrawlUrlDetail {
+    pub crawl_url: CrawlUrl,
+    pub job_id: Id,
+    pub site: String,
+    pub source_run: SourceRun,
+    pub acquired_page: Option<AcquiredPage>,
+    pub raw_record: Option<RawRecord>,
+    pub discovered_from: Option<CrawlUrl>,
+    pub duplicate_of: Option<CrawlUrl>,
+}
+
+impl CrawlUrlDetail {
+    /// One chain: the URL, its site run and job, the page it stored and the record parsed from it.
+    /// The record may come from an earlier crawl (a 304 reuses it), so its run is not compared.
+    pub fn validate(&self, requested: &Id) -> Result<(), String> {
+        let url = &self.crawl_url;
+        if &url.id != requested {
+            return Err(format!("asked for url {requested}, received {}", url.id));
+        }
+        if url.source_run_id != self.source_run.id
+            || self.source_run.job_id.as_ref() != Some(&self.job_id)
+        {
+            return Err("the url does not belong to that site run and job".into());
+        }
+        if url.acquired_page_id.as_ref() != self.acquired_page.as_ref().map(|page| &page.id)
+            || url.raw_record_id.as_ref() != self.raw_record.as_ref().map(|record| &record.id)
+        {
+            return Err("the url does not point at the page and record received".into());
+        }
+        let same_run = |other: &Option<CrawlUrl>| {
+            other
+                .as_ref()
+                .is_none_or(|other| other.source_run_id == url.source_run_id)
+        };
+        if !same_run(&self.discovered_from) || !same_run(&self.duplicate_of) {
+            return Err("a related url belongs to another site".into());
         }
         Ok(())
     }

@@ -56,6 +56,13 @@ export type EntityType =
  */
 export type JsonValue = unknown;
 /**
+ * When a page may be rendered in Chromium: never, on a verifiable criterion, or always.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BrowserMode".
+ */
+export type BrowserMode = "never" | "auto" | "always";
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "BusinessStatus".
  */
@@ -98,7 +105,8 @@ export type SourceKind =
   | "platform_api"
   | "file_import"
   | "manual_seed"
-  | "synthetic";
+  | "synthetic"
+  | "business_website";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ContactType".
@@ -240,6 +248,28 @@ export type ConversionElementKind =
   | "other";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EventLevel".
+ */
+export type EventLevel = "debug" | "info" | "warning" | "error";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlTarget".
+ */
+export type CrawlTarget = "page" | "robots" | "sitemap";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "PageKind".
+ */
+export type PageKind = "home" | "about" | "contact" | "services" | "other";
+/**
+ * Where one URL of a site crawl stands. Everything but `queued` is final.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlUrlStatus".
+ */
+export type CrawlUrlStatus = "queued" | "fetched" | "skipped" | "failed";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "WorkerState".
  */
 export type WorkerState = "stopped" | "starting" | "running" | "stopping" | "restarting" | "failed";
@@ -248,11 +278,6 @@ export type WorkerState = "stopped" | "starting" | "running" | "stopping" | "res
  * via the `definition` "RunControlAction".
  */
 export type RunControlAction = "pause" | "resume" | "cancel";
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "EventLevel".
- */
-export type EventLevel = "debug" | "info" | "warning" | "error";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ErrorCode".
@@ -315,11 +340,6 @@ export type LatinoStatus =
   | "probable_latino_owned"
   | "spanish_market_affinity"
   | "unknown";
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "PageKind".
- */
-export type PageKind = "home" | "about" | "contact" | "services" | "other";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ServiceAreaKind".
@@ -1161,6 +1181,285 @@ export interface CoreStatus {
   uptime_s: number;
 }
 /**
+ * Pages that failed for the same reason. robots.txt and sitemaps report through their site.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlErrorGroup".
+ */
+export interface CrawlErrorGroup {
+  reason: string;
+  count: number;
+  example_url: string;
+}
+/**
+ * Measured from the fetch log, never estimated. Latencies cover fetches a server answered.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlMetrics".
+ */
+export interface CrawlMetrics {
+  requests: number;
+  pages_fetched: number;
+  pages_failed: number;
+  urls_skipped: number;
+  queued: number;
+  bytes: number;
+  cache_hits: number;
+  retries: number;
+  blocked: number;
+  http_pages: number;
+  browser_pages: number;
+  browser_fallbacks: number;
+  duplicates: number;
+  pages_per_minute: number | null;
+  latency_p50_ms: number | null;
+  latency_p95_ms: number | null;
+  latency_max_ms: number | null;
+}
+/**
+ * One crawl job. `in_flight`: URLs being fetched right now, when this worker runs the job.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlRun".
+ */
+export interface CrawlRun {
+  job_id: string;
+  project_id: string;
+  campaign_id: string | null;
+  campaign_name: string | null;
+  status: JobStatus;
+  settings: CrawlSettings;
+  site_count: number;
+  sites_done: number;
+  metrics: CrawlMetrics;
+  errors: CrawlErrorGroup[];
+  in_flight: string[];
+  sites: CrawlSite[];
+  events: RunEvent[];
+  requested_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+}
+/**
+ * Budget and policy of one crawl. The bounds are the safe limits in docs/crawling.md.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlSettings".
+ */
+export interface CrawlSettings {
+  max_sites: number;
+  max_pages_per_site: number;
+  max_depth: number;
+  max_bytes_per_site: number;
+  max_seconds_per_site: number;
+  max_requests: number;
+  requests_per_minute_per_host: number;
+  per_host_concurrency: number;
+  include_subdomains: boolean;
+  /**
+   * @maxItems 25
+   */
+  include_paths: string[];
+  /**
+   * @maxItems 25
+   */
+  exclude_paths: string[];
+  browser: BrowserMode;
+  screenshots: boolean;
+}
+/**
+ * One site of a crawl: its own source run, budget spent and outcome.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlSite".
+ */
+export interface CrawlSite {
+  source_run_id: string;
+  site: string;
+  root_url: string;
+  candidate_id: string | null;
+  status: SourceRunStatus;
+  pages_fetched: number;
+  pages_failed: number;
+  urls_skipped: number;
+  queued: number;
+  bytes: number;
+  requests: number;
+  browser_pages: number;
+  error_code: string | null;
+  error_message: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+}
+/**
+ * One line of a run's log: progress, a limit reached, or a structured error.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "RunEvent".
+ */
+export interface RunEvent {
+  level: EventLevel;
+  event: string;
+  error_code: string | null;
+  retryable: boolean | null;
+  detail_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlRunListQuery".
+ */
+export interface CrawlRunListQuery {
+  project_id: string | null;
+  campaign_id: string | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlRunPage".
+ */
+export interface CrawlRunPage {
+  items: CrawlRun[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * Crawls the websites of a campaign's candidates, the URLs given, or both.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlStartRequest".
+ */
+export interface CrawlStartRequest {
+  project_id: string | null;
+  campaign_id: string | null;
+  /**
+   * @maxItems 200
+   */
+  urls: string[];
+  settings: CrawlSettings;
+}
+/**
+ * One URL of a site crawl: frontier entry while queued, fetch log once final (phase 05).
+ *
+ * The body is an `acquired_page` artifact and the parsed page a `raw_record`; this row says how
+ * they were obtained (method, timings, redirects, allowed headers) or why the URL was not fetched
+ * (`reason`). `content_sha256` hashes the normalised visible text, so identical pages under
+ * different URLs point at the first one through `duplicate_of_id`.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlUrl".
+ */
+export interface CrawlUrl {
+  id: string;
+  source_run_id: string;
+  candidate_id: string | null;
+  discovered_from_id: string | null;
+  url: string;
+  target: CrawlTarget;
+  page_kind: PageKind;
+  depth: number;
+  priority: number;
+  status: CrawlUrlStatus;
+  reason: string | null;
+  method: AcquisitionMethod | null;
+  final_url: string | null;
+  http_status: number | null;
+  content_type: string | null;
+  byte_size: number | null;
+  body_sha256: string | null;
+  content_sha256: string | null;
+  duplicate_of_id: string | null;
+  acquired_page_id: string | null;
+  raw_record_id: string | null;
+  request_count: number;
+  retry_count: number;
+  fetch_ms: number | null;
+  browser_ms: number | null;
+  fallback_reason: string | null;
+  redirects_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  headers_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  screenshot_path: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+/**
+ * A URL with how it was obtained, the stored bytes and the parsed page, down to the hashes.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlUrlDetail".
+ */
+export interface CrawlUrlDetail {
+  crawl_url: CrawlUrl;
+  job_id: string;
+  site: string;
+  source_run: SourceRun;
+  acquired_page: AcquiredPage | null;
+  raw_record: RawRecord | null;
+  discovered_from: CrawlUrl | null;
+  duplicate_of: CrawlUrl | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlUrlDetailQuery".
+ */
+export interface CrawlUrlDetailQuery {
+  crawl_url_id: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlUrlItem".
+ */
+export interface CrawlUrlItem {
+  id: string;
+  source_run_id: string;
+  site: string;
+  url: string;
+  target: CrawlTarget;
+  page_kind: PageKind;
+  depth: number;
+  status: CrawlUrlStatus;
+  reason: string | null;
+  method: AcquisitionMethod | null;
+  http_status: number | null;
+  byte_size: number | null;
+  fetch_ms: number | null;
+  browser_ms: number | null;
+  fallback_reason: string | null;
+  duplicate_of_id: string | null;
+  title: string | null;
+  updated_at: string;
+}
+/**
+ * URLs of one crawl, in the order they were discovered.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlUrlListQuery".
+ */
+export interface CrawlUrlListQuery {
+  job_id: string;
+  source_run_id: string | null;
+  status: CrawlUrlStatus | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CrawlUrlPage".
+ */
+export interface CrawlUrlPage {
+  items: CrawlUrlItem[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
  * Validation of one criteria document. `estimates` are marked estimates, never counts.
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -1463,22 +1762,6 @@ export interface DiscoverySourceRun {
   error_message: string | null;
   started_at: string | null;
   finished_at: string | null;
-}
-/**
- * One line of a run's log: progress, a limit reached, or a structured error.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "RunEvent".
- */
-export interface RunEvent {
-  level: EventLevel;
-  event: string;
-  error_code: string | null;
-  retryable: boolean | null;
-  detail_json: {
-    [k: string]: JsonValue | undefined;
-  } | null;
-  created_at: string;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema

@@ -21,6 +21,7 @@ from research_engine.contracts import (
     MessageType,
     ShutdownResult,
 )
+from research_engine.crawl.engine import CrawlService
 from research_engine.discovery import registry
 from research_engine.discovery.engine import DiscoveryService
 from research_engine.discovery.sources import file_import
@@ -37,6 +38,14 @@ from research_engine.domain import (
     CandidateDetailQuery,
     CandidateListQuery,
     CandidatePage,
+    CrawlRun,
+    CrawlRunListQuery,
+    CrawlRunPage,
+    CrawlStartRequest,
+    CrawlUrlDetail,
+    CrawlUrlDetailQuery,
+    CrawlUrlListQuery,
+    CrawlUrlPage,
     CriteriaCheck,
     CriteriaCheckQuery,
     DatasetListQuery,
@@ -75,6 +84,8 @@ class Context:
     request_shutdown: Callable[[], None]
     #: Owns the running discovery jobs; see discovery/engine.py.
     discovery: DiscoveryService
+    #: Owns the running crawls; see crawl/engine.py.
+    crawl: CrawlService
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,6 +227,31 @@ async def _discovery_candidate(ctx: Context, query: CandidateDetailQuery) -> Can
     )
 
 
+# ---- web acquisition (phase 05) -----------------------------------------------------------------
+
+
+async def _crawl_start(ctx: Context, request: CrawlStartRequest) -> CrawlRun:
+    return await ctx.crawl.start(request)
+
+
+async def _crawl_control(ctx: Context, request: DiscoveryControlRequest) -> CrawlRun:
+    return await ctx.crawl.control(request)
+
+
+async def _crawl_runs(ctx: Context, query: CrawlRunListQuery) -> CrawlRunPage:
+    return await ctx.crawl.runs(query)
+
+
+async def _crawl_urls(ctx: Context, query: CrawlUrlListQuery) -> CrawlUrlPage:
+    return await _with_store(ctx, lambda conn: repository.list_crawl_urls(conn, query))
+
+
+async def _crawl_url(ctx: Context, query: CrawlUrlDetailQuery) -> CrawlUrlDetail:
+    return await _with_store(
+        ctx, lambda conn: repository.get_crawl_url_detail(conn, query.crawl_url_id)
+    )
+
+
 ROUTES: dict[str, Route] = {
     MessageType.HEALTH: Route(EmptyPayload, _health, timeout_s=2.0),
     MessageType.DIAGNOSTICS: Route(EmptyPayload, _diagnostics, timeout_s=20.0),
@@ -241,5 +277,10 @@ ROUTES: dict[str, Route] = {
     MessageType.DISCOVERY_CANDIDATE: Route(
         CandidateDetailQuery, _discovery_candidate, timeout_s=10.0
     ),
+    MessageType.CRAWL_START: Route(CrawlStartRequest, _crawl_start, timeout_s=60.0),
+    MessageType.CRAWL_CONTROL: Route(DiscoveryControlRequest, _crawl_control, timeout_s=15.0),
+    MessageType.CRAWL_RUNS: Route(CrawlRunListQuery, _crawl_runs, timeout_s=15.0),
+    MessageType.CRAWL_URLS: Route(CrawlUrlListQuery, _crawl_urls, timeout_s=15.0),
+    MessageType.CRAWL_URL: Route(CrawlUrlDetailQuery, _crawl_url, timeout_s=10.0),
     MessageType.DEV_SEED_SYNTHETIC: Route(EmptyPayload, _dev_seed_synthetic, timeout_s=60.0),
 }

@@ -213,6 +213,16 @@
       "title": "AuditEntry",
       "type": "object"
     },
+    "BrowserMode": {
+      "description": "When a page may be rendered in Chromium: never, on a verifiable criterion, or always.",
+      "enum": [
+        "never",
+        "auto",
+        "always"
+      ],
+      "title": "BrowserMode",
+      "type": "string"
+    },
     "Business": {
       "additionalProperties": false,
       "description": "Canonical business. Display values are chosen from observations, which keep raw values.",
@@ -2391,6 +2401,1300 @@
       ],
       "title": "CoreStatus",
       "type": "object"
+    },
+    "CrawlErrorGroup": {
+      "additionalProperties": false,
+      "description": "Pages that failed for the same reason. robots.txt and sitemaps report through their site.",
+      "properties": {
+        "reason": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "count": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "example_url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason",
+        "count",
+        "example_url"
+      ],
+      "title": "CrawlErrorGroup",
+      "type": "object"
+    },
+    "CrawlMetrics": {
+      "additionalProperties": false,
+      "description": "Measured from the fetch log, never estimated. Latencies cover fetches a server answered.",
+      "properties": {
+        "requests": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pages_fetched": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pages_failed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "urls_skipped": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "queued": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "bytes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cache_hits": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "retries": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "blocked": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "http_pages": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "browser_pages": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "browser_fallbacks": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "duplicates": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pages_per_minute": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latency_p50_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latency_p95_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latency_max_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "requests",
+        "pages_fetched",
+        "pages_failed",
+        "urls_skipped",
+        "queued",
+        "bytes",
+        "cache_hits",
+        "retries",
+        "blocked",
+        "http_pages",
+        "browser_pages",
+        "browser_fallbacks",
+        "duplicates",
+        "pages_per_minute",
+        "latency_p50_ms",
+        "latency_p95_ms",
+        "latency_max_ms"
+      ],
+      "title": "CrawlMetrics",
+      "type": "object"
+    },
+    "CrawlRun": {
+      "additionalProperties": false,
+      "description": "One crawl job. `in_flight`: URLs being fetched right now, when this worker runs the job.",
+      "properties": {
+        "job_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "campaign_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "campaign_name": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "settings": {
+          "$ref": "#/$defs/CrawlSettings"
+        },
+        "site_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sites_done": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "metrics": {
+          "$ref": "#/$defs/CrawlMetrics"
+        },
+        "errors": {
+          "items": {
+            "$ref": "#/$defs/CrawlErrorGroup"
+          },
+          "type": "array"
+        },
+        "in_flight": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sites": {
+          "items": {
+            "$ref": "#/$defs/CrawlSite"
+          },
+          "type": "array"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/RunEvent"
+          },
+          "type": "array"
+        },
+        "requested_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "job_id",
+        "project_id",
+        "campaign_id",
+        "campaign_name",
+        "status",
+        "settings",
+        "site_count",
+        "sites_done",
+        "metrics",
+        "errors",
+        "in_flight",
+        "sites",
+        "events",
+        "requested_at",
+        "started_at",
+        "finished_at"
+      ],
+      "title": "CrawlRun",
+      "type": "object"
+    },
+    "CrawlRunListQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "campaign_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "campaign_id",
+        "limit",
+        "cursor"
+      ],
+      "title": "CrawlRunListQuery",
+      "type": "object"
+    },
+    "CrawlRunPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CrawlRun"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "CrawlRunPage",
+      "type": "object"
+    },
+    "CrawlSettings": {
+      "additionalProperties": false,
+      "description": "Budget and policy of one crawl. The bounds are the safe limits in docs/crawling.md.",
+      "properties": {
+        "max_sites": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "max_pages_per_site": {
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "max_depth": {
+          "maximum": 4,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_bytes_per_site": {
+          "maximum": 100000000,
+          "minimum": 65536,
+          "type": "integer"
+        },
+        "max_seconds_per_site": {
+          "maximum": 1800,
+          "minimum": 10,
+          "type": "integer"
+        },
+        "max_requests": {
+          "maximum": 20000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "requests_per_minute_per_host": {
+          "maximum": 120,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "per_host_concurrency": {
+          "maximum": 4,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "include_subdomains": {
+          "type": "boolean"
+        },
+        "include_paths": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^/",
+            "type": "string"
+          },
+          "maxItems": 25,
+          "type": "array"
+        },
+        "exclude_paths": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^/",
+            "type": "string"
+          },
+          "maxItems": 25,
+          "type": "array"
+        },
+        "browser": {
+          "$ref": "#/$defs/BrowserMode"
+        },
+        "screenshots": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "max_sites",
+        "max_pages_per_site",
+        "max_depth",
+        "max_bytes_per_site",
+        "max_seconds_per_site",
+        "max_requests",
+        "requests_per_minute_per_host",
+        "per_host_concurrency",
+        "include_subdomains",
+        "include_paths",
+        "exclude_paths",
+        "browser",
+        "screenshots"
+      ],
+      "title": "CrawlSettings",
+      "type": "object"
+    },
+    "CrawlSite": {
+      "additionalProperties": false,
+      "description": "One site of a crawl: its own source run, budget spent and outcome.",
+      "properties": {
+        "source_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "site": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "root_url": {
+          "type": "string"
+        },
+        "candidate_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/SourceRunStatus"
+        },
+        "pages_fetched": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pages_failed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "urls_skipped": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "queued": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "bytes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "requests": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "browser_pages": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error_message": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "source_run_id",
+        "site",
+        "root_url",
+        "candidate_id",
+        "status",
+        "pages_fetched",
+        "pages_failed",
+        "urls_skipped",
+        "queued",
+        "bytes",
+        "requests",
+        "browser_pages",
+        "error_code",
+        "error_message",
+        "started_at",
+        "finished_at"
+      ],
+      "title": "CrawlSite",
+      "type": "object"
+    },
+    "CrawlStartRequest": {
+      "additionalProperties": false,
+      "description": "Crawls the websites of a campaign's candidates, the URLs given, or both.",
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "campaign_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "urls": {
+          "items": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 200,
+          "type": "array"
+        },
+        "settings": {
+          "$ref": "#/$defs/CrawlSettings"
+        }
+      },
+      "required": [
+        "project_id",
+        "campaign_id",
+        "urls",
+        "settings"
+      ],
+      "title": "CrawlStartRequest",
+      "type": "object"
+    },
+    "CrawlTarget": {
+      "enum": [
+        "page",
+        "robots",
+        "sitemap"
+      ],
+      "title": "CrawlTarget",
+      "type": "string"
+    },
+    "CrawlUrl": {
+      "additionalProperties": false,
+      "description": "One URL of a site crawl: frontier entry while queued, fetch log once final (phase 05).\n\nThe body is an `acquired_page` artifact and the parsed page a `raw_record`; this row says how\nthey were obtained (method, timings, redirects, allowed headers) or why the URL was not fetched\n(`reason`). `content_sha256` hashes the normalised visible text, so identical pages under\ndifferent URLs point at the first one through `duplicate_of_id`.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "source_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "candidate_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "discovered_from_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "url": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/CrawlTarget"
+        },
+        "page_kind": {
+          "$ref": "#/$defs/PageKind"
+        },
+        "depth": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "priority": {
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/CrawlUrlStatus"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "method": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AcquisitionMethod"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "final_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "http_status": {
+          "anyOf": [
+            {
+              "maximum": 599,
+              "minimum": 100,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "content_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "byte_size": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "body_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "content_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "duplicate_of_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acquired_page_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "raw_record_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "request_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "retry_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "fetch_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "browser_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fallback_reason": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "redirects_json": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "headers_json": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "screenshot_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error_message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source_run_id",
+        "candidate_id",
+        "discovered_from_id",
+        "url",
+        "target",
+        "page_kind",
+        "depth",
+        "priority",
+        "status",
+        "reason",
+        "method",
+        "final_url",
+        "http_status",
+        "content_type",
+        "byte_size",
+        "body_sha256",
+        "content_sha256",
+        "duplicate_of_id",
+        "acquired_page_id",
+        "raw_record_id",
+        "request_count",
+        "retry_count",
+        "fetch_ms",
+        "browser_ms",
+        "fallback_reason",
+        "redirects_json",
+        "headers_json",
+        "screenshot_path",
+        "error_message",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "CrawlUrl",
+      "type": "object"
+    },
+    "CrawlUrlDetail": {
+      "additionalProperties": false,
+      "description": "A URL with how it was obtained, the stored bytes and the parsed page, down to the hashes.",
+      "properties": {
+        "crawl_url": {
+          "$ref": "#/$defs/CrawlUrl"
+        },
+        "job_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "site": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_run": {
+          "$ref": "#/$defs/SourceRun"
+        },
+        "acquired_page": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AcquiredPage"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "raw_record": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RawRecord"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "discovered_from": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CrawlUrl"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "duplicate_of": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CrawlUrl"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "crawl_url",
+        "job_id",
+        "site",
+        "source_run",
+        "acquired_page",
+        "raw_record",
+        "discovered_from",
+        "duplicate_of"
+      ],
+      "title": "CrawlUrlDetail",
+      "type": "object"
+    },
+    "CrawlUrlDetailQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "crawl_url_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "crawl_url_id"
+      ],
+      "title": "CrawlUrlDetailQuery",
+      "type": "object"
+    },
+    "CrawlUrlItem": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "source_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "site": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/CrawlTarget"
+        },
+        "page_kind": {
+          "$ref": "#/$defs/PageKind"
+        },
+        "depth": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/CrawlUrlStatus"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "method": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AcquisitionMethod"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "http_status": {
+          "anyOf": [
+            {
+              "maximum": 599,
+              "minimum": 100,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "byte_size": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fetch_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "browser_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fallback_reason": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "duplicate_of_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source_run_id",
+        "site",
+        "url",
+        "target",
+        "page_kind",
+        "depth",
+        "status",
+        "reason",
+        "method",
+        "http_status",
+        "byte_size",
+        "fetch_ms",
+        "browser_ms",
+        "fallback_reason",
+        "duplicate_of_id",
+        "title",
+        "updated_at"
+      ],
+      "title": "CrawlUrlItem",
+      "type": "object"
+    },
+    "CrawlUrlListQuery": {
+      "additionalProperties": false,
+      "description": "URLs of one crawl, in the order they were discovered.",
+      "properties": {
+        "job_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "source_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CrawlUrlStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "job_id",
+        "source_run_id",
+        "status",
+        "limit",
+        "cursor"
+      ],
+      "title": "CrawlUrlListQuery",
+      "type": "object"
+    },
+    "CrawlUrlPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CrawlUrlItem"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "CrawlUrlPage",
+      "type": "object"
+    },
+    "CrawlUrlStatus": {
+      "description": "Where one URL of a site crawl stands. Everything but `queued` is final.",
+      "enum": [
+        "queued",
+        "fetched",
+        "skipped",
+        "failed"
+      ],
+      "title": "CrawlUrlStatus",
+      "type": "string"
     },
     "CriteriaCheck": {
       "additionalProperties": false,
@@ -7068,7 +8372,8 @@
         "platform_api",
         "file_import",
         "manual_seed",
-        "synthetic"
+        "synthetic",
+        "business_website"
       ],
       "title": "SourceKind",
       "type": "string"

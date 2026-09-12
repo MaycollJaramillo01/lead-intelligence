@@ -13,10 +13,11 @@ use crate::config::Environment;
 use crate::data::{
     BusinessDetail, BusinessDetailQuery, BusinessListQuery, BusinessPage, CampaignListQuery,
     CampaignPage, CampaignSaveRequest, CampaignSaved, CandidateDetail, CandidateDetailQuery,
-    CandidateListQuery, CandidatePage, CriteriaCheck, CriteriaCheckQuery, DatasetListQuery,
-    DatasetPage, DiscoveryControlRequest, DiscoveryRun, DiscoveryRunListQuery, DiscoveryRunPage,
-    DiscoveryStartRequest, ImportPreview, ImportPreviewRequest, SourceCatalog, SourceCatalogQuery,
-    SyntheticSeedResult,
+    CandidateListQuery, CandidatePage, CrawlRun, CrawlRunListQuery, CrawlRunPage,
+    CrawlStartRequest, CrawlUrlDetail, CrawlUrlDetailQuery, CrawlUrlListQuery, CrawlUrlPage,
+    CriteriaCheck, CriteriaCheckQuery, DatasetListQuery, DatasetPage, DiscoveryControlRequest,
+    DiscoveryRun, DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest, ImportPreview,
+    ImportPreviewRequest, SourceCatalog, SourceCatalogQuery, SyntheticSeedResult,
 };
 use crate::error::AppError;
 use crate::protocol::{
@@ -24,10 +25,10 @@ use crate::protocol::{
 };
 use crate::worker::{
     BUSINESSES_GET, BUSINESSES_LIST, CAMPAIGNS_LIST, CAMPAIGNS_SAVE, CAMPAIGNS_VALIDATE,
-    DATA_TIMEOUT, DATASETS_LIST, DEV_SEED_SYNTHETIC, DIAGNOSTICS, DIAGNOSTICS_TIMEOUT,
-    DISCOVERY_CANDIDATE, DISCOVERY_CANDIDATES, DISCOVERY_CONTROL, DISCOVERY_RUNS, DISCOVERY_START,
-    DISCOVERY_TIMEOUT, IMPORT_TIMEOUT, SEED_TIMEOUT, SOURCES_LIST, SOURCES_PREVIEW_IMPORT,
-    WorkerSupervisor,
+    CRAWL_CONTROL, CRAWL_RUNS, CRAWL_START, CRAWL_URL, CRAWL_URLS, DATA_TIMEOUT, DATASETS_LIST,
+    DEV_SEED_SYNTHETIC, DIAGNOSTICS, DIAGNOSTICS_TIMEOUT, DISCOVERY_CANDIDATE,
+    DISCOVERY_CANDIDATES, DISCOVERY_CONTROL, DISCOVERY_RUNS, DISCOVERY_START, DISCOVERY_TIMEOUT,
+    IMPORT_TIMEOUT, SEED_TIMEOUT, SOURCES_LIST, SOURCES_PREVIEW_IMPORT, WorkerSupervisor,
 };
 
 pub struct AppState {
@@ -394,6 +395,102 @@ pub async fn get_candidate(
         Ok(detail)
     }
     .instrument(ipc_span("get_candidate"))
+    .await
+}
+
+// ---- web acquisition (phase 05) -----------------------------------------------------------------
+
+/// Starts a crawl of a campaign's candidate websites and/or the addresses given, within its limits.
+#[tauri::command]
+pub async fn start_crawl(
+    state: State<'_, AppState>,
+    request: CrawlStartRequest,
+) -> Result<CrawlRun, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let run: CrawlRun = state
+            .supervisor
+            .request_with(CRAWL_START, &request, DISCOVERY_TIMEOUT)
+            .await?;
+        run.validate().map_err(AppError::Protocol)?;
+        Ok(run)
+    }
+    .instrument(ipc_span("start_crawl"))
+    .await
+}
+
+/// Pauses, resumes or cancels a crawl. Pause and cancel stop at once and close the browser.
+#[tauri::command]
+pub async fn control_crawl(
+    state: State<'_, AppState>,
+    request: DiscoveryControlRequest,
+) -> Result<CrawlRun, AppError> {
+    async {
+        let run: CrawlRun = state
+            .supervisor
+            .request_with(CRAWL_CONTROL, &request, DATA_TIMEOUT)
+            .await?;
+        run.validate().map_err(AppError::Protocol)?;
+        Ok(run)
+    }
+    .instrument(ipc_span("control_crawl"))
+    .await
+}
+
+#[tauri::command]
+pub async fn list_crawl_runs(
+    state: State<'_, AppState>,
+    query: CrawlRunListQuery,
+) -> Result<CrawlRunPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: CrawlRunPage = state
+            .supervisor
+            .request_with(CRAWL_RUNS, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_crawl_runs"))
+    .await
+}
+
+/// The URLs of one crawl: fetched, skipped with the policy that stopped them, or failed.
+#[tauri::command]
+pub async fn list_crawl_urls(
+    state: State<'_, AppState>,
+    query: CrawlUrlListQuery,
+) -> Result<CrawlUrlPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: CrawlUrlPage = state
+            .supervisor
+            .request_with(CRAWL_URLS, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_crawl_urls"))
+    .await
+}
+
+/// One URL with how it was obtained, the stored page and the parsed record.
+#[tauri::command]
+pub async fn get_crawl_url(
+    state: State<'_, AppState>,
+    query: CrawlUrlDetailQuery,
+) -> Result<CrawlUrlDetail, AppError> {
+    async {
+        let detail: CrawlUrlDetail = state
+            .supervisor
+            .request_with(CRAWL_URL, &query, DATA_TIMEOUT)
+            .await?;
+        detail
+            .validate(&query.crawl_url_id)
+            .map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("get_crawl_url"))
     .await
 }
 

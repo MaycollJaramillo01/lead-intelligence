@@ -43,6 +43,11 @@ pub fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Build
         commands::list_discovery_runs,
         commands::list_candidates,
         commands::get_candidate,
+        commands::start_crawl,
+        commands::control_crawl,
+        commands::list_crawl_runs,
+        commands::list_crawl_urls,
+        commands::get_crawl_url,
         commands::seed_synthetic_data
     ])
 }

@@ -59,6 +59,9 @@ from research_engine.domain import (
     CampaignListQuery,
     CampaignSaved,
     CandidateListQuery,
+    CrawlRunListQuery,
+    CrawlStartRequest,
+    CrawlUrlListQuery,
     CriteriaCheck,
     CriteriaProblem,
     Dataset,
@@ -73,15 +76,18 @@ from research_engine.domain import (
     SourceHealth,
     SourceInfo,
     SyntheticSeedResult,
+    default_crawl_settings,
 )
 from research_engine.storage import check_sqlite
 from research_engine.testdata import (
     SYNTHETIC_DATASET_NAME,
     SYNTHETIC_IMPORT_CSV,
     SYNTHETIC_IMPORT_FILE,
+    SYNTHETIC_SITE,
     DiscoveryFixture,
     SyntheticContext,
     seed_businesses,
+    seed_crawl,
     seed_discovery,
     synthetic_connector,
     synthetic_project,
@@ -451,7 +457,31 @@ def build_discovery_fixtures(
             mapping=None,
         )
     )
+    # the crawl registers its own connector and run; only the project, clock and ids are shared
+    context = SyntheticContext(project_id, "", seeded.source_run_id, _T0, ids)
+    crawl = seed_crawl(conn, context, seeded.campaign_id, seeded.candidate_ids[0])
+    crawl_run_query = CrawlRunListQuery(
+        project_id=project_id, campaign_id=seeded.campaign_id, limit=25, cursor=None
+    )
+    crawl_url_query = CrawlUrlListQuery(
+        job_id=crawl.job_id, source_run_id=None, status=None, limit=50, cursor=None
+    )
     return {
+        "crawl_start_request.json": _dump(
+            CrawlStartRequest(
+                project_id=None,
+                campaign_id=seeded.campaign_id,
+                urls=[f"https://{SYNTHETIC_SITE}/"],
+                settings=default_crawl_settings(),
+            )
+        ),
+        "crawl_run_list_query.json": _dump(crawl_run_query),
+        "crawl_run_page.json": _dump(repository.list_crawl_runs(conn, crawl_run_query)),
+        "crawl_url_list_query.json": _dump(crawl_url_query),
+        "crawl_url_page.json": _dump(repository.list_crawl_urls(conn, crawl_url_query)),
+        "crawl_url_detail.json": _dump(
+            repository.get_crawl_url_detail(conn, crawl.rendered_url_id)
+        ),
         "source_catalog.json": _dump(catalog),
         "campaign_list_query.json": _dump(campaign_query),
         "campaign_page.json": _dump(campaign_page),

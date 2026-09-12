@@ -53,6 +53,18 @@ from research_engine.domain import (
     CandidateListQuery,
     CandidatePage,
     ContactPoint,
+    CrawlErrorGroup,
+    CrawlMetrics,
+    CrawlRun,
+    CrawlRunListQuery,
+    CrawlRunPage,
+    CrawlSettings,
+    CrawlSite,
+    CrawlUrl,
+    CrawlUrlDetail,
+    CrawlUrlItem,
+    CrawlUrlListQuery,
+    CrawlUrlPage,
     Dataset,
     DatasetListItem,
     DatasetListQuery,
@@ -85,6 +97,7 @@ from research_engine.domain import (
     SourceConnector,
     SourceQuery,
     SourceRun,
+    SourceRunStatus,
     Website,
     can_transition,
     format_ts,
@@ -210,6 +223,16 @@ def insert(conn: sqlite3.Connection, *records: Record) -> None:
             f"VALUES ({', '.join('?' * len(names))})"
         )
         conn.execute(sql, [_db_value(name, getattr(record, name)) for name in names])
+
+
+def update(conn: sqlite3.Connection, record: Record, *fields: str) -> int:
+    """Writes `fields` of `record` back to its row. Returns how many rows changed (0 or 1)."""
+    assignments = ", ".join(f"{name} = ?" for name in fields)
+    cursor = conn.execute(
+        f"UPDATE {record.TABLE} SET {assignments} WHERE id = ?",  # noqa: S608 - names from models
+        [*(_db_value(name, getattr(record, name)) for name in fields), getattr(record, "id")],  # noqa: B009
+    )
+    return cursor.rowcount
 
 
 def get[RecordT: Record](conn: sqlite3.Connection, model: type[RecordT], record_id: str) -> RecordT:
@@ -1034,4 +1057,237 @@ def get_candidate_detail(conn: sqlite3.Connection, candidate_id: str) -> Candida
             if candidate.duplicate_of_id is not None
             else None
         ),
+    )
+
+
+# ---- web acquisition (phase 05) -----------------------------------------------------------------
+# Every number below is read from `crawl_urls`, the fetch log itself: nothing is kept on the side,
+# so a crawl reads the same after a restart as while it runs.
+
+#: `jobs.kind` of a crawl; the engine and the repository must agree on it.
+CRAWL_JOB_KIND = "crawl"
+CRAWL_ERROR_GROUPS = 20
+
+_CRAWL_COUNTS = """
+    coalesce(sum(c.request_count), 0) AS requests,
+    coalesce(sum(c.target = 'page' AND c.status = 'fetched'), 0) AS pages_fetched,
+    coalesce(sum(c.target = 'page' AND c.status = 'failed'), 0) AS pages_failed,
+    coalesce(sum(c.status = 'skipped'), 0) AS urls_skipped,
+    coalesce(sum(c.status = 'queued'), 0) AS queued,
+    coalesce(sum(CASE WHEN c.status = 'fetched' AND c.reason IS NOT 'not_modified'
+        THEN c.byte_size END), 0) AS bytes,
+    coalesce(sum(c.target = 'page' AND c.status = 'fetched' AND c.method = 'browser_render'), 0)
+        AS browser_pages
+"""
+
+
+def _percentile(values: list[int], share: float) -> int | None:
+    """Nearest-rank percentile of sorted values."""
+    return values[min(len(values) - 1, int(share * len(values)))] if values else None
+
+
+def _crawl_metrics(conn: sqlite3.Connection, job: Job) -> CrawlMetrics:
+    row = conn.execute(
+        f"SELECT {_CRAWL_COUNTS}, "  # noqa: S608 - fixed SQL
+        "coalesce(sum(c.http_status = 304), 0) AS cache_hits, "
+        "coalesce(sum(c.retry_count), 0) AS retries, "
+        "coalesce(sum(c.reason = 'blocked'), 0) AS blocked, "
+        "coalesce(sum(c.target = 'page' AND c.status = 'fetched' AND c.method = 'http_fetch'), 0) "
+        "AS http_pages, "
+        "coalesce(sum(c.fallback_reason IS NOT NULL), 0) AS browser_fallbacks, "
+        "coalesce(sum(c.duplicate_of_id IS NOT NULL), 0) AS duplicates "
+        "FROM crawl_urls c JOIN source_runs r ON r.id = c.source_run_id WHERE r.job_id = ?",
+        (job.id,),
+    ).fetchone()
+    # ponytail: percentiles over every timing of the job in Python; sample them if crawls reach
+    # hundreds of thousands of URLs
+    latencies = [
+        value
+        for (value,) in conn.execute(
+            "SELECT c.fetch_ms FROM crawl_urls c JOIN source_runs r ON r.id = c.source_run_id "
+            "WHERE r.job_id = ? AND c.http_status IS NOT NULL AND c.fetch_ms IS NOT NULL "
+            "ORDER BY c.fetch_ms",
+            (job.id,),
+        )
+    ]
+    rate = None
+    if job.started_at is not None:
+        minutes = ((job.finished_at or utc_now()) - job.started_at).total_seconds() / 60
+        rate = round(row["pages_fetched"] / minutes, 2) if minutes > 0 else None
+    return CrawlMetrics(
+        **{name: row[name] for name in CrawlMetrics.model_fields if name in row.keys()},  # noqa: SIM118
+        pages_per_minute=rate,
+        latency_p50_ms=_percentile(latencies, 0.5),
+        latency_p95_ms=_percentile(latencies, 0.95),
+        latency_max_ms=latencies[-1] if latencies else None,
+    )
+
+
+def _crawl_run(conn: sqlite3.Connection, job: Job) -> CrawlRun:
+    campaign_id = job.params_json.get("campaign_id")
+    campaign = get(conn, Campaign, campaign_id) if isinstance(campaign_id, str) else None
+    sites: list[CrawlSite] = []
+    for row in conn.execute(
+        f"SELECT r.id, r.status, r.effective_config_json, r.error_code, r.error_message, "  # noqa: S608
+        f"r.started_at, r.finished_at, {_CRAWL_COUNTS} FROM source_runs r "
+        "LEFT JOIN crawl_urls c ON c.source_run_id = r.id WHERE r.job_id = ? "
+        "GROUP BY r.id ORDER BY r.created_at, r.id",
+        (job.id,),
+    ):
+        config = orjson.loads(row["effective_config_json"])
+        sites.append(
+            CrawlSite(
+                source_run_id=row["id"],
+                site=config["site"],
+                root_url=config["root_url"],
+                candidate_id=config.get("candidate_id"),
+                status=row["status"],
+                pages_fetched=row["pages_fetched"],
+                pages_failed=row["pages_failed"],
+                urls_skipped=row["urls_skipped"],
+                queued=row["queued"],
+                bytes=row["bytes"],
+                requests=row["requests"],
+                browser_pages=row["browser_pages"],
+                error_code=row["error_code"],
+                error_message=row["error_message"],
+                started_at=row["started_at"],
+                finished_at=row["finished_at"],
+            )
+        )
+    errors = [
+        CrawlErrorGroup(reason=row[0], count=row[1], example_url=row[2])
+        for row in conn.execute(
+            "SELECT c.reason, count(*), min(c.url) FROM crawl_urls c "
+            "JOIN source_runs r ON r.id = c.source_run_id "
+            "WHERE r.job_id = ? AND c.status = 'failed' AND c.target = 'page' "
+            "GROUP BY c.reason ORDER BY count(*) DESC, c.reason LIMIT ?",
+            (job.id, CRAWL_ERROR_GROUPS),
+        )
+    ]
+    done = (SourceRunStatus.SUCCEEDED, SourceRunStatus.FAILED, SourceRunStatus.CANCELLED)
+    return CrawlRun(
+        job_id=job.id,
+        project_id=job.project_id,
+        campaign_id=campaign.id if campaign else None,
+        campaign_name=campaign.name if campaign else None,
+        status=job.status,
+        settings=CrawlSettings.model_validate(job.params_json["settings"]),
+        site_count=len(sites),
+        sites_done=sum(1 for site in sites if site.status in done),
+        metrics=_crawl_metrics(conn, job),
+        errors=errors,
+        in_flight=[],
+        sites=sites,
+        events=_run_events(conn, job.id),
+        requested_at=job.requested_at,
+        started_at=job.started_at,
+        finished_at=job.finished_at,
+    )
+
+
+def _crawl_job(conn: sqlite3.Connection, job_id: str) -> Job:
+    job = get(conn, Job, job_id)
+    if job.kind != CRAWL_JOB_KIND:
+        raise NotFoundError(f"job {job_id} is not a crawl")
+    return job
+
+
+def get_crawl_run(conn: sqlite3.Connection, job_id: str) -> CrawlRun:
+    return _crawl_run(conn, _crawl_job(conn, job_id))
+
+
+def list_crawl_runs(conn: sqlite3.Connection, query: CrawlRunListQuery) -> CrawlRunPage:
+    where, params = ["j.kind = ?"], [CRAWL_JOB_KIND]
+    if query.project_id is not None:
+        where.append("j.project_id = ?")
+        params.append(query.project_id)
+    if query.campaign_id is not None:
+        where.append("json_extract(j.params_json, '$.campaign_id') = ?")
+        params.append(query.campaign_id)
+    (total,) = conn.execute(
+        f"SELECT count(*) FROM jobs j WHERE {' AND '.join(where)}",  # noqa: S608
+        params,
+    ).fetchone()
+    if query.cursor is not None:
+        last_key, last_id = decode_cursor(query.cursor, "crawl")
+        where.append("(j.requested_at, j.id) < (?, ?)")
+        params += [last_key, last_id]
+    rows = conn.execute(
+        f"SELECT {_columns(Job, 'j')} FROM jobs j WHERE {' AND '.join(where)} "  # noqa: S608
+        "ORDER BY j.requested_at DESC, j.id DESC LIMIT ?",
+        [*params, query.limit + 1],
+    ).fetchall()
+    page = rows[: query.limit]
+    next_cursor = (
+        encode_cursor("crawl", page[-1]["requested_at"], page[-1]["id"])
+        if len(rows) > query.limit
+        else None
+    )
+    return CrawlRunPage(
+        items=[_crawl_run(conn, from_row(Job, row)) for row in page],
+        next_cursor=next_cursor,
+        total=total,
+    )
+
+
+def list_crawl_urls(conn: sqlite3.Connection, query: CrawlUrlListQuery) -> CrawlUrlPage:
+    """The URLs of one crawl in discovery order (ids are UUIDv7), optionally one site or status."""
+    _crawl_job(conn, query.job_id)
+    where, params = ["r.job_id = ?"], list[object]([query.job_id])
+    if query.source_run_id is not None:
+        where.append("c.source_run_id = ?")
+        params.append(query.source_run_id)
+    if query.status is not None:
+        where.append("c.status = ?")
+        params.append(query.status.value)
+    base = "FROM crawl_urls c JOIN source_runs r ON r.id = c.source_run_id"
+    (total,) = conn.execute(
+        f"SELECT count(*) {base} WHERE {' AND '.join(where)}",
+        params,
+    ).fetchone()
+    if query.cursor is not None:
+        _, last_id = decode_cursor(query.cursor, "crawl_url")
+        where.append("c.id > ?")
+        params.append(last_id)
+    rows = conn.execute(
+        "SELECT c.id, c.source_run_id, json_extract(r.effective_config_json, '$.site') AS site, "
+        "c.url, c.target, c.page_kind, c.depth, c.status, c.reason, c.method, c.http_status, "
+        "c.byte_size, c.fetch_ms, c.browser_ms, c.fallback_reason, c.duplicate_of_id, "
+        "json_extract(rr.payload_json, '$.title') AS title, c.updated_at "
+        f"{base} LEFT JOIN raw_records rr ON rr.id = c.raw_record_id "
+        f"WHERE {' AND '.join(where)} ORDER BY c.id LIMIT ?",
+        [*params, query.limit + 1],
+    ).fetchall()
+    page = rows[: query.limit]
+    next_cursor = (
+        encode_cursor("crawl_url", page[-1]["id"], page[-1]["id"])
+        if len(rows) > query.limit
+        else None
+    )
+    return CrawlUrlPage(
+        items=[CrawlUrlItem.model_validate(dict(row)) for row in page],
+        next_cursor=next_cursor,
+        total=total,
+    )
+
+
+def get_crawl_url_detail(conn: sqlite3.Connection, crawl_url_id: str) -> CrawlUrlDetail:
+    url = get(conn, CrawlUrl, crawl_url_id)
+    run = get(conn, SourceRun, url.source_run_id)
+    if run.job_id is None:
+        raise NotFoundError(f"crawl url {crawl_url_id} belongs to no crawl")
+    return CrawlUrlDetail(
+        crawl_url=url,
+        job_id=run.job_id,
+        site=str(run.effective_config_json.get("site")),
+        source_run=run,
+        acquired_page=get(conn, AcquiredPage, url.acquired_page_id)
+        if url.acquired_page_id
+        else None,
+        raw_record=get(conn, RawRecord, url.raw_record_id) if url.raw_record_id else None,
+        discovered_from=get(conn, CrawlUrl, url.discovered_from_id)
+        if url.discovered_from_id
+        else None,
+        duplicate_of=get(conn, CrawlUrl, url.duplicate_of_id) if url.duplicate_of_id else None,
     )

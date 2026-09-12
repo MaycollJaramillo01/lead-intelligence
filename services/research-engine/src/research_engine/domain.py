@@ -239,6 +239,7 @@ class SourceKind(StrEnum):
     FILE_IMPORT = "file_import"
     MANUAL_SEED = "manual_seed"
     SYNTHETIC = "synthetic"
+    BUSINESS_WEBSITE = "business_website"
 
 
 class AcquisitionMethod(StrEnum):
@@ -365,6 +366,21 @@ class ExportFormat(StrEnum):
     PARQUET = "parquet"
 
 
+class CrawlUrlStatus(StrEnum):
+    """Where one URL of a site crawl stands. Everything but `queued` is final."""
+
+    QUEUED = "queued"
+    FETCHED = "fetched"
+    SKIPPED = "skipped"
+    FAILED = "failed"
+
+
+class CrawlTarget(StrEnum):
+    PAGE = "page"
+    ROBOTS = "robots"
+    SITEMAP = "sitemap"
+
+
 def _table_name(enum: type[StrEnum]) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "_", enum.__name__).lower()
 
@@ -401,6 +417,8 @@ ENUMS: dict[str, type[StrEnum]] = {
         ExplanationKind,
         EventLevel,
         ExportFormat,
+        CrawlUrlStatus,
+        CrawlTarget,
     )
 }
 
@@ -476,6 +494,12 @@ TRANSITIONS: dict[type[StrEnum], dict[str, frozenset[str]]] = {
             "failed": ("pending",),
             "succeeded": (),
             "cancelled": (),
+        },
+        CrawlUrlStatus: {
+            "queued": ("fetched", "skipped", "failed"),
+            "fetched": (),
+            "skipped": (),
+            "failed": (),
         },
     }.items()
 }
@@ -693,6 +717,50 @@ class DiscoveryCandidate(Record):
     source_url: str | None
     discovered_at: UtcTimestamp
     created_at: UtcTimestamp
+
+
+class CrawlUrl(Record):
+    """One URL of a site crawl: frontier entry while queued, fetch log once final (phase 05).
+
+    The body is an `acquired_page` artifact and the parsed page a `raw_record`; this row says how
+    they were obtained (method, timings, redirects, allowed headers) or why the URL was not fetched
+    (`reason`). `content_sha256` hashes the normalised visible text, so identical pages under
+    different URLs point at the first one through `duplicate_of_id`.
+    """
+
+    TABLE = "crawl_urls"
+    id: Id
+    source_run_id: Id
+    candidate_id: Id | None
+    discovered_from_id: Id | None
+    url: Annotated[str, Field(min_length=1, max_length=2048)]
+    target: CrawlTarget
+    page_kind: PageKind
+    depth: Annotated[int, Field(ge=0)]
+    priority: int
+    status: CrawlUrlStatus
+    reason: Code | None
+    method: AcquisitionMethod | None
+    final_url: str | None
+    http_status: Annotated[int, Field(ge=100, le=599)] | None
+    content_type: str | None
+    byte_size: Annotated[int, Field(ge=0)] | None
+    body_sha256: Sha256 | None
+    content_sha256: Sha256 | None
+    duplicate_of_id: Id | None
+    acquired_page_id: Id | None
+    raw_record_id: Id | None
+    request_count: Annotated[int, Field(ge=0)]
+    retry_count: Annotated[int, Field(ge=0)]
+    fetch_ms: Annotated[int, Field(ge=0)] | None
+    browser_ms: Annotated[int, Field(ge=0)] | None
+    fallback_reason: Code | None
+    redirects_json: JsonObject | None
+    headers_json: JsonObject | None
+    screenshot_path: RelativePath | None
+    error_message: str | None
+    created_at: UtcTimestamp
+    updated_at: UtcTimestamp
 
 
 class Business(Record):
@@ -1301,6 +1369,7 @@ RECORDS: tuple[type[Record], ...] = (
     RawRecord,
     Extraction,
     DiscoveryCandidate,
+    CrawlUrl,
     Business,
     BusinessName,
     BusinessLocation,
@@ -1998,6 +2067,211 @@ class ImportPreview(Contract):
     problems: list[ImportProblem]
 
 
+# ---- web acquisition (phase 05) -----------------------------------------------------------------
+# A crawl turns candidates and URLs into acquired pages and parsed content. It never decides whether
+# a business is a good lead: that is for later phases, reading what this one stored.
+
+MAX_CRAWL_SEEDS = 200
+MAX_PATH_RULES = 25
+PathRule = Annotated[str, Field(min_length=1, max_length=200, pattern=r"^/")]
+SeedUrl = Annotated[str, Field(min_length=1, max_length=2048)]
+
+
+class BrowserMode(StrEnum):
+    """When a page may be rendered in Chromium: never, on a verifiable criterion, or always."""
+
+    NEVER = "never"
+    AUTO = "auto"
+    ALWAYS = "always"
+
+
+class CrawlSettings(Contract):
+    """Budget and policy of one crawl. The bounds are the safe limits in docs/crawling.md."""
+
+    max_sites: Annotated[int, Field(ge=1, le=500)]
+    max_pages_per_site: Annotated[int, Field(ge=1, le=100)]
+    max_depth: Annotated[int, Field(ge=0, le=4)]
+    max_bytes_per_site: Annotated[int, Field(ge=65_536, le=100_000_000)]
+    max_seconds_per_site: Annotated[int, Field(ge=10, le=1_800)]
+    max_requests: Annotated[int, Field(ge=1, le=20_000)]
+    requests_per_minute_per_host: Annotated[int, Field(ge=1, le=120)]
+    per_host_concurrency: Annotated[int, Field(ge=1, le=4)]
+    include_subdomains: bool
+    #: Path globs (`/blog/*`). Empty includes everything; the home page and robots.txt always go.
+    include_paths: Annotated[list[PathRule], Field(max_length=MAX_PATH_RULES)]
+    exclude_paths: Annotated[list[PathRule], Field(max_length=MAX_PATH_RULES)]
+    browser: BrowserMode
+    #: Only when a later module asks for it: screenshots cost time and disk.
+    screenshots: bool
+
+
+def default_crawl_settings() -> CrawlSettings:
+    """Gentle defaults for a business site: the pages that matter, not the whole site."""
+    return CrawlSettings(
+        max_sites=100,
+        max_pages_per_site=12,
+        max_depth=2,
+        max_bytes_per_site=25_000_000,
+        max_seconds_per_site=180,
+        max_requests=2_000,
+        requests_per_minute_per_host=30,
+        per_host_concurrency=2,
+        include_subdomains=False,
+        include_paths=[],
+        exclude_paths=[],
+        browser=BrowserMode.AUTO,
+        screenshots=False,
+    )
+
+
+class CrawlStartRequest(Contract):
+    """Crawls the websites of a campaign's candidates, the URLs given, or both."""
+
+    project_id: Id | None
+    campaign_id: Id | None
+    urls: Annotated[list[SeedUrl], Field(max_length=MAX_CRAWL_SEEDS)]
+    settings: CrawlSettings
+
+
+class CrawlErrorGroup(Contract):
+    """Pages that failed for the same reason. robots.txt and sitemaps report through their site."""
+
+    reason: Code
+    count: Annotated[int, Field(ge=1)]
+    example_url: str
+
+
+class CrawlMetrics(Contract):
+    """Measured from the fetch log, never estimated. Latencies cover fetches a server answered."""
+
+    requests: Annotated[int, Field(ge=0)]
+    pages_fetched: Annotated[int, Field(ge=0)]
+    pages_failed: Annotated[int, Field(ge=0)]
+    urls_skipped: Annotated[int, Field(ge=0)]
+    queued: Annotated[int, Field(ge=0)]
+    bytes: Annotated[int, Field(ge=0)]
+    cache_hits: Annotated[int, Field(ge=0)]
+    retries: Annotated[int, Field(ge=0)]
+    blocked: Annotated[int, Field(ge=0)]
+    http_pages: Annotated[int, Field(ge=0)]
+    browser_pages: Annotated[int, Field(ge=0)]
+    browser_fallbacks: Annotated[int, Field(ge=0)]
+    duplicates: Annotated[int, Field(ge=0)]
+    pages_per_minute: Annotated[float, Field(ge=0)] | None
+    latency_p50_ms: Annotated[int, Field(ge=0)] | None
+    latency_p95_ms: Annotated[int, Field(ge=0)] | None
+    latency_max_ms: Annotated[int, Field(ge=0)] | None
+
+
+class CrawlSite(Contract):
+    """One site of a crawl: its own source run, budget spent and outcome."""
+
+    source_run_id: Id
+    site: Label
+    root_url: str
+    candidate_id: Id | None
+    status: SourceRunStatus
+    pages_fetched: Annotated[int, Field(ge=0)]
+    pages_failed: Annotated[int, Field(ge=0)]
+    urls_skipped: Annotated[int, Field(ge=0)]
+    queued: Annotated[int, Field(ge=0)]
+    bytes: Annotated[int, Field(ge=0)]
+    requests: Annotated[int, Field(ge=0)]
+    browser_pages: Annotated[int, Field(ge=0)]
+    error_code: Code | None
+    error_message: Annotated[str, Field(max_length=2000)] | None
+    started_at: UtcTimestamp | None
+    finished_at: UtcTimestamp | None
+
+
+class CrawlRun(Contract):
+    """One crawl job. `in_flight`: URLs being fetched right now, when this worker runs the job."""
+
+    job_id: Id
+    project_id: Id
+    campaign_id: Id | None
+    campaign_name: Label | None
+    status: JobStatus
+    settings: CrawlSettings
+    site_count: Annotated[int, Field(ge=0)]
+    sites_done: Annotated[int, Field(ge=0)]
+    metrics: CrawlMetrics
+    errors: list[CrawlErrorGroup]
+    in_flight: list[str]
+    sites: list[CrawlSite]
+    events: list[RunEvent]
+    requested_at: UtcTimestamp
+    started_at: UtcTimestamp | None
+    finished_at: UtcTimestamp | None
+
+
+class CrawlRunListQuery(Contract):
+    project_id: Id | None
+    campaign_id: Id | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class CrawlRunPage(Contract):
+    items: list[CrawlRun]
+    next_cursor: Cursor | None
+    total: Annotated[int, Field(ge=0)]
+
+
+class CrawlUrlListQuery(Contract):
+    """URLs of one crawl, in the order they were discovered."""
+
+    job_id: Id
+    source_run_id: Id | None
+    status: CrawlUrlStatus | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class CrawlUrlItem(Contract):
+    id: Id
+    source_run_id: Id
+    site: Label
+    url: str
+    target: CrawlTarget
+    page_kind: PageKind
+    depth: Annotated[int, Field(ge=0)]
+    status: CrawlUrlStatus
+    reason: Code | None
+    method: AcquisitionMethod | None
+    http_status: Annotated[int, Field(ge=100, le=599)] | None
+    byte_size: Annotated[int, Field(ge=0)] | None
+    fetch_ms: Annotated[int, Field(ge=0)] | None
+    browser_ms: Annotated[int, Field(ge=0)] | None
+    fallback_reason: Code | None
+    duplicate_of_id: Id | None
+    title: str | None
+    updated_at: UtcTimestamp
+
+
+class CrawlUrlPage(Contract):
+    items: list[CrawlUrlItem]
+    next_cursor: Cursor | None
+    total: Annotated[int, Field(ge=0)]
+
+
+class CrawlUrlDetailQuery(Contract):
+    crawl_url_id: Id
+
+
+class CrawlUrlDetail(Contract):
+    """A URL with how it was obtained, the stored bytes and the parsed page, down to the hashes."""
+
+    crawl_url: CrawlUrl
+    job_id: Id
+    site: Label
+    source_run: SourceRun
+    acquired_page: AcquiredPage | None
+    raw_record: RawRecord | None
+    discovered_from: CrawlUrl | None
+    duplicate_of: CrawlUrl | None
+
+
 DATA_MODELS: tuple[type[Contract], ...] = (
     *RECORDS,
     Provenance,
@@ -2036,4 +2310,12 @@ DATA_MODELS: tuple[type[Contract], ...] = (
     CandidateDetail,
     ImportPreviewRequest,
     ImportPreview,
+    CrawlStartRequest,
+    CrawlRun,
+    CrawlRunListQuery,
+    CrawlRunPage,
+    CrawlUrlListQuery,
+    CrawlUrlPage,
+    CrawlUrlDetailQuery,
+    CrawlUrlDetail,
 )

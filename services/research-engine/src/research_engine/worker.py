@@ -29,6 +29,7 @@ from research_engine.contracts import (
     ErrorInfo,
     MessageType,
 )
+from research_engine.crawl.engine import CrawlerSettings, CrawlService, CrawlStartError
 from research_engine.discovery.engine import DiscoveryService, DiscoveryStartError, EngineSettings
 from research_engine.handlers import ROUTES, Context, NotAllowedError, health
 from research_engine.logs import configure_logging, request_id_var
@@ -91,7 +92,13 @@ class Worker:
             ),
             lambda: connect(settings.data_dir),
         )
-        self._ctx = Context(settings, datetime.now(UTC), self._request_shutdown, self._discovery)
+        self._crawl = CrawlService(
+            CrawlerSettings(data_dir=settings.data_dir, user_agent=USER_AGENT),
+            lambda: connect(settings.data_dir),
+        )
+        self._ctx = Context(
+            settings, datetime.now(UTC), self._request_shutdown, self._discovery, self._crawl
+        )
 
     async def run(self) -> None:
         loop = asyncio.get_running_loop()
@@ -103,13 +110,14 @@ class Worker:
         for check in (check_sqlite, check_duckdb):
             store = await asyncio.to_thread(check, self._settings.data_dir)
             logger.info("store checked", extra={"engine": store.engine, "state": store.state})
-        try:
-            paused = await self._discovery.recover()
-        except Exception:
-            logger.warning("interrupted discovery runs could not be recovered", exc_info=True)
-        else:
-            if paused:
-                logger.info("interrupted discovery runs paused", extra={"jobs": paused})
+        for name, engine in (("discovery", self._discovery), ("crawl", self._crawl)):
+            try:
+                paused = await engine.recover()
+            except Exception:
+                logger.warning("interrupted %s runs could not be recovered", name, exc_info=True)
+            else:
+                if paused:
+                    logger.info("interrupted %s runs paused", name, extra={"jobs": paused})
         self._send(
             uuid4(), MessageType.WORKER_READY, payload=health(self._ctx).model_dump(mode="json")
         )
@@ -137,6 +145,7 @@ class Worker:
             stop_wait.cancel()
             self._stopping = True
             await self._discovery.shutdown()
+            await self._crawl.shutdown()
             await self._drain()
         logger.info("worker stopped")
 
@@ -252,7 +261,7 @@ class Worker:
             raise WorkerError(ErrorCode.NOT_FOUND, str(exc)) from exc
         except NotAllowedError as exc:
             raise WorkerError(ErrorCode.NOT_ALLOWED, str(exc)) from exc
-        except (InvalidCursorError, DiscoveryStartError) as exc:
+        except (InvalidCursorError, DiscoveryStartError, CrawlStartError) as exc:
             raise WorkerError(ErrorCode.INVALID_PAYLOAD, str(exc)) from exc
         return result.model_dump(mode="json")
 

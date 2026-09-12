@@ -33,6 +33,9 @@ from research_engine.domain import (
     ContactOrigin,
     ContactPoint,
     ContactType,
+    CrawlTarget,
+    CrawlUrl,
+    CrawlUrlStatus,
     DiscoveryCandidate,
     DiscoveryCriteria,
     DiscoveryLimits,
@@ -52,6 +55,7 @@ from research_engine.domain import (
     JsonObject,
     LeadStage,
     NameKind,
+    PageKind,
     Project,
     RawRecord,
     Record,
@@ -64,6 +68,7 @@ from research_engine.domain import (
     SyntheticSeedResult,
     ValidationStatus,
     Website,
+    default_crawl_settings,
     empty_criteria,
     new_id,
     sort_key,
@@ -645,3 +650,269 @@ def seed_discovery(conn: sqlite3.Connection, ctx: SyntheticContext) -> Discovery
         source_run_id=run.id,
         candidate_ids=candidate_ids,
     )
+
+
+# ---- web acquisition (phase 05) -----------------------------------------------------------------
+
+SYNTHETIC_SITE = "synthetic-bakery-0001.example"
+_SYNTHETIC_ROBOTS = "User-agent: *\nDisallow: /about-us\n"
+_SYNTHETIC_HOME = (
+    "<!doctype html><html lang='en'><head><title>Synthetic Bakery 0001</title></head><body><main>"
+    "<h1>Synthetic Bakery 0001</h1><p>Test data: a fictitious bakery on Example Ave. "
+    "Call (512) 555-0101.</p><a href='/contact'>Contact</a> <a href='/about-us'>About</a> "
+    "<a href='/gallery'>Gallery</a> <a href='/cart'>Cart</a></main></body></html>"
+)
+_SYNTHETIC_SHELL = "<!doctype html><html><body><div id='root'></div><script src='/app.js'></script>"
+_SYNTHETIC_RENDERED = (
+    "<html><head><title>Contact</title></head><body><div id='root'><h1>Contact</h1>"
+    f"<p>Test data only. Write to hello@{SYNTHETIC_SITE}.</p></div></body></html>"
+)
+
+
+@dataclass(frozen=True, slots=True)
+class CrawlFixture:
+    job_id: str
+    source_run_id: str
+    #: The contact page: fetched over HTTP, then rendered because it was an empty shell.
+    rendered_url_id: str
+
+
+def seed_crawl(
+    conn: sqlite3.Connection, ctx: SyntheticContext, campaign_id: str, candidate_id: str
+) -> CrawlFixture:
+    """A finished crawl of one synthetic site: fetched, rendered, skipped and failed URLs."""
+    from research_engine.crawl.engine import (
+        CONNECTOR_KEY,
+        CONNECTOR_NAME,
+        CONNECTOR_VERSION,
+        JOB_KIND,
+        PRODUCT_TOKEN,
+    )
+    from research_engine.crawl.extract import snapshot
+
+    now, ids = ctx.now, ctx.ids
+    base = f"https://{SYNTHETIC_SITE}"
+    settings = default_crawl_settings().model_dump(mode="json")
+    connector = SourceConnector(
+        id=ids(),
+        key=CONNECTOR_KEY,
+        name=CONNECTOR_NAME,
+        kind=SourceKind.BUSINESS_WEBSITE,
+        connector_version=CONNECTOR_VERSION,
+        terms_url=None,
+        requires_credentials=False,
+        enabled=True,
+        created_at=now,
+        updated_at=now,
+    )
+    job = Job(
+        id=ids(),
+        project_id=ctx.project_id,
+        kind=JOB_KIND,
+        status=JobStatus.SUCCEEDED,
+        priority=0,
+        params_json={
+            "campaign_id": campaign_id,
+            "settings": settings,
+            "sites": 1,
+            "sites_available": 1,
+        },
+        idempotency_key=None,
+        progress_done=1,
+        progress_total=1,
+        requested_at=now,
+        started_at=now,
+        finished_at=now,
+        created_at=now,
+        updated_at=now,
+    )
+    run = SourceRun(
+        id=ids(),
+        project_id=ctx.project_id,
+        campaign_id=campaign_id,
+        connector_id=connector.id,
+        connector_version=CONNECTOR_VERSION,
+        config_id=None,
+        job_id=job.id,
+        status=SourceRunStatus.SUCCEEDED,
+        effective_config_json={
+            "connector_key": CONNECTOR_KEY,
+            "connector_version": CONNECTOR_VERSION,
+            "product_token": PRODUCT_TOKEN,
+            "site": SYNTHETIC_SITE,
+            "root_url": f"{base}/",
+            "candidate_id": candidate_id,
+            "settings": settings,
+            "test_data": True,
+        },
+        started_at=now,
+        finished_at=now,
+        error_code=None,
+        error_message=None,
+        created_at=now,
+        updated_at=now,
+    )
+    task = JobTask(
+        id=ids(),
+        job_id=job.id,
+        stage="crawl",
+        task_key=SYNTHETIC_SITE,
+        status=JobStatus.SUCCEEDED,
+        attempt_count=1,
+        max_attempts=3,
+        created_at=now,
+        updated_at=now,
+    )
+    records: list[Record] = [connector, job, run, task]
+
+    def page(url: str, status: int, content_type: str, body: bytes | None) -> AcquiredPage:
+        digest = _sha256(body) if body is not None else None
+        acquired = AcquiredPage(
+            id=ids(),
+            source_run_id=run.id,
+            source_query_id=None,
+            url=url,
+            final_url=url,
+            http_status=status,
+            content_type=content_type,
+            content_sha256=digest,
+            byte_size=len(body) if body is not None else None,
+            artifact_path=f"artifacts/web/{digest[:2]}/{digest}.html" if digest else None,
+            fetched_at=now,
+        )
+        records.append(acquired)
+        return acquired
+
+    def raw(acquired: AcquiredPage, method: AcquisitionMethod, payload: JsonObject) -> RawRecord:
+        record = RawRecord(
+            id=ids(),
+            source_run_id=run.id,
+            acquired_page_id=acquired.id,
+            connector_id=connector.id,
+            method=method,
+            external_id=None,
+            source_url=acquired.url,
+            payload_json=payload,
+            payload_sha256=_sha256(orjson.dumps(payload, option=orjson.OPT_SORT_KEYS)),
+            acquired_at=now,
+            created_at=now,
+        )
+        records.append(record)
+        return record
+
+    def url_row(
+        path: str, target: CrawlTarget, kind: PageKind, depth: int, **fields: object
+    ) -> CrawlUrl:
+        values: dict[str, object] = dict.fromkeys(CrawlUrl.model_fields)
+        values |= {
+            "id": ids(),
+            "source_run_id": run.id,
+            "url": f"{base}{path}",
+            "target": target,
+            "page_kind": kind,
+            "depth": depth,
+            "priority": 100 - 10 * depth,
+            "request_count": 0,
+            "retry_count": 0,
+            "created_at": now,
+            "updated_at": now,
+        }
+        row = CrawlUrl.model_validate(values | fields)
+        records.append(row)
+        return row
+
+    robots_page = page(f"{base}/robots.txt", 200, "text/plain", _SYNTHETIC_ROBOTS.encode())
+    robots_raw = raw(
+        robots_page,
+        AcquisitionMethod.HTTP_FETCH,
+        {"text": _SYNTHETIC_ROBOTS, "product_token": PRODUCT_TOKEN, "rules": 1, "sitemaps": [],
+         "crawl_delay_s": None, "test_data": True},
+    )  # fmt: skip
+    url_row(
+        "/robots.txt", CrawlTarget.ROBOTS, PageKind.OTHER, 0, status=CrawlUrlStatus.FETCHED,
+        method=AcquisitionMethod.HTTP_FETCH, final_url=f"{base}/robots.txt", http_status=200,
+        content_type="text/plain", byte_size=robots_page.byte_size,
+        body_sha256=robots_page.content_sha256, acquired_page_id=robots_page.id,
+        raw_record_id=robots_raw.id, request_count=1, fetch_ms=42,
+        headers_json={"content-type": "text/plain"},
+    )  # fmt: skip
+    home_body = _SYNTHETIC_HOME.encode()
+    home_page = page(f"{base}/", 200, "text/html; charset=utf-8", home_body)
+    home_payload = snapshot(f"{base}/", f"{base}/", _SYNTHETIC_HOME, rendered=False)
+    home_raw = raw(home_page, AcquisitionMethod.HTTP_FETCH, home_payload | {"test_data": True})
+    home = url_row(
+        "/", CrawlTarget.PAGE, PageKind.HOME, 0, candidate_id=candidate_id,
+        status=CrawlUrlStatus.FETCHED, method=AcquisitionMethod.HTTP_FETCH, final_url=f"{base}/",
+        http_status=200, content_type="text/html; charset=utf-8", byte_size=len(home_body),
+        body_sha256=home_page.content_sha256, content_sha256=home_payload["content_sha256"],
+        acquired_page_id=home_page.id, raw_record_id=home_raw.id, request_count=1, fetch_ms=120,
+        headers_json={"content-type": "text/html; charset=utf-8", "etag": '"synthetic-v1"'},
+    )  # fmt: skip
+    missing_sitemap = page(f"{base}/sitemap.xml", 404, "text/html", None)
+    url_row(
+        "/sitemap.xml", CrawlTarget.SITEMAP, PageKind.OTHER, 0, status=CrawlUrlStatus.FAILED,
+        reason="not_found", method=AcquisitionMethod.HTTP_FETCH, final_url=f"{base}/sitemap.xml",
+        http_status=404, content_type="text/html", acquired_page_id=missing_sitemap.id,
+        request_count=1, fetch_ms=30, discovered_from_id=None, error_message="HTTP 404",
+    )  # fmt: skip
+    shell = _SYNTHETIC_SHELL.encode()
+    http_contact = page(f"{base}/contact", 200, "text/html; charset=utf-8", shell)
+    rendered_body = _SYNTHETIC_RENDERED.encode()
+    rendered_page = page(f"{base}/contact", 200, "text/html; charset=utf-8", rendered_body)
+    http_view = snapshot(f"{base}/contact", f"{base}/contact", _SYNTHETIC_SHELL, rendered=False)
+    rendered = snapshot(f"{base}/contact", f"{base}/contact", _SYNTHETIC_RENDERED, rendered=True)
+    rendered["fallback"] = {
+        "reason": "empty_shell",
+        "browser": "chromium (synthetic)",
+        "blocked_requests": 2,
+        "http_signals": http_view["signals"],
+        "http_body_sha256": http_contact.content_sha256,
+    }
+    contact_raw = raw(
+        rendered_page, AcquisitionMethod.BROWSER_RENDER, rendered | {"test_data": True}
+    )
+    contact = url_row(
+        "/contact", CrawlTarget.PAGE, PageKind.CONTACT, 1, discovered_from_id=home.id,
+        status=CrawlUrlStatus.FETCHED, method=AcquisitionMethod.BROWSER_RENDER,
+        final_url=f"{base}/contact", http_status=200, content_type="text/html; charset=utf-8",
+        byte_size=len(rendered_body), body_sha256=rendered_page.content_sha256,
+        content_sha256=rendered["content_sha256"], acquired_page_id=rendered_page.id,
+        raw_record_id=contact_raw.id, request_count=1, fetch_ms=95, browser_ms=900,
+        fallback_reason="empty_shell", headers_json={"content-type": "text/html; charset=utf-8"},
+    )  # fmt: skip
+    url_row(
+        "/about-us", CrawlTarget.PAGE, PageKind.ABOUT, 1, discovered_from_id=home.id,
+        status=CrawlUrlStatus.SKIPPED, reason="robots",
+    )  # fmt: skip
+    gone = page(f"{base}/gallery", 404, "text/html", None)
+    url_row(
+        "/gallery", CrawlTarget.PAGE, PageKind.OTHER, 1, discovered_from_id=home.id,
+        status=CrawlUrlStatus.FAILED, reason="not_found", method=AcquisitionMethod.HTTP_FETCH,
+        final_url=f"{base}/gallery", http_status=404, content_type="text/html",
+        acquired_page_id=gone.id, request_count=1, fetch_ms=51, error_message="HTTP 404",
+    )  # fmt: skip
+    url_row(
+        "/cart", CrawlTarget.PAGE, PageKind.OTHER, 1, discovered_from_id=home.id,
+        status=CrawlUrlStatus.SKIPPED, reason="private_area",
+    )  # fmt: skip
+    for name, detail in (
+        ("site_finished", {"site": SYNTHETIC_SITE, "pages": 2, "stopped_by": None}),
+        ("run_succeeded", None),
+    ):
+        records.append(
+            JobEvent(
+                id=ids(),
+                job_id=job.id,
+                task_id=task.id if detail else None,
+                level=EventLevel.INFO,
+                event=name,
+                error_code=None,
+                retryable=None,
+                detail_json=detail,
+                created_at=now,
+            )
+        )
+    with atomic(conn):
+        insert(conn, *records)
+        audit(conn, AuditAction.CREATE, EntityType.JOB, job.id, actor=ACTOR_DEV_SEED)
+    return CrawlFixture(job_id=job.id, source_run_id=run.id, rendered_url_id=contact.id)

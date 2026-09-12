@@ -82,7 +82,7 @@ kill after 5 s.
 **Orphan prevention.** The worker exits on stdin EOF, so it cannot outlive a crashed core. In
 development the venv `python.exe` launcher additionally runs the interpreter inside a Windows job
 object. When Chromium arrives (phase 05) the core should put the whole worker tree in a
-kill-on-close job object.
+kill-on-close job object. _Superseded by D-035: the worker does it itself._
 
 ## D-008 · Detection without side effects (phase 01)
 
@@ -314,3 +314,80 @@ disk next to it, and a paused import resumes by row offset without the text trav
 
 **Trade-off.** A file larger than the cap is refused with an explanation instead of being truncated.
 A path-based connector for bigger imports is a later addition; the ceiling is stated in the UI.
+
+## D-030 · One table is both the frontier and the fetch log (phase 05)
+
+**Context.** A crawl needs a frontier that survives a restart, a record of every URL it decided
+about (fetched, skipped by a policy, failed), and metrics.
+
+**Decision.** `crawl_urls` (migration 0004) holds one row per URL per site run. A row is `queued`
+until it is decided, then final: a trigger refuses any change after that and any deletion.
+`UNIQUE (source_run_id, url)` plus "one URL, one transaction" (its acquired pages, raw record, row and
+discovered URLs together) make "never fetch or store twice on resume" a property of the database.
+Bytes stay in `acquired_pages` and parsed content in `raw_records`, as phase 03 designed; the row adds
+method, timings, redirects, allowed headers, fallback reason and cost, and hashes.
+
+**Consequences.** Metrics are aggregated from the rows on every read instead of being kept on the
+side, so they are identical during a run and after a restart. Skipped URLs are recorded, not dropped,
+up to 400 per site; the links beyond that stay in the page's raw record.
+
+## D-031 · The parsed page is the raw record; the bytes are the artifact (phase 05)
+
+**Decision.** A fetched page is stored as an `acquired_page` whose body is a content-addressed file
+(`artifacts/web/<sha[:2]>/<sha>.html`) and a `raw_record` whose payload is the deterministic parse of
+those bytes: title, metadata, headings, links, visible emails and phones, JSON-LD, main text and the
+signals behind any fallback, with the parser's name and version.
+
+**Why.** Later phases need queryable content with provenance (D-018), and re-running the same parser
+version over the stored bytes reproduces the record exactly. Identical bodies are stored once on disk;
+identical visible text within a site is linked through `duplicate_of_id` instead of stored again.
+
+## D-032 · robots.txt by RFC 9309, not `urllib.robotparser` (phase 05)
+
+**Decision.** A small parser in `crawl/robots.py` applies the longest match (`Allow` wins ties), `*`
+and `$`, and the product-token group over `*`. Fetch outcomes follow RFC 9309: a 4xx means no rules;
+5xx, 429 or a network failure means nothing is allowed and the site stops. robots.txt is not a
+setting.
+
+**Why.** The standard library applies the first matching rule, so `Allow: /` before
+`Disallow: /admin` would let the crawler into `/admin`. Being wrong in the permissive direction is
+exactly what "respect robots.txt" rules out.
+
+## D-033 · SSRF is checked at connect time, on the address actually used (phase 05)
+
+**Decision.** The httpx transport's connection pool uses `guard.GuardedBackend`: it resolves the host,
+refuses the connection if any address is not public, and connects to the checked address. Proxies from
+the environment are ignored. The browser checks every request with the same rule.
+
+**Why.** Checking a URL before handing it to a client leaves a window in which DNS can answer
+differently (rebinding), and a redirect or a page's own requests can point anywhere. The connect step is
+the one place every path goes through.
+
+**Trade-off.** It replaces a private attribute of httpx (`transport._pool._network_backend`). The SSRF
+tests connect to a real local server with the guard on, so an httpx upgrade that moves it fails loudly.
+
+## D-034 · Browser only on verifiable criteria, never against a challenge (phase 05)
+
+**Decision.** Chromium renders a page only when `browser = always`, or when the HTTP page is an empty
+shell, says JavaScript is required, or refuses plain HTTP clients. The measurements are stored with the
+page. A CAPTCHA or bot challenge stops the site and is never rendered. Playwright's own Chromium is
+preferred; the Chromium-based Edge or Chrome of the machine are the fallback, so no browser download is
+needed on Windows.
+
+**Why.** Rendering costs a hundred times a plain fetch and must be explainable page by page; rendering a
+challenge would be working around a block.
+
+## D-035 · Chromium cannot outlive the worker: a job object from Python (phase 05, supersedes the D-007 note)
+
+**Context.** D-007 planned for the desktop core to put the worker tree in a kill-on-close job object
+when Chromium arrived. The core forbids `unsafe` code, and the job object needs Win32 calls.
+
+**Decision.** Before its first browser launch, the worker creates a job object with
+`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` and assigns itself to it (`ctypes`); the handle is never closed.
+The Playwright driver and every Chromium process inherit it, so when the worker process ends - by
+shutdown, crash or `TerminateProcess` - Windows kills them. Pause, cancel and shutdown also close
+contexts and the browser explicitly.
+
+**Why.** It works the same with the development launcher and the packaged sidecar, needs no dependency
+and no `unsafe` in Rust, and is proven by a test that kills a worker outright and checks that its
+Chromium processes are gone.
