@@ -7,8 +7,10 @@ commercial need, ICP fit and an explanation of why each one is worth contacting.
 
 Everything runs on this machine. No cloud service or LLM API is required.
 
-> **Status: Phase 01 — foundation.** The only screen is a temporary system diagnostics view. The
-> phase plan lives in [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
+> **Status: Phase 02 — UI system.** The application shell is real: 16 modules, command palette,
+> keyboard shortcuts, a dense table with a contextual inspector and live system diagnostics.
+> Research data arrives from phase 03 onwards; modules that do not exist yet say so. The phase plan
+> lives in [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
 
 ## Requirements
 
@@ -55,6 +57,7 @@ docs/                        Architecture, decisions and operations
 ## Documentation
 
 - [docs/architecture.md](docs/architecture.md) — layers, processes, contracts, data flow
+- [docs/ui-system.md](docs/ui-system.md) — design tokens, navigation map, shortcuts, components
 - [docs/decisions.md](docs/decisions.md) — technical decisions and their trade-offs
 - [docs/operations.md](docs/operations.md) — configuration, logs, troubleshooting
 - [docs/phases/](docs/phases/) — delivery report of each phase

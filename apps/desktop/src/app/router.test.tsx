@@ -1,0 +1,128 @@
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { RouterProvider } from "react-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { DiagnosticsReport } from "@lead/shared-types";
+import reportFixture from "@lead/shared-types/fixtures/diagnostics_report.json";
+import { createTestRouter } from "@/app/router";
+import { NAV_ITEMS } from "@/app/navigation";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { useDiagnosticsStore } from "@/features/diagnostics/store";
+import type { desktop } from "@/lib/ipc";
+import { preferenceDefaults, usePreferences } from "@/stores/preferences";
+import { useUiStore } from "@/stores/ui";
+
+const mocks = vi.hoisted(() => ({
+  getDiagnostics: vi.fn<typeof desktop.getDiagnostics>(),
+  restartWorker: vi.fn<typeof desktop.restartWorker>(),
+  reportUiError: vi.fn<typeof desktop.reportUiError>(),
+  onWorkerStatus: vi.fn<typeof desktop.onWorkerStatus>(),
+}));
+vi.mock("@/lib/ipc", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/ipc")>()),
+  desktop: mocks,
+}));
+
+const report = reportFixture as DiagnosticsReport;
+
+function renderApp(path = "/overview") {
+  render(
+    <TooltipProvider>
+      <RouterProvider router={createTestRouter([path])} />
+    </TooltipProvider>,
+  );
+}
+
+describe("application shell", () => {
+  beforeEach(() => {
+    usePreferences.setState(preferenceDefaults);
+    useUiStore.setState({ commandPaletteOpen: false, shortcutsHelpOpen: false, inspectedId: null });
+    useDiagnosticsStore.setState({ report, worker: report.worker, error: null, loading: false });
+    for (const mock of Object.values(mocks)) mock.mockReset();
+    mocks.getDiagnostics.mockResolvedValue(report);
+    mocks.onWorkerStatus.mockResolvedValue(() => {});
+    mocks.reportUiError.mockResolvedValue(null);
+  });
+
+  it("shows every module in the sidebar, grouped in sections", () => {
+    renderApp();
+    const sidebar = screen.getByRole("navigation", { name: "Lead Intelligence" });
+    for (const item of NAV_ITEMS) {
+      expect(
+        within(sidebar).getByRole("link", { name: new RegExp(item.id.replace("-", " "), "i") }),
+      ).toBeTruthy();
+    }
+    expect(within(sidebar).getByRole("heading", { name: "System" })).toBeTruthy();
+  });
+
+  it("navigates from the sidebar and keeps breadcrumbs useful", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    const sidebar = screen.getByRole("navigation", { name: "Lead Intelligence" });
+    await user.click(within(sidebar).getByRole("link", { name: /businesses/i }));
+
+    expect(await screen.findByText("No businesses yet")).toBeTruthy();
+    const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(breadcrumb.textContent).toContain("Research");
+    expect(breadcrumb.textContent).toContain("Businesses");
+  });
+
+  it("says clearly when a module is not configured yet", async () => {
+    renderApp("/discovery");
+    expect(await screen.findByText("This module is not configured yet")).toBeTruthy();
+    expect(screen.getByText("Planned for phase 4")).toBeTruthy();
+    expect(screen.getAllByText("Not configured").length).toBeGreaterThan(0);
+  });
+
+  it("lands on a not-found page for unknown routes", async () => {
+    renderApp("/nope");
+    expect(await screen.findByText("/nope")).toBeTruthy();
+  });
+
+  it("opens the command palette with Ctrl+K and navigates from it", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.keyboard("{Control>}k{/Control}");
+
+    const palette = await screen.findByRole("dialog");
+    await user.type(within(palette).getByRole("combobox"), "jobs");
+    await user.keyboard("{Enter}");
+
+    expect(await screen.findByText("No jobs have run")).toBeTruthy();
+  });
+
+  it("jumps between modules with keyboard shortcuts", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.keyboard("{Alt>}3{/Alt}");
+    expect(await screen.findByText("No qualified leads yet")).toBeTruthy();
+  });
+
+  it("toggles theme and sidebar from the keyboard and stores the choice", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.keyboard("{Alt>}t{/Alt}");
+    expect(usePreferences.getState().theme).toBe("light");
+
+    await user.keyboard("{Control>}b{/Control}");
+    expect(usePreferences.getState().sidebarCollapsed).toBe(true);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeTruthy(),
+    );
+  });
+
+  it("lists the shortcuts in a help panel", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.keyboard("?");
+    const dialog = await screen.findByRole("dialog", { name: "Keyboard shortcuts" });
+    expect(within(dialog).getByText("Open the command palette")).toBeTruthy();
+    expect(within(dialog).getByText("Jump to Businesses")).toBeTruthy();
+  });
+
+  it("renders the workspace paths reported by the desktop core in settings", async () => {
+    renderApp("/settings");
+    expect(await screen.findByText(report.core.data_dir)).toBeTruthy();
+    expect(screen.getByText(report.core.log_dir)).toBeTruthy();
+  });
+});

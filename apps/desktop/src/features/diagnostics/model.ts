@@ -28,6 +28,11 @@ const WORKER_STATE: Record<WorkerState, { state: RowState; label: string }> = {
   failed: { state: "error", label: "Failed" },
 };
 
+/** Worker lifecycle state as a UI state, for the sidebar indicator and compact summaries. */
+export function workerRowState(state: WorkerState | null | undefined): RowState {
+  return state ? WORKER_STATE[state].state : "unknown";
+}
+
 const show = (value: string | number | null | undefined) =>
   value === null || value === undefined || value === "" ? "—" : String(value);
 const yesNo = (value: boolean) => (value ? "yes" : "no");

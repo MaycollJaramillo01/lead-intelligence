@@ -2,70 +2,140 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Design tokens. Phase 02 extends this into the full system; components only use the
-   semantic names below, never raw colours. Status colours always ship with an icon + label. */
+/* ---------------------------------------------------------------------------
+   Design tokens. Components use semantic names only, never raw colours.
+   Dark is the primary experience; light is complete, not an afterthought.
+   Status is never communicated by colour alone: every status token is paired
+   with an icon and a text label in the components that use it.
+   --------------------------------------------------------------------------- */
+
 :root {
   color-scheme: light;
-  --background: oklch(0.985 0 0);
-  --foreground: oklch(0.21 0.006 286);
+
+  /* surfaces and text */
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.2 0.006 286);
   --card: oklch(1 0 0);
-  --muted: oklch(0.955 0.003 286);
-  --muted-foreground: oklch(0.46 0.013 286);
-  --border: oklch(0.9 0.004 286);
-  --input: oklch(0.9 0.004 286);
-  --primary: oklch(0.27 0.01 286);
-  --primary-foreground: oklch(0.985 0 0);
-  --accent: oklch(0.955 0.003 286);
-  --accent-foreground: oklch(0.21 0.006 286);
-  --destructive: oklch(0.55 0.2 27);
+  --card-foreground: oklch(0.2 0.006 286);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.006 286);
+  --muted: oklch(0.965 0.003 286);
+  --muted-foreground: oklch(0.44 0.013 286);
+  --sidebar: oklch(0.955 0.003 286);
+  --sidebar-foreground: oklch(0.2 0.006 286);
+
+  /* interactive */
+  --primary: oklch(0.5 0.17 255);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0.003 286);
+  --secondary-foreground: oklch(0.24 0.006 286);
+  --accent: oklch(0.945 0.004 286);
+  --accent-foreground: oklch(0.22 0.006 286);
+  --destructive: oklch(0.52 0.2 27);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.885 0.005 286);
+  --input: oklch(0.62 0.01 286);
   --ring: oklch(0.55 0.15 255);
-  --ok: oklch(0.5 0.13 150);
-  --warn: oklch(0.55 0.13 70);
-  --danger: oklch(0.53 0.2 27);
-  --neutral: oklch(0.5 0.01 286);
+
+  /* status (always shown with an icon + label) */
+  --ok: oklch(0.45 0.12 150);
+  --warn: oklch(0.48 0.11 70);
+  --danger: oklch(0.5 0.2 27);
+  --info: oklch(0.48 0.12 250);
+  --neutral: oklch(0.44 0.01 286);
+
+  /* shape, elevation, motion, layering */
   --radius: 0.375rem;
+  --shadow-panel: 0 1px 2px oklch(0 0 0 / 0.06), 0 8px 24px oklch(0 0 0 / 0.08);
+  --motion-fast: 90ms;
+  --motion-normal: 160ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  --z-sidebar: 20;
+  --z-topbar: 30;
+  --z-panel: 40;
+  --z-overlay: 50;
+  --z-toast: 60;
+
+  /* density: comfortable (default) */
+  --row-height: 2.125rem;
+  --cell-padding-x: 0.625rem;
+  --ui-font-size: 0.8125rem;
+  --section-gap: 1rem;
+}
+
+:root[data-density="compact"] {
+  --row-height: 1.75rem;
+  --cell-padding-x: 0.5rem;
+  --ui-font-size: 0.75rem;
+  --section-gap: 0.75rem;
 }
 
 .dark {
   color-scheme: dark;
-  --background: oklch(0.165 0.004 286);
-  --foreground: oklch(0.94 0.003 286);
-  --card: oklch(0.195 0.004 286);
-  --muted: oklch(0.225 0.005 286);
-  --muted-foreground: oklch(0.72 0.01 286);
-  --border: oklch(0.29 0.006 286);
-  --input: oklch(0.31 0.006 286);
-  --primary: oklch(0.94 0.003 286);
-  --primary-foreground: oklch(0.2 0.005 286);
-  --accent: oklch(0.26 0.006 286);
-  --accent-foreground: oklch(0.94 0.003 286);
-  --destructive: oklch(0.65 0.19 25);
-  --ring: oklch(0.68 0.13 255);
-  --ok: oklch(0.76 0.14 155);
-  --warn: oklch(0.82 0.14 80);
+
+  --background: oklch(0.155 0.004 285);
+  --foreground: oklch(0.95 0.003 286);
+  --card: oklch(0.185 0.005 285);
+  --card-foreground: oklch(0.95 0.003 286);
+  --popover: oklch(0.205 0.005 285);
+  --popover-foreground: oklch(0.95 0.003 286);
+  --muted: oklch(0.225 0.006 286);
+  --muted-foreground: oklch(0.72 0.012 286);
+  --sidebar: oklch(0.135 0.004 285);
+  --sidebar-foreground: oklch(0.95 0.003 286);
+
+  --primary: oklch(0.52 0.16 258);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.24 0.006 286);
+  --secondary-foreground: oklch(0.95 0.003 286);
+  --accent: oklch(0.26 0.008 286);
+  --accent-foreground: oklch(0.95 0.003 286);
+  --destructive: oklch(0.55 0.19 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.275 0.006 286);
+  --input: oklch(0.53 0.01 286);
+  --ring: oklch(0.66 0.14 255);
+
+  --ok: oklch(0.78 0.15 155);
+  --warn: oklch(0.84 0.14 85);
   --danger: oklch(0.72 0.17 25);
-  --neutral: oklch(0.72 0.01 286);
+  --info: oklch(0.76 0.12 240);
+  --neutral: oklch(0.74 0.01 286);
+
+  --shadow-panel: 0 1px 2px oklch(0 0 0 / 0.5), 0 8px 24px oklch(0 0 0 / 0.45);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ok: var(--ok);
   --color-warn: var(--warn);
   --color-danger: var(--danger);
+  --color-info: var(--info);
   --color-neutral: var(--neutral);
+  --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --shadow-panel: var(--shadow-panel);
   --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   --font-mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
 }
@@ -74,7 +144,49 @@
   * {
     @apply border-border;
   }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    font-size: var(--ui-font-size);
+    overflow: hidden; /* the shell owns scrolling, panes scroll individually */
+  }
+
+  /* one focus treatment everywhere */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+    border-radius: var(--radius-sm);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--input);
+    background-clip: content-box;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
   }
 }

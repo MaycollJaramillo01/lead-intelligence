@@ -99,3 +99,48 @@ availability; no GPU model is assumed and every missing piece degrades explicitl
 origins), so the app cannot load anything from the internet. Development disables the CSP
 (`devCsp: null`) because Vite's HMR needs inline scripts and websockets. Tauri capabilities stay at
 `core:default` until the hardening phase (14) narrows them.
+
+## D-010 · Routing: hash router over a data-driven registry (phase 02)
+
+**Decision.** `react-router` with `createHashRouter`; every route is generated from
+`src/app/navigation.ts`, and modules without an implementation render the shared "not configured"
+page instead of being hidden.
+
+**Why hash.** The packaged app is served from a custom protocol with no server rewrites, so a
+path-based route would 404 on reload. Hash routing also keeps deep links working (phase 12).
+
+**Why a registry.** Sidebar, breadcrumbs, command palette, shortcuts, the overview and the
+placeholder pages all describe the same 16 modules; one table keeps them from drifting apart.
+
+## D-011 · TanStack Table v8, not v9 (phase 02)
+
+**Decision.** Pin `@tanstack/react-table` to v8 plus `@tanstack/react-virtual` v3.
+
+**Why.** v9 ships a different, still-moving API (feature objects, renamed row models). v8 is stable
+and gives everything the dense table needs: sorting, selection, sizing, pinning, visibility and
+filters. Rows are virtualized above 50 rows; below that the DOM stays simple.
+
+## D-012 · A small typed dictionary instead of an i18n framework (phase 02)
+
+**Decision.** `src/lib/i18n.ts` with flat keys, `en` as the source of truth and `es` as a partial
+override; missing keys fall back to English. `TranslationKey` is derived from the English
+dictionary, so an unknown key is a type error.
+
+**Why.** The app needs two languages, interpolation and a fallback. That is around forty lines;
+i18next would add a dependency, async loading and configuration for no gain at this size. Swapping
+it later is contained to one module.
+
+## D-013 · Shortcuts as data, conflicts as a test (phase 02)
+
+**Decision.** One registry of combos with group, description key and target; a test fails when two
+shortcuts claim the same combo, and the help panel renders from the same list. Shortcuts do not
+fire while typing, except the command palette.
+
+## D-014 · Contrast is validated, not asserted (phase 02)
+
+**Decision.** The design tokens stay in CSS, and a unit test converts them from oklch to sRGB and
+checks WCAG ratios for both themes (4.5:1 for text pairs, 3:1 for focus ring and control borders).
+
+**Consequence.** Two tokens changed to pass: the dark primary and destructive surfaces were
+darkened, and the form-control border was strengthened in both themes. Row separators stay
+deliberately subtle and are excluded: they are decoration, not information.
