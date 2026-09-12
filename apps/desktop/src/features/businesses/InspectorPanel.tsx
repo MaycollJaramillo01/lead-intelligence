@@ -1,13 +1,11 @@
 import { X } from "lucide-react";
 import { StateBlock } from "@/components/states/StateBlock";
 import { Button } from "@/components/ui/button";
+import { BusinessInspector } from "@/features/businesses/BusinessInspector";
 import { useT } from "@/lib/i18n";
 import { useUiStore } from "@/stores/ui";
 
-/**
- * Contextual inspector. It is deliberately neutral: with no data model connected yet it shows
- * the sections an analyst will get, each in its honest empty state, never invented content.
- */
+/** Contextual inspector: the selected business with every value and where it came from. */
 export function InspectorPanel({ entityId }: { entityId: string | null }) {
   const t = useT();
   const setInspectorOpen = useUiStore((state) => state.setInspectorOpen);
@@ -41,7 +39,7 @@ export function InspectorPanel({ entityId }: { entityId: string | null }) {
             body={t("businesses.inspectorEmptyBody")}
           />
         ) : (
-          <p className="font-mono text-xs text-muted-foreground">{entityId}</p>
+          <BusinessInspector key={entityId} businessId={entityId} />
         )}
       </div>
     </aside>

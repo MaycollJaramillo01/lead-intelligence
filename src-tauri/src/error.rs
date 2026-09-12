@@ -17,6 +17,10 @@ pub enum AppError {
     Protocol(String),
     #[error("Invalid input: {0}")]
     InvalidInput(String),
+    #[error("Not found: {0}")]
+    NotFound(String),
+    #[error("Not allowed: {0}")]
+    NotAllowed(String),
 }
 
 impl AppError {
@@ -27,6 +31,8 @@ impl AppError {
             Self::Worker(_) => CommandErrorCode::WorkerError,
             Self::Protocol(_) => CommandErrorCode::ProtocolViolation,
             Self::InvalidInput(_) => CommandErrorCode::InvalidInput,
+            Self::NotFound(_) => CommandErrorCode::NotFound,
+            Self::NotAllowed(_) => CommandErrorCode::NotAllowed,
         }
     }
 

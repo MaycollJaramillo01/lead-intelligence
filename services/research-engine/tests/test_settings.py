@@ -11,6 +11,7 @@ def test_defaults_are_safe_and_explicit() -> None:
     assert settings.log_level == "info"
     assert settings.ollama_url == DEFAULT_OLLAMA_URL
     assert settings.ollama_timeout_s == 2.0
+    assert settings.dev_tools is False  # the synthetic seed stays off unless a dev build asks
 
 
 def test_values_are_read_and_normalised() -> None:
@@ -20,12 +21,14 @@ def test_values_are_read_and_normalised() -> None:
             "LEAD_LOG_LEVEL": "DEBUG",
             "LEAD_OLLAMA_URL": "http://localhost:11434/",
             "LEAD_OLLAMA_TIMEOUT_S": "0.5",
+            "LEAD_DEV_TOOLS": "1",
         }
     )
     assert settings.data_dir == Path("C:/data")
     assert settings.log_level == "debug"
     assert settings.ollama_url == "http://localhost:11434"
     assert settings.ollama_timeout_s == 0.5
+    assert settings.dev_tools is True
 
 
 @pytest.mark.parametrize(
@@ -37,6 +40,7 @@ def test_values_are_read_and_normalised() -> None:
         {"LEAD_OLLAMA_TIMEOUT_S": "0"},
         {"LEAD_OLLAMA_TIMEOUT_S": "soon"},
         {"LEAD_OLLAMA_TIMEOUT_S": "600"},
+        {"LEAD_DEV_TOOLS": "yes"},
     ],
 )
 def test_invalid_values_fail_loudly(env: dict[str, str]) -> None:

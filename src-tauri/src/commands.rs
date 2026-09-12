@@ -10,11 +10,18 @@ use tracing_appender::non_blocking::WorkerGuard;
 use uuid::Uuid;
 
 use crate::config::Environment;
+use crate::data::{
+    BusinessDetail, BusinessDetailQuery, BusinessListQuery, BusinessPage, DatasetListQuery,
+    DatasetPage, SyntheticSeedResult,
+};
 use crate::error::AppError;
 use crate::protocol::{
     ComponentState, CoreStatus, DiagnosticsReport, DiagnosticsResult, UiErrorReport, WorkerStatus,
 };
-use crate::worker::{DIAGNOSTICS, DIAGNOSTICS_TIMEOUT, WorkerSupervisor};
+use crate::worker::{
+    BUSINESSES_GET, BUSINESSES_LIST, DATA_TIMEOUT, DATASETS_LIST, DEV_SEED_SYNTHETIC, DIAGNOSTICS,
+    DIAGNOSTICS_TIMEOUT, SEED_TIMEOUT, WorkerSupervisor,
+};
 
 pub struct AppState {
     pub supervisor: Arc<WorkerSupervisor>,
@@ -113,6 +120,86 @@ pub async fn restart_worker(state: State<'_, AppState>) -> Result<WorkerStatus, 
             .inspect_err(|error| error!(%error, "worker restart failed"))
     }
     .instrument(ipc_span("restart_worker"))
+    .await
+}
+
+/// One keyset page of canonical businesses. The query is validated here and the page is checked
+/// against it before it reaches the UI.
+#[tauri::command]
+pub async fn list_businesses(
+    state: State<'_, AppState>,
+    query: BusinessListQuery,
+) -> Result<BusinessPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: BusinessPage = state
+            .supervisor
+            .request_with(BUSINESSES_LIST, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_businesses"))
+    .await
+}
+
+/// A business with every observed value and its provenance.
+#[tauri::command]
+pub async fn get_business(
+    state: State<'_, AppState>,
+    query: BusinessDetailQuery,
+) -> Result<BusinessDetail, AppError> {
+    async {
+        let detail: BusinessDetail = state
+            .supervisor
+            .request_with(BUSINESSES_GET, &query, DATA_TIMEOUT)
+            .await?;
+        detail
+            .validate(&query.business_id)
+            .map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("get_business"))
+    .await
+}
+
+#[tauri::command]
+pub async fn list_datasets(
+    state: State<'_, AppState>,
+    query: DatasetListQuery,
+) -> Result<DatasetPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: DatasetPage = state
+            .supervisor
+            .request_with(DATASETS_LIST, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_datasets"))
+    .await
+}
+
+/// Development builds only: creates (once) a clearly marked synthetic workspace to exercise the
+/// data flow. Release builds refuse here and the worker refuses again without `LEAD_DEV_TOOLS`.
+#[tauri::command]
+pub async fn seed_synthetic_data(
+    state: State<'_, AppState>,
+) -> Result<SyntheticSeedResult, AppError> {
+    async {
+        if state.core.environment != Environment::Development {
+            warn!("synthetic seed refused outside development");
+            return Err(AppError::NotAllowed(
+                "synthetic test data exists only in development builds".into(),
+            ));
+        }
+        state
+            .supervisor
+            .request_typed::<SyntheticSeedResult>(DEV_SEED_SYNTHETIC, SEED_TIMEOUT)
+            .await
+    }
+    .instrument(ipc_span("seed_synthetic_data"))
     .await
 }
 

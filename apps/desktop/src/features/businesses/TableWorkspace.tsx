@@ -4,7 +4,6 @@ import { PanelRight } from "lucide-react";
 import { DataTable } from "@/components/data/DataTable";
 import type { FilterCondition, FilterField } from "@/components/data/filters";
 import { PageActions, PageShell } from "@/components/layout/page-chrome";
-import { StateBlock } from "@/components/states/StateBlock";
 import { Button } from "@/components/ui/button";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { InspectorPanel } from "@/features/businesses/InspectorPanel";
@@ -18,8 +17,13 @@ interface TableWorkspaceProps<TData> {
   data: TData[];
   getRowId: (row: TData) => string;
   filterFields: FilterField[];
-  emptyTitle: string;
-  emptyBody: ReactNode;
+  /** Shown when there are no rows: the empty state, or the error that explains why. */
+  emptyState: ReactNode;
+  isLoading?: boolean;
+  /** Screen actions placed in the top bar next to the inspector toggle. */
+  actions?: ReactNode;
+  /** Below the table, e.g. the paging bar. */
+  footer?: ReactNode;
   pinnedLeft?: string[];
 }
 
@@ -30,8 +34,10 @@ export function TableWorkspace<TData>({
   data,
   getRowId,
   filterFields,
-  emptyTitle,
-  emptyBody,
+  emptyState,
+  isLoading = false,
+  actions,
+  footer,
   pinnedLeft = ["name"],
 }: TableWorkspaceProps<TData>) {
   const t = useT();
@@ -46,6 +52,7 @@ export function TableWorkspace<TData>({
   return (
     <PageShell>
       <PageActions>
+        {actions}
         <Button
           variant="outline"
           size="sm"
@@ -60,19 +67,25 @@ export function TableWorkspace<TData>({
 
       <ResizablePanelGroup orientation="horizontal" className="min-h-0 flex-1">
         <ResizablePanel defaultSize={`${100 - inspectorSize}%`} minSize="40%">
-          <DataTable
-            tableId={tableId}
-            columns={columns}
-            data={data}
-            getRowId={getRowId}
-            filterFields={filterFields}
-            conditions={conditions}
-            onConditionsChange={setConditions}
-            pinnedLeft={pinnedLeft}
-            activeRowId={inspectedId}
-            onActivateRow={inspect}
-            emptyState={<StateBlock variant="empty" title={emptyTitle} body={emptyBody} />}
-          />
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="min-h-0 flex-1">
+              <DataTable
+                tableId={tableId}
+                columns={columns}
+                data={data}
+                getRowId={getRowId}
+                filterFields={filterFields}
+                conditions={conditions}
+                onConditionsChange={setConditions}
+                pinnedLeft={pinnedLeft}
+                activeRowId={inspectedId}
+                onActivateRow={inspect}
+                isLoading={isLoading}
+                emptyState={emptyState}
+              />
+            </div>
+            {footer}
+          </div>
         </ResizablePanel>
         {inspectorOpen && (
           <>

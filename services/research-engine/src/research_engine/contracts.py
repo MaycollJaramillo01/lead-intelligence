@@ -4,8 +4,12 @@ Every message crossing a process boundary (desktop core <-> worker, desktop core
 is declared here. `export_contracts` turns these models into JSON Schema + TypeScript types
 (packages/shared-types) and golden fixtures that the Rust core round-trips in its tests.
 
+The data model (records, enumerations, queries and pages) lives in `domain.py` and is exported the
+same way.
+
 Compatibility: bump PROTOCOL_VERSION for any breaking change to the envelope or a payload.
 Adding a new message type or a new nullable field is additive and keeps the version.
+DATA_CONTRACT_VERSION versions the data model independently (see domain.py).
 """
 
 from enum import StrEnum
@@ -15,6 +19,7 @@ from uuid import UUID
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 PROTOCOL_VERSION = 1
+DATA_CONTRACT_VERSION = 1
 MAX_LINE_BYTES = 8 * 1024 * 1024
 RESULT_SUFFIX = ".result"
 
@@ -28,6 +33,10 @@ class MessageType(StrEnum):
     HEALTH = "health"
     DIAGNOSTICS = "diagnostics"
     SHUTDOWN = "shutdown"
+    BUSINESSES_LIST = "businesses.list"
+    BUSINESSES_GET = "businesses.get"
+    DATASETS_LIST = "datasets.list"
+    DEV_SEED_SYNTHETIC = "dev.seed_synthetic"
     # events (worker -> desktop core)
     WORKER_READY = "worker.ready"
     PROTOCOL_ERROR = "worker.protocol_error"
@@ -38,6 +47,9 @@ class ErrorCode(StrEnum):
     UNSUPPORTED_PROTOCOL = "unsupported_protocol"
     UNKNOWN_TYPE = "unknown_type"
     INVALID_PAYLOAD = "invalid_payload"
+    NOT_FOUND = "not_found"
+    NOT_ALLOWED = "not_allowed"
+    STORE_UNAVAILABLE = "store_unavailable"
     TIMEOUT = "timeout"
     SHUTTING_DOWN = "shutting_down"
     INTERNAL = "internal"
@@ -81,6 +93,7 @@ class HealthResult(Contract):
     status: Literal["ok"]
     worker_version: str
     protocol_version: int
+    data_contract_version: int
     python_version: str
     pid: int
     started_at: AwareDatetime
@@ -194,6 +207,8 @@ class CommandErrorCode(StrEnum):
     WORKER_ERROR = "worker_error"
     PROTOCOL_VIOLATION = "protocol_violation"
     INVALID_INPUT = "invalid_input"
+    NOT_FOUND = "not_found"
+    NOT_ALLOWED = "not_allowed"
     INTERNAL = "internal"
 
 

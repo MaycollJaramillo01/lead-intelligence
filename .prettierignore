@@ -1,14 +1,14 @@
 # formatted by their own toolchains
-services/
-src-tauri/
+/services/
+/src-tauri/
 # generated
-packages/shared-types/schema/
-packages/shared-types/fixtures/
-packages/shared-types/src/contracts.ts
+/packages/shared-types/schema/
+/packages/shared-types/fixtures/
+/packages/shared-types/src/contracts.ts
 pnpm-lock.yaml
-# runtime state and inputs we do not own
-data/
-logs/
-lead_intelligence_prompts/
+# runtime state and inputs we do not own (anchored: `data/` alone also matched components/data)
+/data/
+/logs/
+/lead_intelligence_prompts/
 .claude/
 .tools/

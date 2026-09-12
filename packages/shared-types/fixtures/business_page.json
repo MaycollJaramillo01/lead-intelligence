@@ -1,0 +1,38 @@
+{
+  "items": [
+    {
+      "id": "01900000-0000-7000-8000-000000000015",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Auto Repair 0001",
+      "status": "candidate",
+      "lead_stage": "not_contacted",
+      "locality": "Miami",
+      "region": "FL",
+      "primary_domain": "synthetic-auto-repair-0001.example",
+      "primary_phone": "+13055550101",
+      "primary_category": "Auto Repair",
+      "source_count": 1,
+      "evidence_count": 1,
+      "last_seen_at": "2026-01-01T00:00:00.000Z",
+      "is_synthetic": true
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000000006",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Bakery 0000",
+      "status": "candidate",
+      "lead_stage": "not_contacted",
+      "locality": "Austin",
+      "region": "TX",
+      "primary_domain": "synthetic-bakery-0000.example",
+      "primary_phone": "+15125550100",
+      "primary_category": "Bakery",
+      "source_count": 1,
+      "evidence_count": 1,
+      "last_seen_at": "2026-01-01T00:00:00.000Z",
+      "is_synthetic": true
+    }
+  ],
+  "next_cursor": "WyJuYW1lIiwic3ludGhldGljIGJha2VyeSAwMDAwIiwiMDE5MDAwMDAtMDAwMC03MDAwLTgwMDAtMDAwMDAwMDAwMDA2Il0",
+  "total": 3
+}

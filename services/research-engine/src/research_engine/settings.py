@@ -17,6 +17,8 @@ class Settings:
     log_level: str
     ollama_url: str
     ollama_timeout_s: float
+    # development builds only: enables the synthetic test-data seed (LEAD_DEV_TOOLS=1)
+    dev_tools: bool = False
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] = os.environ) -> Self:
@@ -38,10 +40,15 @@ class Settings:
         if not 0 < timeout <= 60:
             raise ValueError(f"LEAD_OLLAMA_TIMEOUT_S must be in (0, 60], got {raw_timeout!r}")
 
+        dev_tools = env.get("LEAD_DEV_TOOLS", "0").strip()
+        if dev_tools not in {"0", "1"}:
+            raise ValueError(f"LEAD_DEV_TOOLS must be 0 or 1, got {dev_tools!r}")
+
         data_dir = env.get("LEAD_DATA_DIR", "").strip()
         return cls(
             data_dir=Path(data_dir) if data_dir else None,
             log_level=level,
             ollama_url=ollama_url,
             ollama_timeout_s=timeout,
+            dev_tools=dev_tools == "1",
         )

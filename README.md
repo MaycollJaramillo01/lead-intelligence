@@ -7,10 +7,11 @@ commercial need, ICP fit and an explanation of why each one is worth contacting.
 
 Everything runs on this machine. No cloud service or LLM API is required.
 
-> **Status: Phase 02 — UI system.** The application shell is real: 16 modules, command palette,
-> keyboard shortcuts, a dense table with a contextual inspector and live system diagnostics.
-> Research data arrives from phase 03 onwards; modules that do not exist yet say so. The phase plan
-> lives in [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
+> **Status: Phase 03 — data model and persistence.** The canonical model is in place: 52 tables with
+> provenance for every value, state machines, audit, keyset pagination, full-text search, DuckDB and
+> Parquet snapshots, backups and recovery. Businesses and Datasets read real queries (empty until
+> discovery arrives in phase 04); modules that do not exist yet say so. The phase plan lives in
+> [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
 
 ## Requirements
 
@@ -46,7 +47,7 @@ built-in pnpm command).
 ```text
 apps/desktop/                React 19 + TypeScript (strict) + Vite + Tailwind 4 + shadcn/ui + Zustand
 src-tauri/                   Rust desktop core: window, typed IPC, config, logging, worker supervisor
-services/research-engine/    Python 3.12 worker (uv): protocol server, SQLite/DuckDB, probes
+services/research-engine/    Python 3.12 worker (uv): protocol server, data model, repositories, probes
 packages/shared-types/       Contract JSON Schema, generated TS types and cross-language fixtures
 config/                      Non-secret defaults per environment (embedded into the binary)
 data/  logs/                 Local stores and rotating logs in development (git-ignored)
@@ -57,6 +58,7 @@ docs/                        Architecture, decisions and operations
 ## Documentation
 
 - [docs/architecture.md](docs/architecture.md) — layers, processes, contracts, data flow
+- [docs/data-model.md](docs/data-model.md) — model, provenance, data dictionary, backup and recovery
 - [docs/ui-system.md](docs/ui-system.md) — design tokens, navigation map, shortcuts, components
 - [docs/decisions.md](docs/decisions.md) — technical decisions and their trade-offs
 - [docs/operations.md](docs/operations.md) — configuration, logs, troubleshooting

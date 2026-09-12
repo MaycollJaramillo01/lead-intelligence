@@ -5,12 +5,17 @@
 
 Fixtures are synthetic samples with obviously fake values. The Rust and TypeScript suites use
 them to prove every layer reads and writes the same shapes; they are never product output.
+Data-model fixtures are produced by the real repository queries over a temporary store seeded with
+synthetic test data, deterministic ids and a fixed clock.
 """
 
 import argparse
 import json
 import sys
+import tempfile
+from collections.abc import Callable
 from datetime import UTC, datetime
+from itertools import count
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -18,7 +23,9 @@ from uuid import UUID
 from pydantic import BaseModel
 from pydantic.json_schema import models_json_schema
 
+from research_engine import repository
 from research_engine.contracts import (
+    DATA_CONTRACT_VERSION,
     EXPORTED_MODELS,
     PROTOCOL_VERSION,
     AppEnvironment,
@@ -41,6 +48,25 @@ from research_engine.contracts import (
     UiErrorReport,
     WorkerState,
     WorkerStatus,
+)
+from research_engine.datasets import BUSINESS_SNAPSHOT_TABLE, SNAPSHOT_SCHEMA_VERSION
+from research_engine.domain import (
+    DATA_MODELS,
+    BusinessListQuery,
+    BusinessSort,
+    Dataset,
+    DatasetListQuery,
+    DatasetSnapshot,
+    SyntheticSeedResult,
+)
+from research_engine.storage import check_sqlite
+from research_engine.testdata import (
+    SYNTHETIC_DATASET_NAME,
+    SyntheticContext,
+    seed_businesses,
+    synthetic_connector,
+    synthetic_project,
+    synthetic_run,
 )
 
 DEFAULT_OUT = Path(__file__).resolve().parents[4] / "packages" / "shared-types"
@@ -68,15 +94,18 @@ def _clean(schema: dict[str, Any], keep_title: bool) -> dict[str, Any]:
 
 
 def build_schema() -> dict[str, Any]:
-    _, top = models_json_schema([(model, "validation") for model in EXPORTED_MODELS])
+    models = (*EXPORTED_MODELS, *DATA_MODELS)
+    _, top = models_json_schema([(model, "validation") for model in models])
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": "LeadIntelligenceContracts",
         "description": (
-            "Generated from services/research-engine/src/research_engine/contracts.py "
-            f"(protocol version {PROTOCOL_VERSION}). Do not edit by hand."
+            "Generated from services/research-engine/src/research_engine/contracts.py and "
+            f"domain.py (protocol version {PROTOCOL_VERSION}, data contract version "
+            f"{DATA_CONTRACT_VERSION}). Do not edit by hand."
         ),
         "x-protocol-version": PROTOCOL_VERSION,
+        "x-data-contract-version": DATA_CONTRACT_VERSION,
         "type": "object",
         "additionalProperties": False,
         "$defs": _clean(top, True)["$defs"],
@@ -106,6 +135,7 @@ def build_fixtures() -> dict[str, dict[str, Any]]:
         status="ok",
         worker_version="0.0.0-fixture",
         protocol_version=PROTOCOL_VERSION,
+        data_contract_version=DATA_CONTRACT_VERSION,
         python_version="3.12.0",
         pid=4242,
         started_at=_T0,
@@ -242,6 +272,79 @@ def build_fixtures() -> dict[str, dict[str, Any]]:
         ),
         "ui_error_report.json": _dump(
             UiErrorReport(source="fixture", message="synthetic UI error", stack=None)
+        ),
+        **build_data_fixtures(),
+    }
+
+
+def _fixture_ids() -> Callable[[], str]:
+    counter = count(1)
+    return lambda: f"01900000-0000-7000-8000-{next(counter):012d}"
+
+
+def build_data_fixtures() -> dict[str, dict[str, Any]]:
+    ids = _fixture_ids()
+    business_query = BusinessListQuery(
+        project_id=None,
+        search="synthetic",
+        status=None,
+        sort=BusinessSort.NAME,
+        limit=2,
+        cursor=None,
+    )
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        data_dir = Path(tmp)
+        check_sqlite(data_dir)
+        conn = repository.connect(data_dir)
+        try:
+            project = synthetic_project(_T0, ids)
+            connector = synthetic_connector(_T0, ids)
+            run = synthetic_run(project.id, connector.id, _T0, ids)
+            repository.insert(conn, project, connector, run)
+            seed_businesses(conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids), 3)
+            dataset = Dataset(
+                id=ids(),
+                project_id=project.id,
+                name=SYNTHETIC_DATASET_NAME,
+                description="Synthetic test data",
+                created_at=_T0,
+                updated_at=_T0,
+                deleted_at=None,
+                deleted_reason=None,
+            )
+            snapshot_id = ids()
+            snapshot = DatasetSnapshot(
+                id=snapshot_id,
+                dataset_id=dataset.id,
+                version=1,
+                row_count=3,
+                duckdb_table=BUSINESS_SNAPSHOT_TABLE,
+                parquet_path=f"datasets/{dataset.id}/{snapshot_id}",
+                schema_version=SNAPSHOT_SCHEMA_VERSION,
+                filters_json={"project_id": project.id},
+                created_at=_T0,
+            )
+            repository.insert(conn, dataset, snapshot)
+            dataset_query = DatasetListQuery(project_id=project.id, limit=50, cursor=None)
+            business_page = repository.list_businesses(conn, business_query)
+            detail = repository.get_business_detail(conn, business_page.items[0].id)
+            dataset_page = repository.list_datasets(conn, dataset_query)
+        finally:
+            conn.close()
+    return {
+        "business_list_query.json": _dump(business_query),
+        "business_page.json": _dump(business_page),
+        "business_detail.json": _dump(detail),
+        "dataset_list_query.json": _dump(dataset_query),
+        "dataset_page.json": _dump(dataset_page),
+        "synthetic_seed_result.json": _dump(
+            SyntheticSeedResult(
+                project_id=project.id,
+                business_id=business_page.items[0].id,
+                business_count=3,
+                dataset_id=dataset.id,
+                created=True,
+            )
         ),
     }
 

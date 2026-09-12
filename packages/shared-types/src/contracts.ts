@@ -3,9 +3,156 @@
 
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AcquisitionMethod".
+ */
+export type AcquisitionMethod =
+  "api_request" | "http_fetch" | "browser_render" | "file_import" | "manual_entry" | "synthetic";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "AppEnvironment".
  */
 export type AppEnvironment = "development" | "production";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AssessmentMethod".
+ */
+export type AssessmentMethod = "rules" | "manual_review";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AuditAction".
+ */
+export type AuditAction =
+  "create" | "update" | "status_change" | "soft_delete" | "restore" | "purge" | "merge" | "unmerge";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EntityType".
+ */
+export type EntityType =
+  | "project"
+  | "campaign"
+  | "icp_profile"
+  | "source_connector"
+  | "source_run"
+  | "raw_record"
+  | "business"
+  | "contact_point"
+  | "decision_maker"
+  | "evidence_item"
+  | "latino_assessment"
+  | "website_audit"
+  | "website_finding"
+  | "inference_run"
+  | "scoring_model"
+  | "score_run"
+  | "job"
+  | "dataset"
+  | "dataset_snapshot"
+  | "export"
+  | "tag"
+  | "note";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "JsonValue".
+ */
+export type JsonValue = unknown;
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BusinessStatus".
+ */
+export type BusinessStatus = "candidate" | "active" | "closed" | "merged";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadStage".
+ */
+export type LeadStage =
+  | "not_contacted"
+  | "attempted"
+  | "connected"
+  | "qualified"
+  | "meeting_booked"
+  | "proposal_sent"
+  | "won"
+  | "lost"
+  | "invalid_contact"
+  | "not_interested";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ClassificationKind".
+ */
+export type ClassificationKind = "category" | "service";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "NameKind".
+ */
+export type NameKind = "legal" | "trade" | "dba" | "alternate";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SourceKind".
+ */
+export type SourceKind =
+  | "official_api"
+  | "public_dataset"
+  | "directory"
+  | "public_registry"
+  | "web_search"
+  | "platform_api"
+  | "file_import"
+  | "manual_seed"
+  | "synthetic";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactType".
+ */
+export type ContactType = "phone" | "email" | "contact_form" | "booking_form" | "social_profile";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactOrigin".
+ */
+export type ContactOrigin = "published" | "user_import" | "hypothesis";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ValidationStatus".
+ */
+export type ValidationStatus =
+  | "observed"
+  | "structurally_valid"
+  | "domain_valid"
+  | "likely_valid"
+  | "invalid"
+  | "unknown"
+  | "stale"
+  | "suppressed";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EvidenceType".
+ */
+export type EvidenceType =
+  | "identity"
+  | "location"
+  | "contact"
+  | "ownership_declaration"
+  | "certification"
+  | "directory_membership"
+  | "market_language"
+  | "website_signal"
+  | "technology"
+  | "reputation"
+  | "operating_status";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EvidenceStrength".
+ */
+export type EvidenceStrength = "strong" | "moderate" | "weak";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EvidenceStatus".
+ */
+export type EvidenceStatus = "active" | "stale" | "contradicted" | "revoked";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BusinessSort".
+ */
+export type BusinessSort = "name" | "last_seen";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "CommandErrorCode".
@@ -16,12 +163,27 @@ export type CommandErrorCode =
   | "worker_error"
   | "protocol_violation"
   | "invalid_input"
+  | "not_found"
+  | "not_allowed"
   | "internal";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ComponentState".
  */
 export type ComponentState = "ok" | "degraded" | "unavailable" | "error";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ConversionElementKind".
+ */
+export type ConversionElementKind =
+  | "primary_cta"
+  | "secondary_cta"
+  | "contact_form"
+  | "booking_widget"
+  | "chat_widget"
+  | "click_to_call"
+  | "messaging_link"
+  | "other";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "WorkerState".
@@ -36,14 +198,449 @@ export type ErrorCode =
   | "unsupported_protocol"
   | "unknown_type"
   | "invalid_payload"
+  | "not_found"
+  | "not_allowed"
+  | "store_unavailable"
   | "timeout"
   | "shutting_down"
   | "internal";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EventLevel".
+ */
+export type EventLevel = "debug" | "info" | "warning" | "error";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EvidenceRole".
+ */
+export type EvidenceRole = "supports" | "contradicts" | "context";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExplanationKind".
+ */
+export type ExplanationKind = "reason" | "gate" | "penalty" | "missing_data";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportStatus".
+ */
+export type ExportStatus = "pending" | "running" | "succeeded" | "failed" | "cancelled";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportFormat".
+ */
+export type ExportFormat = "csv" | "xlsx" | "json" | "jsonl" | "parquet";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "InferenceStatus".
+ */
+export type InferenceStatus =
+  | "queued"
+  | "running"
+  | "succeeded"
+  | "insufficient_evidence"
+  | "invalid_output"
+  | "failed"
+  | "cancelled";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "JobStatus".
+ */
+export type JobStatus = "queued" | "running" | "paused" | "succeeded" | "failed" | "cancelled";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoStatus".
+ */
+export type LatinoStatus =
+  | "verified_latino_owned"
+  | "high_confidence_latino_owned"
+  | "probable_latino_owned"
+  | "spanish_market_affinity"
+  | "unknown";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "PageKind".
+ */
+export type PageKind = "home" | "about" | "contact" | "services" | "other";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ServiceAreaKind".
+ */
+export type ServiceAreaKind = "city" | "county" | "state" | "postal_code" | "metro" | "radius";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SourceRunStatus".
+ */
+export type SourceRunStatus =
+  "queued" | "running" | "paused" | "succeeded" | "failed" | "cancelled";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteFindingResult".
+ */
+export type WebsiteFindingResult = "pass" | "fail" | "warning" | "unknown" | "not_applicable";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteFindingSeverity".
+ */
+export type WebsiteFindingSeverity = "critical" | "high" | "medium" | "low" | "info";
 
 /**
- * Generated from services/research-engine/src/research_engine/contracts.py (protocol version 1). Do not edit by hand.
+ * Generated from services/research-engine/src/research_engine/contracts.py and domain.py (protocol version 1, data contract version 1). Do not edit by hand.
  */
 export interface LeadIntelligenceContracts {}
+/**
+ * One fetch: request URL, outcome and where its body is stored (relative to the data dir).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AcquiredPage".
+ */
+export interface AcquiredPage {
+  id: string;
+  source_run_id: string;
+  source_query_id: string | null;
+  url: string;
+  final_url: string | null;
+  http_status: number | null;
+  content_type: string | null;
+  content_sha256: string | null;
+  byte_size: number | null;
+  artifact_path: string | null;
+  fetched_at: string;
+}
+/**
+ * Append-only trail of important changes (status, soft delete, restore, purge, merge).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AuditEntry".
+ */
+export interface AuditEntry {
+  id: string;
+  occurred_at: string;
+  actor: string;
+  action: AuditAction;
+  entity_type: EntityType;
+  entity_id: string;
+  detail_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+}
+/**
+ * Canonical business. Display values are chosen from observations, which keep raw values.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Business".
+ */
+export interface Business {
+  id: string;
+  project_id: string;
+  display_name: string;
+  name_sort_key: string;
+  status: BusinessStatus;
+  lead_stage: LeadStage;
+  merged_into_id: string | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  deleted_reason: string | null;
+}
+/**
+ * A category or a service as the source labelled it, optionally mapped to a taxonomy.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BusinessClassification".
+ */
+export interface BusinessClassification {
+  id: string;
+  business_id: string;
+  extraction_id: string;
+  kind: ClassificationKind;
+  label_raw: string;
+  taxonomy_key: string | null;
+  taxonomy_version: string | null;
+  is_primary: boolean;
+  confidence: number;
+  observed_at: string;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BusinessDetail".
+ */
+export interface BusinessDetail {
+  business: Business;
+  is_synthetic: boolean;
+  names: ObservedName[];
+  locations: ObservedLocation[];
+  websites: ObservedWebsite[];
+  contacts: ObservedContact[];
+  classifications: ObservedClassification[];
+  evidence: ObservedEvidence[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ObservedName".
+ */
+export interface ObservedName {
+  value: BusinessName;
+  provenance: Provenance;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BusinessName".
+ */
+export interface BusinessName {
+  id: string;
+  business_id: string;
+  extraction_id: string;
+  name_raw: string;
+  name_normalized: string;
+  name_kind: NameKind;
+  is_primary: boolean;
+  confidence: number;
+  observed_at: string;
+  created_at: string;
+}
+/**
+ * Where one observed value came from: extraction, raw record, run and connector.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Provenance".
+ */
+export interface Provenance {
+  extraction_id: string;
+  extractor: string;
+  extractor_version: string;
+  extracted_at: string;
+  raw_record_id: string;
+  source_run_id: string;
+  acquired_page_id: string | null;
+  connector_key: string;
+  connector_name: string;
+  connector_kind: SourceKind;
+  method: AcquisitionMethod;
+  source_url: string | null;
+  external_id: string | null;
+  acquired_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ObservedLocation".
+ */
+export interface ObservedLocation {
+  value: BusinessLocation;
+  provenance: Provenance;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BusinessLocation".
+ */
+export interface BusinessLocation {
+  id: string;
+  business_id: string;
+  extraction_id: string;
+  address_raw: string | null;
+  street: string | null;
+  unit: string | null;
+  locality: string | null;
+  region: string | null;
+  postal_code: string | null;
+  country_code: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  is_primary: boolean;
+  confidence: number;
+  observed_at: string;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ObservedWebsite".
+ */
+export interface ObservedWebsite {
+  value: Website;
+  provenance: Provenance;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Website".
+ */
+export interface Website {
+  id: string;
+  business_id: string;
+  extraction_id: string;
+  url_raw: string;
+  url_normalized: string;
+  domain: string;
+  is_primary: boolean;
+  confidence: number;
+  observed_at: string;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ObservedContact".
+ */
+export interface ObservedContact {
+  value: ContactPoint;
+  provenance: Provenance;
+}
+/**
+ * Phone, email, form or social profile of a business, location or published person.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactPoint".
+ */
+export interface ContactPoint {
+  id: string;
+  business_id: string;
+  location_id: string | null;
+  decision_maker_id: string | null;
+  contact_type: ContactType;
+  value_raw: string;
+  value_normalized: string | null;
+  origin: ContactOrigin;
+  platform: string | null;
+  web_page_id: string | null;
+  role_or_department: string | null;
+  published_context: string | null;
+  is_primary: boolean;
+  validation_status: ValidationStatus;
+  validated_at: string | null;
+  do_not_contact: boolean;
+  suppression_reason: string | null;
+  confidence: number;
+  extraction_id: string;
+  first_seen_at: string;
+  last_seen_at: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  deleted_reason: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ObservedClassification".
+ */
+export interface ObservedClassification {
+  value: BusinessClassification;
+  provenance: Provenance;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ObservedEvidence".
+ */
+export interface ObservedEvidence {
+  value: EvidenceItem;
+  provenance: Provenance;
+}
+/**
+ * An observed claim: value, snippet and hash, strength, confidence. Only `status` changes.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EvidenceItem".
+ */
+export interface EvidenceItem {
+  id: string;
+  business_id: string;
+  evidence_type: EvidenceType;
+  claim: string;
+  value_json: JsonValue;
+  strength: EvidenceStrength;
+  status: EvidenceStatus;
+  confidence: number;
+  extraction_id: string;
+  web_page_id: string | null;
+  field_path: string | null;
+  snippet: string | null;
+  snippet_sha256: string | null;
+  observed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BusinessDetailQuery".
+ */
+export interface BusinessDetailQuery {
+  business_id: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BusinessListItem".
+ */
+export interface BusinessListItem {
+  id: string;
+  project_id: string;
+  display_name: string;
+  status: BusinessStatus;
+  lead_stage: LeadStage;
+  locality: string | null;
+  region: string | null;
+  primary_domain: string | null;
+  primary_phone: string | null;
+  primary_category: string | null;
+  source_count: number;
+  evidence_count: number;
+  last_seen_at: string;
+  is_synthetic: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BusinessListQuery".
+ */
+export interface BusinessListQuery {
+  project_id: string | null;
+  search: string | null;
+  status: BusinessStatus | null;
+  sort: BusinessSort;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * One keyset page. `total` counts every match of the filters, not only this page.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BusinessPage".
+ */
+export interface BusinessPage {
+  items: BusinessListItem[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BusinessScore".
+ */
+export interface BusinessScore {
+  id: string;
+  score_run_id: string;
+  business_id: string;
+  total_score: number | null;
+  confidence: number | null;
+  created_at: string;
+}
+/**
+ * What to look for; `criteria_json` follows the discovery criteria schema version.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Campaign".
+ */
+export interface Campaign {
+  id: string;
+  project_id: string;
+  icp_profile_version_id: string | null;
+  name: string;
+  objective: string | null;
+  criteria_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  criteria_schema_version: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  deleted_reason: string | null;
+}
 /**
  * Error shape every Tauri command rejects with.
  *
@@ -53,6 +650,48 @@ export interface LeadIntelligenceContracts {}
 export interface CommandError {
   code: CommandErrorCode;
   message: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ComponentScore".
+ */
+export interface ComponentScore {
+  id: string;
+  business_score_id: string;
+  component: string;
+  value: number | null;
+  weight: number;
+  contribution: number | null;
+  confidence: number | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactValidation".
+ */
+export interface ContactValidation {
+  id: string;
+  contact_point_id: string;
+  status: ValidationStatus;
+  method: string;
+  validator_version: string;
+  detail_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  validated_at: string;
+  expires_at: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ConversionElement".
+ */
+export interface ConversionElement {
+  id: string;
+  audit_id: string;
+  web_page_id: string | null;
+  element_kind: ConversionElementKind;
+  label: string | null;
+  confidence: number;
+  evidence_item_id: string | null;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -90,6 +729,103 @@ export interface DatabaseStatus {
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Dataset".
+ */
+export interface Dataset {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  deleted_reason: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetListItem".
+ */
+export interface DatasetListItem {
+  dataset: Dataset;
+  is_synthetic: boolean;
+  snapshot_count: number;
+  latest_snapshot: DatasetSnapshot | null;
+}
+/**
+ * Immutable, reproducible rows in DuckDB plus a partitioned Parquet copy.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetSnapshot".
+ */
+export interface DatasetSnapshot {
+  id: string;
+  dataset_id: string;
+  version: number;
+  row_count: number;
+  duckdb_table: string;
+  parquet_path: string;
+  schema_version: number;
+  filters_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetListQuery".
+ */
+export interface DatasetListQuery {
+  project_id: string | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetPage".
+ */
+export interface DatasetPage {
+  items: DatasetListItem[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * Lineage of a snapshot: exactly one of a source run, a score run or a parent snapshot.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetSnapshotSource".
+ */
+export interface DatasetSnapshotSource {
+  id: string;
+  snapshot_id: string;
+  source_run_id: string | null;
+  score_run_id: string | null;
+  parent_snapshot_id: string | null;
+  created_at: string;
+}
+/**
+ * A person only when published by a legitimate business source, with context.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DecisionMaker".
+ */
+export interface DecisionMaker {
+  id: string;
+  business_id: string;
+  extraction_id: string;
+  full_name_raw: string;
+  full_name_normalized: string;
+  role_raw: string | null;
+  role_normalized: string | null;
+  published_context: string | null;
+  confidence: number;
+  observed_at: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  deleted_reason: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "DiagnosticsReport".
  */
 export interface DiagnosticsReport {
@@ -120,6 +856,7 @@ export interface HealthResult {
   status: "ok";
   worker_version: string;
   protocol_version: number;
+  data_contract_version: number;
   python_version: string;
   pid: number;
   started_at: string;
@@ -197,6 +934,16 @@ export interface GpuDevice {
  */
 export interface EmptyPayload {}
 /**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EntityTag".
+ */
+export interface EntityTag {
+  tag_id: string;
+  entity_type: EntityType;
+  entity_id: string;
+  created_at: string;
+}
+/**
  * One JSON Lines frame. `payload` and `error` are mutually exclusive.
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -223,10 +970,493 @@ export interface ErrorInfo {
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Export".
+ */
+export interface Export {
+  id: string;
+  project_id: string;
+  dataset_snapshot_id: string | null;
+  status: ExportStatus;
+  format: ExportFormat;
+  file_name: string | null;
+  row_count: number | null;
+  file_sha256: string | null;
+  manifest_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  requested_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+/**
+ * One extractor pass over a raw record; every observed value points at one.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Extraction".
+ */
+export interface Extraction {
+  id: string;
+  raw_record_id: string;
+  extractor: string;
+  extractor_version: string;
+  extracted_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "IcpProfile".
+ */
+export interface IcpProfile {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  deleted_reason: string | null;
+}
+/**
+ * Immutable definition of an ICP profile at one version.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "IcpProfileVersion".
+ */
+export interface IcpProfileVersion {
+  id: string;
+  icp_profile_id: string;
+  version: number;
+  definition_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  schema_version: number;
+  created_by: string;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "InferenceEvidence".
+ */
+export interface InferenceEvidence {
+  inference_run_id: string;
+  evidence_item_id: string;
+}
+/**
+ * Raw model output next to the validated structure. Never a fact by itself.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "InferenceOutput".
+ */
+export interface InferenceOutput {
+  id: string;
+  inference_run_id: string;
+  business_id: string | null;
+  raw_output: string;
+  validated_output_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  confidence: number | null;
+  created_at: string;
+}
+/**
+ * One local-model call: task, runtime, model, prompt and schema versions, input hash.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "InferenceRun".
+ */
+export interface InferenceRun {
+  id: string;
+  task_type: string;
+  task_version: string;
+  provider: string;
+  model: string;
+  model_digest: string | null;
+  parameters_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  prompt_template_id: string;
+  prompt_template_version: string;
+  output_schema_version: string;
+  input_sha256: string;
+  status: InferenceStatus;
+  started_at: string | null;
+  finished_at: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Job".
+ */
+export interface Job {
+  id: string;
+  project_id: string;
+  kind: string;
+  status: JobStatus;
+  priority: number;
+  params_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  idempotency_key: string | null;
+  progress_done: number;
+  progress_total: number | null;
+  requested_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "JobCheckpoint".
+ */
+export interface JobCheckpoint {
+  id: string;
+  job_id: string;
+  task_id: string | null;
+  state_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  created_at: string;
+}
+/**
+ * Progress, warnings and errors of a job; errors carry a code and retry classification.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "JobEvent".
+ */
+export interface JobEvent {
+  id: string;
+  job_id: string;
+  task_id: string | null;
+  level: EventLevel;
+  event: string;
+  error_code: string | null;
+  retryable: boolean | null;
+  detail_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "JobMetric".
+ */
+export interface JobMetric {
+  id: string;
+  job_id: string;
+  task_id: string | null;
+  name: string;
+  value: number;
+  unit: string | null;
+  recorded_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "JobTask".
+ */
+export interface JobTask {
+  id: string;
+  job_id: string;
+  stage: string;
+  task_key: string;
+  status: JobStatus;
+  attempt_count: number;
+  max_attempts: number;
+  created_at: string;
+  updated_at: string;
+}
+/**
+ * One evaluation; a newer one supersedes it. Separate from the evidence it cites.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoAssessment".
+ */
+export interface LatinoAssessment {
+  id: string;
+  business_id: string;
+  status: LatinoStatus;
+  assessment_confidence: number;
+  method: AssessmentMethod;
+  rules_version: string;
+  inference_run_id: string | null;
+  rationale: string;
+  limitations: string | null;
+  assessed_at: string;
+  superseded_at: string | null;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoAssessmentEvidence".
+ */
+export interface LatinoAssessmentEvidence {
+  assessment_id: string;
+  evidence_item_id: string;
+  role: EvidenceRole;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Note".
+ */
+export interface Note {
+  id: string;
+  project_id: string;
+  entity_type: EntityType;
+  entity_id: string;
+  body: string;
+  author: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  deleted_reason: string | null;
+}
+/**
+ * A local workspace. Synthetic projects hold test data only.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Project".
+ */
+export interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+  is_synthetic: boolean;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  deleted_reason: string | null;
+}
+/**
+ * Immutable payload exactly as acquired. Either `source_url` or `external_id` identifies it.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "RawRecord".
+ */
+export interface RawRecord {
+  id: string;
+  source_run_id: string;
+  acquired_page_id: string | null;
+  connector_id: string;
+  method: AcquisitionMethod;
+  external_id: string | null;
+  source_url: string | null;
+  payload_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  payload_sha256: string;
+  acquired_at: string;
+  created_at: string;
+}
+/**
+ * A human decision with its mandatory reason. Never edited; a new decision supersedes it.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ReviewDecision".
+ */
+export interface ReviewDecision {
+  id: string;
+  entity_type: EntityType;
+  entity_id: string;
+  decision: string;
+  previous_value: string | null;
+  new_value: string | null;
+  reason: string;
+  actor: string;
+  decided_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreExplanation".
+ */
+export interface ScoreExplanation {
+  id: string;
+  business_score_id: string;
+  component: string | null;
+  kind: ExplanationKind;
+  message: string;
+  evidence_item_id: string | null;
+  sort_order: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreRun".
+ */
+export interface ScoreRun {
+  id: string;
+  scoring_model_version_id: string;
+  icp_profile_version_id: string | null;
+  dataset_snapshot_id: string | null;
+  job_id: string | null;
+  started_at: string;
+  finished_at: string | null;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoringModel".
+ */
+export interface ScoringModel {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  deleted_reason: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoringModelVersion".
+ */
+export interface ScoringModelVersion {
+  id: string;
+  scoring_model_id: string;
+  version: number;
+  definition_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  is_heuristic: boolean;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ServiceArea".
+ */
+export interface ServiceArea {
+  id: string;
+  business_id: string;
+  extraction_id: string;
+  area_raw: string;
+  area_kind: ServiceAreaKind;
+  area_normalized: string | null;
+  radius_km: number | null;
+  confidence: number;
+  observed_at: string;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ShutdownResult".
  */
 export interface ShutdownResult {
   accepted: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SourceConnector".
+ */
+export interface SourceConnector {
+  id: string;
+  key: string;
+  name: string;
+  kind: SourceKind;
+  connector_version: string;
+  terms_url: string | null;
+  requires_credentials: boolean;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+/**
+ * Effective configuration and limits of a connector, globally or for one project.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SourceConnectorConfig".
+ */
+export interface SourceConnectorConfig {
+  id: string;
+  connector_id: string;
+  project_id: string | null;
+  config_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  requests_per_minute: number | null;
+  daily_request_budget: number | null;
+  max_concurrency: number | null;
+  created_at: string;
+  superseded_at: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SourceQuery".
+ */
+export interface SourceQuery {
+  id: string;
+  source_run_id: string;
+  query_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  cursor: string | null;
+  issued_at: string;
+  result_count: number | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SourceRun".
+ */
+export interface SourceRun {
+  id: string;
+  project_id: string;
+  campaign_id: string | null;
+  connector_id: string;
+  connector_version: string;
+  config_id: string | null;
+  job_id: string | null;
+  status: SourceRunStatus;
+  effective_config_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  started_at: string | null;
+  finished_at: string | null;
+  error_code: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+/**
+ * Development-only seed. `created` is false when the synthetic workspace already existed.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SyntheticSeedResult".
+ */
+export interface SyntheticSeedResult {
+  project_id: string;
+  business_id: string;
+  business_count: number;
+  dataset_id: string;
+  created: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Tag".
+ */
+export interface Tag {
+  id: string;
+  project_id: string;
+  name: string;
+  created_at: string;
+  deleted_at: string | null;
+  deleted_reason: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "TaskAttempt".
+ */
+export interface TaskAttempt {
+  id: string;
+  task_id: string;
+  attempt: number;
+  status: JobStatus;
+  started_at: string;
+  finished_at: string | null;
+  error_code: string | null;
+  error_message: string | null;
+  retryable: boolean | null;
 }
 /**
  * Technical UI error forwarded to the desktop log (the UI never writes logs itself).
@@ -238,4 +1468,65 @@ export interface UiErrorReport {
   source: string;
   message: string;
   stack: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebPage".
+ */
+export interface WebPage {
+  id: string;
+  website_id: string;
+  acquired_page_id: string | null;
+  url_raw: string;
+  url_normalized: string;
+  page_kind: PageKind;
+  title: string | null;
+  observed_at: string;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteAudit".
+ */
+export interface WebsiteAudit {
+  id: string;
+  website_id: string;
+  ruleset_version: string;
+  started_at: string;
+  finished_at: string | null;
+  pages_analyzed: number;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteFinding".
+ */
+export interface WebsiteFinding {
+  id: string;
+  audit_id: string;
+  rule_id: string;
+  rule_version: string;
+  category: string;
+  result: WebsiteFindingResult;
+  severity: WebsiteFindingSeverity;
+  observed_value: string | null;
+  expected_condition: string | null;
+  remediation: string | null;
+  confidence: number;
+  web_page_id: string | null;
+  evidence_item_id: string | null;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteTechnology".
+ */
+export interface WebsiteTechnology {
+  id: string;
+  audit_id: string;
+  name: string;
+  category: string | null;
+  version: string | null;
+  confidence: number;
+  evidence_item_id: string | null;
 }

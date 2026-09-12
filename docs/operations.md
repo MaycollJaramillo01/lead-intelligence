@@ -60,8 +60,45 @@ Run only the tests that need local services: `uv run --directory services/resear
 | Ollama: `installed but not running`                          | Start Ollama (tray app or `ollama serve`). Nothing is downloaded automatically.                                                                       |
 | GPU: `nvidia-smi not found`                                  | No NVIDIA driver; local AI will use the CPU.                                                                                                          |
 | DuckDB: `could not set lock on file`                         | Another app instance (or tool) has the database open. Close it (single-instance lock: phase 14).                                                      |
+| SQLite: `degraded · recovered from backup …`                 | The store was damaged and replaced by the named backup; the damaged file is kept as `lead.sqlite3.corrupt-<utc>`. Changes after that backup are lost. |
+| SQLite: `… is damaged … and no usable backup exists`         | Follow **Recover a damaged database** below.                                                                                                          |
+| SQLite/DuckDB: `… is at schema vN, this build needs vM`      | A migration failed at startup (see the error on System and in the log). The store is unchanged and a backup was taken before the attempt.             |
+| Businesses: `the cursor does not belong to …`                | The list was paged with a cursor from another sort or a stale build; reload the screen.                                                               |
 | `uv` fails with `os error 1921` when run from a packaged app | Cache entries created inside an MSIX-virtualised process. Retry with `uv --no-cache …` or clear the affected entries with `uv cache clean <package>`. |
 | `git` reports _dubious ownership_                            | The `.git` directory belongs to another Windows account; use `git -c safe.directory=<repo> …` or add the exception yourself.                          |
+
+## Data, backups and recovery
+
+Details in [data-model.md](data-model.md). In short:
+
+- `data/lead.sqlite3` (operational), `data/analytics.duckdb` (analytics), `data/datasets/` (Parquet
+  snapshots) and `data/backups/` (verified backups, newest 10 per engine) all live under the data
+  directory; every path stored in the database is relative to it, so the folder can be moved whole.
+- A backup is taken automatically before migrations run on a store that already has data.
+- Take a manual backup while the app runs (development shell, from the repository root):
+
+  ```bash
+  uv run --directory services/research-engine python -c "from pathlib import Path; from research_engine import storage; d = Path('../../data'); c = storage.open_sqlite(d / storage.SQLITE_FILE); print(storage.backup_sqlite(c, d / storage.BACKUP_DIR, 'manual')); c.close()"
+  ```
+
+### Recover a damaged database
+
+1. Close the app (the worker must not hold the files).
+2. Move `lead.sqlite3`, `lead.sqlite3-wal` and `lead.sqlite3-shm` to a safe folder. Do not delete
+   them.
+3. Copy the newest file from `data/backups/` to `data/lead.sqlite3`, or leave the folder empty to
+   start with a fresh store.
+4. Start the app and open **System**: SQLite should report `ok` and the expected schema version.
+
+Integrity of any copy can be checked with
+`uv run --directory services/research-engine python -c "from pathlib import Path; from research_engine.storage import sqlite_problems; print(sqlite_problems(Path('<file>')) or 'ok')"`.
+
+## Synthetic test data (development only)
+
+`pnpm dev` passes `LEAD_DEV_TOOLS=1` to the worker, and the Businesses screen shows **Load synthetic
+test data · Dev**. It creates, once, a project flagged as synthetic with 24 fictitious businesses and
+a dataset snapshot, then opens one in the inspector. Release builds refuse the action in the core and
+the worker. To remove it in development, stop the app and delete the development `data/` folder.
 
 ## Clean
 

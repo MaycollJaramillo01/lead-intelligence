@@ -144,3 +144,93 @@ checks WCAG ratios for both themes (4.5:1 for text pairs, 3:1 for focus ring and
 **Consequence.** Two tokens changed to pass: the dark primary and destructive surfaces were
 darkened, and the form-control border was strengthened in both themes. Row separators stay
 deliberately subtle and are excluded: they are decoration, not information.
+
+## D-015 · Data contract in `domain.py`, SQL written by hand and proven equal (phase 03)
+
+**Context.** The model needs canonical Pydantic schemas, TypeScript types and a Rust validator, plus
+a SQL schema with real constraints, triggers and partial indexes.
+
+**Decision.** `research_engine/domain.py` is the source of truth for records, enumerations, state
+machines, queries and pages; the SQL migration is written by hand. Equality is enforced by tests
+instead of generation: every table is compared column by column with its record (name, type,
+nullability), every enum with its lookup table, every enum column with its foreign key and the
+state machines with `status_transitions`. TypeScript types are generated; Rust mirrors only what
+crosses IPC (`src-tauri/src/data.rs`) and round-trips fixtures produced by the real queries.
+
+**Why not generate the DDL.** CHECKs, triggers, partial unique indexes and FTS would need a metadata
+layer richer than the SQL itself, and migrations must be frozen, checksummed files anyway.
+
+## D-016 · UUIDv7 ids and one UTC timestamp format (phase 03)
+
+**Decision.** Ids are UUIDv7 text generated with a per-process monotonic counter (Python 3.12 has no
+`uuid7`), so they sort by creation order and keyset tie-breaks are meaningful. Timestamps are UTC
+text `YYYY-MM-DDTHH:MM:SS.sssZ` in SQLite and over IPC; a `CHECK` using `strftime` rejects any other
+form or impossible date, Pydantic normalises to UTC milliseconds, and Rust keeps them as validated
+text so they round-trip byte for byte. DuckDB stores UTC `TIMESTAMP` (fetching `TIMESTAMPTZ` into
+Python would need `pytz`).
+
+## D-017 · Enumerations as lookup tables, transitions as data plus triggers (phase 03)
+
+**Decision.** Each enumeration is a one-column lookup table referenced by a foreign key, and allowed
+status changes live in `status_transitions`, enforced by `BEFORE UPDATE OF` triggers. The repository
+checks the same machine first to return a readable error and writes the audit entry.
+
+**Why.** A `CHECK (x IN (...))` cannot be extended without rebuilding the table in SQLite; a lookup
+row is a one-line forward migration. Triggers make the rules hold for any writer, not only the
+repository.
+
+## D-018 · Provenance through extractions (phase 03)
+
+**Decision.** Observations do not repeat source columns. Each references one `extraction` (extractor
+name + version over one immutable `raw_record`), which references its source run, page and
+connector. Confidence stays on the observation. AI output, assessments and scores live in their own
+tables and cite evidence; they never overwrite observations.
+
+**Consequence.** Lineage of any value is a chain of foreign keys (`repository.trace_lineage`) and
+re-running an extractor version is idempotent.
+
+## D-019 · One contact table, soft delete with audit (phase 03)
+
+**Decision.** Phones, emails, contact/booking forms and social profiles share `contact_points`
+(discriminated by `contact_type`, with type-specific checks) so validations, suppressions and
+primary flags work the same for all of them. Important entities are soft-deleted (`deleted_at` +
+mandatory `deleted_reason`) and audited in the same transaction; a trigger refuses to delete a live
+row, so purging requires the audited soft delete first. Audit entries are written by the repository
+(SQLite triggers cannot know the actor).
+
+## D-020 · Full-text search keyed by `businesses.seq` (phase 03)
+
+**Decision.** FTS5 `business_search` holds the display name, all observed names and places, kept in
+sync by triggers. Its rowid is `businesses.seq`, an `INTEGER PRIMARY KEY` that exists only for this
+purpose: the implicit rowid of a table with a text primary key can change on `VACUUM`, which would
+silently point index rows at the wrong businesses.
+
+**Trade-off.** Two index updates per new business cap ingestion at roughly 800 businesses per second
+with every constraint on. Bulk imports that need more can rebuild the index in one pass.
+
+## D-021 · Snapshots: DuckDB rows, Parquet copy, SQLite registration (phase 03)
+
+**Decision.** A snapshot writes its rows to DuckDB, copies them to Parquet partitioned by `region`
+with the same explicit schema, and only then registers itself (with lineage) in SQLite; any failure
+removes the DuckDB rows and the Parquet directory. Rows reach DuckDB through a newline-delimited
+JSON file read with explicit column types.
+
+**Why not `executemany`.** In DuckDB 1.5 it took 2.3 s for 500 rows (20,000 rows would take minutes);
+the JSON load takes 0.09 s for 20,000. Multi-row `VALUES` with parameters crashed the interpreter.
+
+## D-022 · Backups before migrations, quarantine instead of deletion (phase 03)
+
+**Decision.** Pending migrations on a used store trigger a verified backup (SQLite online backup
+API; DuckDB `COPY FROM DATABASE`), keeping the newest 10. A damaged SQLite store is renamed aside and
+replaced by the newest backup that passes `integrity_check` and `foreign_key_check`; with no usable
+backup it is left untouched and reported. DuckDB, whose rows are derived and also stored as Parquet,
+may start empty instead. Detection uses `quick_check` (cheap on every health check); DuckDB
+corruption is recognised by its "not a valid DuckDB database file" error so a locked file is never
+touched.
+
+## D-023 · Development-only synthetic seed behind two guards (phase 03)
+
+**Decision.** The UI can load a synthetic workspace to exercise the real flow (store → worker → core
+→ UI → inspector with provenance) only in development: the core refuses `seed_synthetic_data`
+outside `Environment::Development` and passes `LEAD_DEV_TOOLS=1` to the worker only then; the worker
+refuses without it. Everything seeded is flagged `is_synthetic` and labelled in the UI.

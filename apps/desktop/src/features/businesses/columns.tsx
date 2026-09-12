@@ -1,25 +1,17 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type { FilterField } from "@/components/data/filters";
-import { Mono, Text } from "@/features/businesses/cells";
-import type { Translator } from "@/lib/i18n";
+import type { BusinessListItem, BusinessStatus } from "@lead/shared-types";
+import { DateTime, Mono, TestDataBadge, Text } from "@/components/data/cells";
+import type { TranslationKey, Translator } from "@/lib/i18n";
 
 /**
- * Provisional row shapes for the research tables. The canonical data model arrives in phase 03;
- * these describe what the analyst needs to see, so the table can be built and tested today.
+ * Provisional row shape for the Lead Explorer: leads exist once ICP matching and scoring run
+ * (phase 11). Businesses already use the real `BusinessListItem` contract.
  */
-export interface BusinessRow {
+export interface LeadRow {
   id: string;
   name: string;
   location: string | null;
   vertical: string | null;
-  website: string | null;
-  phone: string | null;
-  status: string | null;
-  sources: number | null;
-  lastSeen: string | null;
-}
-
-export interface LeadRow extends BusinessRow {
   stage: string | null;
   score: number | null;
   latinoEvidence: string | null;
@@ -29,55 +21,75 @@ export interface LeadRow extends BusinessRow {
   freshness: string | null;
 }
 
-export function buildBusinessColumns(t: Translator): ColumnDef<BusinessRow>[] {
+export const BUSINESS_STATUS_KEYS: Record<BusinessStatus, TranslationKey> = {
+  candidate: "business.status.candidate",
+  active: "business.status.active",
+  closed: "business.status.closed",
+  merged: "business.status.merged",
+};
+
+export function buildBusinessColumns(t: Translator): ColumnDef<BusinessListItem>[] {
   return [
     {
-      accessorKey: "name",
+      id: "name",
+      accessorKey: "display_name",
       header: t("businesses.column.name"),
-      size: 220,
-      cell: ({ getValue }) => <Text value={getValue<string>()} />,
+      size: 300,
+      cell: ({ row }) => (
+        <span className="flex min-w-0 items-center gap-1.5">
+          <Text value={row.original.display_name} />
+          {row.original.is_synthetic && <TestDataBadge />}
+        </span>
+      ),
     },
     {
-      accessorKey: "location",
+      id: "location",
+      accessorFn: (row) => [row.locality, row.region].filter(Boolean).join(", ") || null,
       header: t("businesses.column.location"),
-      size: 180,
+      size: 170,
       cell: ({ getValue }) => <Text value={getValue<string | null>()} />,
     },
     {
-      accessorKey: "vertical",
+      id: "vertical",
+      accessorKey: "primary_category",
       header: t("businesses.column.vertical"),
       size: 150,
       cell: ({ getValue }) => <Text value={getValue<string | null>()} />,
     },
     {
-      accessorKey: "website",
+      id: "website",
+      accessorKey: "primary_domain",
       header: t("businesses.column.website"),
-      size: 190,
+      size: 220,
       cell: ({ getValue }) => <Mono value={getValue<string | null>()} />,
     },
     {
-      accessorKey: "phone",
+      id: "phone",
+      accessorKey: "primary_phone",
       header: t("businesses.column.phone"),
       size: 130,
       cell: ({ getValue }) => <Mono value={getValue<string | null>()} />,
     },
     {
-      accessorKey: "status",
+      id: "status",
+      accessorFn: (row) => t(BUSINESS_STATUS_KEYS[row.status]),
       header: t("businesses.column.status"),
-      size: 120,
-      cell: ({ getValue }) => <Text value={getValue<string | null>()} />,
+      size: 110,
+      cell: ({ getValue }) => <Text value={getValue<string>()} />,
     },
     {
-      accessorKey: "sources",
+      id: "sources",
+      accessorKey: "source_count",
       header: t("businesses.column.sources"),
       size: 90,
-      cell: ({ getValue }) => <Mono value={getValue<number | null>()} />,
+      cell: ({ getValue }) => <Mono value={getValue<number>()} />,
     },
     {
-      accessorKey: "lastSeen",
+      id: "lastSeen",
+      accessorKey: "last_seen_at",
       header: t("businesses.column.lastSeen"),
-      size: 140,
-      cell: ({ getValue }) => <Mono value={getValue<string | null>()} />,
+      size: 170,
+      cell: ({ getValue }) => <DateTime value={getValue<string>()} />,
     },
   ];
 }
@@ -145,12 +157,4 @@ export function buildLeadColumns(t: Translator): ColumnDef<LeadRow>[] {
       cell: ({ getValue }) => <Text value={getValue<string | null>()} />,
     },
   ];
-}
-
-export function filterFieldsFrom<TData>(columns: ColumnDef<TData>[]): FilterField[] {
-  return columns.flatMap((column) => {
-    const id = "accessorKey" in column ? String(column.accessorKey) : column.id;
-    const label = typeof column.header === "string" ? column.header : (id ?? "");
-    return id ? [{ id, label }] : [];
-  });
 }

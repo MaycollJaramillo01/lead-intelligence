@@ -86,6 +86,10 @@ export const en = {
   "common.density": "Density",
   "common.language": "Language",
   "common.openMenu": "Open menu",
+  "common.testData": "Test data",
+  "common.devOnly": "Dev",
+  "common.loadMore": "Load more",
+  "common.showingOf": "Showing {loaded} of {total}",
 
   "state.loading": "Loading…",
   "state.empty": "Nothing here yet",
@@ -141,9 +145,19 @@ export const en = {
 
   "businesses.emptyTitle": "No businesses yet",
   "businesses.emptyBody":
-    "The data model lands in phase 03 and discovery in phase 04. The table, filters and inspector below are real and already work; they simply have nothing to show.",
+    "Businesses appear once discovery (phase 04) acquires them from real sources. Every value will keep its source, its original form and its confidence.",
+  "businesses.emptyBodyDev":
+    "Development build: load the synthetic test data to check the whole flow. It is clearly marked and never mixed with real results.",
+  "businesses.errorTitle": "Businesses could not be loaded",
+  "businesses.noMatchesTitle": "No business matches this search",
+  "businesses.searchPlaceholder": "Search names and places…",
+  "businesses.searchLabel": "Search businesses",
+  "businesses.seed": "Load synthetic test data",
+  "businesses.seedDone": "Synthetic test data is ready",
+  "businesses.seedReused": "Synthetic test data was already loaded",
   "businesses.inspectorEmptyTitle": "Nothing selected",
-  "businesses.inspectorEmptyBody": "Select a row to inspect its evidence, scores and contacts.",
+  "businesses.inspectorEmptyBody":
+    "Select a row to inspect its observed values and where they came from.",
   "businesses.column.name": "Business",
   "businesses.column.location": "Location",
   "businesses.column.vertical": "Vertical",
@@ -159,6 +173,34 @@ export const en = {
   "businesses.column.contactability": "Contactability",
   "businesses.column.opportunity": "Top opportunity",
   "businesses.column.freshness": "Freshness",
+
+  "business.status.candidate": "Candidate",
+  "business.status.active": "Active",
+  "business.status.closed": "Closed",
+  "business.status.merged": "Merged",
+
+  "inspector.notFoundTitle": "This business is no longer available",
+  "inspector.errorTitle": "Details could not be loaded",
+  "inspector.syntheticNotice": "Synthetic test data, not a real business.",
+  "inspector.names": "Names",
+  "inspector.locations": "Locations",
+  "inspector.websites": "Websites",
+  "inspector.contacts": "Contacts",
+  "inspector.classifications": "Categories and services",
+  "inspector.evidence": "Evidence",
+  "inspector.raw": "As acquired",
+  "inspector.normalized": "Normalized",
+  "inspector.provenance": "{source} · {extractor} {version} · {time} · {confidence}% confidence",
+
+  "datasets.emptyTitle": "No datasets yet",
+  "datasets.emptyBody":
+    "A dataset is a reproducible snapshot of businesses, stored in DuckDB and as Parquet together with its lineage. Snapshots are produced by jobs (phase 13).",
+  "datasets.errorTitle": "Datasets could not be loaded",
+  "datasets.column.name": "Dataset",
+  "datasets.column.snapshots": "Snapshots",
+  "datasets.column.version": "Latest version",
+  "datasets.column.rows": "Rows",
+  "datasets.column.captured": "Captured",
 
   "leads.emptyTitle": "No qualified leads yet",
   "leads.emptyBody":

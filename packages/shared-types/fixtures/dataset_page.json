@@ -1,0 +1,33 @@
+{
+  "items": [
+    {
+      "dataset": {
+        "id": "01900000-0000-7000-8000-000000000031",
+        "project_id": "01900000-0000-7000-8000-000000000001",
+        "name": "Synthetic businesses",
+        "description": "Synthetic test data",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "deleted_at": null,
+        "deleted_reason": null
+      },
+      "is_synthetic": true,
+      "snapshot_count": 1,
+      "latest_snapshot": {
+        "id": "01900000-0000-7000-8000-000000000032",
+        "dataset_id": "01900000-0000-7000-8000-000000000031",
+        "version": 1,
+        "row_count": 3,
+        "duckdb_table": "business_snapshot_rows",
+        "parquet_path": "datasets/01900000-0000-7000-8000-000000000031/01900000-0000-7000-8000-000000000032",
+        "schema_version": 1,
+        "filters_json": {
+          "project_id": "01900000-0000-7000-8000-000000000001"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      }
+    }
+  ],
+  "next_cursor": null,
+  "total": 1
+}

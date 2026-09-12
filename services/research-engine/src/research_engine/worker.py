@@ -28,8 +28,9 @@ from research_engine.contracts import (
     ErrorInfo,
     MessageType,
 )
-from research_engine.handlers import ROUTES, Context, health
+from research_engine.handlers import ROUTES, Context, NotAllowedError, health
 from research_engine.logs import configure_logging, request_id_var
+from research_engine.repository import InvalidCursorError, NotFoundError, StoreUnavailableError
 from research_engine.settings import Settings
 from research_engine.storage import check_duckdb, check_sqlite
 
@@ -220,6 +221,14 @@ class Worker:
             raise WorkerError(
                 ErrorCode.TIMEOUT, f"'{request.type}' exceeded {route.timeout_s:g}s", retryable=True
             ) from exc
+        except StoreUnavailableError as exc:
+            raise WorkerError(ErrorCode.STORE_UNAVAILABLE, str(exc), retryable=True) from exc
+        except NotFoundError as exc:
+            raise WorkerError(ErrorCode.NOT_FOUND, str(exc)) from exc
+        except NotAllowedError as exc:
+            raise WorkerError(ErrorCode.NOT_ALLOWED, str(exc)) from exc
+        except InvalidCursorError as exc:
+            raise WorkerError(ErrorCode.INVALID_PAYLOAD, str(exc)) from exc
         return result.model_dump(mode="json")
 
     # ---- output --------------------------------------------------------------------------

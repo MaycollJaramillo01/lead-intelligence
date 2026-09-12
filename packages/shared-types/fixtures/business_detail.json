@@ -1,0 +1,238 @@
+{
+  "business": {
+    "id": "01900000-0000-7000-8000-000000000015",
+    "project_id": "01900000-0000-7000-8000-000000000001",
+    "display_name": "Synthetic Auto Repair 0001",
+    "name_sort_key": "synthetic auto repair 0001",
+    "status": "candidate",
+    "lead_stage": "not_contacted",
+    "merged_into_id": null,
+    "first_seen_at": "2026-01-01T00:00:00.000Z",
+    "last_seen_at": "2026-01-01T00:00:00.000Z",
+    "created_at": "2026-01-01T00:00:00.000Z",
+    "updated_at": "2026-01-01T00:00:00.000Z",
+    "deleted_at": null,
+    "deleted_reason": null
+  },
+  "is_synthetic": true,
+  "names": [
+    {
+      "value": {
+        "id": "01900000-0000-7000-8000-000000000016",
+        "business_id": "01900000-0000-7000-8000-000000000015",
+        "extraction_id": "01900000-0000-7000-8000-000000000014",
+        "name_raw": "Synthetic Auto Repair 0001 LLC",
+        "name_normalized": "synthetic auto repair 0001",
+        "name_kind": "legal",
+        "is_primary": true,
+        "confidence": 0.9,
+        "observed_at": "2026-01-01T00:00:00.000Z",
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "provenance": {
+        "extraction_id": "01900000-0000-7000-8000-000000000014",
+        "extractor": "synthetic.extractor",
+        "extractor_version": "1.0.0",
+        "extracted_at": "2026-01-01T00:00:00.000Z",
+        "raw_record_id": "01900000-0000-7000-8000-000000000013",
+        "source_run_id": "01900000-0000-7000-8000-000000000003",
+        "acquired_page_id": null,
+        "connector_key": "synthetic.fixture",
+        "connector_name": "Synthetic fixture source (test data)",
+        "connector_kind": "synthetic",
+        "method": "synthetic",
+        "source_url": null,
+        "external_id": "synthetic-000001",
+        "acquired_at": "2026-01-01T00:00:00.000Z"
+      }
+    }
+  ],
+  "locations": [
+    {
+      "value": {
+        "id": "01900000-0000-7000-8000-000000000017",
+        "business_id": "01900000-0000-7000-8000-000000000015",
+        "extraction_id": "01900000-0000-7000-8000-000000000014",
+        "address_raw": "101 Example Ave, Miami, FL 33130",
+        "street": "101 Example Ave",
+        "unit": null,
+        "locality": "Miami",
+        "region": "FL",
+        "postal_code": "33130",
+        "country_code": "US",
+        "latitude": null,
+        "longitude": null,
+        "is_primary": true,
+        "confidence": 0.85,
+        "observed_at": "2026-01-01T00:00:00.000Z",
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "provenance": {
+        "extraction_id": "01900000-0000-7000-8000-000000000014",
+        "extractor": "synthetic.extractor",
+        "extractor_version": "1.0.0",
+        "extracted_at": "2026-01-01T00:00:00.000Z",
+        "raw_record_id": "01900000-0000-7000-8000-000000000013",
+        "source_run_id": "01900000-0000-7000-8000-000000000003",
+        "acquired_page_id": null,
+        "connector_key": "synthetic.fixture",
+        "connector_name": "Synthetic fixture source (test data)",
+        "connector_kind": "synthetic",
+        "method": "synthetic",
+        "source_url": null,
+        "external_id": "synthetic-000001",
+        "acquired_at": "2026-01-01T00:00:00.000Z"
+      }
+    }
+  ],
+  "websites": [
+    {
+      "value": {
+        "id": "01900000-0000-7000-8000-000000000018",
+        "business_id": "01900000-0000-7000-8000-000000000015",
+        "extraction_id": "01900000-0000-7000-8000-000000000014",
+        "url_raw": "https://www.synthetic-auto-repair-0001.example/",
+        "url_normalized": "https://synthetic-auto-repair-0001.example/",
+        "domain": "synthetic-auto-repair-0001.example",
+        "is_primary": true,
+        "confidence": 0.95,
+        "observed_at": "2026-01-01T00:00:00.000Z",
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "provenance": {
+        "extraction_id": "01900000-0000-7000-8000-000000000014",
+        "extractor": "synthetic.extractor",
+        "extractor_version": "1.0.0",
+        "extracted_at": "2026-01-01T00:00:00.000Z",
+        "raw_record_id": "01900000-0000-7000-8000-000000000013",
+        "source_run_id": "01900000-0000-7000-8000-000000000003",
+        "acquired_page_id": null,
+        "connector_key": "synthetic.fixture",
+        "connector_name": "Synthetic fixture source (test data)",
+        "connector_kind": "synthetic",
+        "method": "synthetic",
+        "source_url": null,
+        "external_id": "synthetic-000001",
+        "acquired_at": "2026-01-01T00:00:00.000Z"
+      }
+    }
+  ],
+  "contacts": [
+    {
+      "value": {
+        "id": "01900000-0000-7000-8000-000000000020",
+        "business_id": "01900000-0000-7000-8000-000000000015",
+        "location_id": null,
+        "decision_maker_id": null,
+        "contact_type": "phone",
+        "value_raw": "(305) 555-0101",
+        "value_normalized": "+13055550101",
+        "origin": "published",
+        "platform": null,
+        "web_page_id": null,
+        "role_or_department": null,
+        "published_context": "Synthetic listing (test data)",
+        "is_primary": true,
+        "validation_status": "observed",
+        "validated_at": null,
+        "do_not_contact": false,
+        "suppression_reason": null,
+        "confidence": 0.9,
+        "extraction_id": "01900000-0000-7000-8000-000000000014",
+        "first_seen_at": "2026-01-01T00:00:00.000Z",
+        "last_seen_at": "2026-01-01T00:00:00.000Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "deleted_at": null,
+        "deleted_reason": null
+      },
+      "provenance": {
+        "extraction_id": "01900000-0000-7000-8000-000000000014",
+        "extractor": "synthetic.extractor",
+        "extractor_version": "1.0.0",
+        "extracted_at": "2026-01-01T00:00:00.000Z",
+        "raw_record_id": "01900000-0000-7000-8000-000000000013",
+        "source_run_id": "01900000-0000-7000-8000-000000000003",
+        "acquired_page_id": null,
+        "connector_key": "synthetic.fixture",
+        "connector_name": "Synthetic fixture source (test data)",
+        "connector_kind": "synthetic",
+        "method": "synthetic",
+        "source_url": null,
+        "external_id": "synthetic-000001",
+        "acquired_at": "2026-01-01T00:00:00.000Z"
+      }
+    }
+  ],
+  "classifications": [
+    {
+      "value": {
+        "id": "01900000-0000-7000-8000-000000000019",
+        "business_id": "01900000-0000-7000-8000-000000000015",
+        "extraction_id": "01900000-0000-7000-8000-000000000014",
+        "kind": "category",
+        "label_raw": "Auto Repair",
+        "taxonomy_key": null,
+        "taxonomy_version": null,
+        "is_primary": true,
+        "confidence": 0.8,
+        "observed_at": "2026-01-01T00:00:00.000Z",
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "provenance": {
+        "extraction_id": "01900000-0000-7000-8000-000000000014",
+        "extractor": "synthetic.extractor",
+        "extractor_version": "1.0.0",
+        "extracted_at": "2026-01-01T00:00:00.000Z",
+        "raw_record_id": "01900000-0000-7000-8000-000000000013",
+        "source_run_id": "01900000-0000-7000-8000-000000000003",
+        "acquired_page_id": null,
+        "connector_key": "synthetic.fixture",
+        "connector_name": "Synthetic fixture source (test data)",
+        "connector_kind": "synthetic",
+        "method": "synthetic",
+        "source_url": null,
+        "external_id": "synthetic-000001",
+        "acquired_at": "2026-01-01T00:00:00.000Z"
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "value": {
+        "id": "01900000-0000-7000-8000-000000000021",
+        "business_id": "01900000-0000-7000-8000-000000000015",
+        "evidence_type": "identity",
+        "claim": "Business name as listed by the synthetic source",
+        "value_json": "Synthetic Auto Repair 0001 LLC",
+        "strength": "moderate",
+        "status": "active",
+        "confidence": 0.9,
+        "extraction_id": "01900000-0000-7000-8000-000000000014",
+        "web_page_id": null,
+        "field_path": "name",
+        "snippet": "Synthetic Auto Repair 0001 LLC",
+        "snippet_sha256": "d29e911dae02eb9184b66c60f992ac0945c391ef551ca29f58d4fe9d9fae32c0",
+        "observed_at": "2026-01-01T00:00:00.000Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z"
+      },
+      "provenance": {
+        "extraction_id": "01900000-0000-7000-8000-000000000014",
+        "extractor": "synthetic.extractor",
+        "extractor_version": "1.0.0",
+        "extracted_at": "2026-01-01T00:00:00.000Z",
+        "raw_record_id": "01900000-0000-7000-8000-000000000013",
+        "source_run_id": "01900000-0000-7000-8000-000000000003",
+        "acquired_page_id": null,
+        "connector_key": "synthetic.fixture",
+        "connector_name": "Synthetic fixture source (test data)",
+        "connector_kind": "synthetic",
+        "method": "synthetic",
+        "source_url": null,
+        "external_id": "synthetic-000001",
+        "acquired_at": "2026-01-01T00:00:00.000Z"
+      }
+    }
+  ]
+}

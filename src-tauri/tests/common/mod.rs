@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use lead_intelligence_lib::config;
+use lead_intelligence_lib::config::{self, Environment};
 use lead_intelligence_lib::protocol::WorkerStatus;
 use lead_intelligence_lib::worker::{
     StatusListener, SupervisorSettings, WorkerLaunch, WorkerSupervisor,
@@ -18,13 +18,19 @@ pub fn repo_root() -> PathBuf {
         .to_path_buf()
 }
 
-/// The real research engine from the development virtualenv (`pnpm run setup`).
+/// The real research engine from the development virtualenv (`pnpm run setup`), launched as a
+/// development build launches it (synthetic seed enabled).
 pub fn real_worker(data_dir: &Path) -> SupervisorSettings {
     let mut config = config::load(Path::new("missing-test-config.toml"), &|_| None).config;
     // a closed port keeps diagnostics fast and independent of a locally running Ollama
     config.ollama.base_url = "http://127.0.0.1:9".into();
     config.ollama.timeout_ms = 500;
-    let launch = resolve_worker_launch(&config, Some(&repo_root()), data_dir);
+    let launch = resolve_worker_launch(
+        &config,
+        Environment::Development,
+        Some(&repo_root()),
+        data_dir,
+    );
     assert!(
         launch.is_ok(),
         "development worker unavailable ({launch:?}); run `pnpm run setup`"
@@ -34,9 +40,18 @@ pub fn real_worker(data_dir: &Path) -> SupervisorSettings {
 
 /// A scripted stand-in used only to force failure modes the real worker never shows on demand.
 pub fn fake_worker(mode: &str) -> SupervisorSettings {
+    fake_worker_speaking(mode, 1)
+}
+
+pub fn fake_worker_speaking(mode: &str, data_contract_version: u32) -> SupervisorSettings {
     let launch = WorkerLaunch {
         program: dev_python(&repo_root()),
-        args: vec!["-c".into(), FAKE_WORKER.into(), mode.into()],
+        args: vec![
+            "-c".into(),
+            FAKE_WORKER.into(),
+            mode.into(),
+            data_contract_version.to_string(),
+        ],
         env: Vec::new(),
     };
     let mut settings = SupervisorSettings::new(Ok(launch), Duration::from_secs(10));
@@ -119,8 +134,9 @@ def send(request_id, kind, payload):
              "payload": payload, "error": None}
     sys.stdout.write(json.dumps(frame) + "\n")
     sys.stdout.flush()
-health = {"status": "ok", "worker_version": "fake", "protocol_version": 1, "python_version": "3",
-          "pid": 1, "started_at": "2026-01-01T00:00:00Z", "uptime_s": 0.0}
+health = {"status": "ok", "worker_version": "fake", "protocol_version": 1,
+          "data_contract_version": int(sys.argv[2]) if len(sys.argv) > 2 else 1,
+          "python_version": "3", "pid": 1, "started_at": "2026-01-01T00:00:00Z", "uptime_s": 0.0}
 send(str(uuid.uuid4()), "worker.ready", health)
 answered = 0
 for line in sys.stdin:

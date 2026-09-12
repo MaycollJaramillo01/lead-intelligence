@@ -20,8 +20,12 @@ describe("filter conditions", () => {
   it("matches text case-insensitively", () => {
     expect(matchesCondition("Roofing", condition({ value: "roof" }))).toBe(true);
     expect(matchesCondition("Plumbing", condition({ value: "roof" }))).toBe(false);
-    expect(matchesCondition("Roofing", condition({ operator: "equals", value: "roofing" }))).toBe(true);
-    expect(matchesCondition("Roofing", condition({ operator: "not_equals", value: "roofing" }))).toBe(false);
+    expect(matchesCondition("Roofing", condition({ operator: "equals", value: "roofing" }))).toBe(
+      true,
+    );
+    expect(
+      matchesCondition("Roofing", condition({ operator: "not_equals", value: "roofing" })),
+    ).toBe(false);
   });
 
   it("treats null, undefined and blanks as empty", () => {

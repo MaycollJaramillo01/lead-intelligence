@@ -2,6 +2,7 @@
 
 pub mod commands;
 pub mod config;
+pub mod data;
 pub mod error;
 pub mod logging;
 pub mod protocol;
@@ -28,7 +29,11 @@ pub fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Build
     builder.invoke_handler(tauri::generate_handler![
         commands::get_diagnostics,
         commands::restart_worker,
-        commands::report_ui_error
+        commands::report_ui_error,
+        commands::list_businesses,
+        commands::get_business,
+        commands::list_datasets,
+        commands::seed_synthetic_data
     ])
 }
 
@@ -136,7 +141,12 @@ fn bootstrap<R: Runtime>(
         warn!(%warning, "configuration warning");
     }
 
-    let launch = resolve_worker_launch(&loaded.config, dirs.repo_root.as_deref(), &data_dir);
+    let launch = resolve_worker_launch(
+        &loaded.config,
+        loaded.environment,
+        dirs.repo_root.as_deref(),
+        &data_dir,
+    );
     if let Err(reason) = &launch {
         error!(%reason, "python worker cannot be launched");
     }
@@ -183,6 +193,7 @@ pub fn dev_python(repo_root: &Path) -> PathBuf {
 /// sidecar executable placed next to the application binary by the installer.
 pub fn resolve_worker_launch(
     config: &AppConfig,
+    environment: Environment,
     repo_root: Option<&Path>,
     data_dir: &Path,
 ) -> Result<WorkerLaunch, String> {
@@ -212,11 +223,15 @@ pub fn resolve_worker_launch(
     Ok(WorkerLaunch {
         program,
         args,
-        env: worker_env(config, data_dir),
+        env: worker_env(config, environment, data_dir),
     })
 }
 
-fn worker_env(config: &AppConfig, data_dir: &Path) -> Vec<(String, String)> {
+fn worker_env(
+    config: &AppConfig,
+    environment: Environment,
+    data_dir: &Path,
+) -> Vec<(String, String)> {
     let python_level = match config.logging.level.as_str() {
         "trace" | "debug" => "debug",
         "warn" => "warning",
@@ -230,6 +245,11 @@ fn worker_env(config: &AppConfig, data_dir: &Path) -> Vec<(String, String)> {
         (
             "LEAD_OLLAMA_TIMEOUT_S",
             (config.ollama.timeout_ms as f64 / 1000.0).to_string(),
+        ),
+        // the synthetic test-data seed exists only in development builds
+        (
+            "LEAD_DEV_TOOLS",
+            u8::from(environment == Environment::Development).to_string(),
         ),
         ("PYTHONUTF8", "1".to_owned()),
         ("PYTHONUNBUFFERED", "1".to_owned()),
@@ -262,16 +282,21 @@ mod tests {
     fn worker_env_maps_levels_to_python_names() {
         let mut config = config::load(Path::new("missing.toml"), &|_| None).config;
         config.logging.level = "warn".into();
-        let env = worker_env(&config, Path::new("data"));
+        let env = worker_env(&config, Environment::Production, Path::new("data"));
         assert!(env.contains(&("LEAD_LOG_LEVEL".into(), "warning".into())));
         assert!(env.contains(&("LEAD_OLLAMA_TIMEOUT_S".into(), "2".into())));
+        assert!(env.contains(&("LEAD_DEV_TOOLS".into(), "0".into())));
+        let dev = worker_env(&config, Environment::Development, Path::new("data"));
+        assert!(dev.contains(&("LEAD_DEV_TOOLS".into(), "1".into())));
     }
 
     #[test]
     fn missing_worker_is_an_explanatory_error() {
         let mut config = config::load(Path::new("missing.toml"), &|_| None).config;
         config.worker.program = "Z:/definitely/missing/worker.exe".into();
-        let error = resolve_worker_launch(&config, None, Path::new("data")).unwrap_err();
+        let error =
+            resolve_worker_launch(&config, Environment::Production, None, Path::new("data"))
+                .unwrap_err();
         assert!(error.contains("not found"), "{error}");
     }
 }

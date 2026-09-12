@@ -2,8 +2,15 @@ import { invoke, isTauri, type InvokeArgs } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import {
   WORKER_STATUS_EVENT,
+  type BusinessDetail,
+  type BusinessDetailQuery,
+  type BusinessListQuery,
+  type BusinessPage,
   type CommandError,
+  type DatasetListQuery,
+  type DatasetPage,
   type DiagnosticsReport,
+  type SyntheticSeedResult,
   type UiErrorReport,
   type WorkerStatus,
 } from "@lead/shared-types";
@@ -54,6 +61,11 @@ export const desktop = {
   getDiagnostics: () => call<DiagnosticsReport>("get_diagnostics"),
   restartWorker: () => call<WorkerStatus>("restart_worker"),
   reportUiError: (report: UiErrorReport) => call<null>("report_ui_error", { report }),
+  listBusinesses: (query: BusinessListQuery) => call<BusinessPage>("list_businesses", { query }),
+  getBusiness: (query: BusinessDetailQuery) => call<BusinessDetail>("get_business", { query }),
+  listDatasets: (query: DatasetListQuery) => call<DatasetPage>("list_datasets", { query }),
+  /** Development builds only; the desktop core refuses it in release builds. */
+  seedSyntheticData: () => call<SyntheticSeedResult>("seed_synthetic_data"),
   onWorkerStatus: async (handler: (status: WorkerStatus) => void): Promise<UnlistenFn> => {
     if (!isTauri()) throw toIpcError(null, "listen");
     return listen<WorkerStatus>(WORKER_STATUS_EVENT, (event) => handler(event.payload));

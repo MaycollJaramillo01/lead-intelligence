@@ -87,6 +87,10 @@ export const es: Partial<Record<TranslationKey, string>> = {
   "common.density": "Densidad",
   "common.language": "Idioma",
   "common.openMenu": "Abrir menú",
+  "common.testData": "Datos de prueba",
+  "common.devOnly": "Dev",
+  "common.loadMore": "Cargar más",
+  "common.showingOf": "Mostrando {loaded} de {total}",
 
   "state.loading": "Cargando…",
   "state.empty": "Todavía no hay nada",
@@ -140,10 +144,19 @@ export const es: Partial<Record<TranslationKey, string>> = {
 
   "businesses.emptyTitle": "Todavía no hay negocios",
   "businesses.emptyBody":
-    "El modelo de datos llega en la fase 03 y el descubrimiento en la 04. La tabla, los filtros y el inspector de abajo son reales y ya funcionan; simplemente no tienen nada que mostrar.",
+    "Los negocios aparecen cuando el descubrimiento (fase 04) los adquiere de fuentes reales. Cada valor conservará su fuente, su forma original y su confianza.",
+  "businesses.emptyBodyDev":
+    "Build de desarrollo: carga los datos de prueba sintéticos para comprobar el flujo completo. Están marcados y nunca se mezclan con resultados reales.",
+  "businesses.errorTitle": "No se pudieron cargar los negocios",
+  "businesses.noMatchesTitle": "Ningún negocio coincide con la búsqueda",
+  "businesses.searchPlaceholder": "Busca nombres y lugares…",
+  "businesses.searchLabel": "Buscar negocios",
+  "businesses.seed": "Cargar datos de prueba sintéticos",
+  "businesses.seedDone": "Datos de prueba sintéticos listos",
+  "businesses.seedReused": "Los datos de prueba sintéticos ya estaban cargados",
   "businesses.inspectorEmptyTitle": "Nada seleccionado",
   "businesses.inspectorEmptyBody":
-    "Selecciona una fila para inspeccionar su evidencia, scores y contactos.",
+    "Selecciona una fila para inspeccionar sus valores observados y de dónde vienen.",
   "businesses.column.name": "Negocio",
   "businesses.column.location": "Ubicación",
   "businesses.column.vertical": "Vertical",
@@ -159,6 +172,34 @@ export const es: Partial<Record<TranslationKey, string>> = {
   "businesses.column.contactability": "Contactabilidad",
   "businesses.column.opportunity": "Oportunidad principal",
   "businesses.column.freshness": "Frescura",
+
+  "business.status.candidate": "Candidato",
+  "business.status.active": "Activo",
+  "business.status.closed": "Cerrado",
+  "business.status.merged": "Fusionado",
+
+  "inspector.notFoundTitle": "Este negocio ya no está disponible",
+  "inspector.errorTitle": "No se pudo cargar el detalle",
+  "inspector.syntheticNotice": "Datos de prueba sintéticos, no es un negocio real.",
+  "inspector.names": "Nombres",
+  "inspector.locations": "Ubicaciones",
+  "inspector.websites": "Sitios web",
+  "inspector.contacts": "Contactos",
+  "inspector.classifications": "Categorías y servicios",
+  "inspector.evidence": "Evidencia",
+  "inspector.raw": "Tal como se adquirió",
+  "inspector.normalized": "Normalizado",
+  "inspector.provenance": "{source} · {extractor} {version} · {time} · confianza {confidence}%",
+
+  "datasets.emptyTitle": "Todavía no hay datasets",
+  "datasets.emptyBody":
+    "Un dataset es un snapshot reproducible de negocios, guardado en DuckDB y como Parquet junto con su lineage. Los snapshots los producen los trabajos (fase 13).",
+  "datasets.errorTitle": "No se pudieron cargar los datasets",
+  "datasets.column.name": "Dataset",
+  "datasets.column.snapshots": "Snapshots",
+  "datasets.column.version": "Última versión",
+  "datasets.column.rows": "Filas",
+  "datasets.column.captured": "Capturado",
 
   "leads.emptyTitle": "Todavía no hay leads calificados",
   "leads.emptyBody":

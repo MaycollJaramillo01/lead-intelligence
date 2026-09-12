@@ -12,6 +12,7 @@ use std::sync::atomic::{AtomicU64, Ordering::SeqCst};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
 use std::time::{Duration, Instant};
 
+use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
@@ -23,16 +24,23 @@ use uuid::Uuid;
 
 use crate::error::AppError;
 use crate::protocol::{
-    EVENT_PROTOCOL_ERROR, EVENT_READY, Envelope, HealthResult, MAX_FRAME_BYTES, RESULT_SUFFIX,
-    WorkerState, WorkerStatus,
+    DATA_CONTRACT_VERSION, EVENT_PROTOCOL_ERROR, EVENT_READY, Envelope, ErrorCode, HealthResult,
+    MAX_FRAME_BYTES, RESULT_SUFFIX, WorkerState, WorkerStatus,
 };
 
 pub const HEALTH: &str = "health";
 pub const DIAGNOSTICS: &str = "diagnostics";
+pub const BUSINESSES_LIST: &str = "businesses.list";
+pub const BUSINESSES_GET: &str = "businesses.get";
+pub const DATASETS_LIST: &str = "datasets.list";
+pub const DEV_SEED_SYNTHETIC: &str = "dev.seed_synthetic";
 const SHUTDOWN: &str = "shutdown";
 
 /// The worker bounds diagnostics at 20 s; allow for transport and scheduling on top.
 pub const DIAGNOSTICS_TIMEOUT: Duration = Duration::from_secs(25);
+/// Store reads are bounded at 10 s by the worker; the synthetic seed at 60 s.
+pub const DATA_TIMEOUT: Duration = Duration::from_secs(15);
+pub const SEED_TIMEOUT: Duration = Duration::from_secs(70);
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 const READER_DRAIN_TIMEOUT: Duration = Duration::from_secs(2);
 const HEALTH_FAILURES_BEFORE_RESTART: u32 = 2;
@@ -217,7 +225,12 @@ impl WorkerSupervisor {
             })??;
             if let Some(error) = answer.error {
                 warn!(code = ?error.code, message = %error.message, "worker rejected the request");
-                return Err(AppError::Worker(error.message));
+                return Err(match error.code {
+                    ErrorCode::NotFound => AppError::NotFound(error.message),
+                    ErrorCode::NotAllowed => AppError::NotAllowed(error.message),
+                    ErrorCode::InvalidPayload => AppError::InvalidInput(error.message),
+                    _ => AppError::Worker(error.message),
+                });
             }
             let expected = format!("{kind}{RESULT_SUFFIX}");
             if answer.kind != expected {
@@ -243,6 +256,24 @@ impl WorkerSupervisor {
         timeout: Duration,
     ) -> Result<T, AppError> {
         self.request(kind, Map::new(), timeout)
+            .await?
+            .into_payload()
+            .map_err(AppError::Protocol)
+    }
+
+    /// Like `request_typed`, with a typed payload (a struct that serialises to a JSON object).
+    pub async fn request_with<P: Serialize, T: DeserializeOwned>(
+        &self,
+        kind: &str,
+        payload: &P,
+        timeout: Duration,
+    ) -> Result<T, AppError> {
+        let Ok(Value::Object(payload)) = serde_json::to_value(payload) else {
+            return Err(AppError::Protocol(format!(
+                "'{kind}' payload is not a JSON object"
+            )));
+        };
+        self.request(kind, payload, timeout)
             .await?
             .into_payload()
             .map_err(AppError::Protocol)
@@ -321,9 +352,17 @@ impl WorkerSupervisor {
                     )
                 })?
                 .map_err(|_| "worker exited during startup (see its stderr output)".to_owned())?;
-            self.request_typed::<HealthResult>(HEALTH, self.settings.health_timeout)
+            let health = self
+                .request_typed::<HealthResult>(HEALTH, self.settings.health_timeout)
                 .await
-                .map_err(|e| format!("startup health check failed: {e}"))
+                .map_err(|e| format!("startup health check failed: {e}"))?;
+            if health.data_contract_version != DATA_CONTRACT_VERSION {
+                return Err(format!(
+                    "worker speaks data contract v{}, this build needs v{DATA_CONTRACT_VERSION}",
+                    health.data_contract_version
+                ));
+            }
+            Ok(health)
         };
         let mut stopping = self.shared.stopping.subscribe();
         let outcome = tokio::select! {

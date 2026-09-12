@@ -1,5 +1,7 @@
 import { useMemo } from "react";
-import { buildLeadColumns, filterFieldsFrom, type LeadRow } from "@/features/businesses/columns";
+import { filterFieldsFrom } from "@/components/data/filters";
+import { StateBlock } from "@/components/states/StateBlock";
+import { buildLeadColumns, type LeadRow } from "@/features/businesses/columns";
 import { TableWorkspace } from "@/features/businesses/TableWorkspace";
 import { useT } from "@/lib/i18n";
 
@@ -18,8 +20,9 @@ export function LeadExplorerScreen() {
       data={LEADS}
       getRowId={(row) => row.id}
       filterFields={filterFields}
-      emptyTitle={t("leads.emptyTitle")}
-      emptyBody={t("leads.emptyBody")}
+      emptyState={
+        <StateBlock variant="empty" title={t("leads.emptyTitle")} body={t("leads.emptyBody")} />
+      }
     />
   );
 }

@@ -31,6 +31,17 @@ describe("desktop IPC adapter", () => {
     expect(mocks.invoke).toHaveBeenCalledWith("report_ui_error", { report });
   });
 
+  it("passes data queries as the typed `query` argument", async () => {
+    mocks.invoke.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
+    const query = { project_id: null, limit: 10, cursor: null };
+    await desktop.listDatasets(query);
+    expect(mocks.invoke).toHaveBeenCalledWith("list_datasets", { query });
+    await desktop.getBusiness({ business_id: "01900000-0000-7000-8000-000000000001" });
+    expect(mocks.invoke).toHaveBeenLastCalledWith("get_business", {
+      query: { business_id: "01900000-0000-7000-8000-000000000001" },
+    });
+  });
+
   it("turns a CommandError rejection into an IpcError with the same code", async () => {
     mocks.invoke.mockRejectedValue({ code: "worker_unavailable", message: "not running" });
     const error = await desktop.getDiagnostics().catch((e: unknown) => e);

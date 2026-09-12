@@ -1,4 +1,4 @@
-import type { FilterFn } from "@tanstack/react-table";
+import type { ColumnDef, FilterFn } from "@tanstack/react-table";
 
 export type FilterOperator = "contains" | "equals" | "not_equals" | "is_empty" | "is_not_empty";
 
@@ -33,6 +33,15 @@ export interface FilterCondition {
   field: string;
   operator: FilterOperator;
   value: string;
+}
+
+/** Filter fields use the column id, which is what the table filters on. */
+export function filterFieldsFrom<TData>(columns: ColumnDef<TData>[]): FilterField[] {
+  return columns.flatMap((column) => {
+    const id = column.id ?? ("accessorKey" in column ? String(column.accessorKey) : undefined);
+    const label = typeof column.header === "string" ? column.header : (id ?? "");
+    return id ? [{ id, label }] : [];
+  });
 }
 
 export function createCondition(field: FilterField): FilterCondition {

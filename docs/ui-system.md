@@ -51,7 +51,7 @@ Six sections, sixteen modules. Status is what the module actually is today.
 | Intelligence | Scoring Models  | `/scoring-models`  | phase 11  |
 | Intelligence | AI Models       | `/ai-models`       | phase 10  |
 | Operations   | Jobs            | `/jobs`            | available |
-| Operations   | Datasets        | `/datasets`        | phase 13  |
+| Operations   | Datasets        | `/datasets`        | available |
 | Operations   | Exports         | `/exports`         | phase 13  |
 | System       | System          | `/system`          | available |
 | System       | Logs            | `/logs`            | phase 13  |
@@ -92,6 +92,8 @@ layer, and a skip link jumps to the main region.
 | `components/layout/ShortcutsHelp`       | Help panel generated from the registry                                       |
 | `components/layout/page-chrome`         | `PageShell`, `PageScroll`, `Section`, `PageActions` (portal to top bar)      |
 | `components/data/DataTable`             | Dense table: sort, selection, resize, pinning, visibility, virtualization    |
+| `components/data/PagedFooter`           | "Showing N of M" and **Load more** for keyset-paginated lists                |
+| `components/data/cells`                 | `Text`, `Mono`, `DateTime` (muted dash when missing) and `TestDataBadge`     |
 | `components/data/FilterBar` + `filters` | Editable filter chips and the readable query summary                         |
 | `components/states/StateBlock`          | empty, loading, processing, error, offline, partial, stale, success, blocked |
 | `components/states/TableSkeleton`       | Row-shaped skeleton at the current density                                   |
@@ -99,6 +101,10 @@ layer, and a skip link jumps to the main region.
 | `components/domain/ScoreValue`          | Value, model version, confidence and factor breakdown                        |
 | `components/domain/JobProgress`         | Determinate or indeterminate progress, rate, errors, cancel                  |
 | `components/ErrorBoundary`              | Global boundary plus one per routed module                                   |
+
+Tables use a fixed layout: columns keep their declared size and long values truncate, so a long
+cell never slides under a pinned column. Synthetic test data is always labelled with
+`TestDataBadge`, in the table and in the inspector.
 
 Primitives under `components/ui/` are vendored shadcn/ui components (Radix based); they are edited
 only when the app needs it (the toaster follows our theme store instead of next-themes).
@@ -108,6 +114,7 @@ only when the app needs it (the toaster follows our theme store instead of next-
 | Kind                  | Where                                  | Rule                                                    |
 | --------------------- | -------------------------------------- | ------------------------------------------------------- |
 | Remote / IPC          | `features/diagnostics/store.ts`        | Only through the typed adapter in `lib/ipc.ts`          |
+| Remote lists          | `lib/useKeysetPages.ts`                | Keyset pages; a new query restarts, stale answers drop  |
 | Persisted preferences | `stores/preferences.ts` (localStorage) | Theme, density, language, sidebar size, column layouts  |
 | Ephemeral UI          | `stores/ui.ts`                         | Palette, help, inspector, selected row; never persisted |
 
@@ -116,11 +123,13 @@ field so a change in one screen does not re-render the others.
 
 ## Screens today
 
-| Screen                     | What it shows                                                          |
-| -------------------------- | ---------------------------------------------------------------------- |
-| Overview                   | Live subsystem states, the screens that work, and the pipeline status  |
-| Businesses / Lead Explorer | Real table + filters + inspector, empty until phase 03/04 deliver data |
-| Jobs                       | Empty list; job components are ready for the orchestrator (phase 13)   |
-| System                     | Full diagnostics from phase 01, with refresh and worker restart        |
-| Settings                   | Theme, density, language, workspace paths, stored preferences          |
-| The other ten modules      | Title, purpose, "not configured" and the phase that delivers them      |
+| Screen                 | What it shows                                                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Overview               | Live subsystem states, the screens that work, and the pipeline status                                         |
+| Businesses             | Real store query: server search, keyset paging, inspector with every value's provenance; empty until phase 04 |
+| Lead Explorer          | Real table + filters + inspector, empty until scoring (phase 11)                                              |
+| Datasets               | Datasets with their latest snapshot (version, rows, capture time)                                             |
+| Jobs                   | Empty list; job components are ready for the orchestrator (phase 13)                                          |
+| System                 | Full diagnostics from phase 01, with refresh and worker restart                                               |
+| Settings               | Theme, density, language, workspace paths, stored preferences                                                 |
+| The other nine modules | Title, purpose, "not configured" and the phase that delivers them                                             |

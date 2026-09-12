@@ -198,3 +198,13 @@ async fn worker_that_never_becomes_ready_is_killed() {
     assert_eq!(status.state, WorkerState::Failed);
     assert_eq!(status.pid, None);
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn worker_with_another_data_contract_is_refused() {
+    let supervisor = WorkerSupervisor::new(fake_worker_speaking("answer", 99), quiet());
+    let error = supervisor.start().await.expect_err("incompatible worker");
+    assert!(error.to_string().contains("data contract v99"), "{error}");
+    let status = supervisor.status();
+    assert_eq!(status.state, WorkerState::Failed);
+    assert_eq!(status.pid, None);
+}

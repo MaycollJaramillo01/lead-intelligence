@@ -13,7 +13,8 @@
                                    ┌───────────▼────────────┐
                                    │ research-engine (Python)│── SQLite  data/lead.sqlite3
                                    │ one process, asyncio    │── DuckDB  data/analytics.duckdb
-                                   └───────────┬────────────┘
+                                   │ repositories, datasets  │── Parquet data/datasets/…
+                                   └───────────┬────────────┘   backups  data/backups/
                                                ├── HTTP → Ollama (127.0.0.1:11434, optional)
                                                └── nvidia-smi + nvcuda.dll (optional)
 ```
@@ -28,14 +29,16 @@
 
 `services/research-engine/src/research_engine/contracts.py` (Pydantic v2) is the single source of
 truth for every cross-process message: the worker envelope and payloads, and the Rust → UI
-diagnostics report. `pnpm contracts` exports:
+diagnostics report. `domain.py` does the same for the data model (records, enumerations, queries and
+pages; see [data-model.md](data-model.md)). `pnpm contracts` exports:
 
 - `packages/shared-types/schema/contracts.schema.json` — JSON Schema (2020-12)
 - `packages/shared-types/src/contracts.ts` — TypeScript types (json-schema-to-typescript)
 - `packages/shared-types/fixtures/*.json` — synthetic golden samples
 
-Rust mirrors the models in `src-tauri/src/protocol.rs` with `deny_unknown_fields`;
-`src-tauri/tests/contracts.rs` round-trips every fixture and fails on any drift. `pnpm
+Rust mirrors the models in `src-tauri/src/protocol.rs` and the data contract in
+`src-tauri/src/data.rs` with `deny_unknown_fields` and validated ids, timestamps, confidences and
+cursors; `src-tauri/tests/contracts.rs` round-trips every fixture and fails on any drift. `pnpm
 contracts:check` (part of `pnpm check` and `pnpm build`) fails when generated files are stale.
 
 ### Envelope (protocol version 1)
@@ -51,23 +54,30 @@ contracts:check` (part of `pnpm check` and `pnpm build`) fails when generated fi
 }
 ```
 
-- Requests (core → worker): `health`, `diagnostics`, `shutdown`. The answer echoes `request_id`
-  with type `<request>.result` and carries either `payload` or `error`, never both.
+- Requests (core → worker): `health`, `diagnostics`, `shutdown`, `businesses.list`,
+  `businesses.get`, `datasets.list` and, in development builds only, `dev.seed_synthetic`. The answer
+  echoes `request_id` with type `<request>.result` and carries either `payload` or `error`, never
+  both.
 - Events (worker → core): `worker.ready` (handshake, carries a health payload) and
   `worker.protocol_error` (malformed input; correlated to the request id when recoverable).
 - Errors: `{code, message, retryable}` with codes `invalid_message`, `unsupported_protocol`,
-  `unknown_type`, `invalid_payload`, `timeout`, `shutting_down`, `internal`.
+  `unknown_type`, `invalid_payload`, `not_found`, `not_allowed`, `store_unavailable`, `timeout`,
+  `shutting_down`, `internal`.
 - Limits: one UTF-8 frame per line, at most 8 MiB. Oversized or invalid frames are rejected on
   both sides without losing stream synchronisation.
 - Compatibility: `protocol_version` must match exactly. Additive changes (new message types, new
-  nullable fields) keep the version; anything else bumps it.
+  nullable fields) keep the version; anything else bumps it. The data model has its own
+  `data_contract_version`, reported in the health handshake; the core refuses a worker that speaks
+  another one.
 
 ## Worker lifecycle
 
 1. `start()` (single instance per supervisor) spawns the worker with `CREATE_NO_WINDOW`, piped
    stdio and an explicit environment (`LEAD_DATA_DIR`, `LEAD_LOG_LEVEL`, `LEAD_OLLAMA_URL`, …).
-2. The worker migrates both stores, then emits `worker.ready`. The core then sends an explicit
-   `health` request; only after both it reports `running`. Startup is bounded by
+2. The worker migrates both stores (backing them up first when migrations are pending on a used
+   store, recovering a damaged one from backup), then emits `worker.ready`. The core then sends an
+   explicit `health` request and checks its `data_contract_version`; only after both it reports
+   `running`. Startup is bounded by
    `worker.startup_timeout_ms` and cancelled if the app is closing.
 3. A watchdog sends `health` every 30 s. Two consecutive failures count as a hang.
 4. Crash (stdout EOF) or hang → the process is reaped/killed and restarted with exponential backoff
@@ -92,6 +102,25 @@ DiagnosticsScreen ─ useDiagnosticsStore.refresh() ─ desktop.getDiagnostics()
 
 If the worker cannot answer, the report carries `components: null` and a `components_error`; the
 UI shows those subsystems as "Unknown — not checked" instead of guessing.
+
+## Data flow: businesses and datasets
+
+```text
+BusinessesScreen ─ useKeysetPages ─ desktop.listBusinesses({search, sort, limit, cursor})  (apps/desktop)
+  → invoke("list_businesses", {query})                                              (Tauri IPC)
+  → commands::list_businesses: query.validate() (limit, search length, typed cursor/id)
+  → supervisor.request_with("businesses.list", query, 15 s)                          (src-tauri)
+  → worker: Pydantic validates the payload → repository.list_businesses
+    (keyset page + FTS5 search over SQLite, one short-lived connection on a thread)  (research-engine)
+  ← BusinessPage deserialised by serde, then page.validate(query): size, total, filters
+InspectorPanel ─ desktop.getBusiness({business_id}) → get_business → businesses.get
+  ← BusinessDetail with a Provenance block per value; detail.validate(id) checks ownership
+DatasetsScreen ─ desktop.listDatasets → list_datasets → datasets.list → dataset + latest snapshot
+```
+
+Worker errors keep their meaning across the boundary: `not_found` → `CommandError.not_found`,
+`not_allowed` → `not_allowed`, `invalid_payload` → `invalid_input`; anything else is `worker_error`
+with the worker's message.
 
 ## Errors
 
@@ -119,6 +148,8 @@ UI shows those subsystems as "Unknown — not checked" instead of guessing.
 | What        | Development                | Release (Windows)                                    |
 | ----------- | -------------------------- | ---------------------------------------------------- |
 | Data        | `<repo>/data`              | `%LOCALAPPDATA%\com.leadintelligence.desktop\data`   |
+| Backups     | `<data>/backups`           | same, under the data directory                       |
+| Datasets    | `<data>/datasets`          | same, under the data directory                       |
 | Logs        | `<repo>/logs`              | `%LOCALAPPDATA%\com.leadintelligence.desktop\logs`   |
 | User config | `<repo>/config/local.toml` | `%APPDATA%\com.leadintelligence.desktop\config.toml` |
 | Worker      | uv virtualenv python       | `research-engine.exe` next to the app (phase 14)     |

@@ -60,7 +60,11 @@ function createSelectionColumn<TData>(labels: { all: string; row: string }): Col
     header: ({ table }) => (
       <Checkbox
         checked={
-          table.getIsAllRowsSelected() ? true : table.getIsSomeRowsSelected() ? "indeterminate" : false
+          table.getIsAllRowsSelected()
+            ? true
+            : table.getIsSomeRowsSelected()
+              ? "indeterminate"
+              : false
         }
         onCheckedChange={(checked) => table.toggleAllRowsSelected(checked === true)}
         aria-label={labels.all}
@@ -200,137 +204,147 @@ export function DataTable<TData>({
       <div className="relative min-h-0 flex-1">
         <div ref={scrollRef} className="absolute inset-0 overflow-auto">
           {isLoading ? (
-          <TableSkeleton columns={Math.min(6, table.getVisibleLeafColumns().length)} />
-        ) : (
-          <table
-            className="w-full border-separate border-spacing-0 text-left"
-            style={{ width: table.getTotalSize() }}
-          >
-            <thead className="sticky top-0 z-[2] bg-background">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    const sorted = header.column.getIsSorted();
-                    const canSort = header.column.getCanSort();
-                    const label = String(header.column.columnDef.header ?? header.column.id);
-                    return (
-                      <th
-                        key={header.id}
-                        scope="col"
-                        aria-sort={
-                          sorted === "asc"
-                            ? "ascending"
-                            : sorted === "desc"
-                              ? "descending"
-                              : canSort
-                                ? "none"
-                                : undefined
-                        }
-                        className={cn(
-                          "relative border-b bg-background px-[var(--cell-padding-x)] text-[11px] font-medium text-muted-foreground",
-                          header.column.getIsPinned() && "bg-background",
-                        )}
-                        style={{ width: header.getSize(), height: "var(--row-height)", ...pinnedStyle(header.column) }}
-                      >
-                        {header.isPlaceholder ? null : canSort ? (
-                          <button
-                            type="button"
-                            onClick={header.column.getToggleSortingHandler()}
-                            className="flex w-full items-center gap-1 text-left"
-                          >
-                            <span className="truncate">
-                              {flexRender(header.column.columnDef.header, header.getContext())}
-                            </span>
-                            {sorted === "asc" ? (
-                              <ArrowUp aria-hidden="true" className="size-3" />
-                            ) : sorted === "desc" ? (
-                              <ArrowDown aria-hidden="true" className="size-3" />
-                            ) : (
-                              <ChevronsUpDown aria-hidden="true" className="size-3 opacity-40" />
-                            )}
-                          </button>
-                        ) : (
-                          flexRender(header.column.columnDef.header, header.getContext())
-                        )}
-                        {header.column.getCanResize() && (
-                          <div
-                            role="separator"
-                            aria-orientation="vertical"
-                            aria-label={`${t("common.columns")}: ${label}`}
-                            tabIndex={0}
-                            onPointerDown={header.getResizeHandler()}
-                            onKeyDown={(event) => {
-                              const delta =
-                                event.key === "ArrowLeft" ? -16 : event.key === "ArrowRight" ? 16 : 0;
-                              if (delta === 0) return;
-                              event.preventDefault();
-                              setColumnSizing((previous) => ({
-                                ...previous,
-                                [header.column.id]: Math.max(64, header.getSize() + delta),
-                              }));
-                            }}
-                            className="absolute top-0 right-0 h-full w-1 cursor-col-resize select-none hover:bg-primary/50 focus-visible:bg-primary/70"
-                          />
-                        )}
-                      </th>
-                    );
-                  })}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {rows.length === 0 ? null : (
-                <>
-                  {paddingTop > 0 && (
-                    <tr aria-hidden="true">
-                      <td
-                        colSpan={table.getVisibleLeafColumns().length}
-                        style={{ height: paddingTop }}
-                      />
-                    </tr>
-                  )}
-                  {visibleRows.map((row) => {
-                    const isActive = activeRowId === row.id;
-                    return (
-                      <tr
-                        key={row.id}
-                        tabIndex={0}
-                        aria-selected={row.getIsSelected()}
-                        onClick={() => onActivateRow?.(row.id)}
-                        onKeyDown={(event) => onRowKeyDown(event, row.id)}
-                        className={cn(
-                          "cursor-default border-b outline-none hover:bg-accent/60 focus-visible:bg-accent",
-                          isActive && "bg-accent",
-                        )}
-                        style={{ height: rowHeight }}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <td
-                            key={cell.id}
-                            className={cn(
-                              "truncate border-b px-[var(--cell-padding-x)]",
-                              cell.column.getIsPinned() && "bg-background",
-                            )}
-                            style={{ width: cell.column.getSize(), ...pinnedStyle(cell.column) }}
-                          >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </td>
-                        ))}
+            <TableSkeleton columns={Math.min(6, table.getVisibleLeafColumns().length)} />
+          ) : (
+            // fixed layout: columns keep their sizes, so a long cell truncates instead of
+            // widening its column underneath the pinned one
+            <table
+              className="w-full table-fixed border-separate border-spacing-0 text-left"
+              style={{ width: table.getTotalSize() }}
+            >
+              <thead className="sticky top-0 z-[2] bg-background">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      const sorted = header.column.getIsSorted();
+                      const canSort = header.column.getCanSort();
+                      const label = String(header.column.columnDef.header ?? header.column.id);
+                      return (
+                        <th
+                          key={header.id}
+                          scope="col"
+                          aria-sort={
+                            sorted === "asc"
+                              ? "ascending"
+                              : sorted === "desc"
+                                ? "descending"
+                                : canSort
+                                  ? "none"
+                                  : undefined
+                          }
+                          className={cn(
+                            "relative border-b bg-background px-[var(--cell-padding-x)] text-[11px] font-medium text-muted-foreground",
+                            header.column.getIsPinned() && "bg-background",
+                          )}
+                          style={{
+                            width: header.getSize(),
+                            height: "var(--row-height)",
+                            ...pinnedStyle(header.column),
+                          }}
+                        >
+                          {header.isPlaceholder ? null : canSort ? (
+                            <button
+                              type="button"
+                              onClick={header.column.getToggleSortingHandler()}
+                              className="flex w-full items-center gap-1 text-left"
+                            >
+                              <span className="truncate">
+                                {flexRender(header.column.columnDef.header, header.getContext())}
+                              </span>
+                              {sorted === "asc" ? (
+                                <ArrowUp aria-hidden="true" className="size-3" />
+                              ) : sorted === "desc" ? (
+                                <ArrowDown aria-hidden="true" className="size-3" />
+                              ) : (
+                                <ChevronsUpDown aria-hidden="true" className="size-3 opacity-40" />
+                              )}
+                            </button>
+                          ) : (
+                            flexRender(header.column.columnDef.header, header.getContext())
+                          )}
+                          {header.column.getCanResize() && (
+                            <div
+                              role="separator"
+                              aria-orientation="vertical"
+                              aria-label={`${t("common.columns")}: ${label}`}
+                              tabIndex={0}
+                              onPointerDown={header.getResizeHandler()}
+                              onKeyDown={(event) => {
+                                const delta =
+                                  event.key === "ArrowLeft"
+                                    ? -16
+                                    : event.key === "ArrowRight"
+                                      ? 16
+                                      : 0;
+                                if (delta === 0) return;
+                                event.preventDefault();
+                                setColumnSizing((previous) => ({
+                                  ...previous,
+                                  [header.column.id]: Math.max(64, header.getSize() + delta),
+                                }));
+                              }}
+                              className="absolute top-0 right-0 h-full w-1 cursor-col-resize select-none hover:bg-primary/50 focus-visible:bg-primary/70"
+                            />
+                          )}
+                        </th>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </thead>
+              <tbody>
+                {rows.length === 0 ? null : (
+                  <>
+                    {paddingTop > 0 && (
+                      <tr aria-hidden="true">
+                        <td
+                          colSpan={table.getVisibleLeafColumns().length}
+                          style={{ height: paddingTop }}
+                        />
                       </tr>
-                    );
-                  })}
-                  {paddingBottom > 0 && (
-                    <tr aria-hidden="true">
-                      <td
-                        colSpan={table.getVisibleLeafColumns().length}
-                        style={{ height: paddingBottom }}
-                      />
-                    </tr>
-                  )}
-                </>
-              )}
-            </tbody>
-          </table>
+                    )}
+                    {visibleRows.map((row) => {
+                      const isActive = activeRowId === row.id;
+                      return (
+                        <tr
+                          key={row.id}
+                          tabIndex={0}
+                          aria-selected={row.getIsSelected()}
+                          onClick={() => onActivateRow?.(row.id)}
+                          onKeyDown={(event) => onRowKeyDown(event, row.id)}
+                          className={cn(
+                            "cursor-default border-b outline-none hover:bg-accent/60 focus-visible:bg-accent",
+                            isActive && "bg-accent",
+                          )}
+                          style={{ height: rowHeight }}
+                        >
+                          {row.getVisibleCells().map((cell) => (
+                            <td
+                              key={cell.id}
+                              className={cn(
+                                "truncate border-b px-[var(--cell-padding-x)]",
+                                cell.column.getIsPinned() && "bg-background",
+                              )}
+                              style={{ width: cell.column.getSize(), ...pinnedStyle(cell.column) }}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                    {paddingBottom > 0 && (
+                      <tr aria-hidden="true">
+                        <td
+                          colSpan={table.getVisibleLeafColumns().length}
+                          style={{ height: paddingBottom }}
+                        />
+                      </tr>
+                    )}
+                  </>
+                )}
+              </tbody>
+            </table>
           )}
         </div>
         {rows.length === 0 && !isLoading && (

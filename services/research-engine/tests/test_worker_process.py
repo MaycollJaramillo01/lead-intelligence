@@ -14,19 +14,20 @@ from uuid import uuid4
 
 import pytest
 
-from research_engine.contracts import MAX_LINE_BYTES, PROTOCOL_VERSION
+from research_engine.contracts import DATA_CONTRACT_VERSION, MAX_LINE_BYTES, PROTOCOL_VERSION
 
 Frame = dict[str, Any]
 
 
 class WorkerProcess:
-    def __init__(self, data_dir: Path) -> None:
+    def __init__(self, data_dir: Path, **extra_env: str) -> None:
         env = {
             **os.environ,
             "LEAD_DATA_DIR": str(data_dir),
             "LEAD_LOG_LEVEL": "debug",
             "LEAD_OLLAMA_URL": "http://127.0.0.1:9",  # closed port: fast, deterministic
             "LEAD_OLLAMA_TIMEOUT_S": "0.5",
+            **extra_env,
         }
         self.proc = subprocess.Popen(
             [sys.executable, "-m", "research_engine"],
@@ -87,19 +88,31 @@ class WorkerProcess:
         return self.wait_for(lambda f: f["request_id"] == request_id)
 
 
+def _stop(process: WorkerProcess) -> None:
+    if process.proc.poll() is None:
+        process.proc.kill()
+    process.proc.wait(timeout=10)
+
+
 @pytest.fixture
 def worker(tmp_path: Path) -> Iterator[WorkerProcess]:
     process = WorkerProcess(tmp_path)
     yield process
-    if process.proc.poll() is None:
-        process.proc.kill()
-    process.proc.wait(timeout=10)
+    _stop(process)
+
+
+@pytest.fixture
+def dev_worker(tmp_path: Path) -> Iterator[WorkerProcess]:
+    process = WorkerProcess(tmp_path, LEAD_DEV_TOOLS="1")
+    yield process
+    _stop(process)
 
 
 def _ready(worker: WorkerProcess) -> Frame:
     ready = worker.next_frame()
     assert ready["type"] == "worker.ready"
     assert ready["payload"]["protocol_version"] == PROTOCOL_VERSION
+    assert ready["payload"]["data_contract_version"] == DATA_CONTRACT_VERSION
     assert ready["payload"]["pid"] > 0
     return ready
 
@@ -201,3 +214,51 @@ def test_invalid_settings_fail_fast_with_a_readable_error(tmp_path: Path) -> Non
     assert completed.returncode == 2
     assert completed.stdout == b""
     assert b"LEAD_LOG_LEVEL" in completed.stderr
+
+
+_LIST = {"project_id": None, "search": None, "status": None, "sort": "name", "limit": 100}
+
+
+def test_data_requests_are_served_from_the_store(worker: WorkerProcess) -> None:
+    _ready(worker)
+    page = worker.request("businesses.list", {**_LIST, "cursor": None})
+    assert page["error"] is None
+    assert page["payload"] == {"items": [], "next_cursor": None, "total": 0}
+    datasets = worker.request("datasets.list", {"project_id": None, "limit": 50, "cursor": None})
+    assert datasets["payload"] == {"items": [], "next_cursor": None, "total": 0}
+
+    missing = worker.request("businesses.get", {"business_id": str(uuid4())})
+    assert missing["error"]["code"] == "not_found"
+    tampered = worker.request("businesses.list", {**_LIST, "cursor": "bm90LWEtY3Vyc29y"})
+    assert tampered["error"]["code"] == "invalid_payload"
+    oversized = worker.request("businesses.list", {**_LIST, "limit": 100_000, "cursor": None})
+    assert oversized["error"]["code"] == "invalid_payload"
+    seed = worker.request("dev.seed_synthetic")
+    assert seed["error"]["code"] == "not_allowed"  # only development builds enable the seed
+
+
+def test_development_seed_creates_openable_synthetic_data(dev_worker: WorkerProcess) -> None:
+    _ready(dev_worker)
+    created = dev_worker.request("dev.seed_synthetic")["payload"]
+    assert created["created"] is True
+    assert created["business_count"] == 24
+    again = dev_worker.request("dev.seed_synthetic")["payload"]
+    assert again == {**created, "created": False}  # seeded once, then reused
+
+    page = dev_worker.request("businesses.list", {**_LIST, "limit": 10, "cursor": None})["payload"]
+    assert page["total"] == 24
+    assert page["next_cursor"] is not None
+    assert all(item["is_synthetic"] for item in page["items"])
+    assert page["items"][0]["id"] == created["business_id"]
+
+    detail = dev_worker.request("businesses.get", {"business_id": created["business_id"]})
+    assert detail["payload"]["is_synthetic"] is True
+    provenance = detail["payload"]["names"][0]["provenance"]
+    assert provenance["connector_kind"] == "synthetic"
+
+    datasets = dev_worker.request(
+        "datasets.list", {"project_id": None, "limit": 50, "cursor": None}
+    )
+    (dataset,) = datasets["payload"]["items"]
+    assert dataset["dataset"]["id"] == created["dataset_id"]
+    assert dataset["latest_snapshot"]["row_count"] == 24

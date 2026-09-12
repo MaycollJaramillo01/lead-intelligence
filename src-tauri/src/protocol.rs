@@ -12,6 +12,8 @@ use uuid::Uuid;
 use crate::config::Environment;
 
 pub const PROTOCOL_VERSION: u32 = 1;
+/// Version of the data model the worker speaks (`domain.py`); checked at the handshake.
+pub const DATA_CONTRACT_VERSION: u32 = 1;
 pub const MAX_FRAME_BYTES: usize = 8 * 1024 * 1024;
 pub const RESULT_SUFFIX: &str = ".result";
 pub const EVENT_READY: &str = "worker.ready";
@@ -87,6 +89,9 @@ pub enum ErrorCode {
     UnsupportedProtocol,
     UnknownType,
     InvalidPayload,
+    NotFound,
+    NotAllowed,
+    StoreUnavailable,
     Timeout,
     ShuttingDown,
     Internal,
@@ -121,6 +126,7 @@ pub struct HealthResult {
     pub status: HealthState,
     pub worker_version: String,
     pub protocol_version: u32,
+    pub data_contract_version: u32,
     pub python_version: String,
     pub pid: u32,
     pub started_at: DateTime<Utc>,
@@ -256,6 +262,8 @@ pub enum CommandErrorCode {
     WorkerError,
     ProtocolViolation,
     InvalidInput,
+    NotFound,
+    NotAllowed,
     Internal,
 }
 

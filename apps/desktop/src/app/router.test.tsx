@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   restartWorker: vi.fn<typeof desktop.restartWorker>(),
   reportUiError: vi.fn<typeof desktop.reportUiError>(),
   onWorkerStatus: vi.fn<typeof desktop.onWorkerStatus>(),
+  listBusinesses: vi.fn<typeof desktop.listBusinesses>(),
+  listDatasets: vi.fn<typeof desktop.listDatasets>(),
 }));
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
@@ -42,6 +44,8 @@ describe("application shell", () => {
     mocks.getDiagnostics.mockResolvedValue(report);
     mocks.onWorkerStatus.mockResolvedValue(() => {});
     mocks.reportUiError.mockResolvedValue(null);
+    mocks.listBusinesses.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
+    mocks.listDatasets.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
   });
 
   it("shows every module in the sidebar, grouped in sections", () => {
@@ -65,6 +69,12 @@ describe("application shell", () => {
     const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
     expect(breadcrumb.textContent).toContain("Research");
     expect(breadcrumb.textContent).toContain("Businesses");
+  });
+
+  it("serves the datasets module from real queries", async () => {
+    renderApp("/datasets");
+    expect(await screen.findByText("No datasets yet")).toBeTruthy();
+    expect(mocks.listDatasets).toHaveBeenCalledWith({ project_id: null, limit: 100, cursor: null });
   });
 
   it("says clearly when a module is not configured yet", async () => {
