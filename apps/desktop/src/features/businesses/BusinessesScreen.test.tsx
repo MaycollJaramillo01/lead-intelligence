@@ -29,6 +29,9 @@ const mocks = vi.hoisted(() => ({
   listLatinoRuns: vi.fn<typeof desktop.listLatinoRuns>(),
   startLatino: vi.fn<typeof desktop.startLatino>(),
   getContacts: vi.fn<typeof desktop.getContacts>(),
+  listAiInferences: vi.fn<typeof desktop.listAiInferences>(),
+  listAiRuns: vi.fn<typeof desktop.listAiRuns>(),
+  startAi: vi.fn<typeof desktop.startAi>(),
 }));
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
@@ -91,6 +94,8 @@ describe("BusinessesScreen", () => {
     useUiStore.setState({ inspectorOpen: true, inspectedId: null });
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.listLatinoRuns.mockResolvedValue(NO_RUNS);
+    mocks.listAiInferences.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
+    mocks.listAiRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
     mocks.getLatino.mockImplementation(async ({ business_id }) => ({
       ...NOT_EVALUATED,
       business_id,

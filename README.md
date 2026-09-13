@@ -7,7 +7,7 @@ commercial need, ICP fit and an explanation of why each one is worth contacting.
 
 Everything runs on this machine. No cloud service or LLM API is required.
 
-> **Status: Phase 09 — Contact intelligence.** Discovery (phase 04) finds candidate references, the
+> **Status: Phase 10 — Local AI.** Discovery (phase 04) finds candidate references, the
 > Research Center (phase 05) crawls their websites, entity resolution (phase 06) merges records of the
 > same business, Latino evidence (phase 07) keeps explicitly evidenced ownership apart from
 > Spanish-speaking market affinity, and website intelligence (phase 08) audits every crawled site
@@ -17,7 +17,11 @@ Everything runs on this machine. No cloud service or LLM API is required.
 > nothing is ever called, emailed or submitted. People appear only when published next to their
 > role, doubtful ones wait for review, addresses guessed from a pattern stay apart as hypotheses, a
 > local do-not-contact list reaches every screen and export, and contactability is its own
-> explainable subscore. Nothing is scored as a lead yet: qualification arrives in later phases. The
+> explainable subscore. Local AI (phase 10) runs small models on this machine through Ollama for
+> extraction, classification, synthesis and explanation, one GPU task at a time: every answer
+> follows a strict schema, cites only the inputs it was given, is stored raw next to what it
+> validated to, and is shown as a model's answer, never as a fact; the app works without it.
+> Nothing is scored as a lead yet: qualification arrives in later phases. The
 > phase plan lives in [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
 
 ## Requirements
@@ -73,6 +77,7 @@ docs/                        Architecture, decisions and operations
 - [docs/latino-evidence.md](docs/latino-evidence.md) — ownership vs market affinity: evidence, rules, review, limits
 - [docs/website-intelligence.md](docs/website-intelligence.md) — website audits: every rule and its limits, subscores, history
 - [docs/contact-intelligence.md](docs/contact-intelligence.md) — contact channels: what each status means, people, hypotheses, contactability, do-not-contact list
+- [docs/local-ai.md](docs/local-ai.md) — local AI: tasks, checks, prompts, VRAM, GPU queue, security, benchmark, RTX 4060 setup
 - [docs/ui-system.md](docs/ui-system.md) — design tokens, navigation map, shortcuts, components
 - [docs/decisions.md](docs/decisions.md) — technical decisions and their trade-offs
 - [docs/operations.md](docs/operations.md) — configuration, logs, troubleshooting

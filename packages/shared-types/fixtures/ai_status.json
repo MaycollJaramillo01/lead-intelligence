@@ -1,0 +1,369 @@
+{
+  "runtime": {
+    "state": "ok",
+    "summary": "synthetic runtime",
+    "error": null,
+    "checked_at": "2026-01-01T00:00:00Z",
+    "duration_ms": 0.0,
+    "installed": true,
+    "running": true,
+    "base_url": "http://127.0.0.1:11434",
+    "version": "0.0.0-synthetic",
+    "models": [
+      {
+        "name": "synthetic-new:1b",
+        "size_bytes": 1073741824,
+        "digest": "sha256:bf8af2925ff8b5a9b5efa03840c5172cbf378fdd561fbe9aa22ad1b142624740",
+        "family": "synthetic",
+        "parameter_size": "1B",
+        "quantization": "Q4_K_M"
+      },
+      {
+        "name": "synthetic-text:1b",
+        "size_bytes": 1073741824,
+        "digest": "sha256:94f82603c69836cb284e2babc51dddaa62e8d5ffa38e498ae39caa238e77f1f7",
+        "family": "synthetic",
+        "parameter_size": "1B",
+        "quantization": "Q4_K_M"
+      },
+      {
+        "name": "synthetic-vision:2b",
+        "size_bytes": 2147483648,
+        "digest": "sha256:4d57933819420c3aaa4c95f43d0d873226896be4360489608e05cbc8ae407bcd",
+        "family": "synthetic",
+        "parameter_size": "1B",
+        "quantization": "Q4_K_M"
+      }
+    ]
+  },
+  "gpu": {
+    "state": "unavailable",
+    "summary": "synthetic fixture: no gpu",
+    "error": "none",
+    "checked_at": "2026-01-01T00:00:00Z",
+    "duration_ms": 0.0,
+    "devices": [],
+    "cuda_available": false,
+    "cuda_driver_version": null
+  },
+  "models": [
+    {
+      "name": "synthetic-new:1b",
+      "digest": "sha256:bf8af2925ff8b5a9b5efa03840c5172cbf378fdd561fbe9aa22ad1b142624740",
+      "size_bytes": 1073741824,
+      "family": "synthetic",
+      "parameter_size": "1B",
+      "quantization": "Q4_K_M",
+      "context_length": 8192,
+      "capabilities": [
+        "completion"
+      ],
+      "loaded": false,
+      "size_vram_bytes": null,
+      "estimate": {
+        "num_ctx": 4096,
+        "weights_mib": 1024,
+        "kv_cache_mib": 64,
+        "overhead_mib": 563,
+        "total_mib": 1651,
+        "device": "gpu",
+        "fitted_ctx": null,
+        "note": null
+      }
+    },
+    {
+      "name": "synthetic-text:1b",
+      "digest": "sha256:94f82603c69836cb284e2babc51dddaa62e8d5ffa38e498ae39caa238e77f1f7",
+      "size_bytes": 1073741824,
+      "family": "synthetic",
+      "parameter_size": "1B",
+      "quantization": "Q4_K_M",
+      "context_length": 8192,
+      "capabilities": [
+        "completion"
+      ],
+      "loaded": true,
+      "size_vram_bytes": 1073741824,
+      "estimate": {
+        "num_ctx": 4096,
+        "weights_mib": 1024,
+        "kv_cache_mib": 64,
+        "overhead_mib": 563,
+        "total_mib": 1651,
+        "device": "gpu",
+        "fitted_ctx": null,
+        "note": null
+      }
+    },
+    {
+      "name": "synthetic-vision:2b",
+      "digest": "sha256:4d57933819420c3aaa4c95f43d0d873226896be4360489608e05cbc8ae407bcd",
+      "size_bytes": 2147483648,
+      "family": "synthetic",
+      "parameter_size": "1B",
+      "quantization": "Q4_K_M",
+      "context_length": 8192,
+      "capabilities": [
+        "completion",
+        "vision"
+      ],
+      "loaded": false,
+      "size_vram_bytes": null,
+      "estimate": {
+        "num_ctx": 4096,
+        "weights_mib": 2048,
+        "kv_cache_mib": 64,
+        "overhead_mib": 614,
+        "total_mib": 2726,
+        "device": "gpu",
+        "fitted_ctx": null,
+        "note": null
+      }
+    }
+  ],
+  "profiles": [
+    {
+      "profile": "fast",
+      "model": "synthetic-text:1b",
+      "num_ctx": 4096,
+      "allow_cpu": true,
+      "updated_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "profile": "balanced",
+      "model": "synthetic-text:1b",
+      "num_ctx": 4096,
+      "allow_cpu": true,
+      "updated_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "profile": "quality",
+      "model": "synthetic-text:1b",
+      "num_ctx": 4096,
+      "allow_cpu": false,
+      "updated_at": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "tasks": [
+    {
+      "task_type": "evidence_extraction",
+      "task_version": "1.0.0",
+      "output_schema_version": "1.0.0",
+      "prompt_template_id": "evidence_extraction",
+      "prompt_template_version": "1.0.0",
+      "enabled": true,
+      "profile": "fast",
+      "model": "synthetic-text:1b",
+      "available": true,
+      "unavailable_reason": null,
+      "requires_vision": false,
+      "batchable": true,
+      "max_input_chars": 6000,
+      "max_refs": 30,
+      "timeout_s": 180,
+      "temperature": 0.0
+    },
+    {
+      "task_type": "business_classification",
+      "task_version": "1.0.0",
+      "output_schema_version": "1.0.0",
+      "prompt_template_id": "business_classification",
+      "prompt_template_version": "1.0.0",
+      "enabled": true,
+      "profile": "fast",
+      "model": "synthetic-text:1b",
+      "available": true,
+      "unavailable_reason": null,
+      "requires_vision": false,
+      "batchable": true,
+      "max_input_chars": 4000,
+      "max_refs": 20,
+      "timeout_s": 120,
+      "temperature": 0.0
+    },
+    {
+      "task_type": "finding_synthesis",
+      "task_version": "1.0.0",
+      "output_schema_version": "1.0.0",
+      "prompt_template_id": "finding_synthesis",
+      "prompt_template_version": "1.0.0",
+      "enabled": true,
+      "profile": "fast",
+      "model": "synthetic-text:1b",
+      "available": true,
+      "unavailable_reason": null,
+      "requires_vision": false,
+      "batchable": false,
+      "max_input_chars": 6000,
+      "max_refs": 25,
+      "timeout_s": 180,
+      "temperature": 0.2
+    },
+    {
+      "task_type": "opportunity_reasoning",
+      "task_version": "1.0.0",
+      "output_schema_version": "1.0.0",
+      "prompt_template_id": "opportunity_reasoning",
+      "prompt_template_version": "1.0.0",
+      "enabled": true,
+      "profile": "fast",
+      "model": "synthetic-text:1b",
+      "available": true,
+      "unavailable_reason": null,
+      "requires_vision": false,
+      "batchable": false,
+      "max_input_chars": 5000,
+      "max_refs": 20,
+      "timeout_s": 240,
+      "temperature": 0.2
+    },
+    {
+      "task_type": "language_detection",
+      "task_version": "1.0.0",
+      "output_schema_version": "1.0.0",
+      "prompt_template_id": "language_detection",
+      "prompt_template_version": "1.0.0",
+      "enabled": true,
+      "profile": "fast",
+      "model": "synthetic-text:1b",
+      "available": true,
+      "unavailable_reason": null,
+      "requires_vision": false,
+      "batchable": true,
+      "max_input_chars": 3000,
+      "max_refs": 20,
+      "timeout_s": 120,
+      "temperature": 0.0
+    },
+    {
+      "task_type": "visual_review",
+      "task_version": "1.0.0",
+      "output_schema_version": "1.0.0",
+      "prompt_template_id": "visual_review",
+      "prompt_template_version": "1.0.0",
+      "enabled": false,
+      "profile": "fast",
+      "model": "synthetic-text:1b",
+      "available": false,
+      "unavailable_reason": "task_disabled",
+      "requires_vision": true,
+      "batchable": false,
+      "max_input_chars": 1000,
+      "max_refs": 2,
+      "timeout_s": 240,
+      "temperature": 0.0
+    }
+  ],
+  "limits": {
+    "scope": "machine",
+    "min_free_ram_mib": 1024,
+    "min_free_vram_mib": 512,
+    "updated_at": "2026-01-01T00:00:00.000Z"
+  },
+  "resources": {
+    "ram_total_mib": 16384,
+    "ram_free_mib": 9000,
+    "vram_total_mib": 8192,
+    "vram_free_mib": 7100,
+    "pressure": [],
+    "crawl_waiting": false,
+    "sampled_at": "2026-01-01T00:00:00.000Z"
+  },
+  "scheduler": {
+    "queued": 0,
+    "running": 0,
+    "capacity": 64,
+    "circuit": "closed",
+    "consecutive_failures": 0,
+    "open_until": null,
+    "last_error": null,
+    "completed": 18,
+    "failed": 0,
+    "cache_hits": 4,
+    "latency_p50_ms": 0
+  },
+  "recommendations": [
+    {
+      "task_type": "business_classification",
+      "model": "synthetic-text:1b",
+      "accuracy": 0.167,
+      "latency_p50_ms": 0,
+      "benchmark_id": "01900000-0000-7000-8000-000000001152",
+      "benchmarked_at": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "benchmark": {
+    "state": "succeeded",
+    "models": [
+      "synthetic-text:1b"
+    ],
+    "task_types": [
+      "business_classification"
+    ],
+    "done": 6,
+    "total": 6,
+    "current": null,
+    "error": null,
+    "started_at": "2026-01-01T00:00:00.000Z",
+    "finished_at": "2026-01-01T00:00:00.000Z"
+  },
+  "benchmark_results": [
+    {
+      "id": "01900000-0000-7000-8000-000000001152",
+      "provider": "synthetic",
+      "model": "synthetic-text:1b",
+      "model_digest": "sha256:94f82603c69836cb284e2babc51dddaa62e8d5ffa38e498ae39caa238e77f1f7",
+      "task_type": "business_classification",
+      "task_version": "1.0.0",
+      "corpus_version": "1.0.0",
+      "num_ctx": 4096,
+      "cases": 6,
+      "valid_outputs": 6,
+      "correct": 1,
+      "failures": 0,
+      "latency_p50_ms": 0,
+      "latency_p95_ms": 0,
+      "tokens_per_second": 5000.0,
+      "peak_vram_used_mib": 1092,
+      "min_free_ram_mib": 9000,
+      "device": "gpu",
+      "started_at": "2026-01-01T00:00:00.000Z",
+      "finished_at": "2026-01-01T00:00:00.000Z",
+      "created_at": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "model_change": {
+    "action": "pull",
+    "model": "synthetic-new:1b",
+    "state": "succeeded",
+    "completed_bytes": 1024,
+    "total_bytes": 1024,
+    "detail": "installed",
+    "started_at": "2026-01-01T00:00:00.000Z",
+    "finished_at": "2026-01-01T00:00:00.000Z"
+  },
+  "llm_fit": {
+    "available": true,
+    "version": "llmfit 0.0.0-fixture",
+    "models": [
+      {
+        "name": "Synthetic/Model-1B",
+        "ollama_name": "synthetic-text:1b",
+        "fit_level": "Perfect",
+        "run_mode": "GPU",
+        "runtime": "llama.cpp",
+        "quantization": "Q4_K_M",
+        "memory_required_gb": 1.5,
+        "estimated_tps": 40.0,
+        "installed": true,
+        "notes": [
+          "synthetic fixture"
+        ]
+      }
+    ],
+    "error": null,
+    "checked_at": "2026-01-01T00:00:00.000Z"
+  },
+  "downloads_allowed": true,
+  "checked_at": "2026-01-01T00:00:00.000Z"
+}

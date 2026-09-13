@@ -77,6 +77,16 @@ pub fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Build
         commands::change_suppression,
         commands::import_suppressions,
         commands::export_suppressions,
+        commands::get_ai_status,
+        commands::configure_ai,
+        commands::start_ai,
+        commands::control_ai,
+        commands::list_ai_runs,
+        commands::list_ai_inferences,
+        commands::get_ai_inference,
+        commands::review_ai_inference,
+        commands::run_ai_benchmark,
+        commands::change_ai_model,
         commands::seed_synthetic_data
     ])
 }

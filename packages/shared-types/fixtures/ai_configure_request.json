@@ -1,0 +1,56 @@
+{
+  "profiles": [
+    {
+      "profile": "fast",
+      "model": "synthetic-text:1b",
+      "num_ctx": 4096,
+      "allow_cpu": true
+    },
+    {
+      "profile": "balanced",
+      "model": "synthetic-text:1b",
+      "num_ctx": 4096,
+      "allow_cpu": true
+    },
+    {
+      "profile": "quality",
+      "model": "synthetic-text:1b",
+      "num_ctx": 4096,
+      "allow_cpu": false
+    }
+  ],
+  "tasks": [
+    {
+      "task_type": "evidence_extraction",
+      "enabled": true,
+      "profile": "fast"
+    },
+    {
+      "task_type": "business_classification",
+      "enabled": true,
+      "profile": "fast"
+    },
+    {
+      "task_type": "finding_synthesis",
+      "enabled": true,
+      "profile": "fast"
+    },
+    {
+      "task_type": "opportunity_reasoning",
+      "enabled": true,
+      "profile": "fast"
+    },
+    {
+      "task_type": "language_detection",
+      "enabled": true,
+      "profile": "fast"
+    },
+    {
+      "task_type": "visual_review",
+      "enabled": false,
+      "profile": "fast"
+    }
+  ],
+  "min_free_ram_mib": 1024,
+  "min_free_vram_mib": 512
+}

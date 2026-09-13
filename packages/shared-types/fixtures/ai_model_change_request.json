@@ -1,0 +1,5 @@
+{
+  "action": "pull",
+  "model": "synthetic-new:1b",
+  "confirmation": "synthetic-new:1b"
+}

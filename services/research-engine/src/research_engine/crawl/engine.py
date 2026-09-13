@@ -27,7 +27,6 @@ import hashlib
 import logging
 import os
 import sqlite3
-import sys
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -39,6 +38,7 @@ import orjson
 from playwright.async_api import Error as PlaywrightError
 
 from research_engine import jobs, repository
+from research_engine.ai.resources import ResourceMonitor, memory
 from research_engine.crawl.browser import BrowserPool, BrowserUnavailableError
 from research_engine.crawl.extract import (
     decode,
@@ -161,32 +161,8 @@ class CrawlStartError(ValueError):
 
 
 def available_memory() -> int | None:
-    if sys.platform == "win32":
-        import ctypes
-
-        class MemoryStatus(ctypes.Structure):
-            _fields_ = (
-                ("dwLength", ctypes.c_ulong),
-                ("dwMemoryLoad", ctypes.c_ulong),
-                ("ullTotalPhys", ctypes.c_ulonglong),
-                ("ullAvailPhys", ctypes.c_ulonglong),
-                ("ullTotalPageFile", ctypes.c_ulonglong),
-                ("ullAvailPageFile", ctypes.c_ulonglong),
-                ("ullTotalVirtual", ctypes.c_ulonglong),
-                ("ullAvailVirtual", ctypes.c_ulonglong),
-                ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
-            )
-
-        status = MemoryStatus()
-        status.dwLength = ctypes.sizeof(status)
-        if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
-            return None
-        return int(status.ullAvailPhys)
-    else:
-        try:
-            return os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
-        except (ValueError, OSError):
-            return None
+    found = memory()
+    return found[1] if found else None
 
 
 def slots_for(cpus: int, free_memory: int | None) -> tuple[int, int]:
@@ -306,10 +282,15 @@ class CrawlService:
     """Owns the running crawl jobs of this worker. Every store access runs on a thread."""
 
     def __init__(
-        self, settings: CrawlerSettings, connect: Callable[[], sqlite3.Connection]
+        self,
+        settings: CrawlerSettings,
+        connect: Callable[[], sqlite3.Connection],
+        pressure: ResourceMonitor | None = None,
     ) -> None:
         self._settings = settings
         self._connect = connect
+        #: While local AI works under memory pressure, each URL waits here first (phase 10).
+        self._pressure = pressure
         cpu_http, cpu_browsers = slots_for(os.cpu_count() or 2, available_memory())
         self._http_slots = settings.http_slots or cpu_http
         browsers = cpu_browsers if settings.browser_slots is None else settings.browser_slots
@@ -506,6 +487,9 @@ class CrawlService:
         while True:
             _, _, row = await site.frontier.get()
             try:
+                if self._pressure is not None:
+                    # the time spent waiting for memory does not count against the site's budget
+                    site.started += await self._pressure.wait_clear()
                 await self._process(job, site, row)
             except asyncio.CancelledError:
                 raise

@@ -15,7 +15,7 @@
                                    │ one process, asyncio    │── DuckDB  data/analytics.duckdb
                                    │ repositories, datasets  │── Parquet data/datasets/…
                                    └───────────┬────────────┘   backups  data/backups/
-                                               ├── HTTP → Ollama (127.0.0.1:11434, optional)
+                                               ├── HTTP → Ollama (loopback only, optional)
                                                ├── nvidia-smi + nvcuda.dll (optional)
                                                ├── HTTPS → public websites and APIs (guarded)
                                                └── Playwright driver → Chromium (on demand,
@@ -68,8 +68,9 @@ contracts:check` (part of `pnpm check` and `pnpm build`) fails when generated fi
   (`website.start`, `website.control`, `website.runs`, `website.audits`, `website.audit`), the
   contact intelligence set (`contacts.start`, `contacts.control`, `contacts.runs`, `contacts.list`,
   `contacts.get`, `contacts.act`, `decision_makers.list`, `decision_makers.review`,
-  `suppressions.list`, `suppressions.change`, `suppressions.import`, `suppressions.export`) and, in
-  development builds only,
+  `suppressions.list`, `suppressions.change`, `suppressions.import`, `suppressions.export`), the
+  local AI set (`ai.status`, `ai.configure`, `ai.start`, `ai.control`, `ai.runs`, `ai.inferences`,
+  `ai.inference`, `ai.review`, `ai.benchmark`, `ai.model_change`) and, in development builds only,
   `dev.seed_synthetic`. The answer echoes `request_id` with type `<request>.result` and carries
   either `payload` or `error`, never both.
 - Events (worker → core): `worker.ready` (handshake, carries a health payload) and
@@ -235,6 +236,28 @@ JobsScreen ─ listContactRuns; cancel goes to control_contacts
 
 What each status means, the rules, contactability and the do-not-contact list are in
 [contact-intelligence.md](contact-intelligence.md).
+
+## Data flow: local AI
+
+```text
+AiModelsScreen ─ desktop.getAiStatus (polled every 5 s while open) → get_ai_status → ai.status
+  → worker: runtime probe, model details (cached by digest), loaded models, nvidia-smi, memory,
+    settings, benchmark results, recommendations; LLM Fit only when asked      (research-engine)
+  ← AiStatus, validated by the core (one entry per task, availability explained)
+AiPanel (BusinessInspector) ─ desktop.startAi({business_ids, task_types}) → start_ai → ai.start
+  → worker: one ai_analysis job; on a thread, per business × task: input from the store (page
+    fragments, findings, subscores) → runner on the event loop: cache? → run row → GPU queue →
+    breaker → VRAM placement → Ollama /api/chat with a JSON schema → checks → one repair at most →
+    answers and run stored → Latino declarations to the Latino rules; checkpoint, aggregated event
+  ⟳ desktop.listAiRuns / listAiInferences while a run moves
+InferenceView ─ desktop.getAiInference → the run, raw and validated answers, cited inputs, reviews;
+  validate() refuses a citation of an input the model was never given
+  ─ desktop.reviewAiInference({decision, reason}) → AiInferenceDetail
+Crawler ─ before each URL, while the AI queue works under memory pressure: wait (≤ 120 s)
+```
+
+Tasks, checks, prompts, VRAM, the queue, security, the benchmark and the recommended
+configuration for an RTX 4060 are in [local-ai.md](local-ai.md).
 
 Worker errors keep their meaning across the boundary: `not_found` → `CommandError.not_found`,
 `not_allowed` → `not_allowed`, `invalid_payload` → `invalid_input`; anything else is `worker_error`

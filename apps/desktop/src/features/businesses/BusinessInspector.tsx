@@ -11,6 +11,7 @@ import { InlineNotice, StateBlock } from "@/components/states/StateBlock";
 import { Text, TestDataBadge } from "@/components/data/cells";
 import { Button } from "@/components/ui/button";
 import { BUSINESS_STATUS_KEYS } from "@/features/businesses/columns";
+import { AiPanel } from "@/features/ai/AiPanel";
 import { ContactPanel } from "@/features/contacts/ContactPanel";
 import { LatinoPanel } from "@/features/latino/LatinoPanel";
 import { formatDateTime, useLanguage, useT } from "@/lib/i18n";
@@ -310,6 +311,7 @@ export function BusinessInspector({ businessId }: { businessId: string }) {
       />
       <ContactPanel key={`contacts-${business.id}`} businessId={business.id} />
       <LatinoPanel key={business.id} businessId={business.id} />
+      <AiPanel key={`ai-${business.id}`} businessId={business.id} />
       {evidence.length > 0 && (
         <section className="space-y-1.5">
           <Heading>

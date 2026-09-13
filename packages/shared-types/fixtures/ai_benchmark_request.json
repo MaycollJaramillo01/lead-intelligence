@@ -1,0 +1,9 @@
+{
+  "action": "start",
+  "models": [
+    "synthetic-text:1b"
+  ],
+  "task_types": [
+    "business_classification"
+  ]
+}

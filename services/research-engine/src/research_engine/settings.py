@@ -9,6 +9,8 @@ from urllib.parse import urlsplit
 
 LOG_LEVELS = frozenset({"debug", "info", "warning", "error", "critical"})
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
+#: The local AI runtime is only ever reached on this machine (phase 10).
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +36,10 @@ class Settings:
         parts = urlsplit(ollama_url)
         if parts.scheme not in {"http", "https"} or not parts.hostname:
             raise ValueError(f"LEAD_OLLAMA_URL must be an http(s) URL, got {ollama_url!r}")
+        if parts.hostname not in LOOPBACK_HOSTS:
+            raise ValueError(
+                f"LEAD_OLLAMA_URL must point at this machine (loopback), got {ollama_url!r}"
+            )
 
         raw_timeout = env.get("LEAD_OLLAMA_TIMEOUT_S", "2")
         try:

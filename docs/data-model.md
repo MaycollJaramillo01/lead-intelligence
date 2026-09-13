@@ -83,7 +83,7 @@ flowchart LR
   subgraph analysis[Assessments, AI and scoring]
     evidence_items --> latino_assessments
     source_runs -. crawl read .-> website_audits --> website_findings
-    evidence_items -.-> ai_inference_runs --> ai_inference_outputs
+    businesses -. minimal input .-> ai_inference_runs --> ai_inference_outputs
     scoring_models --> scoring_model_versions --> score_runs --> business_scores --> component_scores
     business_scores --> score_explanations
   end
@@ -148,7 +148,8 @@ erDiagram
 4. **Canonical business.** `businesses` holds the resolved entity and the display values chosen from
    its observations. Choosing changes the cache, never the observations.
 5. **Inference is not fact.** AI output lives in `ai_inference_runs` / `ai_inference_outputs` with
-   provider, model, digest, prompt and schema versions, input hash and the evidence it saw. An
+   provider, model, digest, prompt and schema versions, the exact input it saw and its hash, and a
+   person's review (phase 10). An
    assessment (`latino_assessments`) cites evidence through `latino_assessment_evidence` and records
    its method and rules version; it never overwrites evidence.
 6. **Scores** reference the exact `scoring_model_version`, store each component with weight and
@@ -286,11 +287,23 @@ suppression are also in `audit_log`.
 
 ### Local AI
 
-| Table                   | Purpose                                        | Columns                                                                                                                                                                                                                                                            |
-| ----------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ai_inference_runs`     | One model call with everything to reproduce it | `id`, `task_type`, `task_version`, `provider`, `model`, `model_digest`?, `parameters_json`, `prompt_template_id`, `prompt_template_version`, `output_schema_version`, `input_sha256`, `status` (inference_status), `started_at`?, `finished_at`?, `error_message`? |
-| `ai_inference_evidence` | Evidence given to the model                    | `inference_run_id` → ai_inference_runs, `evidence_item_id` → evidence_items                                                                                                                                                                                        |
-| `ai_inference_outputs`  | **Immutable** raw and validated output         | `id`, `inference_run_id`, `business_id`?, `raw_output`, `validated_output_json`?, `confidence`?                                                                                                                                                                    |
+Rebuilt by migration 0009 (phase 10); see [local-ai.md](local-ai.md).
+
+| Table                  | Purpose                                                                            | Columns                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ai_inference_runs`    | One task of a local model with everything to reproduce and audit it; never deleted | `id`, `task_type` (ai_task_type), `task_version`, `project_id`?, `business_id`?, `job_id`?, `provider`, `model`, `model_digest`?, `profile` (ai_profile), `parameters_json`, `prompt_template_id`, `prompt_template_version`, `output_schema_version`, `input_sha256`, `input_json`, `cache_key`, `status` (inference_status), `device` (ai_device), `attempts`, `prompt_tokens`?, `completion_tokens`?, `duration_ms`?, `error_code`?, `error_message`?, `review_status` (ai_review_status), `started_at`?, `finished_at`? |
+| `ai_inference_outputs` | **Immutable** answer per call: raw next to validated, or why it was refused        | `id`, `inference_run_id` → ai_inference_runs, `attempt`, `raw_output`, `validated_output_json`?, `validation_errors_json`?                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `ai_profile_settings`  | The model and context of each profile                                              | `profile` (ai_profile, key), `model`?, `num_ctx`, `allow_cpu`, `updated_at`                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `ai_task_settings`     | Whether a task runs and on which profile                                           | `task_type` (ai_task_type, key), `enabled`, `profile` (ai_profile), `updated_at`                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `ai_resource_limits`   | Free memory below which crawling waits for AI work                                 | `scope` (`machine`), `min_free_ram_mib`, `min_free_vram_mib`, `updated_at`                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `ai_benchmark_results` | **Immutable** measurement of one model on one task on this machine                 | `id`, `provider`, `model`, `model_digest`?, `task_type`, `task_version`, `corpus_version`, `num_ctx`, `cases`, `valid_outputs`, `correct`, `failures`, `latency_p50_ms`?, `latency_p95_ms`?, `tokens_per_second`?, `peak_vram_used_mib`?, `min_free_ram_mib`?, `device` (ai_device), `started_at`, `finished_at`                                                                                                                                                                                                            |
+
+A valid, not rejected result is unique per `cache_key` (partial unique index); the request columns
+cannot change once stored (trigger); a review is only possible on a `succeeded` or
+`insufficient_evidence` run (CHECK) and is a `review_decisions` row (`ai_output_accepted`,
+`ai_output_rejected`, `ai_review_withdrawn`). New enumerations: `ai_task_type`, `ai_profile`,
+`ai_device`, `ai_review_status`. `ai_inference_evidence` was dropped: the inputs a model saw, most of
+them not evidence items, are in `input_json`.
 
 ### Scoring
 

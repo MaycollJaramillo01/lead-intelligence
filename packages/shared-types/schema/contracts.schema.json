@@ -130,6 +130,1966 @@
       "title": "AcquisitionMethod",
       "type": "string"
     },
+    "AiActivity": {
+      "enum": [
+        "idle",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled"
+      ],
+      "title": "AiActivity",
+      "type": "string"
+    },
+    "AiBenchmarkAction": {
+      "enum": [
+        "start",
+        "cancel"
+      ],
+      "title": "AiBenchmarkAction",
+      "type": "string"
+    },
+    "AiBenchmarkProgress": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/AiActivity"
+        },
+        "models": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*(/[a-zA-Z0-9._-]+)*(:[a-zA-Z0-9._-]+)?$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "task_types": {
+          "items": {
+            "$ref": "#/$defs/AiTaskType"
+          },
+          "type": "array"
+        },
+        "done": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "current": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "state",
+        "models",
+        "task_types",
+        "done",
+        "total",
+        "current",
+        "error",
+        "started_at",
+        "finished_at"
+      ],
+      "title": "AiBenchmarkProgress",
+      "type": "object"
+    },
+    "AiBenchmarkRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/AiBenchmarkAction"
+        },
+        "models": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*(/[a-zA-Z0-9._-]+)*(:[a-zA-Z0-9._-]+)?$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "task_types": {
+          "items": {
+            "$ref": "#/$defs/AiTaskType"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "action",
+        "models",
+        "task_types"
+      ],
+      "title": "AiBenchmarkRequest",
+      "type": "object"
+    },
+    "AiBenchmarkResult": {
+      "additionalProperties": false,
+      "description": "One model on one task over the synthetic labelled corpus, measured on this machine.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "provider": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "model": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "model_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "task_type": {
+          "$ref": "#/$defs/AiTaskType"
+        },
+        "task_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "corpus_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "num_ctx": {
+          "maximum": 32768,
+          "minimum": 512,
+          "type": "integer"
+        },
+        "cases": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "valid_outputs": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "correct": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failures": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "latency_p50_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latency_p95_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tokens_per_second": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "peak_vram_used_mib": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "min_free_ram_mib": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "device": {
+          "$ref": "#/$defs/AiDevice"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "provider",
+        "model",
+        "model_digest",
+        "task_type",
+        "task_version",
+        "corpus_version",
+        "num_ctx",
+        "cases",
+        "valid_outputs",
+        "correct",
+        "failures",
+        "latency_p50_ms",
+        "latency_p95_ms",
+        "tokens_per_second",
+        "peak_vram_used_mib",
+        "min_free_ram_mib",
+        "device",
+        "started_at",
+        "finished_at",
+        "created_at"
+      ],
+      "title": "AiBenchmarkResult",
+      "type": "object"
+    },
+    "AiCircuitState": {
+      "enum": [
+        "closed",
+        "open",
+        "half_open"
+      ],
+      "title": "AiCircuitState",
+      "type": "string"
+    },
+    "AiConfigureRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "profiles": {
+          "items": {
+            "$ref": "#/$defs/AiProfileChange"
+          },
+          "type": "array"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/$defs/AiTaskChange"
+          },
+          "type": "array"
+        },
+        "min_free_ram_mib": {
+          "maximum": 65536,
+          "minimum": 256,
+          "type": "integer"
+        },
+        "min_free_vram_mib": {
+          "maximum": 65536,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "profiles",
+        "tasks",
+        "min_free_ram_mib",
+        "min_free_vram_mib"
+      ],
+      "title": "AiConfigureRequest",
+      "type": "object"
+    },
+    "AiDevice": {
+      "description": "Where the runtime placed the model while it answered, as the runtime reported it.",
+      "enum": [
+        "gpu",
+        "partial",
+        "cpu",
+        "unknown"
+      ],
+      "title": "AiDevice",
+      "type": "string"
+    },
+    "AiInferenceDetail": {
+      "additionalProperties": false,
+      "description": "A model's answer as evidence-backed output: the run, every raw answer next to what it\nvalidated to, the exact inputs it cited and the people's decisions. Not a fact.",
+      "properties": {
+        "run": {
+          "$ref": "#/$defs/InferenceRun"
+        },
+        "business_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outputs": {
+          "items": {
+            "$ref": "#/$defs/InferenceOutput"
+          },
+          "type": "array"
+        },
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/AiInputRef"
+          },
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "decisions": {
+          "items": {
+            "$ref": "#/$defs/ReviewDecision"
+          },
+          "type": "array"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "run",
+        "business_name",
+        "outputs",
+        "inputs",
+        "warnings",
+        "decisions",
+        "is_synthetic"
+      ],
+      "title": "AiInferenceDetail",
+      "type": "object"
+    },
+    "AiInferenceItem": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "task_type": {
+          "$ref": "#/$defs/AiTaskType"
+        },
+        "status": {
+          "$ref": "#/$defs/InferenceStatus"
+        },
+        "review_status": {
+          "$ref": "#/$defs/AiReviewStatus"
+        },
+        "model": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "device": {
+          "$ref": "#/$defs/AiDevice"
+        },
+        "business_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "business_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "job_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "duration_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempts": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "task_type",
+        "status",
+        "review_status",
+        "model",
+        "device",
+        "business_id",
+        "business_name",
+        "job_id",
+        "duration_ms",
+        "attempts",
+        "error_code",
+        "created_at",
+        "is_synthetic"
+      ],
+      "title": "AiInferenceItem",
+      "type": "object"
+    },
+    "AiInferenceListQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "task_type": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AiTaskType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InferenceStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "business_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "review_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AiReviewStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "task_type",
+        "status",
+        "business_id",
+        "review_status",
+        "limit",
+        "cursor"
+      ],
+      "title": "AiInferenceListQuery",
+      "type": "object"
+    },
+    "AiInferencePage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/AiInferenceItem"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "AiInferencePage",
+      "type": "object"
+    },
+    "AiInferenceQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "inference_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "inference_run_id"
+      ],
+      "title": "AiInferenceQuery",
+      "type": "object"
+    },
+    "AiInputKind": {
+      "enum": [
+        "page_fragment",
+        "website_finding",
+        "contactability",
+        "latino_status",
+        "screenshot"
+      ],
+      "title": "AiInputKind",
+      "type": "string"
+    },
+    "AiInputRef": {
+      "additionalProperties": false,
+      "description": "One piece of evidence a model saw, as it saw it: the page, finding or subscore it came from\nand the exact text (a screenshot keeps only its path and hash).",
+      "properties": {
+        "ref": {
+          "pattern": "^[A-Z][1-9][0-9]{0,2}$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/AiInputKind"
+        },
+        "entity_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "text": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref",
+        "kind",
+        "entity_id",
+        "source",
+        "text",
+        "sha256"
+      ],
+      "title": "AiInputRef",
+      "type": "object"
+    },
+    "AiModelChange": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/AiModelChangeAction"
+        },
+        "model": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*(/[a-zA-Z0-9._-]+)*(:[a-zA-Z0-9._-]+)?$",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/AiActivity"
+        },
+        "completed_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "action",
+        "model",
+        "state",
+        "completed_bytes",
+        "total_bytes",
+        "detail",
+        "started_at",
+        "finished_at"
+      ],
+      "title": "AiModelChange",
+      "type": "object"
+    },
+    "AiModelChangeAction": {
+      "enum": [
+        "pull",
+        "delete"
+      ],
+      "title": "AiModelChangeAction",
+      "type": "string"
+    },
+    "AiModelChangeRequest": {
+      "additionalProperties": false,
+      "description": "Downloads or deletes a model through the runtime. `confirmation` must repeat the model name:\nnothing is downloaded or deleted without that explicit step.",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/AiModelChangeAction"
+        },
+        "model": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*(/[a-zA-Z0-9._-]+)*(:[a-zA-Z0-9._-]+)?$",
+          "type": "string"
+        },
+        "confirmation": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*(/[a-zA-Z0-9._-]+)*(:[a-zA-Z0-9._-]+)?$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "model",
+        "confirmation"
+      ],
+      "title": "AiModelChangeRequest",
+      "type": "object"
+    },
+    "AiModelInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*(/[a-zA-Z0-9._-]+)*(:[a-zA-Z0-9._-]+)?$",
+          "type": "string"
+        },
+        "digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "size_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "family": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parameter_size": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "quantization": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "context_length": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capabilities": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "loaded": {
+          "type": "boolean"
+        },
+        "size_vram_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "estimate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AiVramEstimate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "digest",
+        "size_bytes",
+        "family",
+        "parameter_size",
+        "quantization",
+        "context_length",
+        "capabilities",
+        "loaded",
+        "size_vram_bytes",
+        "estimate"
+      ],
+      "title": "AiModelInfo",
+      "type": "object"
+    },
+    "AiProfile": {
+      "description": "A model assignment the operator configures; each task runs on one profile.",
+      "enum": [
+        "fast",
+        "balanced",
+        "quality"
+      ],
+      "title": "AiProfile",
+      "type": "string"
+    },
+    "AiProfileChange": {
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "$ref": "#/$defs/AiProfile"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*(/[a-zA-Z0-9._-]+)*(:[a-zA-Z0-9._-]+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "num_ctx": {
+          "maximum": 32768,
+          "minimum": 512,
+          "type": "integer"
+        },
+        "allow_cpu": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "profile",
+        "model",
+        "num_ctx",
+        "allow_cpu"
+      ],
+      "title": "AiProfileChange",
+      "type": "object"
+    },
+    "AiProfileSetting": {
+      "additionalProperties": false,
+      "description": "The model a profile runs on and its context length; no model means the profile is off.",
+      "properties": {
+        "profile": {
+          "$ref": "#/$defs/AiProfile"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "num_ctx": {
+          "maximum": 32768,
+          "minimum": 512,
+          "type": "integer"
+        },
+        "allow_cpu": {
+          "type": "boolean"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile",
+        "model",
+        "num_ctx",
+        "allow_cpu",
+        "updated_at"
+      ],
+      "title": "AiProfileSetting",
+      "type": "object"
+    },
+    "AiRecommendation": {
+      "additionalProperties": false,
+      "description": "A recommendation, never a setting: the best benchmarked model on this machine for a task\n(accuracy first, then median latency), among models still installed.",
+      "properties": {
+        "task_type": {
+          "$ref": "#/$defs/AiTaskType"
+        },
+        "model": {
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*(/[a-zA-Z0-9._-]+)*(:[a-zA-Z0-9._-]+)?$",
+          "type": "string"
+        },
+        "accuracy": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "latency_p50_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "benchmark_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "benchmarked_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_type",
+        "model",
+        "accuracy",
+        "latency_p50_ms",
+        "benchmark_id",
+        "benchmarked_at"
+      ],
+      "title": "AiRecommendation",
+      "type": "object"
+    },
+    "AiResourceLimits": {
+      "additionalProperties": false,
+      "description": "Free memory below which crawling and browser renders wait while local AI works.",
+      "properties": {
+        "scope": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "min_free_ram_mib": {
+          "maximum": 65536,
+          "minimum": 256,
+          "type": "integer"
+        },
+        "min_free_vram_mib": {
+          "maximum": 65536,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "min_free_ram_mib",
+        "min_free_vram_mib",
+        "updated_at"
+      ],
+      "title": "AiResourceLimits",
+      "type": "object"
+    },
+    "AiResources": {
+      "additionalProperties": false,
+      "properties": {
+        "ram_total_mib": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ram_free_mib": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vram_total_mib": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vram_free_mib": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pressure": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "crawl_waiting": {
+          "type": "boolean"
+        },
+        "sampled_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ram_total_mib",
+        "ram_free_mib",
+        "vram_total_mib",
+        "vram_free_mib",
+        "pressure",
+        "crawl_waiting",
+        "sampled_at"
+      ],
+      "title": "AiResources",
+      "type": "object"
+    },
+    "AiReviewDecision": {
+      "enum": [
+        "accept",
+        "reject",
+        "reset"
+      ],
+      "title": "AiReviewDecision",
+      "type": "string"
+    },
+    "AiReviewRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "inference_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/AiReviewDecision"
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "inference_run_id",
+        "decision",
+        "reason"
+      ],
+      "title": "AiReviewRequest",
+      "type": "object"
+    },
+    "AiReviewStatus": {
+      "enum": [
+        "unreviewed",
+        "accepted",
+        "rejected"
+      ],
+      "title": "AiReviewStatus",
+      "type": "string"
+    },
+    "AiRun": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "stage": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "progress_done": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "progress_total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "task_types": {
+          "items": {
+            "$ref": "#/$defs/AiTaskType"
+          },
+          "type": "array"
+        },
+        "business_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stats": {
+          "$ref": "#/$defs/AiStats"
+        },
+        "requested_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/RunEvent"
+          },
+          "type": "array"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job_id",
+        "project_id",
+        "project_name",
+        "status",
+        "stage",
+        "progress_done",
+        "progress_total",
+        "task_types",
+        "business_count",
+        "stats",
+        "requested_at",
+        "started_at",
+        "finished_at",
+        "events",
+        "is_synthetic"
+      ],
+      "title": "AiRun",
+      "type": "object"
+    },
+    "AiRunListQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "limit",
+        "cursor"
+      ],
+      "title": "AiRunListQuery",
+      "type": "object"
+    },
+    "AiRunPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/AiRun"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "AiRunPage",
+      "type": "object"
+    },
+    "AiSchedulerState": {
+      "additionalProperties": false,
+      "properties": {
+        "queued": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "running": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "capacity": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "circuit": {
+          "$ref": "#/$defs/AiCircuitState"
+        },
+        "consecutive_failures": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "open_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_error": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "completed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cache_hits": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "latency_p50_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "queued",
+        "running",
+        "capacity",
+        "circuit",
+        "consecutive_failures",
+        "open_until",
+        "last_error",
+        "completed",
+        "failed",
+        "cache_hits",
+        "latency_p50_ms"
+      ],
+      "title": "AiSchedulerState",
+      "type": "object"
+    },
+    "AiStartRequest": {
+      "additionalProperties": false,
+      "description": "Runs tasks over the canonical businesses of one project (every project when null), or over\nthe businesses listed (at most 200). Identical requests reuse valid stored results.",
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "business_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "task_types": {
+          "items": {
+            "$ref": "#/$defs/AiTaskType"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "project_id",
+        "business_ids",
+        "task_types"
+      ],
+      "title": "AiStartRequest",
+      "type": "object"
+    },
+    "AiStats": {
+      "additionalProperties": false,
+      "properties": {
+        "targets": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "done": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "succeeded": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "insufficient_evidence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "invalid_output": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cancelled": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cache_hits": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped_no_input": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped_unavailable": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "latino_candidates_accepted": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "latino_candidates_rejected": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "targets",
+        "done",
+        "succeeded",
+        "insufficient_evidence",
+        "invalid_output",
+        "failed",
+        "cancelled",
+        "cache_hits",
+        "skipped_no_input",
+        "skipped_unavailable",
+        "latino_candidates_accepted",
+        "latino_candidates_rejected"
+      ],
+      "title": "AiStats",
+      "type": "object"
+    },
+    "AiStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "runtime": {
+          "$ref": "#/$defs/OllamaStatus"
+        },
+        "gpu": {
+          "$ref": "#/$defs/GpuStatus"
+        },
+        "models": {
+          "items": {
+            "$ref": "#/$defs/AiModelInfo"
+          },
+          "type": "array"
+        },
+        "profiles": {
+          "items": {
+            "$ref": "#/$defs/AiProfileSetting"
+          },
+          "type": "array"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/$defs/AiTaskInfo"
+          },
+          "type": "array"
+        },
+        "limits": {
+          "$ref": "#/$defs/AiResourceLimits"
+        },
+        "resources": {
+          "$ref": "#/$defs/AiResources"
+        },
+        "scheduler": {
+          "$ref": "#/$defs/AiSchedulerState"
+        },
+        "recommendations": {
+          "items": {
+            "$ref": "#/$defs/AiRecommendation"
+          },
+          "type": "array"
+        },
+        "benchmark": {
+          "$ref": "#/$defs/AiBenchmarkProgress"
+        },
+        "benchmark_results": {
+          "items": {
+            "$ref": "#/$defs/AiBenchmarkResult"
+          },
+          "type": "array"
+        },
+        "model_change": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AiModelChange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "llm_fit": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LlmFitReport"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "downloads_allowed": {
+          "type": "boolean"
+        },
+        "checked_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtime",
+        "gpu",
+        "models",
+        "profiles",
+        "tasks",
+        "limits",
+        "resources",
+        "scheduler",
+        "recommendations",
+        "benchmark",
+        "benchmark_results",
+        "model_change",
+        "llm_fit",
+        "downloads_allowed",
+        "checked_at"
+      ],
+      "title": "AiStatus",
+      "type": "object"
+    },
+    "AiStatusQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "include_llm_fit": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "include_llm_fit"
+      ],
+      "title": "AiStatusQuery",
+      "type": "object"
+    },
+    "AiTaskChange": {
+      "additionalProperties": false,
+      "properties": {
+        "task_type": {
+          "$ref": "#/$defs/AiTaskType"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "profile": {
+          "$ref": "#/$defs/AiProfile"
+        }
+      },
+      "required": [
+        "task_type",
+        "enabled",
+        "profile"
+      ],
+      "title": "AiTaskChange",
+      "type": "object"
+    },
+    "AiTaskInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "task_type": {
+          "$ref": "#/$defs/AiTaskType"
+        },
+        "task_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "output_schema_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "prompt_template_id": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "prompt_template_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "profile": {
+          "$ref": "#/$defs/AiProfile"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*(/[a-zA-Z0-9._-]+)*(:[a-zA-Z0-9._-]+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "unavailable_reason": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AiUnavailableReason"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requires_vision": {
+          "type": "boolean"
+        },
+        "batchable": {
+          "type": "boolean"
+        },
+        "max_input_chars": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_refs": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "timeout_s": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "temperature": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "task_type",
+        "task_version",
+        "output_schema_version",
+        "prompt_template_id",
+        "prompt_template_version",
+        "enabled",
+        "profile",
+        "model",
+        "available",
+        "unavailable_reason",
+        "requires_vision",
+        "batchable",
+        "max_input_chars",
+        "max_refs",
+        "timeout_s",
+        "temperature"
+      ],
+      "title": "AiTaskInfo",
+      "type": "object"
+    },
+    "AiTaskSetting": {
+      "additionalProperties": false,
+      "properties": {
+        "task_type": {
+          "$ref": "#/$defs/AiTaskType"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "profile": {
+          "$ref": "#/$defs/AiProfile"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_type",
+        "enabled",
+        "profile",
+        "updated_at"
+      ],
+      "title": "AiTaskSetting",
+      "type": "object"
+    },
+    "AiTaskType": {
+      "description": "What a local model may be asked (phase 10). Each task has its own contract, prompt template,\nlimits, timeout and failure strategy (`ai.tasks`); none of them decides a fact on its own.",
+      "enum": [
+        "evidence_extraction",
+        "business_classification",
+        "finding_synthesis",
+        "opportunity_reasoning",
+        "language_detection",
+        "visual_review"
+      ],
+      "title": "AiTaskType",
+      "type": "string"
+    },
+    "AiUnavailableReason": {
+      "enum": [
+        "task_disabled",
+        "no_model_assigned",
+        "runtime_unavailable",
+        "model_not_installed",
+        "no_vision_model",
+        "circuit_open"
+      ],
+      "title": "AiUnavailableReason",
+      "type": "string"
+    },
+    "AiVramEstimate": {
+      "additionalProperties": false,
+      "description": "An estimate from the model's own metadata (weights file, layers, KV heads) for one context\nlength; the runtime's report of a loaded model (`size_vram_bytes`) is what actually happened.",
+      "properties": {
+        "num_ctx": {
+          "maximum": 32768,
+          "minimum": 512,
+          "type": "integer"
+        },
+        "weights_mib": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kv_cache_mib": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "overhead_mib": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total_mib": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "device": {
+          "$ref": "#/$defs/AiDevice"
+        },
+        "fitted_ctx": {
+          "anyOf": [
+            {
+              "maximum": 32768,
+              "minimum": 512,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "num_ctx",
+        "weights_mib",
+        "kv_cache_mib",
+        "overhead_mib",
+        "total_mib",
+        "device",
+        "fitted_ctx",
+        "note"
+      ],
+      "title": "AiVramEstimate",
+      "type": "object"
+    },
     "AppEnvironment": {
       "enum": [
         "development",
@@ -8167,28 +10127,9 @@
       "title": "ImportProblem",
       "type": "object"
     },
-    "InferenceEvidence": {
-      "additionalProperties": false,
-      "properties": {
-        "inference_run_id": {
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-          "type": "string"
-        },
-        "evidence_item_id": {
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-          "type": "string"
-        }
-      },
-      "required": [
-        "inference_run_id",
-        "evidence_item_id"
-      ],
-      "title": "InferenceEvidence",
-      "type": "object"
-    },
     "InferenceOutput": {
       "additionalProperties": false,
-      "description": "Raw model output next to the validated structure. Never a fact by itself.",
+      "description": "One answer of the model, raw, next to the structure it validated to (or why it did not).\nImmutable, and never a fact by itself.",
       "properties": {
         "id": {
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
@@ -8198,16 +10139,9 @@
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
           "type": "string"
         },
-        "business_id": {
-          "anyOf": [
-            {
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
+        "attempt": {
+          "minimum": 1,
+          "type": "integer"
         },
         "raw_output": {
           "type": "string"
@@ -8225,12 +10159,13 @@
             }
           ]
         },
-        "confidence": {
+        "validation_errors_json": {
           "anyOf": [
             {
-              "maximum": 1,
-              "minimum": 0,
-              "type": "number"
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
             },
             {
               "type": "null"
@@ -8245,10 +10180,10 @@
       "required": [
         "id",
         "inference_run_id",
-        "business_id",
+        "attempt",
         "raw_output",
         "validated_output_json",
-        "confidence",
+        "validation_errors_json",
         "created_at"
       ],
       "title": "InferenceOutput",
@@ -8256,21 +10191,52 @@
     },
     "InferenceRun": {
       "additionalProperties": false,
-      "description": "One local-model call: task, runtime, model, prompt and schema versions, input hash.",
+      "description": "One local-model task (phase 10): task, runtime, model, digest, parameters, prompt and schema\nversions, the exact input it saw and its hash, what it cost and how it ended. Rebuilt by\nmigration 0009; `cache_key` makes an identical request reuse a valid result.",
       "properties": {
         "id": {
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
           "type": "string"
         },
         "task_type": {
-          "maxLength": 64,
-          "pattern": "^[a-z][a-z0-9_.]*$",
-          "type": "string"
+          "$ref": "#/$defs/AiTaskType"
         },
         "task_version": {
           "maxLength": 300,
           "minLength": 1,
           "type": "string"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "business_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "job_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "provider": {
           "maxLength": 64,
@@ -8291,6 +10257,9 @@
               "type": "null"
             }
           ]
+        },
+        "profile": {
+          "$ref": "#/$defs/AiProfile"
         },
         "parameters_json": {
           "additionalProperties": {
@@ -8317,8 +10286,84 @@
           "pattern": "^[0-9a-f]{64}$",
           "type": "string"
         },
+        "input_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "cache_key": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
         "status": {
           "$ref": "#/$defs/InferenceStatus"
+        },
+        "device": {
+          "$ref": "#/$defs/AiDevice"
+        },
+        "attempts": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "prompt_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "completion_tokens": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "duration_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error_message": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "review_status": {
+          "$ref": "#/$defs/AiReviewStatus"
         },
         "started_at": {
           "anyOf": [
@@ -8342,16 +10387,6 @@
             }
           ]
         },
-        "error_message": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "created_at": {
           "format": "date-time",
           "type": "string"
@@ -8365,18 +10400,31 @@
         "id",
         "task_type",
         "task_version",
+        "project_id",
+        "business_id",
+        "job_id",
         "provider",
         "model",
         "model_digest",
+        "profile",
         "parameters_json",
         "prompt_template_id",
         "prompt_template_version",
         "output_schema_version",
         "input_sha256",
+        "input_json",
+        "cache_key",
         "status",
+        "device",
+        "attempts",
+        "prompt_tokens",
+        "completion_tokens",
+        "duration_ms",
+        "error_code",
+        "error_message",
+        "review_status",
         "started_at",
         "finished_at",
-        "error_message",
         "created_at",
         "updated_at"
       ],
@@ -9492,6 +11540,173 @@
       ],
       "title": "LeadStage",
       "type": "string"
+    },
+    "LlmFitModel": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 300,
+          "type": "string"
+        },
+        "ollama_name": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fit_level": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "run_mode": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runtime": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "quantization": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "memory_required_gb": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "estimated_tps": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "installed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "items": {
+            "maxLength": 300,
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "ollama_name",
+        "fit_level",
+        "run_mode",
+        "runtime",
+        "quantization",
+        "memory_required_gb",
+        "estimated_tps",
+        "installed",
+        "notes"
+      ],
+      "title": "LlmFitModel",
+      "type": "object"
+    },
+    "LlmFitReport": {
+      "additionalProperties": false,
+      "description": "What the external LLM Fit tool says, when installed and asked. An outside opinion: nothing\nhere is applied, installed or changed.",
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "models": {
+          "items": {
+            "$ref": "#/$defs/LlmFitModel"
+          },
+          "type": "array"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "checked_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "available",
+        "version",
+        "models",
+        "error",
+        "checked_at"
+      ],
+      "title": "LlmFitReport",
+      "type": "object"
     },
     "MailDomainCheck": {
       "additionalProperties": false,

@@ -11,20 +11,23 @@ use uuid::Uuid;
 
 use crate::config::Environment;
 use crate::data::{
-    BusinessDetail, BusinessDetailQuery, BusinessListQuery, BusinessPage, CampaignListQuery,
-    CampaignPage, CampaignSaveRequest, CampaignSaved, CandidateDetail, CandidateDetailQuery,
-    CandidateListQuery, CandidatePage, CanonicalChoiceRequest, ContactActionRequest, ContactDetail,
-    ContactDetailQuery, ContactListQuery, ContactPage, ContactRun, ContactRunListQuery,
-    ContactRunPage, ContactStartRequest, ContactSuppression, CrawlRun, CrawlRunListQuery,
-    CrawlRunPage, CrawlStartRequest, CrawlUrlDetail, CrawlUrlDetailQuery, CrawlUrlListQuery,
-    CrawlUrlPage, CriteriaCheck, CriteriaCheckQuery, DatasetListQuery, DatasetPage,
-    DecisionMakerItem, DecisionMakerListQuery, DecisionMakerPage, DecisionMakerReviewRequest,
-    DiscoveryControlRequest, DiscoveryRun, DiscoveryRunListQuery, DiscoveryRunPage,
-    DiscoveryStartRequest, ImportPreview, ImportPreviewRequest, LatinoDetail, LatinoDetailQuery,
-    LatinoReviewRequest, LatinoRun, LatinoRunListQuery, LatinoRunPage, LatinoStartRequest,
-    MatchActionRequest, MatchDetail, MatchDetailQuery, MatchListQuery, MatchPage, ResolutionRun,
-    ResolutionRunListQuery, ResolutionRunPage, ResolutionStartRequest, SourceCatalog,
-    SourceCatalogQuery, SuppressionChangeRequest, SuppressionExport, SuppressionExportRequest,
+    AiBenchmarkRequest, AiConfigureRequest, AiInferenceDetail, AiInferenceListQuery,
+    AiInferencePage, AiInferenceQuery, AiModelChangeRequest, AiReviewRequest, AiRun,
+    AiRunListQuery, AiRunPage, AiStartRequest, AiStatus, AiStatusQuery, BusinessDetail,
+    BusinessDetailQuery, BusinessListQuery, BusinessPage, CampaignListQuery, CampaignPage,
+    CampaignSaveRequest, CampaignSaved, CandidateDetail, CandidateDetailQuery, CandidateListQuery,
+    CandidatePage, CanonicalChoiceRequest, ContactActionRequest, ContactDetail, ContactDetailQuery,
+    ContactListQuery, ContactPage, ContactRun, ContactRunListQuery, ContactRunPage,
+    ContactStartRequest, ContactSuppression, CrawlRun, CrawlRunListQuery, CrawlRunPage,
+    CrawlStartRequest, CrawlUrlDetail, CrawlUrlDetailQuery, CrawlUrlListQuery, CrawlUrlPage,
+    CriteriaCheck, CriteriaCheckQuery, DatasetListQuery, DatasetPage, DecisionMakerItem,
+    DecisionMakerListQuery, DecisionMakerPage, DecisionMakerReviewRequest, DiscoveryControlRequest,
+    DiscoveryRun, DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest, ImportPreview,
+    ImportPreviewRequest, LatinoDetail, LatinoDetailQuery, LatinoReviewRequest, LatinoRun,
+    LatinoRunListQuery, LatinoRunPage, LatinoStartRequest, MatchActionRequest, MatchDetail,
+    MatchDetailQuery, MatchListQuery, MatchPage, ResolutionRun, ResolutionRunListQuery,
+    ResolutionRunPage, ResolutionStartRequest, SourceCatalog, SourceCatalogQuery,
+    SuppressionChangeRequest, SuppressionExport, SuppressionExportRequest,
     SuppressionImportRequest, SuppressionImportResult, SuppressionListQuery, SuppressionPage,
     SyntheticSeedResult, WebsiteAuditDetail, WebsiteAuditListQuery, WebsiteAuditPage,
     WebsiteAuditQuery, WebsiteRun, WebsiteRunListQuery, WebsiteRunPage, WebsiteStartRequest,
@@ -34,17 +37,19 @@ use crate::protocol::{
     ComponentState, CoreStatus, DiagnosticsReport, DiagnosticsResult, UiErrorReport, WorkerStatus,
 };
 use crate::worker::{
-    BUSINESSES_CHOOSE_VALUE, BUSINESSES_GET, BUSINESSES_LIST, CAMPAIGNS_LIST, CAMPAIGNS_SAVE,
-    CAMPAIGNS_VALIDATE, CONTACTS_ACT, CONTACTS_CONTROL, CONTACTS_GET, CONTACTS_LIST, CONTACTS_RUNS,
-    CONTACTS_START, CONTACTS_TIMEOUT, CRAWL_CONTROL, CRAWL_RUNS, CRAWL_START, CRAWL_URL,
-    CRAWL_URLS, DATA_TIMEOUT, DATASETS_LIST, DECISION_MAKERS_LIST, DECISION_MAKERS_REVIEW,
-    DEV_SEED_SYNTHETIC, DIAGNOSTICS, DIAGNOSTICS_TIMEOUT, DISCOVERY_CANDIDATE,
-    DISCOVERY_CANDIDATES, DISCOVERY_CONTROL, DISCOVERY_RUNS, DISCOVERY_START, DISCOVERY_TIMEOUT,
-    IMPORT_TIMEOUT, LATINO_CONTROL, LATINO_GET, LATINO_REVIEW, LATINO_RUNS, LATINO_START,
-    MATCHES_ACT, MATCHES_GET, MATCHES_LIST, RESOLUTION_CONTROL, RESOLUTION_RUNS, RESOLUTION_START,
-    RESOLUTION_TIMEOUT, SEED_TIMEOUT, SOURCES_LIST, SOURCES_PREVIEW_IMPORT, SUPPRESSIONS_CHANGE,
-    SUPPRESSIONS_EXPORT, SUPPRESSIONS_IMPORT, SUPPRESSIONS_LIST, WEBSITE_AUDIT, WEBSITE_AUDITS,
-    WEBSITE_CONTROL, WEBSITE_RUNS, WEBSITE_START, WorkerSupervisor,
+    AI_BENCHMARK, AI_CONFIGURE, AI_CONTROL, AI_INFERENCE, AI_INFERENCES, AI_MODEL_CHANGE,
+    AI_REVIEW, AI_RUNS, AI_START, AI_STATUS, AI_TIMEOUT, BUSINESSES_CHOOSE_VALUE, BUSINESSES_GET,
+    BUSINESSES_LIST, CAMPAIGNS_LIST, CAMPAIGNS_SAVE, CAMPAIGNS_VALIDATE, CONTACTS_ACT,
+    CONTACTS_CONTROL, CONTACTS_GET, CONTACTS_LIST, CONTACTS_RUNS, CONTACTS_START, CONTACTS_TIMEOUT,
+    CRAWL_CONTROL, CRAWL_RUNS, CRAWL_START, CRAWL_URL, CRAWL_URLS, DATA_TIMEOUT, DATASETS_LIST,
+    DECISION_MAKERS_LIST, DECISION_MAKERS_REVIEW, DEV_SEED_SYNTHETIC, DIAGNOSTICS,
+    DIAGNOSTICS_TIMEOUT, DISCOVERY_CANDIDATE, DISCOVERY_CANDIDATES, DISCOVERY_CONTROL,
+    DISCOVERY_RUNS, DISCOVERY_START, DISCOVERY_TIMEOUT, IMPORT_TIMEOUT, LATINO_CONTROL, LATINO_GET,
+    LATINO_REVIEW, LATINO_RUNS, LATINO_START, MATCHES_ACT, MATCHES_GET, MATCHES_LIST,
+    RESOLUTION_CONTROL, RESOLUTION_RUNS, RESOLUTION_START, RESOLUTION_TIMEOUT, SEED_TIMEOUT,
+    SOURCES_LIST, SOURCES_PREVIEW_IMPORT, SUPPRESSIONS_CHANGE, SUPPRESSIONS_EXPORT,
+    SUPPRESSIONS_IMPORT, SUPPRESSIONS_LIST, WEBSITE_AUDIT, WEBSITE_AUDITS, WEBSITE_CONTROL,
+    WEBSITE_RUNS, WEBSITE_START, WorkerSupervisor,
 };
 
 pub struct AppState {
@@ -1097,6 +1102,214 @@ pub async fn export_suppressions(
         Ok(export)
     }
     .instrument(ipc_span("export_suppressions"))
+    .await
+}
+
+// ---- local AI (phase 10) ------------------------------------------------------------------------
+
+/// Runtime, GPU, installed models with estimates, settings, task availability, resources, queue,
+/// benchmark results and recommendations; LLM Fit only when asked.
+#[tauri::command]
+pub async fn get_ai_status(
+    state: State<'_, AppState>,
+    query: AiStatusQuery,
+) -> Result<AiStatus, AppError> {
+    async {
+        let status: AiStatus = state
+            .supervisor
+            .request_with(AI_STATUS, &query, AI_TIMEOUT)
+            .await?;
+        status.validate(&query).map_err(AppError::Protocol)?;
+        Ok(status)
+    }
+    .instrument(ipc_span("get_ai_status"))
+    .await
+}
+
+/// Assigns models to profiles, profiles to tasks and the memory limits; models must be installed.
+#[tauri::command]
+pub async fn configure_ai(
+    state: State<'_, AppState>,
+    request: AiConfigureRequest,
+) -> Result<AiStatus, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let status: AiStatus = state
+            .supervisor
+            .request_with(AI_CONFIGURE, &request, AI_TIMEOUT)
+            .await?;
+        status
+            .validate(&AiStatusQuery {
+                include_llm_fit: false,
+            })
+            .map_err(AppError::Protocol)?;
+        Ok(status)
+    }
+    .instrument(ipc_span("configure_ai"))
+    .await
+}
+
+/// Starts local AI tasks over a project or some businesses; identical requests reuse results.
+#[tauri::command]
+pub async fn start_ai(
+    state: State<'_, AppState>,
+    request: AiStartRequest,
+) -> Result<AiRunPage, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let page: AiRunPage = state
+            .supervisor
+            .request_with(AI_START, &request, CONTACTS_TIMEOUT)
+            .await?;
+        page.items
+            .iter()
+            .try_for_each(AiRun::validate)
+            .map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("start_ai"))
+    .await
+}
+
+/// Pauses, resumes or cancels an AI run; the inference in flight is cancelled and recorded.
+#[tauri::command]
+pub async fn control_ai(
+    state: State<'_, AppState>,
+    request: DiscoveryControlRequest,
+) -> Result<AiRun, AppError> {
+    async {
+        let run: AiRun = state
+            .supervisor
+            .request_with(AI_CONTROL, &request, CONTACTS_TIMEOUT)
+            .await?;
+        run.validate().map_err(AppError::Protocol)?;
+        Ok(run)
+    }
+    .instrument(ipc_span("control_ai"))
+    .await
+}
+
+#[tauri::command]
+pub async fn list_ai_runs(
+    state: State<'_, AppState>,
+    query: AiRunListQuery,
+) -> Result<AiRunPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: AiRunPage = state
+            .supervisor
+            .request_with(AI_RUNS, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_ai_runs"))
+    .await
+}
+
+/// The inference history with its failures, by task, status, business and review.
+#[tauri::command]
+pub async fn list_ai_inferences(
+    state: State<'_, AppState>,
+    query: AiInferenceListQuery,
+) -> Result<AiInferencePage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: AiInferencePage = state
+            .supervisor
+            .request_with(AI_INFERENCES, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_ai_inferences"))
+    .await
+}
+
+/// One inference: raw and validated answers, the inputs it cites and the review decisions.
+#[tauri::command]
+pub async fn get_ai_inference(
+    state: State<'_, AppState>,
+    query: AiInferenceQuery,
+) -> Result<AiInferenceDetail, AppError> {
+    async {
+        let detail: AiInferenceDetail = state
+            .supervisor
+            .request_with(AI_INFERENCE, &query, DATA_TIMEOUT)
+            .await?;
+        detail
+            .validate(&query.inference_run_id)
+            .map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("get_ai_inference"))
+    .await
+}
+
+/// A person accepts, rejects or withdraws their review of an answer, with a reason.
+#[tauri::command]
+pub async fn review_ai_inference(
+    state: State<'_, AppState>,
+    request: AiReviewRequest,
+) -> Result<AiInferenceDetail, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let detail: AiInferenceDetail = state
+            .supervisor
+            .request_with(AI_REVIEW, &request, CONTACTS_TIMEOUT)
+            .await?;
+        detail
+            .validate(&request.inference_run_id)
+            .map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("review_ai_inference"))
+    .await
+}
+
+/// Starts or cancels a benchmark of installed models over the synthetic labelled corpus.
+#[tauri::command]
+pub async fn run_ai_benchmark(
+    state: State<'_, AppState>,
+    request: AiBenchmarkRequest,
+) -> Result<AiStatus, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let status: AiStatus = state
+            .supervisor
+            .request_with(AI_BENCHMARK, &request, AI_TIMEOUT)
+            .await?;
+        status
+            .validate(&AiStatusQuery {
+                include_llm_fit: false,
+            })
+            .map_err(AppError::Protocol)?;
+        Ok(status)
+    }
+    .instrument(ipc_span("run_ai_benchmark"))
+    .await
+}
+
+/// Downloads or deletes a model, only with the exact model name typed as confirmation.
+#[tauri::command]
+pub async fn change_ai_model(
+    state: State<'_, AppState>,
+    request: AiModelChangeRequest,
+) -> Result<AiStatus, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let status: AiStatus = state
+            .supervisor
+            .request_with(AI_MODEL_CHANGE, &request, AI_TIMEOUT)
+            .await?;
+        status
+            .validate(&AiStatusQuery {
+                include_llm_fit: false,
+            })
+            .map_err(AppError::Protocol)?;
+        Ok(status)
+    }
+    .instrument(ipc_span("change_ai_model"))
     .await
 }
 

@@ -10,13 +10,13 @@ use chrono::Utc;
 use lead_intelligence_lib::commands::{AppState, CoreInfo};
 use lead_intelligence_lib::config::Environment;
 use lead_intelligence_lib::data::{
-    BusinessDetail, BusinessPage, CampaignSaved, CandidateDetail, CandidatePage, CanonicalField,
-    ContactDetail, ContactOrigin, ContactPage, ContactRunPage, ContactSuppression, CrawlRun,
-    CrawlRunPage, CrawlUrlDetail, CrawlUrlPage, CriteriaCheck, DatasetPage, DecisionMakerPage,
-    DiscoveryRun, DiscoveryRunPage, ImportPreview, JobStatus, LatinoDetail, LatinoRunPage,
-    LatinoStatus, MatchDetail, MatchPage, MatchStatus, ResolutionRunPage, SelectionMethod,
-    SourceCatalog, SourceRunStatus, SuppressionExport, SyntheticSeedResult, WebsiteAuditDetail,
-    WebsiteAuditPage, WebsiteRunPage,
+    AiInferencePage, AiRunPage, AiStatus, BusinessDetail, BusinessPage, CampaignSaved,
+    CandidateDetail, CandidatePage, CanonicalField, ContactDetail, ContactOrigin, ContactPage,
+    ContactRunPage, ContactSuppression, CrawlRun, CrawlRunPage, CrawlUrlDetail, CrawlUrlPage,
+    CriteriaCheck, DatasetPage, DecisionMakerPage, DiscoveryRun, DiscoveryRunPage, ImportPreview,
+    JobStatus, LatinoDetail, LatinoRunPage, LatinoStatus, MatchDetail, MatchPage, MatchStatus,
+    ResolutionRunPage, SelectionMethod, SourceCatalog, SourceRunStatus, SuppressionExport,
+    SyntheticSeedResult, WebsiteAuditDetail, WebsiteAuditPage, WebsiteRunPage,
 };
 use lead_intelligence_lib::protocol::{
     CommandError, CommandErrorCode, ComponentState, DiagnosticsReport, WorkerState,
@@ -462,6 +462,82 @@ fn data_commands_serve_real_store_queries_through_ipc() {
     let latest = &contact_runs.items[0];
     assert_eq!(latest.status, JobStatus::Succeeded);
     assert!(!latest.check_mail_domains && latest.stats.mail_domains_checked == 0);
+
+    // local AI: without a runtime (a closed port) every task says why it is unavailable, requests
+    // are checked in the core, and a run skips instead of failing
+    let ai: AiStatus = invoke(
+        &dev,
+        "get_ai_status",
+        json!({ "query": { "include_llm_fit": false } }),
+    )
+    .expect("ai status")
+    .deserialize()
+    .expect("typed status");
+    assert!(!ai.runtime.running && ai.models.is_empty());
+    assert!(ai.tasks.iter().all(|task| !task.available));
+    let unconfirmed = invoke(
+        &dev,
+        "change_ai_model",
+        json!({ "request": { "action": "pull", "model": "qwen3:8b", "confirmation": "qwen3" } }),
+    )
+    .expect_err("a download needs the exact name");
+    assert_eq!(
+        command_error(unconfirmed).code,
+        CommandErrorCode::InvalidInput
+    );
+    let not_running = invoke(
+        &dev,
+        "run_ai_benchmark",
+        json!({ "request": { "action": "start", "models": ["qwen3:8b"], "task_types": [] } }),
+    )
+    .expect_err("nothing to benchmark without a runtime");
+    assert_eq!(
+        command_error(not_running).code,
+        CommandErrorCode::InvalidInput
+    );
+    let mut ai_runs: AiRunPage = invoke(
+        &dev,
+        "start_ai",
+        json!({ "request": {
+            "project_id": seed.project_id, "business_ids": [], "task_types": ["language_detection"]
+        }}),
+    )
+    .expect("ai run started")
+    .deserialize()
+    .expect("typed runs");
+    for _ in 0..400 {
+        ai_runs = invoke(
+            &dev,
+            "list_ai_runs",
+            json!({ "query": { "project_id": null, "limit": 10, "cursor": null } }),
+        )
+        .expect("ai runs")
+        .deserialize()
+        .expect("typed runs");
+        if ai_runs
+            .items
+            .iter()
+            .all(|run| !matches!(run.status, JobStatus::Queued | JobStatus::Running))
+        {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    let ai_run = &ai_runs.items[0];
+    assert_eq!(ai_run.status, JobStatus::Succeeded);
+    assert_eq!(ai_run.stats.skipped_unavailable, ai_run.stats.targets);
+    let history: AiInferencePage = invoke(
+        &dev,
+        "list_ai_inferences",
+        json!({ "query": {
+            "task_type": null, "status": null, "business_id": null, "review_status": null,
+            "limit": 50, "cursor": null
+        }}),
+    )
+    .expect("inference history")
+    .deserialize()
+    .expect("typed history");
+    assert_eq!(history.total, 0);
 
     let datasets: DatasetPage = invoke(
         &dev,

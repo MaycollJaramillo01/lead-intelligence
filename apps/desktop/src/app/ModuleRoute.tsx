@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import type { NavItem } from "@/app/navigation";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AiModelsScreen } from "@/features/ai/AiModelsScreen";
 import { SystemScreen } from "@/features/diagnostics/SystemScreen";
 import { BusinessesScreen } from "@/features/businesses/BusinessesScreen";
 import { CampaignsScreen } from "@/features/campaigns/CampaignsScreen";
@@ -23,6 +24,7 @@ const SCREENS: Record<string, ComponentType> = {
   businesses: BusinessesScreen,
   "lead-explorer": LeadExplorerScreen,
   "research-center": ResearchCenterScreen,
+  "ai-models": AiModelsScreen,
   jobs: JobsScreen,
   datasets: DatasetsScreen,
   system: SystemScreen,

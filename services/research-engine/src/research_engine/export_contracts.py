@@ -10,6 +10,7 @@ synthetic test data, deterministic ids and a fixed clock.
 """
 
 import argparse
+import asyncio
 import json
 import sys
 import tempfile
@@ -18,6 +19,7 @@ from contextlib import ExitStack
 from datetime import UTC, datetime
 from itertools import count
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 from uuid import UUID
@@ -26,6 +28,13 @@ from pydantic import BaseModel
 from pydantic.json_schema import models_json_schema
 
 from research_engine import jobs, repository
+from research_engine import testdata as testdata_module
+from research_engine.ai import engine as ai_engine
+from research_engine.ai import resources as ai_resources
+from research_engine.ai import runner as ai_runner
+from research_engine.ai import store as ai_store
+from research_engine.ai.engine import AiService
+from research_engine.ai.resources import ResourceMonitor, Sample
 from research_engine.contacts import engine as contacts_engine
 from research_engine.contacts import store as contacts_store
 from research_engine.contracts import (
@@ -58,6 +67,22 @@ from research_engine.discovery import registry
 from research_engine.discovery.sources import file_import
 from research_engine.domain import (
     DATA_MODELS,
+    AiBenchmarkAction,
+    AiBenchmarkRequest,
+    AiConfigureRequest,
+    AiInferenceListQuery,
+    AiInferenceQuery,
+    AiModelChangeAction,
+    AiModelChangeRequest,
+    AiProfile,
+    AiProfileChange,
+    AiReviewDecision,
+    AiReviewRequest,
+    AiRunListQuery,
+    AiStartRequest,
+    AiStatusQuery,
+    AiTaskChange,
+    AiTaskType,
     BusinessListQuery,
     BusinessSort,
     CampaignListQuery,
@@ -86,11 +111,14 @@ from research_engine.domain import (
     DiscoveryRunListQuery,
     DiscoveryStartRequest,
     ImportPreviewRequest,
+    InferenceStatus,
     LatinoReviewFilter,
     LatinoReviewRequest,
     LatinoRunListQuery,
     LatinoStartRequest,
     LatinoStatus,
+    LlmFitModel,
+    LlmFitReport,
     MatchAction,
     MatchActionRequest,
     MatchListQuery,
@@ -126,6 +154,7 @@ from research_engine.testdata import (
     SYNTHETIC_IMPORT_FILE,
     SYNTHETIC_SITE,
     DiscoveryFixture,
+    ScriptedProvider,
     SyntheticContext,
     seed_businesses,
     seed_contacts,
@@ -134,6 +163,7 @@ from research_engine.testdata import (
     seed_latino,
     seed_resolution,
     seed_website,
+    synthetic_answer,
     synthetic_connector,
     synthetic_project,
     synthetic_run,
@@ -421,6 +451,9 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
             contacts = build_contact_fixtures(
                 conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids), data_dir
             )
+            ai = build_ai_fixtures(
+                conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids), data_dir
+            )
         finally:
             conn.close()
     return {
@@ -443,6 +476,111 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
         **latino,
         **website,
         **contacts,
+        **ai,
+    }
+
+
+def build_ai_fixtures(
+    conn: Any, context: SyntheticContext, data_dir: Path
+) -> dict[str, dict[str, Any]]:
+    """Local AI shapes from the real service over the synthetic project, with a SYNTHETIC scripted
+    runtime (never a model), no GPU, a fixed memory sample, fixture ids, a fixed clock and a
+    stopped timer: an analysis job over every business, a benchmark, a download and a review,
+    read back through the real queries."""
+    project_id = context.project_id
+    gpu = GpuStatus(
+        state=ComponentState.UNAVAILABLE, summary="synthetic fixture: no gpu", error="none",
+        checked_at=_T0, duration_ms=0.0, devices=[], cuda_available=False,
+        cuda_driver_version=None,
+    )  # fmt: skip
+    sample = Sample(16_384, 9_000, 8_192, 7_100, _T0)
+    llm_fit = LlmFitReport(
+        available=True, version="llmfit 0.0.0-fixture",
+        models=[LlmFitModel(name="Synthetic/Model-1B", ollama_name="synthetic-text:1b",
+                            fit_level="Perfect", run_mode="GPU", runtime="llama.cpp",
+                            quantization="Q4_K_M", memory_required_gb=1.5, estimated_tps=40.0,
+                            installed=True, notes=["synthetic fixture"])],
+        error=None, checked_at=_T0,
+    )  # fmt: skip
+    provider = ScriptedProvider(synthetic_answer)
+    service = AiService(
+        data_dir, lambda: repository.connect(data_dir), provider,
+        ResourceMonitor(sampler=lambda: sample), downloads_allowed=True, llm_fit=lambda: llm_fit,
+    )  # fmt: skip
+    run_query = AiRunListQuery(project_id=project_id, limit=25, cursor=None)
+    list_query = AiInferenceListQuery(
+        task_type=None, status=None, business_id=None, review_status=None, limit=50, cursor=None
+    )
+    start = AiStartRequest(
+        project_id=project_id, business_ids=[],
+        task_types=[AiTaskType.EVIDENCE_EXTRACTION, AiTaskType.BUSINESS_CLASSIFICATION],
+    )  # fmt: skip
+    configure = AiConfigureRequest(
+        profiles=[AiProfileChange(profile=profile, model="synthetic-text:1b", num_ctx=4096,
+                                  allow_cpu=profile is not AiProfile.QUALITY)
+                  for profile in AiProfile],
+        tasks=[AiTaskChange(task_type=task, enabled=task is not AiTaskType.VISUAL_REVIEW,
+                            profile=AiProfile.FAST) for task in AiTaskType],
+        min_free_ram_mib=1024, min_free_vram_mib=512,
+    )  # fmt: skip
+    bench = AiBenchmarkRequest(
+        action=AiBenchmarkAction.START, models=["synthetic-text:1b"],
+        task_types=[AiTaskType.BUSINESS_CLASSIFICATION],
+    )  # fmt: skip
+    download = AiModelChangeRequest(
+        action=AiModelChangeAction.PULL, model="synthetic-new:1b", confirmation="synthetic-new:1b"
+    )
+
+    async def exercise() -> dict[str, Any]:
+        await service.configure(configure)
+        page = await service.start(start)
+        await service.idle(page.items[0].job_id)
+        await service.benchmark(bench)
+        if service._benchmark_task is not None:
+            await service._benchmark_task
+        await service.change_model(download)
+        if service._change_task is not None:
+            await service._change_task
+        status = await service.status(AiStatusQuery(include_llm_fit=True))
+        await service.shutdown()
+        return {"status": status}
+
+    with ExitStack() as stack:
+        for module in (ai_store, ai_runner, ai_engine, jobs, repository, latino_store):
+            stack.enter_context(patch.object(module, "new_id", context.ids))
+            stack.enter_context(patch.object(module, "utc_now", lambda: _T0))
+        for module in (ai_resources, testdata_module):
+            stack.enter_context(patch.object(module, "utc_now", lambda: _T0))
+        stack.enter_context(patch.object(ai_engine, "probe_gpu", lambda: gpu))
+        stack.enter_context(patch.object(ai_engine, "take_sample", lambda: sample))
+        stack.enter_context(
+            patch.object(ai_runner, "time", SimpleNamespace(perf_counter=lambda: 0.0))
+        )
+        results = asyncio.run(exercise())
+        inferences = ai_store.list_inferences(conn, list_query)
+        chosen = next(item for item in inferences.items if item.status is InferenceStatus.SUCCEEDED
+                      and item.task_type is AiTaskType.EVIDENCE_EXTRACTION)  # fmt: skip
+        review = AiReviewRequest(
+            inference_run_id=chosen.id, decision=AiReviewDecision.ACCEPT,
+            reason="Synthetic fixture: the quote is in the page it cites.",
+        )  # fmt: skip
+        ai_store.review(conn, review, actor="fixture-reviewer")
+        detail = ai_store.get_inference(conn, chosen.id)
+        runs = ai_store.list_runs(conn, run_query)
+    return {
+        "ai_status_query.json": _dump(AiStatusQuery(include_llm_fit=True)),
+        "ai_status.json": _dump(results["status"]),
+        "ai_configure_request.json": _dump(configure),
+        "ai_start_request.json": _dump(start),
+        "ai_run_list_query.json": _dump(run_query),
+        "ai_run_page.json": _dump(runs),
+        "ai_benchmark_request.json": _dump(bench),
+        "ai_inference_list_query.json": _dump(list_query),
+        "ai_inference_page.json": _dump(inferences),
+        "ai_inference_query.json": _dump(AiInferenceQuery(inference_run_id=chosen.id)),
+        "ai_inference_detail.json": _dump(detail),
+        "ai_review_request.json": _dump(review),
+        "ai_model_change_request.json": _dump(download),
     }
 
 

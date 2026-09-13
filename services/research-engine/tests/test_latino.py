@@ -12,6 +12,10 @@ import pytest
 
 from research_engine import jobs, repository
 from research_engine.domain import (
+    AiDevice,
+    AiProfile,
+    AiReviewStatus,
+    AiTaskType,
     AssessmentMethod,
     Business,
     BusinessListQuery,
@@ -431,11 +435,16 @@ def test_a_model_candidate_becomes_evidence_only_when_the_page_confirms_it(
     )
     now = synthetic.now
     run = InferenceRun(
-        id=new_id(), task_type="latino_declaration", task_version="1.0.0", provider="ollama",
-        model="synthetic-model:latest", model_digest=None, parameters_json={"temperature": 0},
-        prompt_template_id="latino_declaration", prompt_template_version="1.0.0",
-        output_schema_version="1.0.0", input_sha256="0" * 64, status=InferenceStatus.SUCCEEDED,
-        started_at=now, finished_at=now, error_message=None, created_at=now, updated_at=now,
+        id=new_id(), task_type=AiTaskType.EVIDENCE_EXTRACTION, task_version="1.0.0",
+        project_id=synthetic.project_id, business_id=declared, job_id=None, provider="ollama",
+        model="synthetic-model:latest", model_digest=None, profile=AiProfile.BALANCED,
+        parameters_json={"temperature": 0}, prompt_template_id="evidence_extraction",
+        prompt_template_version="1.0.0", output_schema_version="1.0.0", input_sha256="0" * 64,
+        input_json={"facts": {}, "refs": [], "warnings": []}, cache_key="1" * 64,
+        status=InferenceStatus.SUCCEEDED, device=AiDevice.GPU, attempts=1, prompt_tokens=None,
+        completion_tokens=None, duration_ms=None, error_code=None, error_message=None,
+        review_status=AiReviewStatus.UNREVIEWED, started_at=now, finished_at=now, created_at=now,
+        updated_at=now,
     )  # fmt: skip
     repository.insert(conn, run)
     candidates = [

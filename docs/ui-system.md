@@ -49,7 +49,7 @@ Six sections, sixteen modules. Status is what the module actually is today.
 | Research     | Research Center | `/research-center` | phase 5   |
 | Intelligence | ICP Builder     | `/icp-builder`     | phase 11  |
 | Intelligence | Scoring Models  | `/scoring-models`  | phase 11  |
-| Intelligence | AI Models       | `/ai-models`       | phase 10  |
+| Intelligence | AI Models       | `/ai-models`       | available |
 | Operations   | Jobs            | `/jobs`            | available |
 | Operations   | Datasets        | `/datasets`        | available |
 | Operations   | Exports         | `/exports`         | phase 13  |

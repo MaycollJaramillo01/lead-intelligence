@@ -109,6 +109,21 @@ impl AppConfig {
                 "ollama.base_url must be an http(s) URL, got {url:?}"
             ));
         }
+        // the local AI runtime is only ever reached on this machine (phase 10)
+        let authority = host
+            .unwrap_or_default()
+            .split('/')
+            .next()
+            .unwrap_or_default();
+        let hostname = match authority.strip_prefix('[') {
+            Some(bracketed) => bracketed.split(']').next().unwrap_or_default(),
+            None => authority.split(':').next().unwrap_or_default(),
+        };
+        if !matches!(hostname, "127.0.0.1" | "localhost" | "::1") {
+            return Err(format!(
+                "ollama.base_url must point at this machine (loopback), got {url:?}"
+            ));
+        }
         if !(100..=60_000).contains(&self.ollama.timeout_ms) {
             return Err("ollama.timeout_ms must be between 100 and 60000".into());
         }
@@ -300,9 +315,24 @@ mod tests {
             assert_eq!(loaded.config.logging.level, "info", "case {index}");
             assert_eq!(loaded.sources.len(), 2, "case {index}");
         }
-        let bad_url = load(missing(), &env_of(&[("LEAD_OLLAMA_URL", "ftp://example")]));
-        assert_eq!(bad_url.warnings.len(), 1);
-        assert_eq!(bad_url.config.ollama.base_url, "http://127.0.0.1:11434");
+        const REMOTE: [&[(&str, &str)]; 3] = [
+            &[("LEAD_OLLAMA_URL", "ftp://example")],
+            &[("LEAD_OLLAMA_URL", "http://192.168.1.20:11434")],
+            &[("LEAD_OLLAMA_URL", "http://ollama.example")],
+        ];
+        for pairs in REMOTE {
+            let bad_url = load(missing(), &env_of(pairs));
+            assert_eq!(bad_url.warnings.len(), 1, "{pairs:?}");
+            assert_eq!(bad_url.config.ollama.base_url, "http://127.0.0.1:11434");
+        }
+        const LOOPBACK: [&[(&str, &str)]; 2] = [
+            &[("LEAD_OLLAMA_URL", "http://localhost:11434/")],
+            &[("LEAD_OLLAMA_URL", "http://[::1]:11434")],
+        ];
+        for pairs in LOOPBACK {
+            let local = load(missing(), &env_of(pairs));
+            assert!(local.warnings.is_empty(), "{pairs:?}: {:?}", local.warnings);
+        }
     }
 
     #[test]

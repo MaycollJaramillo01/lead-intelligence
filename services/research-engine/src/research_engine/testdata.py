@@ -10,6 +10,7 @@ names on synthetic sites ("Alex Example", "Jordan Sample").
 import csv
 import hashlib
 import io
+import re
 import sqlite3
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -18,6 +19,7 @@ from pathlib import Path
 
 import orjson
 
+from research_engine.contracts import ComponentState, OllamaModel, OllamaStatus
 from research_engine.datasets import snapshot_businesses
 from research_engine.discovery.normalize import dedup_key, domain_of
 from research_engine.domain import (
@@ -76,6 +78,13 @@ from research_engine.domain import (
     new_id,
     sort_key,
     utc_now,
+)
+from research_engine.ollama import (
+    ChatAnswer,
+    ChatRequest,
+    LoadedModel,
+    ModelDetails,
+    ProviderError,
 )
 from research_engine.repository import DISCOVERY_JOB_KIND, atomic, audit, insert
 
@@ -1561,3 +1570,169 @@ def seed_contacts(
     contacts_engine.run_contacts(conn, data_dir, planned[0], lambda: False, synthetic_mail_lookup)
     return ContactFixture(job_id=planned[0], candidates=candidates, sites=dict(CONTACT_SITES),
                           suppression_id=suppression.id if suppression else None)  # fmt: skip
+
+
+# ---- local AI (phase 10) -------------------------------------------------------------------------
+
+#: Synthetic models a scripted runtime reports: a small text model and a small vision model.
+SYNTHETIC_MODELS: Mapping[str, tuple[int, tuple[str, ...]]] = {
+    "synthetic-text:1b": (1024**3, ("completion",)),
+    "synthetic-vision:2b": (2 * 1024**3, ("completion", "vision")),
+}
+SYNTHETIC_MODEL_INFO: JsonObject = {
+    "general.architecture": "synthetic",
+    "synthetic.block_count": 16,
+    "synthetic.attention.head_count": 16,
+    "synthetic.attention.head_count_kv": 4,
+    "synthetic.attention.key_length": 64,
+    "synthetic.embedding_length": 1024,
+    "synthetic.context_length": 8192,
+}
+
+Answer = str | ProviderError
+Script = Callable[[ChatRequest], Answer]
+
+
+class ScriptedProvider:
+    """A SYNTHETIC runtime for tests and contract fixtures only: it answers from a script and never
+    runs a model. The worker never uses it (a test checks it runs `OllamaProvider`)."""
+
+    name = "synthetic"
+
+    def __init__(
+        self,
+        answers: Sequence[Answer] | Script = (),
+        *,
+        running: bool = True,
+        models: Mapping[str, tuple[int, tuple[str, ...]]] = SYNTHETIC_MODELS,
+    ) -> None:
+        self._script = answers if callable(answers) else None
+        self._answers = list(answers) if not callable(answers) else []
+        self.running = running
+        self.models = dict(models)
+        self.calls: list[ChatRequest] = []
+        self.loaded_models: dict[str, LoadedModel] = {}
+        self.unloaded: list[str] = []
+        self.gate: object | None = None
+
+    async def probe(self) -> OllamaStatus:
+        models = [
+            OllamaModel(name=name, size_bytes=size, digest="sha256:" + _sha256(name.encode()),
+                        family="synthetic", parameter_size="1B", quantization="Q4_K_M")
+            for name, (size, _) in sorted(self.models.items())
+        ] if self.running else []  # fmt: skip
+        return OllamaStatus(
+            state=ComponentState.OK if self.running else ComponentState.UNAVAILABLE,
+            summary="synthetic runtime" if self.running else "synthetic runtime stopped",
+            error=None if self.running else "not running", checked_at=utc_now(), duration_ms=0.0,
+            installed=True, running=self.running, base_url="http://127.0.0.1:11434",
+            version="0.0.0-synthetic" if self.running else None, models=models,
+        )  # fmt: skip
+
+    def _require(self) -> None:
+        if not self.running:
+            raise ProviderError("unavailable", "synthetic runtime stopped", retryable=True)
+
+    async def show(self, model: str) -> ModelDetails:
+        self._require()
+        if model not in self.models:
+            raise ProviderError("model_not_found", f"model '{model}' not found", retryable=False)
+        return ModelDetails(self.models[model][1], SYNTHETIC_MODEL_INFO)
+
+    async def loaded(self) -> Sequence[LoadedModel]:
+        self._require()
+        return list(self.loaded_models.values())
+
+    async def chat(self, request: ChatRequest) -> ChatAnswer:
+        import asyncio
+
+        self._require()
+        self.calls.append(request)
+        if isinstance(self.gate, asyncio.Event):
+            await self.gate.wait()
+        answer = self._script(request) if self._script else self._answers.pop(0)
+        if isinstance(answer, ProviderError):
+            raise answer
+        size = self.models.get(request.model, (1024**3, ()))[0]
+        self.loaded_models = {
+            request.model: LoadedModel(
+                request.model, None, size, size, int(str(request.options.get("num_ctx", 4096)))
+            )
+        }
+        return ChatAnswer(content=answer, prompt_tokens=100, completion_tokens=50, total_ms=20,
+                          load_ms=5, eval_ms=10, done_reason="stop")  # fmt: skip
+
+    async def pull(
+        self, model: str, progress: Callable[[str, int | None, int | None], None]
+    ) -> None:
+        self._require()
+        progress("pulling synthetic layer", 512, 1024)
+        progress("success", 1024, 1024)
+        self.models[model] = (1024**3, ("completion",))
+
+    async def delete(self, model: str) -> None:
+        self._require()
+        if self.models.pop(model, None) is None:
+            raise ProviderError("model_not_found", f"model '{model}' not found", retryable=False)
+
+    async def unload(self, model: str) -> None:
+        self.unloaded.append(model)
+        self.loaded_models.pop(model, None)
+
+
+_REF_LINE = re.compile(r"^\[([A-Z][0-9]+)\] (.*)$", re.MULTILINE)
+
+
+def synthetic_answer(request: ChatRequest) -> str:
+    """What a careful model would answer to a request, from its fenced input (test data): every
+    claim cites a ref it was given and quotes it literally; no ref means insufficient evidence."""
+    user = next(message.content for message in reversed(request.messages) if message.role == "user")
+    refs = dict(_REF_LINE.findall(user))
+    properties = request.schema.get("properties")
+    fields = set(properties) if isinstance(properties, dict) else set()
+    first = next(iter(refs), None)
+
+    def dumps(value: object) -> str:
+        return orjson.dumps(value).decode()
+
+    if "claims" in fields:
+        owned = next((ref for ref, text in refs.items() if "owned" in text), None)
+        if owned is not None:
+            quote = refs[owned].split(".")[0].strip()
+            claim = {"kind": "ownership_statement", "statement": "The page declares its ownership",
+                     "quote": quote, "evidence_ids": [owned], "confidence": 0.8}  # fmt: skip
+        elif first is not None:
+            claim = {"kind": "other", "statement": "The page describes the business",
+                     "quote": refs[first][:40].strip(), "evidence_ids": [first],
+                     "confidence": 0.5}  # fmt: skip
+        else:
+            return dumps({"outcome": "insufficient_evidence", "claims": []})
+        return dumps({"outcome": "ok", "claims": [claim]})
+    if "vertical" in fields:
+        if first is None:
+            return dumps({"outcome": "insufficient_evidence", "vertical": None,
+                          "vertical_evidence_ids": [], "services": [], "signals": []})  # fmt: skip
+        text = " ".join(refs.values()).lower()
+        vertical = "plumbing" if "plumb" in text else "dental" if "dental" in text else "other"
+        return dumps({"outcome": "ok", "vertical": vertical, "vertical_evidence_ids": [first],
+                      "services": [], "signals": []})  # fmt: skip
+    if "fragments" in fields:
+        return dumps({"outcome": "ok" if refs else "insufficient_evidence",
+                      "fragments": [{"evidence_id": ref, "language": "en", "english": None}
+                                    for ref in refs]})  # fmt: skip
+    if "points" in fields:
+        if first is None:
+            return dumps({"outcome": "insufficient_evidence", "summary": None, "points": []})
+        return dumps({"outcome": "ok", "summary": "The audit found problems to fix.",
+                      "points": [{"text": "The most severe finding comes first.",
+                                  "evidence_ids": [first]}]})  # fmt: skip
+    if "problems" in fields:
+        finding = next((ref for ref in refs if ref.startswith("W")), None)
+        if finding is None:
+            return dumps({"outcome": "insufficient_evidence", "problems": [], "strengths": [],
+                          "missing_information": []})  # fmt: skip
+        problem = {"problem": "other", "explanation": "A website finding shows a problem.",
+                   "evidence_ids": [finding]}  # fmt: skip
+        return dumps({"outcome": "ok", "problems": [problem], "strengths": [],
+                      "missing_information": ["Opening hours"]})  # fmt: skip
+    return dumps({"outcome": "insufficient_evidence", "observations": []})

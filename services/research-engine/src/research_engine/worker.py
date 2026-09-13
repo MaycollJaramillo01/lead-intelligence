@@ -20,6 +20,9 @@ import orjson
 from pydantic import ValidationError
 
 from research_engine import __version__
+from research_engine.ai.engine import AiService
+from research_engine.ai.resources import ResourceMonitor
+from research_engine.ai.store import AiError
 from research_engine.contacts.engine import ContactService
 from research_engine.contacts.mail_dns import lookup_mail_domain
 from research_engine.contacts.store import ContactError
@@ -38,6 +41,7 @@ from research_engine.handlers import ROUTES, Context, NotAllowedError, health
 from research_engine.latino.engine import LatinoService
 from research_engine.latino.store import LatinoError
 from research_engine.logs import configure_logging, request_id_var
+from research_engine.ollama import OllamaProvider, ProviderError
 from research_engine.repository import (
     InvalidCursorError,
     InvalidTransitionError,
@@ -102,9 +106,12 @@ class Worker:
             ),
             lambda: connect(settings.data_dir),
         )
+        #: Shared by the AI queue and the crawler, which waits while AI works under pressure.
+        monitor = ResourceMonitor()
         self._crawl = CrawlService(
             CrawlerSettings(data_dir=settings.data_dir, user_agent=USER_AGENT),
             lambda: connect(settings.data_dir),
+            monitor,
         )
         self._resolution = ResolutionService(lambda: connect(settings.data_dir))
         self._latino = LatinoService(lambda: connect(settings.data_dir))
@@ -113,6 +120,13 @@ class Worker:
             settings.data_dir,
             lambda: connect(settings.data_dir),
             None if settings.discovery_offline else lookup_mail_domain,
+        )
+        self._ai = AiService(
+            settings.data_dir,
+            lambda: connect(settings.data_dir),
+            OllamaProvider(settings.ollama_url, settings.ollama_timeout_s),
+            monitor,
+            downloads_allowed=not settings.discovery_offline,
         )
         self._ctx = Context(
             settings,
@@ -124,6 +138,7 @@ class Worker:
             self._latino,
             self._website,
             self._contacts,
+            self._ai,
         )
 
     async def run(self) -> None:
@@ -144,7 +159,8 @@ class Worker:
                 | ResolutionService
                 | LatinoService
                 | WebsiteService
-                | ContactService,
+                | ContactService
+                | AiService,
             ],
             ...,
         ] = (
@@ -154,6 +170,7 @@ class Worker:
             ("latino", self._latino),
             ("website", self._website),
             ("contacts", self._contacts),
+            ("ai", self._ai),
         )
         for name, engine in engines:
             try:
@@ -194,6 +211,7 @@ class Worker:
             await self._resolution.shutdown()
             await self._latino.shutdown()
             await self._website.shutdown()
+            await self._ai.shutdown()
             await self._contacts.shutdown()
             await self._drain()
         logger.info("worker stopped")
@@ -319,8 +337,15 @@ class Worker:
             LatinoError,
             WebsiteError,
             ContactError,
+            AiError,
         ) as exc:
             raise WorkerError(ErrorCode.INVALID_PAYLOAD, str(exc)) from exc
+        except ProviderError as exc:
+            raise WorkerError(
+                ErrorCode.INVALID_PAYLOAD,
+                f"the local AI runtime refused: {exc}",
+                retryable=exc.retryable,
+            ) from exc
         return result.model_dump(mode="json")
 
     # ---- output --------------------------------------------------------------------------

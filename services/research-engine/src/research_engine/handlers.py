@@ -12,6 +12,8 @@ from typing import Any
 from pydantic import BaseModel
 
 from research_engine import __version__, repository
+from research_engine.ai import store as ai_store
+from research_engine.ai.engine import AiService
 from research_engine.contacts import store as contacts
 from research_engine.contacts.engine import ContactService
 from research_engine.contracts import (
@@ -28,6 +30,20 @@ from research_engine.discovery import registry
 from research_engine.discovery.engine import DiscoveryService
 from research_engine.discovery.sources import file_import
 from research_engine.domain import (
+    AiBenchmarkRequest,
+    AiConfigureRequest,
+    AiInferenceDetail,
+    AiInferenceListQuery,
+    AiInferencePage,
+    AiInferenceQuery,
+    AiModelChangeRequest,
+    AiReviewRequest,
+    AiRun,
+    AiRunListQuery,
+    AiRunPage,
+    AiStartRequest,
+    AiStatus,
+    AiStatusQuery,
     BusinessDetail,
     BusinessDetailQuery,
     BusinessListQuery,
@@ -148,6 +164,8 @@ class Context:
     website: WebsiteService
     #: Owns the running contact checks and the mail-domain lookup; see contacts/engine.py.
     contacts: ContactService
+    #: Owns the GPU queue, the AI jobs, benchmarks and model downloads; see ai/engine.py.
+    ai: AiService
 
 
 @dataclass(frozen=True, slots=True)
@@ -472,6 +490,53 @@ async def _suppressions_export(
     return await _with_store(ctx, lambda conn: contacts.export_suppressions(conn, request))
 
 
+# ---- local AI (phase 10) ------------------------------------------------------------------------
+
+
+async def _ai_status(ctx: Context, query: AiStatusQuery) -> AiStatus:
+    return await ctx.ai.status(query)
+
+
+async def _ai_configure(ctx: Context, request: AiConfigureRequest) -> AiStatus:
+    return await ctx.ai.configure(request)
+
+
+async def _ai_start(ctx: Context, request: AiStartRequest) -> AiRunPage:
+    return await ctx.ai.start(request)
+
+
+async def _ai_control(ctx: Context, request: DiscoveryControlRequest) -> AiRun:
+    return await ctx.ai.control(request)
+
+
+async def _ai_runs(ctx: Context, query: AiRunListQuery) -> AiRunPage:
+    return await _with_store(ctx, lambda conn: ai_store.list_runs(conn, query))
+
+
+async def _ai_inferences(ctx: Context, query: AiInferenceListQuery) -> AiInferencePage:
+    return await _with_store(ctx, lambda conn: ai_store.list_inferences(conn, query))
+
+
+async def _ai_inference(ctx: Context, query: AiInferenceQuery) -> AiInferenceDetail:
+    return await _with_store(ctx, lambda conn: ai_store.get_inference(conn, query.inference_run_id))
+
+
+async def _ai_review(ctx: Context, request: AiReviewRequest) -> AiInferenceDetail:
+    def review(conn: sqlite3.Connection) -> AiInferenceDetail:
+        ai_store.review(conn, request, actor=ACTOR_UI)
+        return ai_store.get_inference(conn, request.inference_run_id)
+
+    return await _with_store(ctx, review)
+
+
+async def _ai_benchmark(ctx: Context, request: AiBenchmarkRequest) -> AiStatus:
+    return await ctx.ai.benchmark(request)
+
+
+async def _ai_model_change(ctx: Context, request: AiModelChangeRequest) -> AiStatus:
+    return await ctx.ai.change_model(request)
+
+
 ROUTES: dict[str, Route] = {
     MessageType.HEALTH: Route(EmptyPayload, _health, timeout_s=2.0),
     MessageType.DIAGNOSTICS: Route(EmptyPayload, _diagnostics, timeout_s=20.0),
@@ -548,5 +613,17 @@ ROUTES: dict[str, Route] = {
     MessageType.SUPPRESSIONS_EXPORT: Route(
         SuppressionExportRequest, _suppressions_export, timeout_s=15.0
     ),
+    # the status asks the runtime, every model's details and, when asked, LLM Fit (up to 60 s)
+    MessageType.AI_STATUS: Route(AiStatusQuery, _ai_status, timeout_s=90.0),
+    MessageType.AI_CONFIGURE: Route(AiConfigureRequest, _ai_configure, timeout_s=60.0),
+    MessageType.AI_START: Route(AiStartRequest, _ai_start, timeout_s=30.0),
+    # pausing waits for the inference in flight to be cancelled and recorded
+    MessageType.AI_CONTROL: Route(DiscoveryControlRequest, _ai_control, timeout_s=30.0),
+    MessageType.AI_RUNS: Route(AiRunListQuery, _ai_runs, timeout_s=15.0),
+    MessageType.AI_INFERENCES: Route(AiInferenceListQuery, _ai_inferences, timeout_s=15.0),
+    MessageType.AI_INFERENCE: Route(AiInferenceQuery, _ai_inference, timeout_s=10.0),
+    MessageType.AI_REVIEW: Route(AiReviewRequest, _ai_review, timeout_s=15.0),
+    MessageType.AI_BENCHMARK: Route(AiBenchmarkRequest, _ai_benchmark, timeout_s=90.0),
+    MessageType.AI_MODEL_CHANGE: Route(AiModelChangeRequest, _ai_model_change, timeout_s=90.0),
     MessageType.DEV_SEED_SYNTHETIC: Route(EmptyPayload, _dev_seed_synthetic, timeout_s=60.0),
 }

@@ -29,6 +29,11 @@ Precedence, later wins:
 | `LEAD_WORKER_PROGRAM` | `worker.program`  | path to a worker executable |
 | `LEAD_OLLAMA_URL`     | `ollama.base_url` | `http://127.0.0.1:11434`    |
 
+`LEAD_OLLAMA_URL` must point at this machine (`127.0.0.1`, `localhost` or `::1`): anything else is
+rejected as a configuration warning and the default is used. Local AI settings (model per profile,
+profile per task, memory limits) live in the store and are edited in **AI Models**
+([local-ai.md](local-ai.md)).
+
 Crawl limits are not configuration: each crawl carries its own `CrawlSettings`, bounded by the safe
 limits in [crawling.md](crawling.md) section 6.
 
@@ -76,6 +81,11 @@ Run only the tests that need local services: `uv run --directory services/resear
 | Python Worker: `Failed` with a traceback                             | Read the stderr tail on the diagnostics screen and the `worker` records in the log.                                                                                               |
 | Python Worker: `automatic restarts exhausted`                        | The worker crashed 3 times in 5 minutes; fix the cause, then press **Restart worker**.                                                                                            |
 | Ollama: `installed but not running`                                  | Start Ollama (tray app or `ollama serve`). Nothing is downloaded automatically.                                                                                                   |
+| AI Models: a task says `No model assigned to its profile`            | By design no model is assumed: pick an installed model for the profile in **Profiles and tasks** and save. Run a benchmark to see which one to choose.                            |
+| AI Models: `Paused: the runtime kept failing`                        | Three runtime failures in a row opened the breaker; it retries by itself after 30 s (doubling up to 5 min). AI jobs pause instead of looping: resume them in Jobs.                |
+| AI: an inference fails with `insufficient_vram`                      | The model does not fit in the free VRAM even at 2 048 tokens and its profile does not allow the CPU. Allow the CPU, use a smaller model, or close what is using the GPU.          |
+| AI: answers end as `invalid_output`                                  | The model's answer broke the schema or cited inputs it was not given, twice. Open it in the history to see why; a benchmark shows which installed model answers validly.          |
+| AI: crawling slows down while AI runs                                | Free RAM or VRAM is under the limits in **Profiles and tasks**: each URL waits up to 120 s. Lower the limits or let the AI work finish.                                           |
 | GPU: `nvidia-smi not found`                                          | No NVIDIA driver; local AI will use the CPU.                                                                                                                                      |
 | DuckDB: `could not set lock on file`                                 | Another app instance (or tool) has the database open. Close it (single-instance lock: phase 14).                                                                                  |
 | SQLite: `degraded · recovered from backup …`                         | The store was damaged and replaced by the named backup; the damaged file is kept as `lead.sqlite3.corrupt-<utc>`. Changes after that backup are lost.                             |

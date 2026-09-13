@@ -2,6 +2,20 @@ import { invoke, isTauri, type InvokeArgs } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import {
   WORKER_STATUS_EVENT,
+  type AiBenchmarkRequest,
+  type AiConfigureRequest,
+  type AiInferenceDetail,
+  type AiInferenceListQuery,
+  type AiInferencePage,
+  type AiInferenceQuery,
+  type AiModelChangeRequest,
+  type AiReviewRequest,
+  type AiRun,
+  type AiRunListQuery,
+  type AiRunPage,
+  type AiStartRequest,
+  type AiStatus,
+  type AiStatusQuery,
   type BusinessDetail,
   type BusinessDetailQuery,
   type BusinessListQuery,
@@ -206,6 +220,19 @@ export const desktop = {
     call<SuppressionImportResult>("import_suppressions", { request }),
   exportSuppressions: (request: SuppressionExportRequest) =>
     call<SuppressionExport>("export_suppressions", { request }),
+  getAiStatus: (query: AiStatusQuery) => call<AiStatus>("get_ai_status", { query }),
+  configureAi: (request: AiConfigureRequest) => call<AiStatus>("configure_ai", { request }),
+  startAi: (request: AiStartRequest) => call<AiRunPage>("start_ai", { request }),
+  controlAi: (request: DiscoveryControlRequest) => call<AiRun>("control_ai", { request }),
+  listAiRuns: (query: AiRunListQuery) => call<AiRunPage>("list_ai_runs", { query }),
+  listAiInferences: (query: AiInferenceListQuery) =>
+    call<AiInferencePage>("list_ai_inferences", { query }),
+  getAiInference: (query: AiInferenceQuery) =>
+    call<AiInferenceDetail>("get_ai_inference", { query }),
+  reviewAiInference: (request: AiReviewRequest) =>
+    call<AiInferenceDetail>("review_ai_inference", { request }),
+  runAiBenchmark: (request: AiBenchmarkRequest) => call<AiStatus>("run_ai_benchmark", { request }),
+  changeAiModel: (request: AiModelChangeRequest) => call<AiStatus>("change_ai_model", { request }),
   /** Development builds only; the desktop core refuses it in release builds. */
   seedSyntheticData: () => call<SyntheticSeedResult>("seed_synthetic_data"),
   onWorkerStatus: async (handler: (status: WorkerStatus) => void): Promise<UnlistenFn> => {

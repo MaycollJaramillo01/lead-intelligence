@@ -9,20 +9,75 @@ export type AcquisitionMethod =
   "api_request" | "http_fetch" | "browser_render" | "file_import" | "manual_entry" | "synthetic";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "AppEnvironment".
+ * via the `definition` "AiActivity".
  */
-export type AppEnvironment = "development" | "production";
+export type AiActivity = "idle" | "running" | "succeeded" | "failed" | "cancelled";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "AssessmentMethod".
+ * via the `definition` "AiBenchmarkAction".
  */
-export type AssessmentMethod = "rules" | "manual_review";
+export type AiBenchmarkAction = "start" | "cancel";
+/**
+ * What a local model may be asked (phase 10). Each task has its own contract, prompt template,
+ * limits, timeout and failure strategy (`ai.tasks`); none of them decides a fact on its own.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiTaskType".
+ */
+export type AiTaskType =
+  | "evidence_extraction"
+  | "business_classification"
+  | "finding_synthesis"
+  | "opportunity_reasoning"
+  | "language_detection"
+  | "visual_review";
+/**
+ * Where the runtime placed the model while it answered, as the runtime reported it.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiDevice".
+ */
+export type AiDevice = "gpu" | "partial" | "cpu" | "unknown";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "AuditAction".
+ * via the `definition` "AiCircuitState".
  */
-export type AuditAction =
-  "create" | "update" | "status_change" | "soft_delete" | "restore" | "purge" | "merge" | "unmerge";
+export type AiCircuitState = "closed" | "open" | "half_open";
+/**
+ * A model assignment the operator configures; each task runs on one profile.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiProfile".
+ */
+export type AiProfile = "fast" | "balanced" | "quality";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "JsonValue".
+ */
+export type JsonValue = unknown;
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "InferenceStatus".
+ */
+export type InferenceStatus =
+  | "queued"
+  | "running"
+  | "succeeded"
+  | "insufficient_evidence"
+  | "invalid_output"
+  | "failed"
+  | "cancelled";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiReviewStatus".
+ */
+export type AiReviewStatus = "unreviewed" | "accepted" | "rejected";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiInputKind".
+ */
+export type AiInputKind =
+  "page_fragment" | "website_finding" | "contactability" | "latino_status" | "screenshot";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "EntityType".
@@ -54,9 +109,56 @@ export type EntityType =
   | "contact_suppression";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "JsonValue".
+ * via the `definition` "AiModelChangeAction".
  */
-export type JsonValue = unknown;
+export type AiModelChangeAction = "pull" | "delete";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiReviewDecision".
+ */
+export type AiReviewDecision = "accept" | "reject" | "reset";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "JobStatus".
+ */
+export type JobStatus = "queued" | "running" | "paused" | "succeeded" | "failed" | "cancelled";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EventLevel".
+ */
+export type EventLevel = "debug" | "info" | "warning" | "error";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ComponentState".
+ */
+export type ComponentState = "ok" | "degraded" | "unavailable" | "error";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiUnavailableReason".
+ */
+export type AiUnavailableReason =
+  | "task_disabled"
+  | "no_model_assigned"
+  | "runtime_unavailable"
+  | "model_not_installed"
+  | "no_vision_model"
+  | "circuit_open";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AppEnvironment".
+ */
+export type AppEnvironment = "development" | "production";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AssessmentMethod".
+ */
+export type AssessmentMethod = "rules" | "manual_review";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AuditAction".
+ */
+export type AuditAction =
+  "create" | "update" | "status_change" | "soft_delete" | "restore" | "purge" | "merge" | "unmerge";
 /**
  * When a page may be rendered in Chromium: never, on a verifiable criterion, or always.
  *
@@ -206,11 +308,6 @@ export type SizeProxy = "award_volume" | "employee_band" | "revenue_band" | "loc
 export type DiscoveryStrategy = "broad" | "narrow";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "JobStatus".
- */
-export type JobStatus = "queued" | "running" | "paused" | "succeeded" | "failed" | "cancelled";
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ProblemSeverity".
  */
 export type ProblemSeverity = "error" | "warning";
@@ -252,11 +349,6 @@ export type CommandErrorCode =
   | "not_found"
   | "not_allowed"
   | "internal";
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ComponentState".
- */
-export type ComponentState = "ok" | "degraded" | "unavailable" | "error";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ConfigFieldKind".
@@ -317,11 +409,6 @@ export type DecisionMakerRelationship =
  * via the `definition` "DecisionMakerReview".
  */
 export type DecisionMakerReview = "unreviewed" | "ambiguous" | "confirmed" | "rejected";
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "EventLevel".
- */
-export type EventLevel = "debug" | "info" | "warning" | "error";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ConversionElementKind".
@@ -417,18 +504,6 @@ export type FieldAgreement = "match" | "partial" | "conflict" | "missing";
  * via the `definition` "ImportFormat".
  */
 export type ImportFormat = "csv" | "tsv" | "json" | "jsonl";
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "InferenceStatus".
- */
-export type InferenceStatus =
-  | "queued"
-  | "running"
-  | "succeeded"
-  | "insufficient_evidence"
-  | "invalid_output"
-  | "failed"
-  | "cancelled";
 /**
  * What a piece of evidence can speak to. Market affinity never speaks to ownership.
  *
@@ -542,6 +617,615 @@ export interface AcquiredPage {
   byte_size: number | null;
   artifact_path: string | null;
   fetched_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiBenchmarkProgress".
+ */
+export interface AiBenchmarkProgress {
+  state: AiActivity;
+  models: string[];
+  task_types: AiTaskType[];
+  done: number;
+  total: number;
+  current: string | null;
+  error: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiBenchmarkRequest".
+ */
+export interface AiBenchmarkRequest {
+  action: AiBenchmarkAction;
+  models: string[];
+  task_types: AiTaskType[];
+}
+/**
+ * One model on one task over the synthetic labelled corpus, measured on this machine.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiBenchmarkResult".
+ */
+export interface AiBenchmarkResult {
+  id: string;
+  provider: string;
+  model: string;
+  model_digest: string | null;
+  task_type: AiTaskType;
+  task_version: string;
+  corpus_version: string;
+  num_ctx: number;
+  cases: number;
+  valid_outputs: number;
+  correct: number;
+  failures: number;
+  latency_p50_ms: number | null;
+  latency_p95_ms: number | null;
+  tokens_per_second: number | null;
+  peak_vram_used_mib: number | null;
+  min_free_ram_mib: number | null;
+  device: AiDevice;
+  started_at: string;
+  finished_at: string;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiConfigureRequest".
+ */
+export interface AiConfigureRequest {
+  profiles: AiProfileChange[];
+  tasks: AiTaskChange[];
+  min_free_ram_mib: number;
+  min_free_vram_mib: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiProfileChange".
+ */
+export interface AiProfileChange {
+  profile: AiProfile;
+  model: string | null;
+  num_ctx: number;
+  allow_cpu: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiTaskChange".
+ */
+export interface AiTaskChange {
+  task_type: AiTaskType;
+  enabled: boolean;
+  profile: AiProfile;
+}
+/**
+ * A model's answer as evidence-backed output: the run, every raw answer next to what it
+ * validated to, the exact inputs it cited and the people's decisions. Not a fact.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiInferenceDetail".
+ */
+export interface AiInferenceDetail {
+  run: InferenceRun;
+  business_name: string | null;
+  outputs: InferenceOutput[];
+  inputs: AiInputRef[];
+  warnings: string[];
+  decisions: ReviewDecision[];
+  is_synthetic: boolean;
+}
+/**
+ * One local-model task (phase 10): task, runtime, model, digest, parameters, prompt and schema
+ * versions, the exact input it saw and its hash, what it cost and how it ended. Rebuilt by
+ * migration 0009; `cache_key` makes an identical request reuse a valid result.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "InferenceRun".
+ */
+export interface InferenceRun {
+  id: string;
+  task_type: AiTaskType;
+  task_version: string;
+  project_id: string | null;
+  business_id: string | null;
+  job_id: string | null;
+  provider: string;
+  model: string;
+  model_digest: string | null;
+  profile: AiProfile;
+  parameters_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  prompt_template_id: string;
+  prompt_template_version: string;
+  output_schema_version: string;
+  input_sha256: string;
+  input_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  cache_key: string;
+  status: InferenceStatus;
+  device: AiDevice;
+  attempts: number;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  duration_ms: number | null;
+  error_code: string | null;
+  error_message: string | null;
+  review_status: AiReviewStatus;
+  started_at: string | null;
+  finished_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+/**
+ * One answer of the model, raw, next to the structure it validated to (or why it did not).
+ * Immutable, and never a fact by itself.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "InferenceOutput".
+ */
+export interface InferenceOutput {
+  id: string;
+  inference_run_id: string;
+  attempt: number;
+  raw_output: string;
+  validated_output_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  validation_errors_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  created_at: string;
+}
+/**
+ * One piece of evidence a model saw, as it saw it: the page, finding or subscore it came from
+ * and the exact text (a screenshot keeps only its path and hash).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiInputRef".
+ */
+export interface AiInputRef {
+  ref: string;
+  kind: AiInputKind;
+  entity_id: string | null;
+  source: string | null;
+  text: string;
+  sha256: string;
+}
+/**
+ * A human decision with its mandatory reason. Never edited; a new decision supersedes it.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ReviewDecision".
+ */
+export interface ReviewDecision {
+  id: string;
+  entity_type: EntityType;
+  entity_id: string;
+  decision: string;
+  previous_value: string | null;
+  new_value: string | null;
+  reason: string;
+  actor: string;
+  decided_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiInferenceItem".
+ */
+export interface AiInferenceItem {
+  id: string;
+  task_type: AiTaskType;
+  status: InferenceStatus;
+  review_status: AiReviewStatus;
+  model: string;
+  device: AiDevice;
+  business_id: string | null;
+  business_name: string | null;
+  job_id: string | null;
+  duration_ms: number | null;
+  attempts: number;
+  error_code: string | null;
+  created_at: string;
+  is_synthetic: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiInferenceListQuery".
+ */
+export interface AiInferenceListQuery {
+  task_type: AiTaskType | null;
+  status: InferenceStatus | null;
+  business_id: string | null;
+  review_status: AiReviewStatus | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiInferencePage".
+ */
+export interface AiInferencePage {
+  items: AiInferenceItem[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiInferenceQuery".
+ */
+export interface AiInferenceQuery {
+  inference_run_id: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiModelChange".
+ */
+export interface AiModelChange {
+  action: AiModelChangeAction;
+  model: string;
+  state: AiActivity;
+  completed_bytes: number | null;
+  total_bytes: number | null;
+  detail: string | null;
+  started_at: string;
+  finished_at: string | null;
+}
+/**
+ * Downloads or deletes a model through the runtime. `confirmation` must repeat the model name:
+ * nothing is downloaded or deleted without that explicit step.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiModelChangeRequest".
+ */
+export interface AiModelChangeRequest {
+  action: AiModelChangeAction;
+  model: string;
+  confirmation: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiModelInfo".
+ */
+export interface AiModelInfo {
+  name: string;
+  digest: string | null;
+  size_bytes: number | null;
+  family: string | null;
+  parameter_size: string | null;
+  quantization: string | null;
+  context_length: number | null;
+  capabilities: string[];
+  loaded: boolean;
+  size_vram_bytes: number | null;
+  estimate: AiVramEstimate | null;
+}
+/**
+ * An estimate from the model's own metadata (weights file, layers, KV heads) for one context
+ * length; the runtime's report of a loaded model (`size_vram_bytes`) is what actually happened.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiVramEstimate".
+ */
+export interface AiVramEstimate {
+  num_ctx: number;
+  weights_mib: number;
+  kv_cache_mib: number;
+  overhead_mib: number;
+  total_mib: number;
+  device: AiDevice;
+  fitted_ctx: number | null;
+  note: string | null;
+}
+/**
+ * The model a profile runs on and its context length; no model means the profile is off.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiProfileSetting".
+ */
+export interface AiProfileSetting {
+  profile: AiProfile;
+  model: string | null;
+  num_ctx: number;
+  allow_cpu: boolean;
+  updated_at: string;
+}
+/**
+ * A recommendation, never a setting: the best benchmarked model on this machine for a task
+ * (accuracy first, then median latency), among models still installed.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiRecommendation".
+ */
+export interface AiRecommendation {
+  task_type: AiTaskType;
+  model: string;
+  accuracy: number;
+  latency_p50_ms: number | null;
+  benchmark_id: string;
+  benchmarked_at: string;
+}
+/**
+ * Free memory below which crawling and browser renders wait while local AI works.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiResourceLimits".
+ */
+export interface AiResourceLimits {
+  scope: string;
+  min_free_ram_mib: number;
+  min_free_vram_mib: number;
+  updated_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiResources".
+ */
+export interface AiResources {
+  ram_total_mib: number | null;
+  ram_free_mib: number | null;
+  vram_total_mib: number | null;
+  vram_free_mib: number | null;
+  pressure: string[];
+  crawl_waiting: boolean;
+  sampled_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiReviewRequest".
+ */
+export interface AiReviewRequest {
+  inference_run_id: string;
+  decision: AiReviewDecision;
+  reason: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiRun".
+ */
+export interface AiRun {
+  job_id: string;
+  project_id: string;
+  project_name: string;
+  status: JobStatus;
+  stage: string;
+  progress_done: number;
+  progress_total: number | null;
+  task_types: AiTaskType[];
+  business_count: number | null;
+  stats: AiStats;
+  requested_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  events: RunEvent[];
+  is_synthetic: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiStats".
+ */
+export interface AiStats {
+  targets: number;
+  done: number;
+  succeeded: number;
+  insufficient_evidence: number;
+  invalid_output: number;
+  failed: number;
+  cancelled: number;
+  cache_hits: number;
+  skipped_no_input: number;
+  skipped_unavailable: number;
+  latino_candidates_accepted: number;
+  latino_candidates_rejected: number;
+}
+/**
+ * One line of a run's log: progress, a limit reached, or a structured error.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "RunEvent".
+ */
+export interface RunEvent {
+  level: EventLevel;
+  event: string;
+  error_code: string | null;
+  retryable: boolean | null;
+  detail_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiRunListQuery".
+ */
+export interface AiRunListQuery {
+  project_id: string | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiRunPage".
+ */
+export interface AiRunPage {
+  items: AiRun[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiSchedulerState".
+ */
+export interface AiSchedulerState {
+  queued: number;
+  running: number;
+  capacity: number;
+  circuit: AiCircuitState;
+  consecutive_failures: number;
+  open_until: string | null;
+  last_error: string | null;
+  completed: number;
+  failed: number;
+  cache_hits: number;
+  latency_p50_ms: number | null;
+}
+/**
+ * Runs tasks over the canonical businesses of one project (every project when null), or over
+ * the businesses listed (at most 200). Identical requests reuse valid stored results.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiStartRequest".
+ */
+export interface AiStartRequest {
+  project_id: string | null;
+  business_ids: string[];
+  task_types: AiTaskType[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiStatus".
+ */
+export interface AiStatus {
+  runtime: OllamaStatus;
+  gpu: GpuStatus;
+  models: AiModelInfo[];
+  profiles: AiProfileSetting[];
+  tasks: AiTaskInfo[];
+  limits: AiResourceLimits;
+  resources: AiResources;
+  scheduler: AiSchedulerState;
+  recommendations: AiRecommendation[];
+  benchmark: AiBenchmarkProgress;
+  benchmark_results: AiBenchmarkResult[];
+  model_change: AiModelChange | null;
+  llm_fit: LlmFitReport | null;
+  downloads_allowed: boolean;
+  checked_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "OllamaStatus".
+ */
+export interface OllamaStatus {
+  state: ComponentState;
+  summary: string;
+  error: string | null;
+  checked_at: string;
+  duration_ms: number;
+  installed: boolean;
+  running: boolean;
+  base_url: string;
+  version: string | null;
+  models: OllamaModel[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "OllamaModel".
+ */
+export interface OllamaModel {
+  name: string;
+  size_bytes: number | null;
+  digest: string | null;
+  family: string | null;
+  parameter_size: string | null;
+  quantization: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "GpuStatus".
+ */
+export interface GpuStatus {
+  state: ComponentState;
+  summary: string;
+  error: string | null;
+  checked_at: string;
+  duration_ms: number;
+  devices: GpuDevice[];
+  cuda_available: boolean;
+  cuda_driver_version: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "GpuDevice".
+ */
+export interface GpuDevice {
+  index: number;
+  name: string;
+  memory_total_mib: number | null;
+  memory_free_mib: number | null;
+  driver_version: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiTaskInfo".
+ */
+export interface AiTaskInfo {
+  task_type: AiTaskType;
+  task_version: string;
+  output_schema_version: string;
+  prompt_template_id: string;
+  prompt_template_version: string;
+  enabled: boolean;
+  profile: AiProfile;
+  model: string | null;
+  available: boolean;
+  unavailable_reason: AiUnavailableReason | null;
+  requires_vision: boolean;
+  batchable: boolean;
+  max_input_chars: number;
+  max_refs: number;
+  timeout_s: number;
+  temperature: number;
+}
+/**
+ * What the external LLM Fit tool says, when installed and asked. An outside opinion: nothing
+ * here is applied, installed or changed.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LlmFitReport".
+ */
+export interface LlmFitReport {
+  available: boolean;
+  version: string | null;
+  models: LlmFitModel[];
+  error: string | null;
+  checked_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LlmFitModel".
+ */
+export interface LlmFitModel {
+  name: string;
+  ollama_name: string | null;
+  fit_level: string | null;
+  run_mode: string | null;
+  runtime: string | null;
+  quantization: string | null;
+  memory_required_gb: number | null;
+  estimated_tps: number | null;
+  installed: boolean | null;
+  notes: string[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiStatusQuery".
+ */
+export interface AiStatusQuery {
+  include_llm_fit: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiTaskSetting".
+ */
+export interface AiTaskSetting {
+  task_type: AiTaskType;
+  enabled: boolean;
+  profile: AiProfile;
+  updated_at: string;
 }
 /**
  * Append-only trail of important changes (status, soft delete, restore, purge, merge).
@@ -1463,23 +2147,6 @@ export interface ContactSuppression {
   lift_reason: string | null;
 }
 /**
- * A human decision with its mandatory reason. Never edited; a new decision supersedes it.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ReviewDecision".
- */
-export interface ReviewDecision {
-  id: string;
-  entity_type: EntityType;
-  entity_id: string;
-  decision: string;
-  previous_value: string | null;
-  new_value: string | null;
-  reason: string;
-  actor: string;
-  decided_at: string;
-}
-/**
  * One observation of a channel: the record business it belongs to and where it came from.
  * `current` is false when a newer crawl of the same page no longer shows it.
  *
@@ -1696,22 +2363,6 @@ export interface ContactStats {
   stale: number;
   suppressed: number;
   ambiguous_people: number;
-}
-/**
- * One line of a run's log: progress, a limit reached, or a structured error.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "RunEvent".
- */
-export interface RunEvent {
-  level: EventLevel;
-  event: string;
-  error_code: string | null;
-  retryable: boolean | null;
-  detail_json: {
-    [k: string]: JsonValue | undefined;
-  } | null;
-  created_at: string;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -2274,59 +2925,6 @@ export interface DiagnosticsResult {
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "OllamaStatus".
- */
-export interface OllamaStatus {
-  state: ComponentState;
-  summary: string;
-  error: string | null;
-  checked_at: string;
-  duration_ms: number;
-  installed: boolean;
-  running: boolean;
-  base_url: string;
-  version: string | null;
-  models: OllamaModel[];
-}
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "OllamaModel".
- */
-export interface OllamaModel {
-  name: string;
-  size_bytes: number | null;
-  digest: string | null;
-  family: string | null;
-  parameter_size: string | null;
-  quantization: string | null;
-}
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "GpuStatus".
- */
-export interface GpuStatus {
-  state: ComponentState;
-  summary: string;
-  error: string | null;
-  checked_at: string;
-  duration_ms: number;
-  devices: GpuDevice[];
-  cuda_available: boolean;
-  cuda_driver_version: string | null;
-}
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "GpuDevice".
- */
-export interface GpuDevice {
-  index: number;
-  name: string;
-  memory_total_mib: number | null;
-  memory_free_mib: number | null;
-  driver_version: string | null;
-}
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "DiscoveryControlRequest".
  */
 export interface DiscoveryControlRequest {
@@ -2600,58 +3198,6 @@ export interface ImportPreviewRequest {
   filename: string;
   content: string;
   mapping: ColumnMapping | null;
-}
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "InferenceEvidence".
- */
-export interface InferenceEvidence {
-  inference_run_id: string;
-  evidence_item_id: string;
-}
-/**
- * Raw model output next to the validated structure. Never a fact by itself.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "InferenceOutput".
- */
-export interface InferenceOutput {
-  id: string;
-  inference_run_id: string;
-  business_id: string | null;
-  raw_output: string;
-  validated_output_json: {
-    [k: string]: JsonValue | undefined;
-  } | null;
-  confidence: number | null;
-  created_at: string;
-}
-/**
- * One local-model call: task, runtime, model, prompt and schema versions, input hash.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "InferenceRun".
- */
-export interface InferenceRun {
-  id: string;
-  task_type: string;
-  task_version: string;
-  provider: string;
-  model: string;
-  model_digest: string | null;
-  parameters_json: {
-    [k: string]: JsonValue | undefined;
-  };
-  prompt_template_id: string;
-  prompt_template_version: string;
-  output_schema_version: string;
-  input_sha256: string;
-  status: InferenceStatus;
-  started_at: string | null;
-  finished_at: string | null;
-  error_message: string | null;
-  created_at: string;
-  updated_at: string;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema

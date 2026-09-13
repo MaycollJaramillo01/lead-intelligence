@@ -741,3 +741,101 @@ business inspector a contact panel, and runs appear in Jobs.
 
 **Trade-off.** The weights are a documented, versioned judgement (`CONTACTABILITY_VERSION`), not a
 fitted model; changing them is a new version, never a silent edit.
+
+## D-064 · A local model proposes, never decides: six task contracts checked before anything is kept (phase 10)
+
+**Context.** The prompt asks for local inference where it adds value (semantic extraction,
+controlled classification, synthesis of deterministic findings, commercial explanation, language,
+screenshots) without making the model the orchestrator, replacing deterministic analyses or
+presenting its output as fact.
+
+**Decision.** Six tasks (`evidence_extraction`, `business_classification`, `finding_synthesis`,
+`opportunity_reasoning`, `language_detection`, `visual_review`), each with a strict Pydantic output
+(`domain.*Output`, extra fields refused, controlled vocabularies), a version, a schema version, a
+prompt template file with its own version, input limits, a timeout, a temperature (0 or 0.2), a
+fixed seed and one failure strategy: one repair turn with the errors, then `invalid_output`. An
+answer is kept as valid only when it parses, follows the schema, cites only references it was given
+(of the kinds the task reads), says nothing else when it answers `insufficient_evidence`, quotes its
+fragment literally (extraction) and writes no number absent from the cited evidence (synthesis and
+reasoning). Jobs decide what is asked; deterministic engines keep deciding facts. The only path from
+an answer to evidence is the phase 07 one: Latino declarations an extraction proposes go to
+`latino.store.ingest_model_candidates`, whose rules accept them only when the quote is in the page and
+reads as that claim. There is no score.
+
+**Why.** Small models on 8 GB answer wrongly often enough that only checks the code can enforce make
+their output usable; the checks are deterministic, cheap and testable without a model.
+
+## D-065 · Ollama by default behind a small provider protocol, on loopback only; LLM Fit as an outside opinion (phase 10)
+
+**Decision.** `ollama.Provider` is what the layer needs (probe, show, loaded, chat with a JSON
+schema, pull, delete, unload); `OllamaProvider` implements it over the loopback API with
+`trust_env=False` and a timeout per call. A llama.cpp server maps onto the same protocol and is not
+built yet. The runtime URL must be `127.0.0.1`, `localhost` or `::1` (worker settings and desktop
+configuration both refuse anything else). The model never receives tools, its answers are only parsed
+as JSON and validated, and nothing it writes is executed or fetched. Models are downloaded or
+deleted only through `ai.model_change`, whose confirmation must repeat the exact name, never while the
+worker is offline (pulls) and never while the model is in use (deletions). LLM Fit runs only when the
+operator asks, read-only (`recommend --json --runtime llamacpp --no-dashboard`), and its report is
+shown as an external opinion.
+
+**Trade-off.** One runtime implemented. The protocol keeps a second one to one class.
+
+## D-066 · Every inference is auditable, and a valid result is unique per cache key (phase 10)
+
+**Decision.** Migration 0009 rebuilds the reserved AI tables (nothing wrote them). `ai_inference_runs`
+records task and version, business, project and job, provider, model, digest, profile, parameters
+(with any documented reduction), template and schema versions, the exact minimal input (`input_json`:
+facts and referenced fragments, findings or subscores, never HTML) and its hash, a deterministic cache
+key (task, template and schema hashes, runtime, model digest, parameters, input), status, device,
+calls, tokens, duration, error and a person's review. `ai_inference_outputs` keeps every raw answer
+next to what it validated to or why it was refused, immutable. A partial unique index allows one
+valid, not rejected result per cache key: a repeated request or a restart reuses it instead of asking
+again. The request columns are fixed by trigger and runs are never deleted. `ai_inference_evidence` is
+dropped: most inputs are not evidence items, and the references live in the run. A review
+(`ai_output_accepted`, `ai_output_rejected`, `ai_review_withdrawn`) needs a reason, only applies to a
+valid answer, and never turns it into a fact elsewhere; a rejected answer stops being reused.
+
+## D-067 · One GPU queue, a circuit breaker and memory-aware placement for an 8 GB GPU (phase 10)
+
+**Decision.** One queue runs one inference at a time, by priority (a person, then project jobs, then
+benchmarks), keeping the loaded model's work together, with a capacity of 64 (beyond it a submission
+is refused) and cancellation by owner. Before loading a model the runner estimates VRAM from the
+model's metadata (weights + f16 KV cache for the context + 512 MiB + 5 %): a model already loaded
+runs as is; otherwise other loaded models are unloaded only if the new one does not fit next to them;
+a model that does not fit gets its context halved down to 2 048 tokens, then runs partly on CPU if
+its profile allows it, or is refused (`insufficient_vram`). An out-of-memory answer halves the
+context, then moves to CPU, at most two steps. The breaker opens after three runtime failures in a
+row (unreachable, timeout, 5xx), refuses calls for 30 s doubling up to 5 min, then lets one call
+through. An AI job whose breaker opens pauses itself (`runtime_unavailable`) instead of looping; at
+startup queued inferences are cancelled and running ones failed (`worker_restarted`). While the queue
+works and free RAM or VRAM is below the configured limits (1 024 and 512 MiB by default), each crawl
+URL waits, at most 120 s, and the wait does not count against the site's time budget.
+
+**Trade-off.** One inference at a time leaves throughput on the table on larger GPUs; on 8 GB it is
+what keeps two models and their KV caches from colliding.
+
+## D-068 · Models are recommended by a local benchmark on a labelled synthetic corpus (phase 10)
+
+**Decision.** `ai.benchmark` runs installed models over 15 invented cases with expected answers (5
+tasks; visual review has no labelled screenshots): verticals in English and Spanish, a prompt
+injection that asks for another vertical, pages too thin to answer, ownership declarations,
+languages, audit findings with numbers and reasoning cases. Each model and task gets one immutable
+`ai_benchmark_results` row: correct and valid answers, failures, p50/p95 latency, tokens per second
+(generation time), peak VRAM used and lowest free RAM, device. A recommendation per task is the most
+accurate installed model with the same digest whose answers validated at least 80 % of the time, then
+the fastest; it is labelled a recommendation and never assigned. No model is assumed installed: every
+profile starts without one.
+
+## D-069 · AI analyses are jobs; the AI Models screen and the inspector panel (phase 10)
+
+**Decision.** `jobs.kind = ai_analysis` on `jobs.BackgroundJobs`: one job per project (or per group of
+listed businesses), identical open requests listed instead of duplicated, checkpoint every 10 units,
+one aggregated `batch_finished` event every 25 (the UI polls, the worker never pushes), unavailable
+tasks and inputs without content counted as skipped. Ten IPC messages (`ai.status`, `ai.configure`,
+`ai.start`, `ai.control`, `ai.runs`, `ai.inferences`, `ai.inference`, `ai.review`, `ai.benchmark`,
+`ai.model_change`), mirrored in Rust, where the core also refuses an answer citing an input it was
+never given and settings or downloads with invalid names or bounds. The AI Models module shows the
+runtime, GPU, live resources and queue, installed models with estimates, profiles and tasks with the
+reason each is unavailable, benchmarks with recommendations, the LLM Fit opinion, downloads and
+deletions with typed confirmation, and the inference history with raw and validated answers and
+reviews. The business inspector gains a Local AI panel; AI runs appear in Jobs.

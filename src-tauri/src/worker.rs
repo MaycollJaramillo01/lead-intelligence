@@ -77,6 +77,16 @@ pub const SUPPRESSIONS_LIST: &str = "suppressions.list";
 pub const SUPPRESSIONS_CHANGE: &str = "suppressions.change";
 pub const SUPPRESSIONS_IMPORT: &str = "suppressions.import";
 pub const SUPPRESSIONS_EXPORT: &str = "suppressions.export";
+pub const AI_STATUS: &str = "ai.status";
+pub const AI_CONFIGURE: &str = "ai.configure";
+pub const AI_START: &str = "ai.start";
+pub const AI_CONTROL: &str = "ai.control";
+pub const AI_RUNS: &str = "ai.runs";
+pub const AI_INFERENCES: &str = "ai.inferences";
+pub const AI_INFERENCE: &str = "ai.inference";
+pub const AI_REVIEW: &str = "ai.review";
+pub const AI_BENCHMARK: &str = "ai.benchmark";
+pub const AI_MODEL_CHANGE: &str = "ai.model_change";
 pub const DEV_SEED_SYNTHETIC: &str = "dev.seed_synthetic";
 const SHUTDOWN: &str = "shutdown";
 
@@ -94,6 +104,9 @@ pub const RESOLUTION_TIMEOUT: Duration = Duration::from_secs(70);
 /// A contact list decides every channel of its project, and a suppression change rewrites the
 /// statuses it covers; the worker bounds both at 30 s.
 pub const CONTACTS_TIMEOUT: Duration = Duration::from_secs(40);
+/// The AI status asks the runtime about every model and may run LLM Fit; settings, benchmarks
+/// and model changes check the runtime first. The worker bounds them at 90 s.
+pub const AI_TIMEOUT: Duration = Duration::from_secs(100);
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 const READER_DRAIN_TIMEOUT: Duration = Duration::from_secs(2);
 const HEALTH_FAILURES_BEFORE_RESTART: u32 = 2;

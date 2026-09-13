@@ -1,0 +1,110 @@
+{
+  "items": [
+    {
+      "job_id": "01900000-0000-7000-8000-000000001103",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "project_name": "Synthetic test workspace",
+      "status": "succeeded",
+      "stage": "done",
+      "progress_done": 40,
+      "progress_total": 40,
+      "task_types": [
+        "evidence_extraction",
+        "business_classification"
+      ],
+      "business_count": null,
+      "stats": {
+        "targets": 40,
+        "done": 40,
+        "succeeded": 16,
+        "insufficient_evidence": 0,
+        "invalid_output": 0,
+        "failed": 0,
+        "cancelled": 0,
+        "cache_hits": 4,
+        "skipped_no_input": 24,
+        "skipped_unavailable": 0,
+        "latino_candidates_accepted": 3,
+        "latino_candidates_rejected": 0
+      },
+      "requested_at": "2026-01-01T00:00:00.000Z",
+      "started_at": "2026-01-01T00:00:00.000Z",
+      "finished_at": "2026-01-01T00:00:00.000Z",
+      "events": [
+        {
+          "level": "info",
+          "event": "run_succeeded",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "cache_hits": 4,
+            "cancelled": 0,
+            "done": 40,
+            "failed": 0,
+            "insufficient_evidence": 0,
+            "invalid_output": 0,
+            "latino_candidates_accepted": 3,
+            "latino_candidates_rejected": 0,
+            "skipped_no_input": 24,
+            "skipped_unavailable": 0,
+            "succeeded": 16,
+            "targets": 40
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "batch_finished",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "cache_hits": 2,
+            "cancelled": 0,
+            "done": 25,
+            "failed": 0,
+            "insufficient_evidence": 0,
+            "invalid_output": 0,
+            "latino_candidates_accepted": 0,
+            "latino_candidates_rejected": 0,
+            "skipped_no_input": 21,
+            "skipped_unavailable": 0,
+            "succeeded": 4,
+            "targets": 40
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "stage_started",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "resume_at": 0,
+            "stage": "infer",
+            "unavailable": {},
+            "units": 40
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "run_queued",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "business_ids": null,
+            "project_id": "01900000-0000-7000-8000-000000000001",
+            "task_types": [
+              "evidence_extraction",
+              "business_classification"
+            ]
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "is_synthetic": true
+    }
+  ],
+  "next_cursor": null,
+  "total": 1
+}

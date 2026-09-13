@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type {
+  AiInferenceDetail,
   Business,
   BusinessDetail,
   BusinessListItem,
@@ -15,6 +16,7 @@ import type {
   WebsiteAuditDetail,
   WebsiteFindingView,
 } from "@lead/shared-types";
+import aiFixture from "@lead/shared-types/fixtures/ai_inference_detail.json";
 import detailFixture from "@lead/shared-types/fixtures/business_detail.json";
 import contactFixture from "@lead/shared-types/fixtures/contact_detail.json";
 import pageFixture from "@lead/shared-types/fixtures/business_page.json";
@@ -98,6 +100,16 @@ const WEBSITE_FINDING_KEYS = {
   confidence: true,
   evidence: true,
 } satisfies Record<keyof WebsiteFindingView, true>;
+
+const AI_DETAIL_KEYS = {
+  run: true,
+  business_name: true,
+  outputs: true,
+  inputs: true,
+  warnings: true,
+  decisions: true,
+  is_synthetic: true,
+} satisfies Record<keyof AiInferenceDetail, true>;
 
 const CONTACT_DETAIL_KEYS = {
   business_id: true,
@@ -265,6 +277,18 @@ describe("data contract fixtures match the generated TypeScript types", () => {
     expect(detail.hypotheses.length).toBeGreaterThan(0);
     expect(detail.hypotheses.every((c) => c.origin === "hypothesis" && !c.is_primary)).toBe(true);
     expect(detail.channels.some((c) => c.origin === "hypothesis")).toBe(false);
+  });
+
+  it("an AI answer cites only inputs the model was given, and is stored raw next to it", () => {
+    const detail = aiFixture as AiInferenceDetail;
+    expect(keys(detail)).toEqual(expected(AI_DETAIL_KEYS));
+    const given = new Set(detail.inputs.map((input) => input.ref));
+    const validated = detail.outputs.filter((output) => output.validated_output_json !== null);
+    expect(validated.length).toBe(1);
+    const cited = JSON.stringify(validated[0]?.validated_output_json).match(/"[A-Z]\d+"/g) ?? [];
+    expect(cited.length).toBeGreaterThan(0);
+    for (const id of cited) expect(given.has(id.replaceAll('"', ""))).toBe(true);
+    expect(detail.outputs.every((output) => output.raw_output.length > 0)).toBe(true);
   });
 
   it("timestamps use the single contract format", () => {

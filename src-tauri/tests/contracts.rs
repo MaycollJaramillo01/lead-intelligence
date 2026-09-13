@@ -7,16 +7,19 @@ mod common;
 use std::fs;
 
 use lead_intelligence_lib::data::{
-    AssessmentMethod, BusinessDetail, BusinessListQuery, BusinessPage, CampaignListQuery,
-    CampaignPage, CampaignSaved, CandidateDetail, CandidateListQuery, CandidatePage,
-    CanonicalChoiceRequest, ContactActionRequest, ContactDetail, ContactListQuery, ContactOrigin,
-    ContactPage, ContactRunListQuery, ContactRunPage, ContactStartRequest, CrawlRunListQuery,
-    CrawlRunPage, CrawlStartRequest, CrawlUrlDetail, CrawlUrlListQuery, CrawlUrlPage,
-    CrawlUrlStatus, CriteriaCheck, DatasetListQuery, DatasetPage, DecisionMakerListQuery,
-    DecisionMakerPage, DecisionMakerReview, DecisionMakerReviewRequest, DiscoveryRunListQuery,
-    DiscoveryRunPage, DiscoveryStartRequest, EvidenceStatus, Id, ImportPreview, LatinoDetail,
-    LatinoReviewFilter, LatinoReviewRequest, LatinoRunListQuery, LatinoRunPage, LatinoStartRequest,
-    LatinoStatus, MatchActionRequest, MatchDetail, MatchListQuery, MatchPage, MatchStatus,
+    AiBenchmarkRequest, AiConfigureRequest, AiInferenceDetail, AiInferenceListQuery,
+    AiInferencePage, AiInferenceQuery, AiModelChangeRequest, AiReviewRequest, AiReviewStatus,
+    AiRunListQuery, AiRunPage, AiStartRequest, AiStatus, AiStatusQuery, AssessmentMethod,
+    BusinessDetail, BusinessListQuery, BusinessPage, CampaignListQuery, CampaignPage,
+    CampaignSaved, CandidateDetail, CandidateListQuery, CandidatePage, CanonicalChoiceRequest,
+    ContactActionRequest, ContactDetail, ContactListQuery, ContactOrigin, ContactPage,
+    ContactRunListQuery, ContactRunPage, ContactStartRequest, CrawlRunListQuery, CrawlRunPage,
+    CrawlStartRequest, CrawlUrlDetail, CrawlUrlListQuery, CrawlUrlPage, CrawlUrlStatus,
+    CriteriaCheck, DatasetListQuery, DatasetPage, DecisionMakerListQuery, DecisionMakerPage,
+    DecisionMakerReview, DecisionMakerReviewRequest, DiscoveryRunListQuery, DiscoveryRunPage,
+    DiscoveryStartRequest, EvidenceStatus, Id, ImportPreview, LatinoDetail, LatinoReviewFilter,
+    LatinoReviewRequest, LatinoRunListQuery, LatinoRunPage, LatinoStartRequest, LatinoStatus,
+    MatchActionRequest, MatchDetail, MatchListQuery, MatchPage, MatchStatus,
     ResolutionRunListQuery, ResolutionRunPage, ResolutionStartRequest, SourceCatalog, SourceHealth,
     SuppressionChangeRequest, SuppressionExport, SuppressionExportRequest,
     SuppressionImportRequest, SuppressionImportResult, SuppressionListQuery, SuppressionPage,
@@ -768,6 +771,134 @@ fn contact_payloads_that_claim_too_much_are_rejected() {
 }
 
 #[test]
+fn ai_fixtures_round_trip_and_pass_validation() {
+    let status_query: AiStatusQuery = round_trip("ai_status_query.json");
+    let status: AiStatus = round_trip("ai_status.json");
+    status
+        .validate(&status_query)
+        .expect("fixture status is consistent");
+    assert!(status.tasks.iter().any(|task| task.available));
+    assert!(!status.recommendations.is_empty() && !status.benchmark_results.is_empty());
+    let configure: AiConfigureRequest = round_trip("ai_configure_request.json");
+    configure.validate().expect("fixture settings are valid");
+    let start: AiStartRequest = round_trip("ai_start_request.json");
+    start.validate().expect("fixture start is valid");
+    let run_query: AiRunListQuery = round_trip("ai_run_list_query.json");
+    let runs: AiRunPage = round_trip("ai_run_page.json");
+    runs.validate(&run_query)
+        .expect("fixture runs match their query");
+    assert!(runs.items[0].stats.latino_candidates_accepted > 0);
+    let bench: AiBenchmarkRequest = round_trip("ai_benchmark_request.json");
+    bench.validate().expect("fixture benchmark is valid");
+    let list_query: AiInferenceListQuery = round_trip("ai_inference_list_query.json");
+    let page: AiInferencePage = round_trip("ai_inference_page.json");
+    page.validate(&list_query)
+        .expect("fixture inferences match their query");
+    let query: AiInferenceQuery = round_trip("ai_inference_query.json");
+    let detail: AiInferenceDetail = round_trip("ai_inference_detail.json");
+    detail
+        .validate(&query.inference_run_id)
+        .expect("fixture detail is consistent");
+    assert_eq!(detail.run.review_status, AiReviewStatus::Accepted);
+    let review: AiReviewRequest = round_trip("ai_review_request.json");
+    review.validate().expect("fixture review has a reason");
+    let change: AiModelChangeRequest = round_trip("ai_model_change_request.json");
+    change.validate().expect("fixture change is confirmed");
+}
+
+#[test]
+fn ai_payloads_that_claim_too_much_are_rejected() {
+    let original: Value =
+        serde_json::from_str(&fixture_text("ai_inference_detail.json")).expect("JSON");
+    let query: AiInferenceQuery =
+        serde_json::from_str(&fixture_text("ai_inference_query.json")).expect("query");
+    let rejected = |change: &dyn Fn(&mut Value)| {
+        let mut changed = original.clone();
+        change(&mut changed);
+        let detail: AiInferenceDetail = serde_json::from_value(changed).expect("still well formed");
+        detail.validate(&query.inference_run_id).is_err()
+    };
+    let last = original["outputs"].as_array().expect("outputs").len() - 1;
+    assert!(
+        rejected(&|detail| {
+            detail["outputs"][last]["validated_output_json"]["claims"][0]["evidence_ids"] =
+                json!(["F99"])
+        }),
+        "an answer citing an input it was never given"
+    );
+    assert!(
+        rejected(&|detail| detail["run"]["status"] = "invalid_output".into()),
+        "a reviewed answer that never validated"
+    );
+    assert!(
+        rejected(&|detail| detail["run"]["attempts"] = 0.into()),
+        "more answers than calls"
+    );
+    assert!(
+        rejected(&|detail| {
+            detail["outputs"][last]["validation_errors_json"] = json!({ "errors": ["x"] })
+        }),
+        "an answer that both validated and failed"
+    );
+
+    let status: Value = serde_json::from_str(&fixture_text("ai_status.json")).expect("JSON");
+    let unexplained = {
+        let mut changed = status.clone();
+        changed["tasks"][5]["unavailable_reason"] = Value::Null;
+        serde_json::from_value::<AiStatus>(changed).expect("well formed")
+    };
+    assert!(
+        unexplained
+            .validate(&AiStatusQuery {
+                include_llm_fit: true
+            })
+            .is_err()
+    );
+    let unasked: AiStatus = serde_json::from_value(status).expect("well formed");
+    assert!(
+        unasked
+            .validate(&AiStatusQuery {
+                include_llm_fit: false
+            })
+            .is_err(),
+        "LLM Fit output nobody asked for"
+    );
+
+    let change: Value =
+        serde_json::from_str(&fixture_text("ai_model_change_request.json")).expect("JSON");
+    for (field, value) in [
+        ("confirmation", "synthetic-new"),
+        ("model", "../../etc/passwd"),
+        ("model", "bad name:tag"),
+    ] {
+        let mut changed = change.clone();
+        changed[field] = value.into();
+        let request: AiModelChangeRequest = serde_json::from_value(changed).expect("well formed");
+        assert!(request.validate().is_err(), "{field}={value}");
+    }
+    let start: Value = serde_json::from_str(&fixture_text("ai_start_request.json")).expect("JSON");
+    for tasks in [
+        json!([]),
+        json!(["language_detection", "language_detection"]),
+    ] {
+        let mut changed = start.clone();
+        changed["task_types"] = tasks;
+        let request: AiStartRequest = serde_json::from_value(changed).expect("well formed");
+        assert!(request.validate().is_err());
+    }
+    let configure: Value =
+        serde_json::from_str(&fixture_text("ai_configure_request.json")).expect("JSON");
+    let mut huge = configure.clone();
+    huge["profiles"][0]["num_ctx"] = 1_000_000.into();
+    assert!(
+        serde_json::from_value::<AiConfigureRequest>(huge)
+            .expect("well formed")
+            .validate()
+            .is_err()
+    );
+}
+
+#[test]
 fn every_fixture_is_covered() {
     let dir = common::repo_root().join("packages/shared-types/fixtures");
     let mut names: Vec<String> = fs::read_dir(dir)
@@ -785,6 +916,19 @@ fn every_fixture_is_covered() {
     assert_eq!(
         names,
         [
+            "ai_benchmark_request.json",
+            "ai_configure_request.json",
+            "ai_inference_detail.json",
+            "ai_inference_list_query.json",
+            "ai_inference_page.json",
+            "ai_inference_query.json",
+            "ai_model_change_request.json",
+            "ai_review_request.json",
+            "ai_run_list_query.json",
+            "ai_run_page.json",
+            "ai_start_request.json",
+            "ai_status.json",
+            "ai_status_query.json",
             "business_cluster_detail.json",
             "business_detail.json",
             "business_list_query.json",

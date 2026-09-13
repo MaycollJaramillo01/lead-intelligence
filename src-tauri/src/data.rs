@@ -16,6 +16,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use uuid::Uuid;
 
+use crate::protocol::{GpuStatus, OllamaStatus};
+
 pub const MAX_PAGE_SIZE: u32 = 500;
 const MAX_SEARCH_CHARS: usize = 200;
 const MAX_CURSOR_LEN: usize = 2048;
@@ -4247,6 +4249,862 @@ impl SuppressionExport {
             .any(|cell| cell.starts_with(FORMULA_START))
         {
             return Err("a do-not-contact export has a cell a spreadsheet would run".into());
+        }
+        Ok(())
+    }
+}
+
+// ---- local AI (phase 10) ------------------------------------------------------------------------
+// Mirrors the local AI section of `domain.py`. The core refuses a model answer that cites an input
+// the model was never given, a run whose status and answers disagree, a review of an answer that
+// never validated, a settings or download request with invalid model names or bounds, and pages
+// that do not obey their filters.
+
+const MAX_MODEL_NAME_CHARS: usize = 200;
+const MAX_START_BUSINESSES: usize = 200;
+const MAX_BENCHMARK_MODELS: usize = 4;
+const AI_TASKS: usize = 6;
+
+contract_enum!(AiTaskType {
+    EvidenceExtraction,
+    BusinessClassification,
+    FindingSynthesis,
+    OpportunityReasoning,
+    LanguageDetection,
+    VisualReview
+});
+contract_enum!(AiProfile {
+    Fast,
+    Balanced,
+    Quality
+});
+contract_enum!(AiDevice {
+    Gpu,
+    Partial,
+    Cpu,
+    Unknown
+});
+contract_enum!(AiReviewStatus {
+    Unreviewed,
+    Accepted,
+    Rejected
+});
+contract_enum!(InferenceStatus {
+    Queued,
+    Running,
+    Succeeded,
+    InsufficientEvidence,
+    InvalidOutput,
+    Failed,
+    Cancelled
+});
+contract_enum!(AiInputKind {
+    PageFragment,
+    WebsiteFinding,
+    Contactability,
+    LatinoStatus,
+    Screenshot
+});
+contract_enum!(AiUnavailableReason {
+    TaskDisabled,
+    NoModelAssigned,
+    RuntimeUnavailable,
+    ModelNotInstalled,
+    NoVisionModel,
+    CircuitOpen
+});
+contract_enum!(AiCircuitState {
+    Closed,
+    Open,
+    HalfOpen
+});
+contract_enum!(AiActivity {
+    Idle,
+    Running,
+    Succeeded,
+    Failed,
+    Cancelled
+});
+contract_enum!(AiModelChangeAction { Pull, Delete });
+contract_enum!(AiBenchmarkAction { Start, Cancel });
+contract_enum!(AiReviewDecision {
+    Accept,
+    Reject,
+    Reset
+});
+
+impl InferenceStatus {
+    /// An answer that validated: the only statuses a person may review.
+    pub fn is_valid_answer(self) -> bool {
+        matches!(self, Self::Succeeded | Self::InsufficientEvidence)
+    }
+}
+
+/// Ollama model names: `name`, `namespace/name`, with an optional `:tag`.
+pub fn check_model_name(name: &str) -> Result<(), String> {
+    let (path, tag) = match name.split_once(':') {
+        Some((path, tag)) => (path, Some(tag)),
+        None => (name, None),
+    };
+    let part = |text: &str| {
+        !text.is_empty()
+            && text
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+    };
+    let valid = name.chars().count() <= MAX_MODEL_NAME_CHARS
+        && path.starts_with(|c: char| c.is_ascii_alphanumeric())
+        && path.split('/').all(part)
+        && tag.is_none_or(part);
+    if !valid {
+        return Err(format!("{name:?} is not a model name"));
+    }
+    Ok(())
+}
+
+fn check_unique<T: PartialEq + Copy + fmt::Debug>(items: &[T], what: &str) -> Result<(), String> {
+    for (index, item) in items.iter().enumerate() {
+        if items[..index].contains(item) {
+            return Err(format!("{what} {item:?} appears twice"));
+        }
+    }
+    Ok(())
+}
+
+/// Every input reference a validated answer cites (`evidence_ids`, `vertical_evidence_ids` lists
+/// and `evidence_id` strings, at any depth).
+fn cited_refs(value: &Value, found: &mut Vec<String>) {
+    match value {
+        Value::Object(map) => {
+            for (key, item) in map {
+                match (key.as_str(), item) {
+                    ("evidence_ids" | "vertical_evidence_ids", Value::Array(ids)) => found.extend(
+                        ids.iter()
+                            .map(|id| id.as_str().unwrap_or_default().to_owned()),
+                    ),
+                    ("evidence_id", Value::String(id)) => found.push(id.clone()),
+                    _ => cited_refs(item, found),
+                }
+            }
+        }
+        Value::Array(items) => items.iter().for_each(|item| cited_refs(item, found)),
+        _ => {}
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InferenceRun {
+    pub id: Id,
+    pub task_type: AiTaskType,
+    pub task_version: String,
+    pub project_id: Option<Id>,
+    pub business_id: Option<Id>,
+    pub job_id: Option<Id>,
+    pub provider: String,
+    pub model: String,
+    pub model_digest: Option<String>,
+    pub profile: AiProfile,
+    pub parameters_json: Map<String, Value>,
+    pub prompt_template_id: String,
+    pub prompt_template_version: String,
+    pub output_schema_version: String,
+    pub input_sha256: String,
+    pub input_json: Map<String, Value>,
+    pub cache_key: String,
+    pub status: InferenceStatus,
+    pub device: AiDevice,
+    pub attempts: u32,
+    pub prompt_tokens: Option<u64>,
+    pub completion_tokens: Option<u64>,
+    pub duration_ms: Option<u64>,
+    pub error_code: Option<String>,
+    pub error_message: Option<String>,
+    pub review_status: AiReviewStatus,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+    pub created_at: UtcTimestamp,
+    pub updated_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InferenceOutput {
+    pub id: Id,
+    pub inference_run_id: Id,
+    pub attempt: u32,
+    pub raw_output: String,
+    pub validated_output_json: Option<Map<String, Value>>,
+    pub validation_errors_json: Option<Map<String, Value>>,
+    pub created_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiProfileSetting {
+    pub profile: AiProfile,
+    pub model: Option<String>,
+    pub num_ctx: u32,
+    pub allow_cpu: bool,
+    pub updated_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiResourceLimits {
+    pub scope: String,
+    pub min_free_ram_mib: u64,
+    pub min_free_vram_mib: u64,
+    pub updated_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiBenchmarkResult {
+    pub id: Id,
+    pub provider: String,
+    pub model: String,
+    pub model_digest: Option<String>,
+    pub task_type: AiTaskType,
+    pub task_version: String,
+    pub corpus_version: String,
+    pub num_ctx: u32,
+    pub cases: u64,
+    pub valid_outputs: u64,
+    pub correct: u64,
+    pub failures: u64,
+    pub latency_p50_ms: Option<u64>,
+    pub latency_p95_ms: Option<u64>,
+    pub tokens_per_second: Option<f64>,
+    pub peak_vram_used_mib: Option<u64>,
+    pub min_free_ram_mib: Option<u64>,
+    pub device: AiDevice,
+    pub started_at: UtcTimestamp,
+    pub finished_at: UtcTimestamp,
+    pub created_at: UtcTimestamp,
+}
+
+impl AiBenchmarkResult {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.cases == 0
+            || self.correct > self.valid_outputs
+            || self.valid_outputs > self.cases
+            || self.failures > self.cases
+            || self
+                .latency_p50_ms
+                .zip(self.latency_p95_ms)
+                .is_some_and(|(p50, p95)| p95 < p50)
+        {
+            return Err(format!("benchmark {} reports impossible counts", self.id));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiInputRef {
+    #[serde(rename = "ref")]
+    pub reference: String,
+    pub kind: AiInputKind,
+    pub entity_id: Option<Id>,
+    pub source: Option<String>,
+    pub text: String,
+    pub sha256: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiVramEstimate {
+    pub num_ctx: u32,
+    pub weights_mib: u64,
+    pub kv_cache_mib: u64,
+    pub overhead_mib: u64,
+    pub total_mib: u64,
+    pub device: AiDevice,
+    pub fitted_ctx: Option<u32>,
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiModelInfo {
+    pub name: String,
+    pub digest: Option<String>,
+    pub size_bytes: Option<u64>,
+    pub family: Option<String>,
+    pub parameter_size: Option<String>,
+    pub quantization: Option<String>,
+    pub context_length: Option<u64>,
+    pub capabilities: Vec<String>,
+    pub loaded: bool,
+    pub size_vram_bytes: Option<u64>,
+    pub estimate: Option<AiVramEstimate>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiTaskInfo {
+    pub task_type: AiTaskType,
+    pub task_version: String,
+    pub output_schema_version: String,
+    pub prompt_template_id: String,
+    pub prompt_template_version: String,
+    pub enabled: bool,
+    pub profile: AiProfile,
+    pub model: Option<String>,
+    pub available: bool,
+    pub unavailable_reason: Option<AiUnavailableReason>,
+    pub requires_vision: bool,
+    pub batchable: bool,
+    pub max_input_chars: u64,
+    pub max_refs: u64,
+    pub timeout_s: u64,
+    pub temperature: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiRecommendation {
+    pub task_type: AiTaskType,
+    pub model: String,
+    pub accuracy: Confidence,
+    pub latency_p50_ms: Option<u64>,
+    pub benchmark_id: Id,
+    pub benchmarked_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiResources {
+    pub ram_total_mib: Option<u64>,
+    pub ram_free_mib: Option<u64>,
+    pub vram_total_mib: Option<u64>,
+    pub vram_free_mib: Option<u64>,
+    pub pressure: Vec<String>,
+    pub crawl_waiting: bool,
+    pub sampled_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiSchedulerState {
+    pub queued: u64,
+    pub running: u64,
+    pub capacity: u64,
+    pub circuit: AiCircuitState,
+    pub consecutive_failures: u64,
+    pub open_until: Option<UtcTimestamp>,
+    pub last_error: Option<String>,
+    pub completed: u64,
+    pub failed: u64,
+    pub cache_hits: u64,
+    pub latency_p50_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiBenchmarkProgress {
+    pub state: AiActivity,
+    pub models: Vec<String>,
+    pub task_types: Vec<AiTaskType>,
+    pub done: u64,
+    pub total: u64,
+    pub current: Option<String>,
+    pub error: Option<String>,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiModelChange {
+    pub action: AiModelChangeAction,
+    pub model: String,
+    pub state: AiActivity,
+    pub completed_bytes: Option<u64>,
+    pub total_bytes: Option<u64>,
+    pub detail: Option<String>,
+    pub started_at: UtcTimestamp,
+    pub finished_at: Option<UtcTimestamp>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LlmFitModel {
+    pub name: String,
+    pub ollama_name: Option<String>,
+    pub fit_level: Option<String>,
+    pub run_mode: Option<String>,
+    pub runtime: Option<String>,
+    pub quantization: Option<String>,
+    pub memory_required_gb: Option<f64>,
+    pub estimated_tps: Option<f64>,
+    pub installed: Option<bool>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LlmFitReport {
+    pub available: bool,
+    pub version: Option<String>,
+    pub models: Vec<LlmFitModel>,
+    pub error: Option<String>,
+    pub checked_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiStatusQuery {
+    pub include_llm_fit: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiStatus {
+    pub runtime: OllamaStatus,
+    pub gpu: GpuStatus,
+    pub models: Vec<AiModelInfo>,
+    pub profiles: Vec<AiProfileSetting>,
+    pub tasks: Vec<AiTaskInfo>,
+    pub limits: AiResourceLimits,
+    pub resources: AiResources,
+    pub scheduler: AiSchedulerState,
+    pub recommendations: Vec<AiRecommendation>,
+    pub benchmark: AiBenchmarkProgress,
+    pub benchmark_results: Vec<AiBenchmarkResult>,
+    pub model_change: Option<AiModelChange>,
+    pub llm_fit: Option<LlmFitReport>,
+    pub downloads_allowed: bool,
+    pub checked_at: UtcTimestamp,
+}
+
+impl AiStatus {
+    /// One entry per task and profile, availability that explains itself, recommendations only of
+    /// installed models, and benchmark counts that add up.
+    pub fn validate(&self, query: &AiStatusQuery) -> Result<(), String> {
+        let tasks: Vec<AiTaskType> = self.tasks.iter().map(|task| task.task_type).collect();
+        check_unique(&tasks, "task")?;
+        let profiles: Vec<AiProfile> = self.profiles.iter().map(|p| p.profile).collect();
+        check_unique(&profiles, "profile")?;
+        if tasks.len() != AI_TASKS {
+            return Err(format!("the status describes {} tasks", tasks.len()));
+        }
+        if let Some(task) = self
+            .tasks
+            .iter()
+            .find(|task| task.available == task.unavailable_reason.is_some())
+        {
+            return Err(format!(
+                "task {:?} must be available or say why it is not",
+                task.task_type
+            ));
+        }
+        if let Some(found) = self
+            .recommendations
+            .iter()
+            .find(|r| !self.models.iter().any(|model| model.name == r.model))
+        {
+            return Err(format!("{} is recommended but not installed", found.model));
+        }
+        self.benchmark_results
+            .iter()
+            .try_for_each(AiBenchmarkResult::validate)?;
+        if self.scheduler.running > 1 {
+            return Err("the GPU queue runs one inference at a time".into());
+        }
+        if self.llm_fit.is_some() && !query.include_llm_fit {
+            return Err("LLM Fit ran without being asked".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiProfileChange {
+    pub profile: AiProfile,
+    pub model: Option<String>,
+    pub num_ctx: u32,
+    pub allow_cpu: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiTaskChange {
+    pub task_type: AiTaskType,
+    pub enabled: bool,
+    pub profile: AiProfile,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiConfigureRequest {
+    pub profiles: Vec<AiProfileChange>,
+    pub tasks: Vec<AiTaskChange>,
+    pub min_free_ram_mib: u64,
+    pub min_free_vram_mib: u64,
+}
+
+impl AiConfigureRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        let profiles: Vec<AiProfile> = self.profiles.iter().map(|p| p.profile).collect();
+        check_unique(&profiles, "profile")?;
+        let tasks: Vec<AiTaskType> = self.tasks.iter().map(|t| t.task_type).collect();
+        check_unique(&tasks, "task")?;
+        for change in &self.profiles {
+            within("num_ctx", change.num_ctx, 512, 32_768)?;
+            if let Some(model) = &change.model {
+                check_model_name(model)?;
+            }
+        }
+        within("min_free_ram_mib", self.min_free_ram_mib, 256, 65_536)?;
+        within("min_free_vram_mib", self.min_free_vram_mib, 0, 65_536)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiStartRequest {
+    pub project_id: Option<Id>,
+    pub business_ids: Vec<Id>,
+    pub task_types: Vec<AiTaskType>,
+}
+
+impl AiStartRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.task_types.is_empty() || self.task_types.len() > AI_TASKS {
+            return Err(format!("choose 1 to {AI_TASKS} tasks"));
+        }
+        check_unique(&self.task_types, "task")?;
+        if self.business_ids.len() > MAX_START_BUSINESSES {
+            return Err(format!(
+                "at most {MAX_START_BUSINESSES} businesses per request"
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiStats {
+    pub targets: u64,
+    pub done: u64,
+    pub succeeded: u64,
+    pub insufficient_evidence: u64,
+    pub invalid_output: u64,
+    pub failed: u64,
+    pub cancelled: u64,
+    pub cache_hits: u64,
+    pub skipped_no_input: u64,
+    pub skipped_unavailable: u64,
+    pub latino_candidates_accepted: u64,
+    pub latino_candidates_rejected: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiRun {
+    pub job_id: Id,
+    pub project_id: Id,
+    pub project_name: String,
+    pub status: JobStatus,
+    pub stage: String,
+    pub progress_done: u64,
+    pub progress_total: Option<u64>,
+    pub task_types: Vec<AiTaskType>,
+    pub business_count: Option<u64>,
+    pub stats: AiStats,
+    pub requested_at: UtcTimestamp,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+    pub events: Vec<RunEvent>,
+    pub is_synthetic: bool,
+}
+
+impl AiRun {
+    /// Progress within its total, and every unit it finished counted once.
+    pub fn validate(&self) -> Result<(), String> {
+        if let Some(total) = self.progress_total
+            && self.progress_done > total
+        {
+            return Err("progress cannot exceed its total".into());
+        }
+        let stats = &self.stats;
+        let counted = stats.succeeded
+            + stats.insufficient_evidence
+            + stats.invalid_output
+            + stats.failed
+            + stats.cancelled
+            + stats.skipped_no_input
+            + stats.skipped_unavailable;
+        if stats.done > stats.targets
+            || counted > stats.done
+            || stats.cache_hits > stats.succeeded + stats.insufficient_evidence
+        {
+            return Err(format!("AI run {} reports more than it did", self.job_id));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiRunListQuery {
+    pub project_id: Option<Id>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl AiRunListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiRunPage {
+    pub items: Vec<AiRun>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl AiRunPage {
+    pub fn validate(&self, query: &AiRunListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        if let Some(project) = &query.project_id
+            && let Some(other) = self.items.iter().find(|run| &run.project_id != project)
+        {
+            return Err(format!("run {} belongs to another project", other.job_id));
+        }
+        self.items.iter().try_for_each(AiRun::validate)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiBenchmarkRequest {
+    pub action: AiBenchmarkAction,
+    pub models: Vec<String>,
+    pub task_types: Vec<AiTaskType>,
+}
+
+impl AiBenchmarkRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.models.len() > MAX_BENCHMARK_MODELS {
+            return Err(format!(
+                "benchmark at most {MAX_BENCHMARK_MODELS} models at once"
+            ));
+        }
+        if self.action == AiBenchmarkAction::Start && self.models.is_empty() {
+            return Err("choose at least one model to benchmark".into());
+        }
+        self.models
+            .iter()
+            .try_for_each(|model| check_model_name(model))?;
+        check_unique(&self.task_types, "task")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiInferenceListQuery {
+    pub task_type: Option<AiTaskType>,
+    pub status: Option<InferenceStatus>,
+    pub business_id: Option<Id>,
+    pub review_status: Option<AiReviewStatus>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl AiInferenceListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiInferenceItem {
+    pub id: Id,
+    pub task_type: AiTaskType,
+    pub status: InferenceStatus,
+    pub review_status: AiReviewStatus,
+    pub model: String,
+    pub device: AiDevice,
+    pub business_id: Option<Id>,
+    pub business_name: Option<String>,
+    pub job_id: Option<Id>,
+    pub duration_ms: Option<u64>,
+    pub attempts: u64,
+    pub error_code: Option<String>,
+    pub created_at: UtcTimestamp,
+    pub is_synthetic: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiInferencePage {
+    pub items: Vec<AiInferenceItem>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl AiInferencePage {
+    pub fn validate(&self, query: &AiInferenceListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        for item in &self.items {
+            let outside = query.task_type.is_some_and(|task| item.task_type != task)
+                || query.status.is_some_and(|status| item.status != status)
+                || query
+                    .review_status
+                    .is_some_and(|review| item.review_status != review)
+                || (query.business_id.is_some() && item.business_id.is_none());
+            if outside {
+                return Err(format!("inference {} does not match the filters", item.id));
+            }
+            if item.review_status != AiReviewStatus::Unreviewed && !item.status.is_valid_answer() {
+                return Err(format!(
+                    "inference {} was reviewed without an answer",
+                    item.id
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiInferenceQuery {
+    pub inference_run_id: Id,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiInferenceDetail {
+    pub run: InferenceRun,
+    pub business_name: Option<String>,
+    pub outputs: Vec<InferenceOutput>,
+    pub inputs: Vec<AiInputRef>,
+    pub warnings: Vec<String>,
+    pub decisions: Vec<ReviewDecision>,
+    pub is_synthetic: bool,
+}
+
+impl AiInferenceDetail {
+    /// The run asked for, answers in attempt order that each validated or say why not, a status
+    /// that matches them, a review only of a valid answer, and no cited input the model never saw.
+    pub fn validate(&self, requested: &Id) -> Result<(), String> {
+        let run = &self.run;
+        if &run.id != requested {
+            return Err(format!(
+                "asked for inference {requested}, received {}",
+                run.id
+            ));
+        }
+        let mut attempt = 0;
+        for output in &self.outputs {
+            if output.inference_run_id != run.id || output.attempt <= attempt {
+                return Err(format!("answer {} is out of place", output.id));
+            }
+            attempt = output.attempt;
+            if output.validated_output_json.is_some() == output.validation_errors_json.is_some() {
+                return Err(format!(
+                    "answer {} must either validate or say why not",
+                    output.id
+                ));
+            }
+        }
+        if self.outputs.len() as u32 > run.attempts {
+            return Err(format!("inference {} has more answers than calls", run.id));
+        }
+        let validated: Vec<&InferenceOutput> = self
+            .outputs
+            .iter()
+            .filter(|output| output.validated_output_json.is_some())
+            .collect();
+        let consistent = match run.status {
+            InferenceStatus::Succeeded | InferenceStatus::InsufficientEvidence => {
+                validated.len() == 1 && self.outputs.last() == validated.first().copied()
+            }
+            _ => validated.is_empty(),
+        };
+        if !consistent {
+            return Err(format!(
+                "inference {} and its answers disagree about how it ended",
+                run.id
+            ));
+        }
+        if run.review_status != AiReviewStatus::Unreviewed && !run.status.is_valid_answer() {
+            return Err(format!(
+                "inference {} was reviewed without a valid answer",
+                run.id
+            ));
+        }
+        let given: HashSet<&str> = self
+            .inputs
+            .iter()
+            .map(|input| input.reference.as_str())
+            .collect();
+        for output in validated {
+            let mut cited = Vec::new();
+            cited_refs(
+                &Value::Object(output.validated_output_json.clone().unwrap_or_default()),
+                &mut cited,
+            );
+            if let Some(unknown) = cited.iter().find(|id| !given.contains(id.as_str())) {
+                return Err(format!(
+                    "inference {} cites {unknown:?}, which it was never given",
+                    run.id
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiReviewRequest {
+    pub inference_run_id: Id,
+    pub decision: AiReviewDecision,
+    pub reason: String,
+}
+
+impl AiReviewRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        check_reason(&Some(self.reason.clone()))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiModelChangeRequest {
+    pub action: AiModelChangeAction,
+    pub model: String,
+    pub confirmation: String,
+}
+
+impl AiModelChangeRequest {
+    /// Nothing is downloaded or deleted unless the operator typed the exact model name.
+    pub fn validate(&self) -> Result<(), String> {
+        check_model_name(&self.model)?;
+        if self.confirmation != self.model {
+            return Err("to confirm, type the exact model name".into());
         }
         Ok(())
     }

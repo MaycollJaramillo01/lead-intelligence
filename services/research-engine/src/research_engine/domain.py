@@ -29,7 +29,7 @@ from uuid import UUID
 
 from pydantic import AfterValidator, AwareDatetime, Field, JsonValue, PlainSerializer
 
-from research_engine.contracts import Contract
+from research_engine.contracts import Contract, GpuStatus, OllamaStatus
 
 MAX_PAGE_SIZE = 500
 
@@ -229,6 +229,41 @@ class InferenceStatus(StrEnum):
     INVALID_OUTPUT = "invalid_output"
     FAILED = "failed"
     CANCELLED = "cancelled"
+
+
+class AiTaskType(StrEnum):
+    """What a local model may be asked (phase 10). Each task has its own contract, prompt template,
+    limits, timeout and failure strategy (`ai.tasks`); none of them decides a fact on its own."""
+
+    EVIDENCE_EXTRACTION = "evidence_extraction"
+    BUSINESS_CLASSIFICATION = "business_classification"
+    FINDING_SYNTHESIS = "finding_synthesis"
+    OPPORTUNITY_REASONING = "opportunity_reasoning"
+    LANGUAGE_DETECTION = "language_detection"
+    VISUAL_REVIEW = "visual_review"
+
+
+class AiProfile(StrEnum):
+    """A model assignment the operator configures; each task runs on one profile."""
+
+    FAST = "fast"
+    BALANCED = "balanced"
+    QUALITY = "quality"
+
+
+class AiDevice(StrEnum):
+    """Where the runtime placed the model while it answered, as the runtime reported it."""
+
+    GPU = "gpu"
+    PARTIAL = "partial"
+    CPU = "cpu"
+    UNKNOWN = "unknown"
+
+
+class AiReviewStatus(StrEnum):
+    UNREVIEWED = "unreviewed"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
 
 
 class LeadStage(StrEnum):
@@ -509,6 +544,10 @@ ENUMS: dict[str, type[StrEnum]] = {
         WebsiteCategory,
         WebsiteAuditStatus,
         InferenceStatus,
+        AiTaskType,
+        AiProfile,
+        AiDevice,
+        AiReviewStatus,
         LeadStage,
         ExportStatus,
         SourceKind,
@@ -1245,45 +1284,116 @@ class WebsiteFinding(Record):
 
 
 class InferenceRun(Record):
-    """One local-model call: task, runtime, model, prompt and schema versions, input hash."""
+    """One local-model task (phase 10): task, runtime, model, digest, parameters, prompt and schema
+    versions, the exact input it saw and its hash, what it cost and how it ended. Rebuilt by
+    migration 0009; `cache_key` makes an identical request reuse a valid result."""
 
     TABLE = "ai_inference_runs"
     ENTITY = EntityType.INFERENCE_RUN
     id: Id
-    task_type: Code
+    task_type: AiTaskType
     task_version: Label
+    project_id: Id | None
+    business_id: Id | None
+    job_id: Id | None
     provider: Code
     model: Label
     model_digest: str | None
+    profile: AiProfile
+    #: What was asked of the runtime (temperature, context, seed...) and any documented reduction.
     parameters_json: JsonObject
     prompt_template_id: Code
     prompt_template_version: Label
     output_schema_version: Label
     input_sha256: Sha256
+    #: `{"facts": {...}, "refs": [AiInputRef...], "warnings": [...]}`: the minimal evidence sent.
+    input_json: JsonObject
+    cache_key: Sha256
     status: InferenceStatus
+    device: AiDevice
+    #: Model calls made: the first answer plus at most one repair.
+    attempts: Annotated[int, Field(ge=0)]
+    prompt_tokens: Annotated[int, Field(ge=0)] | None
+    completion_tokens: Annotated[int, Field(ge=0)] | None
+    duration_ms: Annotated[int, Field(ge=0)] | None
+    error_code: Code | None
+    error_message: Annotated[str, Field(max_length=2000)] | None
+    review_status: AiReviewStatus
     started_at: UtcTimestamp | None
     finished_at: UtcTimestamp | None
-    error_message: str | None
     created_at: UtcTimestamp
     updated_at: UtcTimestamp
 
 
-class InferenceEvidence(Record):
-    TABLE = "ai_inference_evidence"
-    inference_run_id: Id
-    evidence_item_id: Id
-
-
 class InferenceOutput(Record):
-    """Raw model output next to the validated structure. Never a fact by itself."""
+    """One answer of the model, raw, next to the structure it validated to (or why it did not).
+    Immutable, and never a fact by itself."""
 
     TABLE = "ai_inference_outputs"
     id: Id
     inference_run_id: Id
-    business_id: Id | None
+    attempt: Annotated[int, Field(ge=1)]
     raw_output: str
     validated_output_json: JsonObject | None
-    confidence: Confidence | None
+    #: `{"errors": [...]}` when this answer was refused.
+    validation_errors_json: JsonObject | None
+    created_at: UtcTimestamp
+
+
+class AiProfileSetting(Record):
+    """The model a profile runs on and its context length; no model means the profile is off."""
+
+    TABLE = "ai_profile_settings"
+    profile: AiProfile
+    model: Label | None
+    num_ctx: Annotated[int, Field(ge=512, le=32768)]
+    #: Whether a model that does not fit in VRAM may run partly or fully on the CPU.
+    allow_cpu: bool
+    updated_at: UtcTimestamp
+
+
+class AiTaskSetting(Record):
+    TABLE = "ai_task_settings"
+    task_type: AiTaskType
+    enabled: bool
+    profile: AiProfile
+    updated_at: UtcTimestamp
+
+
+class AiResourceLimits(Record):
+    """Free memory below which crawling and browser renders wait while local AI works."""
+
+    TABLE = "ai_resource_limits"
+    scope: Code
+    min_free_ram_mib: Annotated[int, Field(ge=256, le=65536)]
+    min_free_vram_mib: Annotated[int, Field(ge=0, le=65536)]
+    updated_at: UtcTimestamp
+
+
+class AiBenchmarkResult(Record):
+    """One model on one task over the synthetic labelled corpus, measured on this machine."""
+
+    TABLE = "ai_benchmark_results"
+    id: Id
+    provider: Code
+    model: Label
+    model_digest: str | None
+    task_type: AiTaskType
+    task_version: Label
+    corpus_version: Label
+    num_ctx: Annotated[int, Field(ge=512, le=32768)]
+    cases: Annotated[int, Field(ge=1)]
+    valid_outputs: Annotated[int, Field(ge=0)]
+    correct: Annotated[int, Field(ge=0)]
+    failures: Annotated[int, Field(ge=0)]
+    latency_p50_ms: Annotated[int, Field(ge=0)] | None
+    latency_p95_ms: Annotated[int, Field(ge=0)] | None
+    tokens_per_second: Annotated[float, Field(ge=0)] | None
+    peak_vram_used_mib: Annotated[int, Field(ge=0)] | None
+    min_free_ram_mib: Annotated[int, Field(ge=0)] | None
+    device: AiDevice
+    started_at: UtcTimestamp
+    finished_at: UtcTimestamp
     created_at: UtcTimestamp
 
 
@@ -1672,7 +1782,6 @@ RECORDS: tuple[type[Record], ...] = (
     ConversionElement,
     WebsiteFinding,
     InferenceRun,
-    InferenceEvidence,
     InferenceOutput,
     ScoringModel,
     ScoringModelVersion,
@@ -1701,6 +1810,10 @@ RECORDS: tuple[type[Record], ...] = (
     CanonicalValue,
     ContactSuppression,
     MailDomainCheck,
+    AiProfileSetting,
+    AiTaskSetting,
+    AiResourceLimits,
+    AiBenchmarkResult,
 )
 
 # ---- read models, queries and pages (IPC) ------------------------------------------------------
@@ -3542,6 +3655,578 @@ class SuppressionExport(Contract):
     exported_at: UtcTimestamp
 
 
+# ---- local AI (phase 10) ------------------------------------------------------------------------
+# A local model extracts, classifies, summarises and explains; it never decides a fact. Every answer
+# follows a strict schema, cites the input references it rests on and is stored raw next to what it
+# validated to. Everything works without a runtime: tasks then say why they are unavailable.
+
+#: Reference to one piece of the input a model saw: `F3` a page fragment, `W2` a website finding,
+#: `C1` the contactability subscore, `L1` the Latino evidence status, `S1` a screenshot.
+EvidenceRef = Annotated[str, Field(pattern=r"^[A-Z][1-9][0-9]{0,2}$")]
+EvidenceRefs = Annotated[list[EvidenceRef], Field(min_length=1, max_length=8)]
+#: Ollama model names: `name`, `namespace/name`, with an optional `:tag`.
+ModelName = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=200,
+        pattern=r"^[a-zA-Z0-9][a-zA-Z0-9._-]*(/[a-zA-Z0-9._-]+)*(:[a-zA-Z0-9._-]+)?$",
+    ),
+]
+AiText = Annotated[str, Field(min_length=1, max_length=300)]
+
+
+def _between(low: int, high: int) -> AfterValidator:
+    """A list length bound checked on input only: `min_length`/`max_length` would export tuple
+    types to TypeScript (see DiscoveryCriteria.sources)."""
+
+    def check[T](items: list[T]) -> list[T]:
+        if not low <= len(items) <= high:
+            raise ValueError(f"expected {low} to {high} items, got {len(items)}")
+        return items
+
+    return AfterValidator(check)
+
+
+class AiOutcome(StrEnum):
+    """`insufficient_evidence`: the input does not support an answer; the output says nothing."""
+
+    OK = "ok"
+    INSUFFICIENT_EVIDENCE = "insufficient_evidence"
+
+
+class ExtractedClaimKind(StrEnum):
+    """The last four are the Latino declarations a model may propose (latino-evidence.md section 7):
+    the rules verify them against the page before any becomes evidence."""
+
+    SERVICE = "service"
+    SERVICE_AREA = "service_area"
+    LANGUAGE_OFFERED = "language_offered"
+    YEARS_IN_BUSINESS = "years_in_business"
+    LICENSE = "license"
+    HOURS = "hours"
+    TEAM = "team"
+    OTHER = "other"
+    OWNERSHIP_STATEMENT = "ownership_statement"
+    OWNERSHIP_MENTION = "ownership_mention"
+    CERTIFICATION_STATEMENT = "certification_statement"
+    OWNERSHIP_DENIED = "ownership_denied"
+
+
+class BusinessVertical(StrEnum):
+    PLUMBING = "plumbing"
+    HVAC = "hvac"
+    ELECTRICAL = "electrical"
+    ROOFING = "roofing"
+    LANDSCAPING = "landscaping"
+    CLEANING = "cleaning"
+    CONSTRUCTION = "construction"
+    AUTO_SERVICES = "auto_services"
+    RESTAURANT_FOOD = "restaurant_food"
+    BEAUTY_PERSONAL_CARE = "beauty_personal_care"
+    HEALTH_MEDICAL = "health_medical"
+    DENTAL = "dental"
+    LEGAL = "legal"
+    ACCOUNTING_FINANCIAL = "accounting_financial"
+    REAL_ESTATE = "real_estate"
+    RETAIL = "retail"
+    PROFESSIONAL_SERVICES = "professional_services"
+    OTHER = "other"
+
+
+class CommercialSignal(StrEnum):
+    ONLINE_BOOKING = "online_booking"
+    FREE_ESTIMATES = "free_estimates"
+    EMERGENCY_SERVICE = "emergency_service"
+    FINANCING = "financing"
+    BILINGUAL_SERVICE = "bilingual_service"
+    MULTIPLE_LOCATIONS = "multiple_locations"
+    HIRING = "hiring"
+    PROMOTIONS = "promotions"
+    REVIEWS_DISPLAYED = "reviews_displayed"
+    LICENSED_INSURED = "licensed_insured"
+
+
+class OpportunityProblem(StrEnum):
+    WEAK_CONVERSION_PATH = "weak_conversion_path"
+    NO_ONLINE_BOOKING = "no_online_booking"
+    POOR_MOBILE_EXPERIENCE = "poor_mobile_experience"
+    WEAK_LOCAL_SEO = "weak_local_seo"
+    SLOW_OR_BROKEN_SITE = "slow_or_broken_site"
+    MISSING_TRUST_SIGNALS = "missing_trust_signals"
+    MISSING_MEASUREMENT = "missing_measurement"
+    LOW_CONTACTABILITY = "low_contactability"
+    OTHER = "other"
+
+
+class DetectedLanguage(StrEnum):
+    EN = "en"
+    ES = "es"
+    PT = "pt"
+    FR = "fr"
+    MIXED = "mixed"
+    OTHER = "other"
+
+
+class VisualAspect(StrEnum):
+    ABOVE_THE_FOLD_CTA = "above_the_fold_cta"
+    READABILITY = "readability"
+    VISUAL_TRUST = "visual_trust"
+    LAYOUT = "layout"
+    IMAGERY = "imagery"
+    OTHER = "other"
+
+
+class ExtractedClaim(Contract):
+    kind: ExtractedClaimKind
+    statement: AiText
+    #: Copied literally from one of the cited fragments; checked before the answer is accepted.
+    quote: AiText
+    evidence_ids: EvidenceRefs
+    confidence: Confidence
+
+
+class EvidenceExtractionOutput(Contract):
+    outcome: AiOutcome
+    claims: Annotated[list[ExtractedClaim], Field(max_length=25)]
+
+
+class NamedEvidence(Contract):
+    name: Annotated[str, Field(min_length=1, max_length=80)]
+    evidence_ids: EvidenceRefs
+
+
+class SignalEvidence(Contract):
+    signal: CommercialSignal
+    evidence_ids: EvidenceRefs
+
+
+class BusinessClassificationOutput(Contract):
+    outcome: AiOutcome
+    vertical: BusinessVertical | None
+    vertical_evidence_ids: Annotated[list[EvidenceRef], Field(max_length=8)]
+    services: Annotated[list[NamedEvidence], Field(max_length=12)]
+    signals: Annotated[list[SignalEvidence], Field(max_length=10)]
+
+
+class CitedPoint(Contract):
+    text: AiText
+    evidence_ids: EvidenceRefs
+
+
+class FindingSynthesisOutput(Contract):
+    outcome: AiOutcome
+    summary: Annotated[str, Field(min_length=1, max_length=600)] | None
+    points: Annotated[list[CitedPoint], Field(max_length=8)]
+
+
+class OpportunityPoint(Contract):
+    problem: OpportunityProblem
+    explanation: AiText
+    evidence_ids: EvidenceRefs
+
+
+class OpportunityReasoningOutput(Contract):
+    """Structured reasoning only: problems and strengths with their evidence and what is missing.
+    There is no score here, by design (scoring is phase 11)."""
+
+    outcome: AiOutcome
+    problems: Annotated[list[OpportunityPoint], Field(max_length=8)]
+    strengths: Annotated[list[CitedPoint], Field(max_length=5)]
+    missing_information: Annotated[list[AiText], Field(max_length=5)]
+
+
+class FragmentLanguage(Contract):
+    evidence_id: EvidenceRef
+    language: DetectedLanguage
+    #: An English rendering, only for a fragment that is not in English.
+    english: AiText | None
+
+
+class LanguageDetectionOutput(Contract):
+    outcome: AiOutcome
+    fragments: Annotated[list[FragmentLanguage], Field(max_length=40)]
+
+
+class VisualObservation(Contract):
+    aspect: VisualAspect
+    observation: AiText
+    evidence_ids: EvidenceRefs
+
+
+class VisualReviewOutput(Contract):
+    outcome: AiOutcome
+    observations: Annotated[list[VisualObservation], Field(max_length=8)]
+
+
+class AiInputKind(StrEnum):
+    PAGE_FRAGMENT = "page_fragment"
+    WEBSITE_FINDING = "website_finding"
+    CONTACTABILITY = "contactability"
+    LATINO_STATUS = "latino_status"
+    SCREENSHOT = "screenshot"
+
+
+class AiInputRef(Contract):
+    """One piece of evidence a model saw, as it saw it: the page, finding or subscore it came from
+    and the exact text (a screenshot keeps only its path and hash)."""
+
+    ref: EvidenceRef
+    kind: AiInputKind
+    #: raw_records id (page fragment, screenshot), website_findings id, business id (subscores).
+    entity_id: Id | None
+    source: Annotated[str, Field(max_length=2048)] | None
+    text: Annotated[str, Field(max_length=2000)]
+    sha256: Sha256
+
+
+class AiUnavailableReason(StrEnum):
+    TASK_DISABLED = "task_disabled"
+    NO_MODEL_ASSIGNED = "no_model_assigned"
+    RUNTIME_UNAVAILABLE = "runtime_unavailable"
+    MODEL_NOT_INSTALLED = "model_not_installed"
+    NO_VISION_MODEL = "no_vision_model"
+    CIRCUIT_OPEN = "circuit_open"
+
+
+class AiCircuitState(StrEnum):
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
+
+
+class AiActivity(StrEnum):
+    IDLE = "idle"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class AiVramEstimate(Contract):
+    """An estimate from the model's own metadata (weights file, layers, KV heads) for one context
+    length; the runtime's report of a loaded model (`size_vram_bytes`) is what actually happened."""
+
+    num_ctx: Annotated[int, Field(ge=512, le=32768)]
+    weights_mib: NonNegative
+    kv_cache_mib: NonNegative
+    overhead_mib: NonNegative
+    total_mib: NonNegative
+    device: AiDevice
+    #: The context length it would run with after the documented reduction, if any.
+    fitted_ctx: Annotated[int, Field(ge=512, le=32768)] | None
+    note: Annotated[str, Field(max_length=300)] | None
+
+
+class AiModelInfo(Contract):
+    name: ModelName
+    digest: str | None
+    size_bytes: NonNegative | None
+    family: str | None
+    parameter_size: str | None
+    quantization: str | None
+    context_length: NonNegative | None
+    #: What the runtime says the model can do (`completion`, `vision`, `thinking`, `embedding`).
+    capabilities: list[Code]
+    loaded: bool
+    size_vram_bytes: NonNegative | None
+    estimate: AiVramEstimate | None
+
+
+class AiTaskInfo(Contract):
+    task_type: AiTaskType
+    task_version: Label
+    output_schema_version: Label
+    prompt_template_id: Code
+    prompt_template_version: Label
+    enabled: bool
+    profile: AiProfile
+    model: ModelName | None
+    available: bool
+    unavailable_reason: AiUnavailableReason | None
+    requires_vision: bool
+    batchable: bool
+    max_input_chars: NonNegative
+    max_refs: NonNegative
+    timeout_s: NonNegative
+    temperature: Annotated[float, Field(ge=0, le=1)]
+
+
+class AiRecommendation(Contract):
+    """A recommendation, never a setting: the best benchmarked model on this machine for a task
+    (accuracy first, then median latency), among models still installed."""
+
+    task_type: AiTaskType
+    model: ModelName
+    accuracy: Confidence
+    latency_p50_ms: NonNegative | None
+    benchmark_id: Id
+    benchmarked_at: UtcTimestamp
+
+
+class AiResources(Contract):
+    ram_total_mib: NonNegative | None
+    ram_free_mib: NonNegative | None
+    vram_total_mib: NonNegative | None
+    vram_free_mib: NonNegative | None
+    #: `low_ram`, `low_vram`: below the configured limits while local AI works.
+    pressure: list[Code]
+    #: Crawling and browser renders wait while this is true.
+    crawl_waiting: bool
+    sampled_at: UtcTimestamp
+
+
+class AiSchedulerState(Contract):
+    queued: NonNegative
+    running: NonNegative
+    capacity: NonNegative
+    circuit: AiCircuitState
+    consecutive_failures: NonNegative
+    open_until: UtcTimestamp | None
+    last_error: Annotated[str, Field(max_length=500)] | None
+    #: Since the worker started.
+    completed: NonNegative
+    failed: NonNegative
+    cache_hits: NonNegative
+    #: Median of the last 50 model calls.
+    latency_p50_ms: NonNegative | None
+
+
+class AiBenchmarkProgress(Contract):
+    state: AiActivity
+    models: list[ModelName]
+    task_types: list[AiTaskType]
+    done: NonNegative
+    total: NonNegative
+    current: Annotated[str, Field(max_length=300)] | None
+    error: Annotated[str, Field(max_length=500)] | None
+    started_at: UtcTimestamp | None
+    finished_at: UtcTimestamp | None
+
+
+class AiModelChangeAction(StrEnum):
+    PULL = "pull"
+    DELETE = "delete"
+
+
+class AiModelChange(Contract):
+    action: AiModelChangeAction
+    model: ModelName
+    state: AiActivity
+    completed_bytes: NonNegative | None
+    total_bytes: NonNegative | None
+    detail: Annotated[str, Field(max_length=300)] | None
+    started_at: UtcTimestamp
+    finished_at: UtcTimestamp | None
+
+
+class LlmFitModel(Contract):
+    name: Annotated[str, Field(max_length=300)]
+    ollama_name: Annotated[str, Field(max_length=300)] | None
+    fit_level: Annotated[str, Field(max_length=64)] | None
+    run_mode: Annotated[str, Field(max_length=64)] | None
+    runtime: Annotated[str, Field(max_length=64)] | None
+    quantization: Annotated[str, Field(max_length=64)] | None
+    memory_required_gb: Annotated[float, Field(ge=0)] | None
+    estimated_tps: Annotated[float, Field(ge=0)] | None
+    installed: bool | None
+    notes: list[Annotated[str, Field(max_length=300)]]
+
+
+class LlmFitReport(Contract):
+    """What the external LLM Fit tool says, when installed and asked. An outside opinion: nothing
+    here is applied, installed or changed."""
+
+    available: bool
+    version: Annotated[str, Field(max_length=100)] | None
+    models: list[LlmFitModel]
+    error: Annotated[str, Field(max_length=500)] | None
+    checked_at: UtcTimestamp
+
+
+class AiStatusQuery(Contract):
+    #: Runs the external LLM Fit tool (a few seconds) when it is installed.
+    include_llm_fit: bool
+
+
+class AiStatus(Contract):
+    runtime: OllamaStatus
+    gpu: GpuStatus
+    models: list[AiModelInfo]
+    profiles: list[AiProfileSetting]
+    tasks: list[AiTaskInfo]
+    limits: AiResourceLimits
+    resources: AiResources
+    scheduler: AiSchedulerState
+    recommendations: list[AiRecommendation]
+    benchmark: AiBenchmarkProgress
+    #: The latest result of each model on each task.
+    benchmark_results: list[AiBenchmarkResult]
+    model_change: AiModelChange | None
+    llm_fit: LlmFitReport | None
+    #: False with `LEAD_DISCOVERY_OFFLINE=1`: the runtime may not download models then.
+    downloads_allowed: bool
+    checked_at: UtcTimestamp
+
+
+class AiProfileChange(Contract):
+    profile: AiProfile
+    model: ModelName | None
+    num_ctx: Annotated[int, Field(ge=512, le=32768)]
+    allow_cpu: bool
+
+
+class AiTaskChange(Contract):
+    task_type: AiTaskType
+    enabled: bool
+    profile: AiProfile
+
+
+class AiConfigureRequest(Contract):
+    profiles: Annotated[list[AiProfileChange], _between(0, 3)]
+    tasks: Annotated[list[AiTaskChange], _between(0, 6)]
+    min_free_ram_mib: Annotated[int, Field(ge=256, le=65536)]
+    min_free_vram_mib: Annotated[int, Field(ge=0, le=65536)]
+
+
+class AiStartRequest(Contract):
+    """Runs tasks over the canonical businesses of one project (every project when null), or over
+    the businesses listed (at most 200). Identical requests reuse valid stored results."""
+
+    project_id: Id | None
+    business_ids: Annotated[list[Id], _between(0, 200)]
+    task_types: Annotated[list[AiTaskType], _between(1, 6)]
+
+
+class AiStats(Contract):
+    targets: NonNegative
+    done: NonNegative
+    succeeded: NonNegative
+    insufficient_evidence: NonNegative
+    invalid_output: NonNegative
+    failed: NonNegative
+    cancelled: NonNegative
+    cache_hits: NonNegative
+    skipped_no_input: NonNegative
+    skipped_unavailable: NonNegative
+    #: Latino declarations proposed by extractions and what the rules made of them.
+    latino_candidates_accepted: NonNegative
+    latino_candidates_rejected: NonNegative
+
+
+class AiRun(Contract):
+    job_id: Id
+    project_id: Id
+    project_name: Label
+    status: JobStatus
+    stage: Code
+    progress_done: NonNegative
+    progress_total: NonNegative | None
+    task_types: list[AiTaskType]
+    business_count: NonNegative | None
+    stats: AiStats
+    requested_at: UtcTimestamp
+    started_at: UtcTimestamp | None
+    finished_at: UtcTimestamp | None
+    events: list[RunEvent]
+    is_synthetic: bool
+
+
+class AiRunListQuery(Contract):
+    project_id: Id | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class AiRunPage(Contract):
+    items: list[AiRun]
+    next_cursor: Cursor | None
+    total: NonNegative
+
+
+class AiBenchmarkAction(StrEnum):
+    START = "start"
+    CANCEL = "cancel"
+
+
+class AiBenchmarkRequest(Contract):
+    action: AiBenchmarkAction
+    models: Annotated[list[ModelName], _between(0, 4)]
+    task_types: Annotated[list[AiTaskType], _between(0, 6)]
+
+
+class AiInferenceListQuery(Contract):
+    task_type: AiTaskType | None
+    status: InferenceStatus | None
+    business_id: Id | None
+    review_status: AiReviewStatus | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class AiInferenceItem(Contract):
+    id: Id
+    task_type: AiTaskType
+    status: InferenceStatus
+    review_status: AiReviewStatus
+    model: Label
+    device: AiDevice
+    business_id: Id | None
+    business_name: str | None
+    job_id: Id | None
+    duration_ms: NonNegative | None
+    attempts: NonNegative
+    error_code: Code | None
+    created_at: UtcTimestamp
+    is_synthetic: bool
+
+
+class AiInferencePage(Contract):
+    items: list[AiInferenceItem]
+    next_cursor: Cursor | None
+    total: NonNegative
+
+
+class AiInferenceQuery(Contract):
+    inference_run_id: Id
+
+
+class AiInferenceDetail(Contract):
+    """A model's answer as evidence-backed output: the run, every raw answer next to what it
+    validated to, the exact inputs it cited and the people's decisions. Not a fact."""
+
+    run: InferenceRun
+    business_name: str | None
+    outputs: list[InferenceOutput]
+    inputs: list[AiInputRef]
+    #: `suspected_prompt_injection:F3`, `context_reduced`, `ran_on_cpu`...
+    warnings: list[Annotated[str, Field(max_length=200)]]
+    decisions: list[ReviewDecision]
+    is_synthetic: bool
+
+
+class AiReviewDecision(StrEnum):
+    ACCEPT = "accept"
+    REJECT = "reject"
+    #: Withdraws the decision.
+    RESET = "reset"
+
+
+class AiReviewRequest(Contract):
+    inference_run_id: Id
+    decision: AiReviewDecision
+    reason: ReviewReason
+
+
+class AiModelChangeRequest(Contract):
+    """Downloads or deletes a model through the runtime. `confirmation` must repeat the model name:
+    nothing is downloaded or deleted without that explicit step."""
+
+    action: AiModelChangeAction
+    model: ModelName
+    confirmation: ModelName
+
+
 DATA_MODELS: tuple[type[Contract], ...] = (
     *RECORDS,
     Provenance,
@@ -3633,4 +4318,18 @@ DATA_MODELS: tuple[type[Contract], ...] = (
     SuppressionImportResult,
     SuppressionExportRequest,
     SuppressionExport,
+    AiStatusQuery,
+    AiStatus,
+    AiConfigureRequest,
+    AiStartRequest,
+    AiRun,
+    AiRunListQuery,
+    AiRunPage,
+    AiBenchmarkRequest,
+    AiInferenceListQuery,
+    AiInferencePage,
+    AiInferenceQuery,
+    AiInferenceDetail,
+    AiReviewRequest,
+    AiModelChangeRequest,
 )
