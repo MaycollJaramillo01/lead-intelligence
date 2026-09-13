@@ -63,6 +63,11 @@ class MessageType(StrEnum):
     LATINO_RUNS = "latino.runs"
     LATINO_GET = "latino.get"
     LATINO_REVIEW = "latino.review"
+    WEBSITE_START = "website.start"
+    WEBSITE_CONTROL = "website.control"
+    WEBSITE_RUNS = "website.runs"
+    WEBSITE_AUDITS = "website.audits"
+    WEBSITE_AUDIT = "website.audit"
     DEV_SEED_SYNTHETIC = "dev.seed_synthetic"
     # events (worker -> desktop core)
     WORKER_READY = "worker.ready"

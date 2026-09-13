@@ -46,6 +46,8 @@ from research_engine.resolution.engine import ResolutionService
 from research_engine.resolution.store import ResolutionError
 from research_engine.settings import Settings
 from research_engine.storage import check_duckdb, check_sqlite
+from research_engine.website.engine import WebsiteService
+from research_engine.website.store import WebsiteError
 
 logger = logging.getLogger("research_engine.worker")
 
@@ -103,6 +105,7 @@ class Worker:
         )
         self._resolution = ResolutionService(lambda: connect(settings.data_dir))
         self._latino = LatinoService(lambda: connect(settings.data_dir))
+        self._website = WebsiteService(settings.data_dir, lambda: connect(settings.data_dir))
         self._ctx = Context(
             settings,
             datetime.now(UTC),
@@ -111,6 +114,7 @@ class Worker:
             self._crawl,
             self._resolution,
             self._latino,
+            self._website,
         )
 
     async def run(self) -> None:
@@ -124,12 +128,21 @@ class Worker:
             store = await asyncio.to_thread(check, self._settings.data_dir)
             logger.info("store checked", extra={"engine": store.engine, "state": store.state})
         engines: tuple[
-            tuple[str, DiscoveryService | CrawlService | ResolutionService | LatinoService], ...
+            tuple[
+                str,
+                DiscoveryService
+                | CrawlService
+                | ResolutionService
+                | LatinoService
+                | WebsiteService,
+            ],
+            ...,
         ] = (
             ("discovery", self._discovery),
             ("crawl", self._crawl),
             ("resolution", self._resolution),
             ("latino", self._latino),
+            ("website", self._website),
         )
         for name, engine in engines:
             try:
@@ -169,6 +182,7 @@ class Worker:
             await self._crawl.shutdown()
             await self._resolution.shutdown()
             await self._latino.shutdown()
+            await self._website.shutdown()
             await self._drain()
         logger.info("worker stopped")
 
@@ -291,6 +305,7 @@ class Worker:
             CrawlStartError,
             ResolutionError,
             LatinoError,
+            WebsiteError,
         ) as exc:
             raise WorkerError(ErrorCode.INVALID_PAYLOAD, str(exc)) from exc
         return result.model_dump(mode="json")

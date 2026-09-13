@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   listCrawlRuns: vi.fn<typeof desktop.listCrawlRuns>(),
   listResolutionRuns: vi.fn<typeof desktop.listResolutionRuns>(),
   listLatinoRuns: vi.fn<typeof desktop.listLatinoRuns>(),
+  listWebsiteRuns: vi.fn<typeof desktop.listWebsiteRuns>(),
 }));
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
@@ -61,6 +62,7 @@ describe("application shell", () => {
     mocks.listCrawlRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
     mocks.listResolutionRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
     mocks.listLatinoRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
+    mocks.listWebsiteRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
   });
 
   it("shows every module in the sidebar, grouped in sections", () => {

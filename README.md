@@ -7,16 +7,17 @@ commercial need, ICP fit and an explanation of why each one is worth contacting.
 
 Everything runs on this machine. No cloud service or LLM API is required.
 
-> **Status: Phase 07 — Latino evidence.** Discovery (phase 04) finds candidate references, the
-> Research Center (phase 05) crawls their websites, and entity resolution (phase 06) merges records of
-> the same business by explainable, reversible rules. Each business now carries an auditable Latino
-> evidence assessment that keeps **explicitly evidenced ownership** (declarations, certifications,
-> ownership directories) apart from **Spanish-speaking market affinity**, and never uses names,
-> surnames, photos or places. Every result lists the evidence behind it with its source and fragment,
-> its warnings and what it cannot conclude; contradictions, expired and removed evidence stay visible;
-> a person can review within what the evidence supports, with a reason, and the rules keep their
-> versioned history. Nothing is scored yet: qualification arrives in later phases. The phase plan
-> lives in [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
+> **Status: Phase 08 — Website intelligence.** Discovery (phase 04) finds candidate references, the
+> Research Center (phase 05) crawls their websites, entity resolution (phase 06) merges records of the
+> same business, and Latino evidence (phase 07) keeps explicitly evidenced ownership apart from
+> Spanish-speaking market affinity. Every crawled site can now be audited by deterministic, versioned
+> rules over the pages the crawler stored: technical health, search engines, local search, content,
+> conversion, mobile, accessibility, measurement and readiness for answer engines, each finding with
+> its evidence, what to do and why it matters. Subscores never count what could not be evaluated,
+> what was not detected is never reported as absent, partial audits show their coverage, and every
+> audit keeps its snapshot and the difference with the previous one. Nothing is scored as a lead yet:
+> qualification arrives in later phases. The phase plan lives in
+> [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
 
 ## Requirements
 
@@ -69,6 +70,7 @@ docs/                        Architecture, decisions and operations
 - [docs/crawling.md](docs/crawling.md) — web acquisition: policies, SSRF, fallback, limits, metrics
 - [docs/resolution.md](docs/resolution.md) — normalisation, entity resolution, review, canonical values
 - [docs/latino-evidence.md](docs/latino-evidence.md) — ownership vs market affinity: evidence, rules, review, limits
+- [docs/website-intelligence.md](docs/website-intelligence.md) — website audits: every rule and its limits, subscores, history
 - [docs/ui-system.md](docs/ui-system.md) — design tokens, navigation map, shortcuts, components
 - [docs/decisions.md](docs/decisions.md) — technical decisions and their trade-offs
 - [docs/operations.md](docs/operations.md) — configuration, logs, troubleshooting

@@ -2759,6 +2759,557 @@ impl LatinoReviewRequest {
     }
 }
 
+// ---- website intelligence (phase 08) ------------------------------------------------------------
+// Mirrors the website intelligence section of `domain.py`: deterministic audits of crawled sites.
+// The core checks that every subscore counts exactly the findings of its category (so an unknown
+// result can never pass for a failure), that a detail describes the audit asked for with the
+// history and difference of its own site, and that pages and runs stay within what they report.
+
+const MAX_AUDIT_SITES: usize = 200;
+const MAX_LABEL_CHARS: usize = 300;
+
+contract_enum!(WebsiteCategory {
+    Technical,
+    Seo,
+    LocalSeo,
+    Content,
+    Conversion,
+    Mobile,
+    Accessibility,
+    Measurement,
+    AeoGeoReadiness
+});
+contract_enum!(WebsiteAuditStatus {
+    Complete,
+    Partial,
+    Empty
+});
+contract_enum!(WebsiteFindingResult {
+    Pass,
+    Fail,
+    Warning,
+    Unknown,
+    NotApplicable
+});
+contract_enum!(WebsiteFindingSeverity {
+    Critical,
+    High,
+    Medium,
+    Low,
+    Info
+});
+contract_enum!(ConversionElementKind {
+    PrimaryCta,
+    SecondaryCta,
+    ContactForm,
+    BookingWidget,
+    ChatWidget,
+    ClickToCall,
+    MessagingLink,
+    Other
+});
+
+const WEBSITE_CATEGORIES: usize = 9;
+
+fn check_site(site: &str) -> Result<(), String> {
+    if site.trim().is_empty() || site.chars().count() > MAX_LABEL_CHARS {
+        return Err(format!(
+            "a site must have 1 to {MAX_LABEL_CHARS} characters"
+        ));
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteStartRequest {
+    pub project_id: Option<Id>,
+    /// Some of one project's sites, to audit them again; empty audits every crawled site.
+    pub sites: Vec<String>,
+}
+
+impl WebsiteStartRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.sites.len() > MAX_AUDIT_SITES {
+            return Err(format!(
+                "at most {MAX_AUDIT_SITES} sites can be audited at once"
+            ));
+        }
+        if !self.sites.is_empty() && self.project_id.is_none() {
+            return Err("sites can only be chosen within one project".into());
+        }
+        self.sites.iter().try_for_each(|site| check_site(site))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteStats {
+    pub sites: u64,
+    pub audited: u64,
+    pub unchanged: u64,
+    pub partial: u64,
+    pub empty: u64,
+    pub pages_analyzed: u64,
+    pub pages_missing: u64,
+    pub failed: u64,
+    pub warnings: u64,
+    pub unknown: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteRun {
+    pub job_id: Id,
+    pub project_id: Id,
+    pub project_name: String,
+    pub status: JobStatus,
+    pub stage: String,
+    pub progress_done: u64,
+    pub progress_total: Option<u64>,
+    pub extractor_version: String,
+    pub ruleset_version: String,
+    pub stats: WebsiteStats,
+    pub requested_at: UtcTimestamp,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+    pub events: Vec<RunEvent>,
+    pub is_synthetic: bool,
+}
+
+impl WebsiteRun {
+    /// A run cannot report more progress than its total, nor more audits than sites.
+    pub fn validate(&self) -> Result<(), String> {
+        if let Some(total) = self.progress_total
+            && self.progress_done > total
+        {
+            return Err("progress cannot exceed its total".into());
+        }
+        let stats = &self.stats;
+        if stats.audited + stats.unchanged > stats.sites
+            || stats.partial + stats.empty > stats.audited
+        {
+            return Err(format!("run {} reports more than it audited", self.job_id));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteRunListQuery {
+    pub project_id: Option<Id>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl WebsiteRunListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteRunPage {
+    pub items: Vec<WebsiteRun>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl WebsiteRunPage {
+    pub fn validate(&self, query: &WebsiteRunListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        if let Some(project) = &query.project_id
+            && let Some(other) = self.items.iter().find(|run| &run.project_id != project)
+        {
+            return Err(format!("run {} belongs to another project", other.job_id));
+        }
+        self.items.iter().try_for_each(WebsiteRun::validate)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteEvidence {
+    pub url: Option<String>,
+    pub crawl_url_id: Option<Id>,
+    pub field: String,
+    pub snippet: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteSubscore {
+    pub category: WebsiteCategory,
+    /// Null when no rule of the category could be evaluated.
+    pub score: Option<u8>,
+    pub coverage: Confidence,
+    pub confidence: Confidence,
+    pub passed: u64,
+    pub warnings: u64,
+    pub failed: u64,
+    pub unknown: u64,
+    pub not_applicable: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsitePageView {
+    pub crawl_url_id: Id,
+    pub url: String,
+    pub final_url: Option<String>,
+    pub page_kind: PageKind,
+    pub depth: u64,
+    pub status: CrawlUrlStatus,
+    pub http_status: Option<u16>,
+    pub method: Option<AcquisitionMethod>,
+    pub analyzed: bool,
+    pub gap: Option<String>,
+    pub title: Option<String>,
+    pub words: Option<u64>,
+    pub redirects: u64,
+    pub response_ms: Option<u64>,
+    pub render_ms: Option<u64>,
+    pub html_bytes: Option<u64>,
+    pub scripts: Option<u64>,
+    pub images: Option<u64>,
+    pub device_profile: String,
+    pub measured_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteCoverage {
+    pub pages_expected: u64,
+    pub pages_analyzed: u64,
+    pub pages_failed: u64,
+    pub gaps: Vec<String>,
+    pub home_analyzed: bool,
+    pub crawl_status: SourceRunStatus,
+    pub limits_hit: Vec<String>,
+    pub rules: u64,
+    pub rules_evaluated: u64,
+    pub rules_unknown: u64,
+    pub rules_not_applicable: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteAuditSummary {
+    pub formula: String,
+    pub subscores: Vec<WebsiteSubscore>,
+    pub coverage: WebsiteCoverage,
+    pub pages: Vec<WebsitePageView>,
+    pub languages: Vec<String>,
+    pub lab_tool: String,
+    pub notes: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteAuditItem {
+    pub id: Id,
+    pub project_id: Id,
+    pub site: String,
+    pub root_url: String,
+    pub final_url: Option<String>,
+    pub source_run_id: Id,
+    pub previous_audit_id: Option<Id>,
+    pub status: WebsiteAuditStatus,
+    pub ruleset_version: String,
+    pub extractor_version: String,
+    pub pages_expected: u64,
+    pub pages_analyzed: u64,
+    pub coverage: Confidence,
+    pub subscores: Vec<WebsiteSubscore>,
+    pub failed: u64,
+    pub warnings: u64,
+    pub unknown: u64,
+    pub crawled_at: UtcTimestamp,
+    pub created_at: UtcTimestamp,
+}
+
+impl WebsiteAuditItem {
+    /// Pages within what was expected, an empty audit exactly when nothing was analyzed, and one
+    /// subscore per category that has a score only when one of its rules could be evaluated.
+    pub fn validate(&self) -> Result<(), String> {
+        if self.pages_analyzed > self.pages_expected {
+            return Err(format!(
+                "audit {} analyzed more pages than expected",
+                self.id
+            ));
+        }
+        if (self.status == WebsiteAuditStatus::Empty) != (self.pages_analyzed == 0) {
+            return Err(format!(
+                "audit {} is empty only when nothing was analyzed",
+                self.id
+            ));
+        }
+        if self.previous_audit_id.as_ref() == Some(&self.id) {
+            return Err("an audit cannot follow itself".into());
+        }
+        let mut seen: Vec<WebsiteCategory> = Vec::new();
+        for score in &self.subscores {
+            if seen.contains(&score.category) {
+                return Err(format!("the {:?} subscore appears twice", score.category));
+            }
+            seen.push(score.category);
+            if score.score.is_some_and(|value| value > 100) {
+                return Err("a subscore is at most 100".into());
+            }
+            if score.score.is_some() && score.passed + score.warnings + score.failed == 0 {
+                return Err(format!(
+                    "the {:?} subscore has a score without an evaluated rule",
+                    score.category
+                ));
+            }
+        }
+        if seen.len() != WEBSITE_CATEGORIES {
+            return Err("an audit has one subscore per category".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteAuditListQuery {
+    pub project_id: Option<Id>,
+    /// Every audit of this site, newest first; otherwise the latest audit of every site.
+    pub site: Option<String>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl WebsiteAuditListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)?;
+        self.site.as_deref().map_or(Ok(()), check_site)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteAuditPage {
+    pub items: Vec<WebsiteAuditItem>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl WebsiteAuditPage {
+    pub fn validate(&self, query: &WebsiteAuditListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        for (index, item) in self.items.iter().enumerate() {
+            if query
+                .project_id
+                .as_ref()
+                .is_some_and(|project| &item.project_id != project)
+            {
+                return Err(format!("audit {} belongs to another project", item.id));
+            }
+            if query.site.as_ref().is_some_and(|site| &item.site != site) {
+                return Err(format!("audit {} is of another site", item.id));
+            }
+            if query.site.is_none()
+                && self.items[..index]
+                    .iter()
+                    .any(|other| other.project_id == item.project_id && other.site == item.site)
+            {
+                return Err(format!(
+                    "site {} appears twice among the latest audits",
+                    item.site
+                ));
+            }
+            item.validate()?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteAuditQuery {
+    pub audit_id: Id,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteFindingView {
+    pub rule_id: String,
+    pub rule_version: String,
+    pub title: String,
+    pub category: WebsiteCategory,
+    pub result: WebsiteFindingResult,
+    pub severity: WebsiteFindingSeverity,
+    pub observed_value: Option<String>,
+    pub expected_condition: String,
+    pub remediation: Option<String>,
+    pub commercial_relevance: Option<String>,
+    pub confidence: Confidence,
+    pub evidence: Vec<WebsiteEvidence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteTechnologyView {
+    pub key: String,
+    pub name: String,
+    pub category: String,
+    pub version: Option<String>,
+    pub confidence: Confidence,
+    pub evidence: Vec<WebsiteEvidence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteConversionView {
+    pub kind: ConversionElementKind,
+    pub label: Option<String>,
+    pub page_url: String,
+    pub target: Option<String>,
+    pub confidence: Confidence,
+    pub evidence: Vec<WebsiteEvidence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteFindingChange {
+    pub rule_id: String,
+    pub before: Option<WebsiteFindingResult>,
+    pub after: Option<WebsiteFindingResult>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteScoreChange {
+    pub category: WebsiteCategory,
+    pub before: Option<u8>,
+    pub after: Option<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteDiff {
+    pub previous_audit_id: Id,
+    pub previous_created_at: UtcTimestamp,
+    pub ruleset_changed: bool,
+    pub final_url_before: Option<String>,
+    pub final_url_after: Option<String>,
+    pub domain_changed: bool,
+    pub subscores: Vec<WebsiteScoreChange>,
+    pub findings: Vec<WebsiteFindingChange>,
+    pub technologies_added: Vec<String>,
+    pub technologies_removed: Vec<String>,
+    pub pages_added: Vec<String>,
+    pub pages_removed: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WebsiteAuditDetail {
+    pub audit: WebsiteAuditItem,
+    pub summary: WebsiteAuditSummary,
+    pub findings: Vec<WebsiteFindingView>,
+    pub technologies: Vec<WebsiteTechnologyView>,
+    pub conversion: Vec<WebsiteConversionView>,
+    pub diff: Option<WebsiteDiff>,
+    pub history: Vec<WebsiteAuditItem>,
+}
+
+impl WebsiteAuditDetail {
+    /// The audit asked for, whose subscores and counts are exactly its findings, compared with
+    /// the previous audit of its own site.
+    pub fn validate(&self, requested: &Id) -> Result<(), String> {
+        let audit = &self.audit;
+        if &audit.id != requested {
+            return Err(format!(
+                "asked for audit {requested}, received {}",
+                audit.id
+            ));
+        }
+        audit.validate()?;
+        if self.summary.subscores != audit.subscores {
+            return Err("the summary and the audit disagree on the subscores".into());
+        }
+        let coverage = &self.summary.coverage;
+        if coverage.pages_expected != audit.pages_expected
+            || coverage.pages_analyzed != audit.pages_analyzed
+            || coverage.rules != self.findings.len() as u64
+        {
+            return Err("the coverage does not describe this audit".into());
+        }
+        let count = |category: Option<WebsiteCategory>, result: WebsiteFindingResult| {
+            self.findings
+                .iter()
+                .filter(|finding| {
+                    finding.result == result && category.is_none_or(|c| finding.category == c)
+                })
+                .count() as u64
+        };
+        use WebsiteFindingResult::{Fail, NotApplicable, Pass, Unknown, Warning};
+        for score in &audit.subscores {
+            let category = Some(score.category);
+            let counted = (
+                count(category, Pass),
+                count(category, Warning),
+                count(category, Fail),
+                count(category, Unknown),
+                count(category, NotApplicable),
+            );
+            if counted
+                != (
+                    score.passed,
+                    score.warnings,
+                    score.failed,
+                    score.unknown,
+                    score.not_applicable,
+                )
+            {
+                return Err(format!(
+                    "the {:?} subscore does not count its findings",
+                    score.category
+                ));
+            }
+        }
+        if (audit.failed, audit.warnings, audit.unknown)
+            != (
+                count(None, Fail),
+                count(None, Warning),
+                count(None, Unknown),
+            )
+        {
+            return Err("the audit counts do not match its findings".into());
+        }
+        match (&self.diff, &audit.previous_audit_id) {
+            (Some(diff), Some(previous)) if &diff.previous_audit_id == previous => {}
+            (None, None) => {}
+            _ => return Err("a difference is only with the previous audit of the site".into()),
+        }
+        if let Some(other) = self
+            .history
+            .iter()
+            .find(|item| item.project_id != audit.project_id || item.site != audit.site)
+        {
+            return Err(format!(
+                "audit {} in the history is of another site",
+                other.id
+            ));
+        }
+        self.history.iter().try_for_each(WebsiteAuditItem::validate)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

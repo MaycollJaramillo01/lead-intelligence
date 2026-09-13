@@ -7,11 +7,13 @@ import type {
   DiscoveryRunPage,
   LatinoRunPage,
   ResolutionRunPage,
+  WebsiteRunPage,
 } from "@lead/shared-types";
 import crawlFixture from "@lead/shared-types/fixtures/crawl_run_page.json";
 import discoveryFixture from "@lead/shared-types/fixtures/discovery_run_page.json";
 import latinoFixture from "@lead/shared-types/fixtures/latino_run_page.json";
 import resolutionFixture from "@lead/shared-types/fixtures/resolution_run_page.json";
+import websiteFixture from "@lead/shared-types/fixtures/website_run_page.json";
 import { JobsScreen } from "@/features/jobs/JobsScreen";
 import type { desktop } from "@/lib/ipc";
 import { preferenceDefaults, usePreferences } from "@/stores/preferences";
@@ -25,9 +27,12 @@ const mocks = vi.hoisted(() => ({
   controlResolution: vi.fn<typeof desktop.controlResolution>(),
   listLatinoRuns: vi.fn<typeof desktop.listLatinoRuns>(),
   controlLatino: vi.fn<typeof desktop.controlLatino>(),
+  listWebsiteRuns: vi.fn<typeof desktop.listWebsiteRuns>(),
+  controlWebsiteAudit: vi.fn<typeof desktop.controlWebsiteAudit>(),
 }));
 const NO_RESOLUTION: ResolutionRunPage = { items: [], next_cursor: null, total: 0 };
 const NO_EVALUATION: LatinoRunPage = { items: [], next_cursor: null, total: 0 };
+const NO_AUDIT: WebsiteRunPage = { items: [], next_cursor: null, total: 0 };
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
   desktop: mocks,
@@ -52,14 +57,17 @@ describe("JobsScreen", () => {
     mocks.listCrawlRuns.mockResolvedValue(crawls);
     mocks.listResolutionRuns.mockResolvedValue(resolutionFixture as ResolutionRunPage);
     mocks.listLatinoRuns.mockResolvedValue(latinoFixture as LatinoRunPage);
+    mocks.listWebsiteRuns.mockResolvedValue(websiteFixture as WebsiteRunPage);
   });
 
-  it("lists discovery, crawl, resolution and evaluation runs together, from real queries", async () => {
+  it("lists discovery, crawl, resolution, evaluation and audit runs together, from real queries", async () => {
     renderJobs();
     expect(await screen.findByText(/^Crawl · Synthetic discovery campaign/)).toBeTruthy();
     expect(screen.getByText(/^Discovery · Synthetic discovery campaign/)).toBeTruthy();
     expect(screen.getByText(/^Resolution · Synthetic test workspace/)).toBeTruthy();
     expect(screen.getByText(/^Latino evidence · Synthetic test workspace/)).toBeTruthy();
+    expect(screen.getAllByText(/^Website audit · Synthetic test workspace/).length).toBe(2);
+    expect(screen.getAllByText(/audited · .* unchanged/).length).toBe(2);
     expect(screen.getByText("2 pages · 5 requests · 1 rendered in a browser")).toBeTruthy();
     expect(screen.getByText(/pairs compared/)).toBeTruthy();
     expect(screen.getByText(/with ownership evidence · 1 market affinity/)).toBeTruthy();
@@ -79,6 +87,7 @@ describe("JobsScreen", () => {
     mocks.listDiscoveryRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
     mocks.listResolutionRuns.mockResolvedValue(NO_RESOLUTION);
     mocks.listLatinoRuns.mockResolvedValue(NO_EVALUATION);
+    mocks.listWebsiteRuns.mockResolvedValue(NO_AUDIT);
     mocks.controlCrawl.mockResolvedValue({ ...run, status: "cancelled" });
     renderJobs();
     await user.click(await screen.findByRole("button", { name: "Cancel job" }));
@@ -93,6 +102,7 @@ describe("JobsScreen", () => {
     mocks.listCrawlRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
     mocks.listResolutionRuns.mockResolvedValue(NO_RESOLUTION);
     mocks.listLatinoRuns.mockResolvedValue(NO_EVALUATION);
+    mocks.listWebsiteRuns.mockResolvedValue(NO_AUDIT);
     renderJobs();
     expect(await screen.findByText("No jobs have run")).toBeTruthy();
   });

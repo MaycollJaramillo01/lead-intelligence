@@ -19,6 +19,11 @@ its source, and how the stores are kept safe. Delivered in phase 03; later phase
   `0006_latino_evidence.sql` lets a person's review coexist with the automatic calculation, stores
   warnings and limitations with each assessment and the factors of every piece of evidence it cites.
   See [latino-evidence.md](latino-evidence.md).
+- Website intelligence (phase 08) rebuilds the four website tables, never written before, in
+  `0007_website_intelligence.sql` around a crawled site and the crawl it read: each audit stores the
+  snapshot of facts its rules read, its subscores and the difference with the previous audit;
+  findings, technologies and conversion elements carry their evidence references. All of it is
+  history. See [website-intelligence.md](website-intelligence.md).
 - Access: [`repository.py`](../services/research-engine/src/research_engine/repository.py) (SQLite) and
   [`datasets.py`](../services/research-engine/src/research_engine/datasets.py) (DuckDB + Parquet).
   Nothing else runs SQL against the model; the UI never does (D-004).
@@ -70,7 +75,7 @@ flowchart LR
   end
   subgraph analysis[Assessments, AI and scoring]
     evidence_items --> latino_assessments
-    websites --> website_audits --> website_findings
+    source_runs -. crawl read .-> website_audits --> website_findings
     evidence_items -.-> ai_inference_runs --> ai_inference_outputs
     scoring_models --> scoring_model_versions --> score_runs --> business_scores --> component_scores
     business_scores --> score_explanations
@@ -169,7 +174,8 @@ Other enumerations: `evidence_type`, `evidence_strength`, `latino_status`, `cont
 `contact_origin`, `conversion_element_kind`, `assessment_method`, `evidence_role`,
 `explanation_kind`, `event_level`, `export_format`, `crawl_target` (phase 05, when `source_kind`
 also gained `business_website`), `match_outcome`, `match_risk`, `canonical_field` and
-`selection_method` (phase 06, when `entity_type` gained `match_candidate`). Values are listed in
+`selection_method` (phase 06, when `entity_type` gained `match_candidate`), `website_category` and
+`website_audit_status` (phase 08). Values are listed in
 `domain.py`; adding one is a forward migration that inserts a row.
 
 ## 6. Data dictionary
@@ -242,12 +248,17 @@ Phase 07 stores the claim code and its track in `evidence_items.value_json` (`cl
 
 ### Website intelligence
 
-| Table                  | Purpose                            | Columns                                                                                                                                                                                                                                        |
-| ---------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `website_audits`       | One audit of a site with a ruleset | `id`, `website_id` → websites, `ruleset_version`, `started_at`, `finished_at`?, `pages_analyzed`                                                                                                                                               |
-| `website_technologies` | Detected technologies              | `id`, `audit_id` → website_audits, `name`, `category`?, `version`?, `confidence`, `evidence_item_id`?                                                                                                                                          |
-| `conversion_elements`  | CTAs, forms, widgets               | `id`, `audit_id`, `web_page_id`?, `element_kind` (conversion_element_kind), `label`?, `confidence`, `evidence_item_id`?                                                                                                                        |
-| `website_findings`     | Rule outcomes                      | `id`, `audit_id`, `rule_id`, `rule_version`, `category`, `result` (website_finding_result), `severity` (website_finding_severity), `observed_value`?, `expected_condition`?, `remediation`?, `confidence`, `web_page_id`?, `evidence_item_id`? |
+| Table                  | Purpose                                                                                                  | Columns                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `website_audits`       | **Immutable**, permanent audit of a crawled site: rules of one version over a stored snapshot (phase 08) | `id`, `project_id` → projects, `site`, `root_url`, `final_url`?, `source_run_id` → source_runs (the crawl it read), `job_id`? → jobs, `previous_audit_id`? → website_audits, `status` (website_audit_status; `empty` exactly when `pages_analyzed` = 0), `ruleset_version`, `extractor_version`, `pages_expected`, `pages_analyzed`, `coverage` (0–1), `summary_json` (formula, subscores, coverage, pages with lab measurements, notes), `snapshot_json` (every fact the rules read), `diff_json`? (what changed since the previous audit), `crawled_at` |
+| `website_technologies` | **Immutable** technology detected in an audit                                                            | `id`, `audit_id` → website_audits, `technology_key` (unique per audit), `name`, `category`, `version`?, `confidence`, `evidence_json`                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `conversion_elements`  | **Immutable** call to action, form, tool or map found                                                    | `id`, `audit_id`, `element_kind` (conversion_element_kind), `label`?, `page_url`, `target`?, `confidence`, `evidence_json`                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `website_findings`     | **Immutable** outcome of one rule                                                                        | `id`, `audit_id`, `rule_id` (unique per audit), `rule_version`, `title`, `category` (website_category), `result` (website_finding_result), `severity` (website_finding_severity), `observed_value`?, `expected_condition`, `remediation`?, `commercial_relevance`?, `confidence`, `evidence_json`                                                                                                                                                                                                                                                         |
+
+`evidence_json` is `{"refs": [{"url", "crawl_url_id", "field", "snippet"}]}`: the crawled URL, the
+field read and the fragment. Audit rows cite the crawl they read rather than `evidence_items`, which
+belong to a business; at most one audit exists per site, crawl, extractor version and ruleset
+version.
 
 ### Local AI
 

@@ -29,6 +29,7 @@ import {
   lines,
   reasonLabel,
 } from "@/features/research/settings";
+import { WebsiteIntelligenceView } from "@/features/website/WebsiteIntelligenceView";
 import { useT, type Translator } from "@/lib/i18n";
 import { desktop, toIpcError } from "@/lib/ipc";
 import { useLoaded } from "@/lib/useLoaded";
@@ -133,6 +134,7 @@ export function ResearchCenterScreen() {
   const [status, setStatus] = useState<CrawlUrlStatus | "">("");
   const [selected, setSelected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [view, setView] = useState<"crawl" | "website">("crawl");
 
   const fetchCampaigns = useCallback(
     () => desktop.listCampaigns({ project_id: null, limit: 100, cursor: null }),
@@ -235,216 +237,242 @@ export function ResearchCenterScreen() {
   return (
     <PageShell>
       <PageActions>
-        <label className="flex items-center gap-1.5 text-xs">
-          <span className="sr-only">{t("discovery.campaign")}</span>
-          <select
-            value={campaignId}
-            onChange={(event) => setCampaignId(event.target.value)}
-            aria-label={t("discovery.campaign")}
-            className="h-7 rounded-md border bg-transparent px-2 text-xs"
-          >
-            <option value="">{t("research.addressesOnly")}</option>
-            {campaigns.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7"
-          aria-pressed={showLimits}
-          onClick={() => setShowLimits((open) => !open)}
+        <div
+          role="group"
+          aria-label={t("research.view")}
+          className="flex items-center gap-0.5 rounded-md border p-0.5"
         >
-          <SlidersHorizontal aria-hidden="true" />
-          {t("research.limits")}
-        </Button>
-        <Button size="sm" className="h-7" disabled={!canStart} onClick={() => void start()}>
-          <Play aria-hidden="true" />
-          {t("research.start")}
-        </Button>
+          {(["crawl", "website"] as const).map((value) => (
+            <Button
+              key={value}
+              variant={view === value ? "outline" : "ghost"}
+              size="sm"
+              className="h-6"
+              aria-pressed={view === value}
+              onClick={() => setView(value)}
+            >
+              {t(`research.view.${value}`)}
+            </Button>
+          ))}
+        </div>
+        {view === "crawl" && (
+          <>
+            <label className="flex items-center gap-1.5 text-xs">
+              <span className="sr-only">{t("discovery.campaign")}</span>
+              <select
+                value={campaignId}
+                onChange={(event) => setCampaignId(event.target.value)}
+                aria-label={t("discovery.campaign")}
+                className="h-7 rounded-md border bg-transparent px-2 text-xs"
+              >
+                <option value="">{t("research.addressesOnly")}</option>
+                {campaigns.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7"
+              aria-pressed={showLimits}
+              onClick={() => setShowLimits((open) => !open)}
+            >
+              <SlidersHorizontal aria-hidden="true" />
+              {t("research.limits")}
+            </Button>
+            <Button size="sm" className="h-7" disabled={!canStart} onClick={() => void start()}>
+              <Play aria-hidden="true" />
+              {t("research.start")}
+            </Button>
+          </>
+        )}
       </PageActions>
 
-      <ResizablePanelGroup orientation="horizontal" className="min-h-0 flex-1">
-        <ResizablePanel defaultSize={`${100 - inspectorSize}%`} minSize="40%">
-          <div className="flex h-full min-h-0 flex-col">
-            <div className="max-h-[45%] shrink-0 space-y-2 overflow-auto border-b p-2">
-              <div className="space-y-1">
-                <Label htmlFor="crawl-addresses" className="text-xs">
-                  {t("research.addressesLabel")}
-                </Label>
-                <Textarea
-                  id="crawl-addresses"
-                  rows={2}
-                  value={addresses}
-                  placeholder={t("research.addressesPlaceholder")}
-                  onChange={(event) => setAddresses(event.target.value)}
-                  className="font-mono text-xs"
-                />
-                <p className="text-[11px] text-muted-foreground">{t("research.policy")}</p>
-              </div>
+      {view === "website" ? (
+        <WebsiteIntelligenceView />
+      ) : (
+        <ResizablePanelGroup orientation="horizontal" className="min-h-0 flex-1">
+          <ResizablePanel defaultSize={`${100 - inspectorSize}%`} minSize="40%">
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="max-h-[45%] shrink-0 space-y-2 overflow-auto border-b p-2">
+                <div className="space-y-1">
+                  <Label htmlFor="crawl-addresses" className="text-xs">
+                    {t("research.addressesLabel")}
+                  </Label>
+                  <Textarea
+                    id="crawl-addresses"
+                    rows={2}
+                    value={addresses}
+                    placeholder={t("research.addressesPlaceholder")}
+                    onChange={(event) => setAddresses(event.target.value)}
+                    className="font-mono text-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground">{t("research.policy")}</p>
+                </div>
 
-              {showLimits && (
-                <fieldset className="space-y-2 rounded-md border p-2">
-                  <legend className="px-1 text-xs font-medium">{t("research.limits")}</legend>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {NUMERIC_SETTINGS.map(({ key, label, min, max, scale = 1 }) => (
-                      <label key={key} className="flex flex-col gap-0.5 text-[11px]">
-                        {t(label)}
-                        <input
-                          type="number"
-                          min={min}
-                          max={max}
-                          value={settings[key] / scale}
-                          onChange={(event) =>
-                            setNumber(
-                              key,
-                              Math.min(max, Math.max(min, Number(event.target.value) || min)),
-                              scale,
-                            )
-                          }
-                          className="h-7 rounded-md border bg-transparent px-2 font-mono text-xs"
-                        />
-                      </label>
-                    ))}
-                    <label className="flex flex-col gap-0.5 text-[11px]">
-                      {t("research.setting.browser")}
-                      <select
-                        value={settings.browser}
-                        onChange={(event) =>
-                          setSettings((current) => ({
-                            ...current,
-                            browser: event.target.value as CrawlSettings["browser"],
-                          }))
-                        }
-                        className="h-7 rounded-md border bg-transparent px-2 text-xs"
-                      >
-                        {(["auto", "never", "always"] as const).map((mode) => (
-                          <option key={mode} value={mode}>
-                            {t(`browserMode.${mode}`)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {(["include_paths", "exclude_paths"] as const).map((key) => (
-                      <label key={key} className="flex flex-col gap-0.5 text-[11px]">
-                        {t(key === "include_paths" ? "research.include" : "research.exclude")}
-                        <Textarea
-                          rows={2}
-                          value={settings[key].join("\n")}
-                          placeholder="/blog/*"
+                {showLimits && (
+                  <fieldset className="space-y-2 rounded-md border p-2">
+                    <legend className="px-1 text-xs font-medium">{t("research.limits")}</legend>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {NUMERIC_SETTINGS.map(({ key, label, min, max, scale = 1 }) => (
+                        <label key={key} className="flex flex-col gap-0.5 text-[11px]">
+                          {t(label)}
+                          <input
+                            type="number"
+                            min={min}
+                            max={max}
+                            value={settings[key] / scale}
+                            onChange={(event) =>
+                              setNumber(
+                                key,
+                                Math.min(max, Math.max(min, Number(event.target.value) || min)),
+                                scale,
+                              )
+                            }
+                            className="h-7 rounded-md border bg-transparent px-2 font-mono text-xs"
+                          />
+                        </label>
+                      ))}
+                      <label className="flex flex-col gap-0.5 text-[11px]">
+                        {t("research.setting.browser")}
+                        <select
+                          value={settings.browser}
                           onChange={(event) =>
                             setSettings((current) => ({
                               ...current,
-                              [key]: lines(event.target.value).slice(0, 25),
+                              browser: event.target.value as CrawlSettings["browser"],
                             }))
                           }
-                          className="font-mono text-xs"
-                        />
+                          className="h-7 rounded-md border bg-transparent px-2 text-xs"
+                        >
+                          {(["auto", "never", "always"] as const).map((mode) => (
+                            <option key={mode} value={mode}>
+                              {t(`browserMode.${mode}`)}
+                            </option>
+                          ))}
+                        </select>
                       </label>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap gap-4">
-                    {(["include_subdomains", "screenshots"] as const).map((key) => (
-                      <div key={key} className="flex items-center gap-1.5">
-                        <Checkbox
-                          id={`crawl-${key}`}
-                          checked={settings[key]}
-                          onCheckedChange={(checked) =>
-                            setSettings((current) => ({ ...current, [key]: checked === true }))
-                          }
-                        />
-                        <Label htmlFor={`crawl-${key}`} className="text-xs">
-                          {t(`research.setting.${key}`)}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </fieldset>
-              )}
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {(["include_paths", "exclude_paths"] as const).map((key) => (
+                        <label key={key} className="flex flex-col gap-0.5 text-[11px]">
+                          {t(key === "include_paths" ? "research.include" : "research.exclude")}
+                          <Textarea
+                            rows={2}
+                            value={settings[key].join("\n")}
+                            placeholder="/blog/*"
+                            onChange={(event) =>
+                              setSettings((current) => ({
+                                ...current,
+                                [key]: lines(event.target.value).slice(0, 25),
+                              }))
+                            }
+                            className="font-mono text-xs"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                      {(["include_subdomains", "screenshots"] as const).map((key) => (
+                        <div key={key} className="flex items-center gap-1.5">
+                          <Checkbox
+                            id={`crawl-${key}`}
+                            checked={settings[key]}
+                            onCheckedChange={(checked) =>
+                              setSettings((current) => ({ ...current, [key]: checked === true }))
+                            }
+                          />
+                          <Label htmlFor={`crawl-${key}`} className="text-xs">
+                            {t(`research.setting.${key}`)}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </fieldset>
+                )}
 
-              {runs.slice(0, 3).map((run) => (
-                <CrawlRunPanel
-                  key={run.job_id}
-                  run={run}
-                  busy={busy}
-                  selected={run.job_id === jobId}
-                  onSelect={() => {
-                    setChosenRun(run.job_id);
-                    setSelected(null);
-                  }}
-                  onControl={(action) => void control(run.job_id, action)}
+                {runs.slice(0, 3).map((run) => (
+                  <CrawlRunPanel
+                    key={run.job_id}
+                    run={run}
+                    busy={busy}
+                    selected={run.job_id === jobId}
+                    onSelect={() => {
+                      setChosenRun(run.job_id);
+                      setSelected(null);
+                    }}
+                    onControl={(action) => void control(run.job_id, action)}
+                  />
+                ))}
+              </div>
+
+              <div className="flex shrink-0 items-center gap-2 border-b px-2 py-1.5">
+                <label className="flex items-center gap-1.5 text-xs">
+                  {t("research.column.status")}
+                  <select
+                    value={status}
+                    onChange={(event) => setStatus(event.target.value as CrawlUrlStatus | "")}
+                    className="h-7 rounded-md border bg-transparent px-2 text-xs"
+                  >
+                    <option value="">{t("research.allStatuses")}</option>
+                    {STATUSES.map((value) => (
+                      <option key={value} value={value}>
+                        {t(`crawlStatus.${value}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <span className="ml-auto text-[11px] text-muted-foreground">
+                  {t("research.notJudged")}
+                </span>
+              </div>
+
+              <div className="min-h-0 flex-1">
+                <DataTable
+                  tableId="crawl-urls"
+                  columns={columns}
+                  data={urls}
+                  getRowId={(row) => row.id}
+                  filterFields={filterFields}
+                  conditions={conditions}
+                  onConditionsChange={setConditions}
+                  pinnedLeft={["url"]}
+                  activeRowId={selected}
+                  onActivateRow={setSelected}
+                  emptyState={emptyState}
                 />
-              ))}
-            </div>
-
-            <div className="flex shrink-0 items-center gap-2 border-b px-2 py-1.5">
-              <label className="flex items-center gap-1.5 text-xs">
-                {t("research.column.status")}
-                <select
-                  value={status}
-                  onChange={(event) => setStatus(event.target.value as CrawlUrlStatus | "")}
-                  className="h-7 rounded-md border bg-transparent px-2 text-xs"
-                >
-                  <option value="">{t("research.allStatuses")}</option>
-                  {STATUSES.map((value) => (
-                    <option key={value} value={value}>
-                      {t(`crawlStatus.${value}`)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <span className="ml-auto text-[11px] text-muted-foreground">
-                {t("research.notJudged")}
-              </span>
-            </div>
-
-            <div className="min-h-0 flex-1">
-              <DataTable
-                tableId="crawl-urls"
-                columns={columns}
-                data={urls}
-                getRowId={(row) => row.id}
-                filterFields={filterFields}
-                conditions={conditions}
-                onConditionsChange={setConditions}
-                pinnedLeft={["url"]}
-                activeRowId={selected}
-                onActivateRow={setSelected}
-                emptyState={emptyState}
+              </div>
+              <PagedFooter
+                loaded={urls.length}
+                total={urlList.data?.total ?? 0}
+                hasMore={false}
+                loading={false}
+                onLoadMore={() => undefined}
               />
             </div>
-            <PagedFooter
-              loaded={urls.length}
-              total={urlList.data?.total ?? 0}
-              hasMore={false}
-              loading={false}
-              onLoadMore={() => undefined}
-            />
-          </div>
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={`${inspectorSize}%`} minSize="20%" maxSize="60%">
-          <aside
-            aria-label={t("common.inspector")}
-            className="h-full min-h-0 overflow-auto border-l bg-card p-3"
-          >
-            {selected === null ? (
-              <StateBlock
-                variant="empty"
-                title={t("research.inspectorEmptyTitle")}
-                body={t("research.inspectorEmptyBody")}
-              />
-            ) : (
-              <CrawlUrlInspector key={selected} crawlUrlId={selected} />
-            )}
-          </aside>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={`${inspectorSize}%`} minSize="20%" maxSize="60%">
+            <aside
+              aria-label={t("common.inspector")}
+              className="h-full min-h-0 overflow-auto border-l bg-card p-3"
+            >
+              {selected === null ? (
+                <StateBlock
+                  variant="empty"
+                  title={t("research.inspectorEmptyTitle")}
+                  body={t("research.inspectorEmptyBody")}
+                />
+              ) : (
+                <CrawlUrlInspector key={selected} crawlUrlId={selected} />
+              )}
+            </aside>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      )}
     </PageShell>
   );
 }

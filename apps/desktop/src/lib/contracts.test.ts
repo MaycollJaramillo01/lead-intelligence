@@ -10,11 +10,14 @@ import type {
   LatinoDetail,
   LatinoEvidence,
   Provenance,
+  WebsiteAuditDetail,
+  WebsiteFindingView,
 } from "@lead/shared-types";
 import detailFixture from "@lead/shared-types/fixtures/business_detail.json";
 import pageFixture from "@lead/shared-types/fixtures/business_page.json";
 import datasetFixture from "@lead/shared-types/fixtures/dataset_page.json";
 import latinoFixture from "@lead/shared-types/fixtures/latino_detail.json";
+import websiteFixture from "@lead/shared-types/fixtures/website_audit_detail.json";
 
 /*
  * TypeScript half of the contract round-trip. `satisfies Record<keyof T, true>` fails to compile
@@ -67,6 +70,31 @@ const LATINO_EVIDENCE_KEYS = {
   freshness_label: true,
   organizational: true,
 } satisfies Record<keyof LatinoEvidence, true>;
+
+const WEBSITE_DETAIL_KEYS = {
+  audit: true,
+  summary: true,
+  findings: true,
+  technologies: true,
+  conversion: true,
+  diff: true,
+  history: true,
+} satisfies Record<keyof WebsiteAuditDetail, true>;
+
+const WEBSITE_FINDING_KEYS = {
+  rule_id: true,
+  rule_version: true,
+  title: true,
+  category: true,
+  result: true,
+  severity: true,
+  observed_value: true,
+  expected_condition: true,
+  remediation: true,
+  commercial_relevance: true,
+  confidence: true,
+  evidence: true,
+} satisfies Record<keyof WebsiteFindingView, true>;
 
 const BUSINESS_KEYS = {
   id: true,
@@ -169,6 +197,16 @@ describe("data contract fixtures match the generated TypeScript types", () => {
       expect(keys(entry)).toEqual(expected(LATINO_EVIDENCE_KEYS));
       expect(keys(entry.evidence.provenance)).toEqual(expected(PROVENANCE_KEYS));
     }
+  });
+
+  it("website audit detail with evidence per finding", () => {
+    const detail = websiteFixture as WebsiteAuditDetail;
+    expect(keys(detail)).toEqual(expected(WEBSITE_DETAIL_KEYS));
+    expect(detail.summary.subscores).toHaveLength(9);
+    for (const finding of detail.findings) {
+      expect(keys(finding)).toEqual(expected(WEBSITE_FINDING_KEYS));
+    }
+    expect(detail.findings.some((finding) => finding.evidence.length > 0)).toBe(true);
   });
 
   it("timestamps use the single contract format", () => {

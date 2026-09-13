@@ -12,7 +12,7 @@ import { useLoaded } from "@/lib/useLoaded";
 const POLL_MS = 2000;
 const LISTED = 25;
 
-type JobKind = "discovery" | "crawl" | "resolution" | "latino";
+type JobKind = "discovery" | "crawl" | "resolution" | "latino" | "website";
 
 interface Listed {
   kind: JobKind;
@@ -27,6 +27,7 @@ const MODULE: Record<JobKind, { path: string; name: TranslationKey }> = {
   crawl: { path: "/research-center", name: "nav.research_center" },
   resolution: { path: "/businesses", name: "nav.businesses" },
   latino: { path: "/businesses", name: "nav.businesses" },
+  website: { path: "/research-center", name: "nav.research_center" },
 };
 
 /** Every job the worker knows, newest first, whichever engine runs it. Nothing here is simulated. */
@@ -38,11 +39,12 @@ export function JobsScreen() {
   const fetchJobs = useCallback(async (): Promise<Listed[]> => {
     const query = { project_id: null, campaign_id: null, limit: LISTED, cursor: null };
     const byProject = { project_id: null, limit: LISTED, cursor: null };
-    const [discovery, crawls, resolutions, evaluations] = await Promise.all([
+    const [discovery, crawls, resolutions, evaluations, audits] = await Promise.all([
       desktop.listDiscoveryRuns(query),
       desktop.listCrawlRuns(query),
       desktop.listResolutionRuns(byProject),
       desktop.listLatinoRuns(byProject),
+      desktop.listWebsiteRuns(byProject),
     ]);
     const listed: Listed[] = [
       ...discovery.items.map((run) => ({
@@ -115,6 +117,25 @@ export function JobsScreen() {
           errors: run.events.filter((event) => event.level === "error").length,
         },
       })),
+      ...audits.items.map((run) => ({
+        kind: "website" as const,
+        requestedAt: run.requested_at,
+        label: run.project_name,
+        detail: t("jobs.websiteDetail", {
+          sites: run.stats.sites,
+          audited: run.stats.audited,
+          unchanged: run.stats.unchanged,
+          failed: run.stats.failed,
+          unknown: run.stats.unknown,
+        }),
+        summary: {
+          id: run.job_id,
+          state: run.status,
+          done: run.progress_done,
+          total: run.progress_total,
+          errors: run.events.filter((event) => event.level === "error").length,
+        },
+      })),
     ];
     return listed.sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
   }, [t]);
@@ -139,6 +160,7 @@ export function JobsScreen() {
         crawl: desktop.controlCrawl,
         resolution: desktop.controlResolution,
         latino: desktop.controlLatino,
+        website: desktop.controlWebsiteAudit,
       }[job.kind];
       await control(request);
       await reload();

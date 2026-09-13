@@ -56,6 +56,14 @@ import {
   type SourceCatalogQuery,
   type SyntheticSeedResult,
   type UiErrorReport,
+  type WebsiteAuditDetail,
+  type WebsiteAuditListQuery,
+  type WebsiteAuditPage,
+  type WebsiteAuditQuery,
+  type WebsiteRun,
+  type WebsiteRunListQuery,
+  type WebsiteRunPage,
+  type WebsiteStartRequest,
   type WorkerStatus,
 } from "@lead/shared-types";
 
@@ -145,6 +153,16 @@ export const desktop = {
   listLatinoRuns: (query: LatinoRunListQuery) => call<LatinoRunPage>("list_latino_runs", { query }),
   getLatino: (query: LatinoDetailQuery) => call<LatinoDetail>("get_latino", { query }),
   reviewLatino: (request: LatinoReviewRequest) => call<LatinoDetail>("review_latino", { request }),
+  startWebsiteAudit: (request: WebsiteStartRequest) =>
+    call<WebsiteRunPage>("start_website_audit", { request }),
+  controlWebsiteAudit: (request: DiscoveryControlRequest) =>
+    call<WebsiteRun>("control_website_audit", { request }),
+  listWebsiteRuns: (query: WebsiteRunListQuery) =>
+    call<WebsiteRunPage>("list_website_runs", { query }),
+  listWebsiteAudits: (query: WebsiteAuditListQuery) =>
+    call<WebsiteAuditPage>("list_website_audits", { query }),
+  getWebsiteAudit: (query: WebsiteAuditQuery) =>
+    call<WebsiteAuditDetail>("get_website_audit", { query }),
   /** Development builds only; the desktop core refuses it in release builds. */
   seedSyntheticData: () => call<SyntheticSeedResult>("seed_synthetic_data"),
   onWorkerStatus: async (handler: (status: WorkerStatus) => void): Promise<UnlistenFn> => {

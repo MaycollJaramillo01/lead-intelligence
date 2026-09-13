@@ -21,7 +21,9 @@ use crate::data::{
     LatinoReviewRequest, LatinoRun, LatinoRunListQuery, LatinoRunPage, LatinoStartRequest,
     MatchActionRequest, MatchDetail, MatchDetailQuery, MatchListQuery, MatchPage, ResolutionRun,
     ResolutionRunListQuery, ResolutionRunPage, ResolutionStartRequest, SourceCatalog,
-    SourceCatalogQuery, SyntheticSeedResult,
+    SourceCatalogQuery, SyntheticSeedResult, WebsiteAuditDetail, WebsiteAuditListQuery,
+    WebsiteAuditPage, WebsiteAuditQuery, WebsiteRun, WebsiteRunListQuery, WebsiteRunPage,
+    WebsiteStartRequest,
 };
 use crate::error::AppError;
 use crate::protocol::{
@@ -35,7 +37,7 @@ use crate::worker::{
     DISCOVERY_TIMEOUT, IMPORT_TIMEOUT, LATINO_CONTROL, LATINO_GET, LATINO_REVIEW, LATINO_RUNS,
     LATINO_START, MATCHES_ACT, MATCHES_GET, MATCHES_LIST, RESOLUTION_CONTROL, RESOLUTION_RUNS,
     RESOLUTION_START, RESOLUTION_TIMEOUT, SEED_TIMEOUT, SOURCES_LIST, SOURCES_PREVIEW_IMPORT,
-    WorkerSupervisor,
+    WEBSITE_AUDIT, WEBSITE_AUDITS, WEBSITE_CONTROL, WEBSITE_RUNS, WEBSITE_START, WorkerSupervisor,
 };
 
 pub struct AppState {
@@ -741,6 +743,107 @@ pub async fn review_latino(
         Ok(detail)
     }
     .instrument(ipc_span("review_latino"))
+    .await
+}
+
+// ---- website intelligence (phase 08) ------------------------------------------------------------
+
+/// Audits the crawled sites of one project (or of every project with a finished crawl). The runs
+/// continue inside the worker after this returns.
+#[tauri::command]
+pub async fn start_website_audit(
+    state: State<'_, AppState>,
+    request: WebsiteStartRequest,
+) -> Result<WebsiteRunPage, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let page: WebsiteRunPage = state
+            .supervisor
+            .request_with(WEBSITE_START, &request, DISCOVERY_TIMEOUT)
+            .await?;
+        page.items
+            .iter()
+            .try_for_each(WebsiteRun::validate)
+            .map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("start_website_audit"))
+    .await
+}
+
+/// Pauses, resumes or cancels an audit run; it stops between sites and stays resumable.
+#[tauri::command]
+pub async fn control_website_audit(
+    state: State<'_, AppState>,
+    request: DiscoveryControlRequest,
+) -> Result<WebsiteRun, AppError> {
+    async {
+        let run: WebsiteRun = state
+            .supervisor
+            .request_with(WEBSITE_CONTROL, &request, DISCOVERY_TIMEOUT)
+            .await?;
+        run.validate().map_err(AppError::Protocol)?;
+        Ok(run)
+    }
+    .instrument(ipc_span("control_website_audit"))
+    .await
+}
+
+#[tauri::command]
+pub async fn list_website_runs(
+    state: State<'_, AppState>,
+    query: WebsiteRunListQuery,
+) -> Result<WebsiteRunPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: WebsiteRunPage = state
+            .supervisor
+            .request_with(WEBSITE_RUNS, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_website_runs"))
+    .await
+}
+
+/// The latest audit of every crawled site, or the history of one site.
+#[tauri::command]
+pub async fn list_website_audits(
+    state: State<'_, AppState>,
+    query: WebsiteAuditListQuery,
+) -> Result<WebsiteAuditPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: WebsiteAuditPage = state
+            .supervisor
+            .request_with(WEBSITE_AUDITS, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_website_audits"))
+    .await
+}
+
+/// One audit: findings with their evidence, subscores, coverage, pages, technologies, conversion
+/// elements and what changed since the previous audit of the site.
+#[tauri::command]
+pub async fn get_website_audit(
+    state: State<'_, AppState>,
+    query: WebsiteAuditQuery,
+) -> Result<WebsiteAuditDetail, AppError> {
+    async {
+        let detail: WebsiteAuditDetail = state
+            .supervisor
+            .request_with(WEBSITE_AUDIT, &query, DATA_TIMEOUT)
+            .await?;
+        detail
+            .validate(&query.audit_id)
+            .map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("get_website_audit"))
     .await
 }
 

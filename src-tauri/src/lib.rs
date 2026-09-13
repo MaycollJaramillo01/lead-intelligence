@@ -60,6 +60,11 @@ pub fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Build
         commands::list_latino_runs,
         commands::get_latino,
         commands::review_latino,
+        commands::start_website_audit,
+        commands::control_website_audit,
+        commands::list_website_runs,
+        commands::list_website_audits,
+        commands::get_website_audit,
         commands::seed_synthetic_data
     ])
 }

@@ -417,6 +417,30 @@ export type ServiceAreaKind = "city" | "county" | "state" | "postal_code" | "met
  */
 export type SourceHealth = "ready" | "needs_configuration" | "disabled" | "unavailable";
 /**
+ * complete: every page the crawl acquired was analyzed; partial: some were not (the coverage
+ * says which and why); empty: no page could be analyzed.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteAuditStatus".
+ */
+export type WebsiteAuditStatus = "complete" | "partial" | "empty";
+/**
+ * What a website rule speaks to; each category has its own subscore.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteCategory".
+ */
+export type WebsiteCategory =
+  | "technical"
+  | "seo"
+  | "local_seo"
+  | "content"
+  | "conversion"
+  | "mobile"
+  | "accessibility"
+  | "measurement"
+  | "aeo_geo_readiness";
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "WebsiteFindingResult".
  */
@@ -1312,11 +1336,14 @@ export interface ContactValidation {
 export interface ConversionElement {
   id: string;
   audit_id: string;
-  web_page_id: string | null;
   element_kind: ConversionElementKind;
   label: string | null;
+  page_url: string;
+  target: string | null;
   confidence: number;
-  evidence_item_id: string | null;
+  evidence_json: {
+    [k: string]: JsonValue | undefined;
+  };
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -2929,17 +2956,277 @@ export interface WebPage {
   created_at: string;
 }
 /**
+ * One audit of a crawled site: rules of one version over a snapshot of what one crawl acquired.
+ * History: a newer crawl or ruleset makes a new audit that points at the previous one.
+ *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "WebsiteAudit".
  */
 export interface WebsiteAudit {
   id: string;
-  website_id: string;
+  project_id: string;
+  site: string;
+  root_url: string;
+  final_url: string | null;
+  source_run_id: string;
+  job_id: string | null;
+  previous_audit_id: string | null;
+  status: WebsiteAuditStatus;
   ruleset_version: string;
-  started_at: string;
-  finished_at: string | null;
+  extractor_version: string;
+  pages_expected: number;
   pages_analyzed: number;
+  coverage: number;
+  summary_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  snapshot_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  diff_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  crawled_at: string;
   created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteAuditDetail".
+ */
+export interface WebsiteAuditDetail {
+  audit: WebsiteAuditItem;
+  summary: WebsiteAuditSummary;
+  findings: WebsiteFindingView[];
+  technologies: WebsiteTechnologyView[];
+  conversion: WebsiteConversionView[];
+  diff: WebsiteDiff | null;
+  history: WebsiteAuditItem[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteAuditItem".
+ */
+export interface WebsiteAuditItem {
+  id: string;
+  project_id: string;
+  site: string;
+  root_url: string;
+  final_url: string | null;
+  source_run_id: string;
+  previous_audit_id: string | null;
+  status: WebsiteAuditStatus;
+  ruleset_version: string;
+  extractor_version: string;
+  pages_expected: number;
+  pages_analyzed: number;
+  coverage: number;
+  subscores: WebsiteSubscore[];
+  failed: number;
+  warnings: number;
+  unknown: number;
+  crawled_at: string;
+  created_at: string;
+}
+/**
+ * `score` is null when no rule of the category could be evaluated.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteSubscore".
+ */
+export interface WebsiteSubscore {
+  category: WebsiteCategory;
+  score: number | null;
+  coverage: number;
+  confidence: number;
+  passed: number;
+  warnings: number;
+  failed: number;
+  unknown: number;
+  not_applicable: number;
+}
+/**
+ * What an audit shows besides its findings; stored with it, so history reads the same.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteAuditSummary".
+ */
+export interface WebsiteAuditSummary {
+  formula: string;
+  subscores: WebsiteSubscore[];
+  coverage: WebsiteCoverage;
+  pages: WebsitePageView[];
+  languages: string[];
+  lab_tool: string;
+  notes: string[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteCoverage".
+ */
+export interface WebsiteCoverage {
+  pages_expected: number;
+  pages_analyzed: number;
+  pages_failed: number;
+  gaps: string[];
+  home_analyzed: boolean;
+  crawl_status: SourceRunStatus;
+  limits_hit: string[];
+  rules: number;
+  rules_evaluated: number;
+  rules_unknown: number;
+  rules_not_applicable: number;
+}
+/**
+ * A page the crawl acquired or tried, whether it could be analyzed (and why not), with the
+ * crawler's lab measurements: one sample, no device or network emulation, never field data.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsitePageView".
+ */
+export interface WebsitePageView {
+  crawl_url_id: string;
+  url: string;
+  final_url: string | null;
+  page_kind: PageKind;
+  depth: number;
+  status: CrawlUrlStatus;
+  http_status: number | null;
+  method: AcquisitionMethod | null;
+  analyzed: boolean;
+  gap: string | null;
+  title: string | null;
+  words: number | null;
+  redirects: number;
+  response_ms: number | null;
+  render_ms: number | null;
+  html_bytes: number | null;
+  scripts: number | null;
+  images: number | null;
+  device_profile: string;
+  measured_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteFindingView".
+ */
+export interface WebsiteFindingView {
+  rule_id: string;
+  rule_version: string;
+  title: string;
+  category: WebsiteCategory;
+  result: WebsiteFindingResult;
+  severity: WebsiteFindingSeverity;
+  observed_value: string | null;
+  expected_condition: string;
+  remediation: string | null;
+  commercial_relevance: string | null;
+  confidence: number;
+  evidence: WebsiteEvidence[];
+}
+/**
+ * Where something was observed: the crawled URL, the field read and the fragment.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteEvidence".
+ */
+export interface WebsiteEvidence {
+  url: string | null;
+  crawl_url_id: string | null;
+  field: string;
+  snippet: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteTechnologyView".
+ */
+export interface WebsiteTechnologyView {
+  key: string;
+  name: string;
+  category: string;
+  version: string | null;
+  confidence: number;
+  evidence: WebsiteEvidence[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteConversionView".
+ */
+export interface WebsiteConversionView {
+  kind: ConversionElementKind;
+  label: string | null;
+  page_url: string;
+  target: string | null;
+  confidence: number;
+  evidence: WebsiteEvidence[];
+}
+/**
+ * What changed since the previous audit of the same site.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteDiff".
+ */
+export interface WebsiteDiff {
+  previous_audit_id: string;
+  previous_created_at: string;
+  ruleset_changed: boolean;
+  final_url_before: string | null;
+  final_url_after: string | null;
+  domain_changed: boolean;
+  subscores: WebsiteScoreChange[];
+  findings: WebsiteFindingChange[];
+  technologies_added: string[];
+  technologies_removed: string[];
+  pages_added: string[];
+  pages_removed: string[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteScoreChange".
+ */
+export interface WebsiteScoreChange {
+  category: WebsiteCategory;
+  before: number | null;
+  after: number | null;
+}
+/**
+ * A rule whose result changed; null when the rule did not exist on that side.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteFindingChange".
+ */
+export interface WebsiteFindingChange {
+  rule_id: string;
+  before: WebsiteFindingResult | null;
+  after: WebsiteFindingResult | null;
+}
+/**
+ * The latest audit of every site of a project (or of every project), or every audit of one
+ * site when `site` is given, newest first.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteAuditListQuery".
+ */
+export interface WebsiteAuditListQuery {
+  project_id: string | null;
+  site: string | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteAuditPage".
+ */
+export interface WebsiteAuditPage {
+  items: WebsiteAuditItem[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteAuditQuery".
+ */
+export interface WebsiteAuditQuery {
+  audit_id: string;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -2950,16 +3237,90 @@ export interface WebsiteFinding {
   audit_id: string;
   rule_id: string;
   rule_version: string;
-  category: string;
+  title: string;
+  category: WebsiteCategory;
   result: WebsiteFindingResult;
   severity: WebsiteFindingSeverity;
   observed_value: string | null;
-  expected_condition: string | null;
+  expected_condition: string;
   remediation: string | null;
+  commercial_relevance: string | null;
   confidence: number;
-  web_page_id: string | null;
-  evidence_item_id: string | null;
+  evidence_json: {
+    [k: string]: JsonValue | undefined;
+  };
   created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteRun".
+ */
+export interface WebsiteRun {
+  job_id: string;
+  project_id: string;
+  project_name: string;
+  status: JobStatus;
+  stage: string;
+  progress_done: number;
+  progress_total: number | null;
+  extractor_version: string;
+  ruleset_version: string;
+  stats: WebsiteStats;
+  requested_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  events: RunEvent[];
+  is_synthetic: boolean;
+}
+/**
+ * Counts of one audit run, read back from its last checkpoint.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteStats".
+ */
+export interface WebsiteStats {
+  sites: number;
+  audited: number;
+  unchanged: number;
+  partial: number;
+  empty: number;
+  pages_analyzed: number;
+  pages_missing: number;
+  failed: number;
+  warnings: number;
+  unknown: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteRunListQuery".
+ */
+export interface WebsiteRunListQuery {
+  project_id: string | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteRunPage".
+ */
+export interface WebsiteRunPage {
+  items: WebsiteRun[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * Audits the crawled sites of one project, or of every live project when `project_id` is null
+ * (one job each). `sites` narrows one project's audit to some of its sites, to retry them.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteStartRequest".
+ */
+export interface WebsiteStartRequest {
+  project_id: string | null;
+  /**
+   * @maxItems 200
+   */
+  sites: string[];
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -2968,9 +3329,12 @@ export interface WebsiteFinding {
 export interface WebsiteTechnology {
   id: string;
   audit_id: string;
+  technology_key: string;
   name: string;
-  category: string | null;
+  category: string;
   version: string | null;
   confidence: number;
-  evidence_item_id: string | null;
+  evidence_json: {
+    [k: string]: JsonValue | undefined;
+  };
 }

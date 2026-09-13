@@ -1,0 +1,1622 @@
+{
+  "audit": {
+    "id": "01900000-0000-7000-8000-000000000853",
+    "project_id": "01900000-0000-7000-8000-000000000001",
+    "site": "synthetic-cleaning-0602.example",
+    "root_url": "https://synthetic-cleaning-0602.example/",
+    "final_url": "https://synthetic-cleaning-0602.example/",
+    "source_run_id": "01900000-0000-7000-8000-000000000841",
+    "previous_audit_id": "01900000-0000-7000-8000-000000000526",
+    "status": "complete",
+    "ruleset_version": "1.0.0",
+    "extractor_version": "1.0.0",
+    "pages_expected": 1,
+    "pages_analyzed": 1,
+    "coverage": 0.959,
+    "subscores": [
+      {
+        "category": "technical",
+        "score": 87,
+        "coverage": 0.852,
+        "confidence": 0.922,
+        "passed": 6,
+        "warnings": 0,
+        "failed": 1,
+        "unknown": 2,
+        "not_applicable": 0
+      },
+      {
+        "category": "seo",
+        "score": 73,
+        "coverage": 0.96,
+        "confidence": 0.927,
+        "passed": 3,
+        "warnings": 2,
+        "failed": 1,
+        "unknown": 1,
+        "not_applicable": 2
+      },
+      {
+        "category": "local_seo",
+        "score": 80,
+        "coverage": 1.0,
+        "confidence": 0.892,
+        "passed": 2,
+        "warnings": 4,
+        "failed": 0,
+        "unknown": 0,
+        "not_applicable": 2
+      },
+      {
+        "category": "content",
+        "score": 30,
+        "coverage": 0.938,
+        "confidence": 0.743,
+        "passed": 0,
+        "warnings": 5,
+        "failed": 2,
+        "unknown": 1,
+        "not_applicable": 0
+      },
+      {
+        "category": "conversion",
+        "score": 50,
+        "coverage": 1.0,
+        "confidence": 0.783,
+        "passed": 1,
+        "warnings": 4,
+        "failed": 2,
+        "unknown": 0,
+        "not_applicable": 2
+      },
+      {
+        "category": "mobile",
+        "score": 100,
+        "coverage": 1.0,
+        "confidence": 0.95,
+        "passed": 2,
+        "warnings": 0,
+        "failed": 0,
+        "unknown": 0,
+        "not_applicable": 0
+      },
+      {
+        "category": "accessibility",
+        "score": 19,
+        "coverage": 1.0,
+        "confidence": 0.944,
+        "passed": 1,
+        "warnings": 1,
+        "failed": 2,
+        "unknown": 0,
+        "not_applicable": 1
+      },
+      {
+        "category": "measurement",
+        "score": 100,
+        "coverage": 1.0,
+        "confidence": 0.95,
+        "passed": 1,
+        "warnings": 0,
+        "failed": 0,
+        "unknown": 2,
+        "not_applicable": 0
+      },
+      {
+        "category": "aeo_geo_readiness",
+        "score": 78,
+        "coverage": 1.0,
+        "confidence": 0.884,
+        "passed": 3,
+        "warnings": 1,
+        "failed": 1,
+        "unknown": 0,
+        "not_applicable": 0
+      }
+    ],
+    "failed": 9,
+    "warnings": 17,
+    "unknown": 6,
+    "crawled_at": "2026-01-01T00:00:00.000Z",
+    "created_at": "2026-01-01T00:00:00.000Z"
+  },
+  "summary": {
+    "formula": "score = round(100 * sum(weight * credit) / sum(weight)) over the rules of a category that could be evaluated; credit: pass 1, warning 0.5, fail 0; weight by severity: critical 10, high 6, medium 3, low 1, info 0. unknown and not_applicable results are left out, so they never lower a score. coverage = evaluated weight / (evaluated + unknown weight); confidence = mean confidence of the evaluated rules, weighted the same way. There is no overall score.",
+    "subscores": [
+      {
+        "category": "technical",
+        "score": 87,
+        "coverage": 0.852,
+        "confidence": 0.922,
+        "passed": 6,
+        "warnings": 0,
+        "failed": 1,
+        "unknown": 2,
+        "not_applicable": 0
+      },
+      {
+        "category": "seo",
+        "score": 73,
+        "coverage": 0.96,
+        "confidence": 0.927,
+        "passed": 3,
+        "warnings": 2,
+        "failed": 1,
+        "unknown": 1,
+        "not_applicable": 2
+      },
+      {
+        "category": "local_seo",
+        "score": 80,
+        "coverage": 1.0,
+        "confidence": 0.892,
+        "passed": 2,
+        "warnings": 4,
+        "failed": 0,
+        "unknown": 0,
+        "not_applicable": 2
+      },
+      {
+        "category": "content",
+        "score": 30,
+        "coverage": 0.938,
+        "confidence": 0.743,
+        "passed": 0,
+        "warnings": 5,
+        "failed": 2,
+        "unknown": 1,
+        "not_applicable": 0
+      },
+      {
+        "category": "conversion",
+        "score": 50,
+        "coverage": 1.0,
+        "confidence": 0.783,
+        "passed": 1,
+        "warnings": 4,
+        "failed": 2,
+        "unknown": 0,
+        "not_applicable": 2
+      },
+      {
+        "category": "mobile",
+        "score": 100,
+        "coverage": 1.0,
+        "confidence": 0.95,
+        "passed": 2,
+        "warnings": 0,
+        "failed": 0,
+        "unknown": 0,
+        "not_applicable": 0
+      },
+      {
+        "category": "accessibility",
+        "score": 19,
+        "coverage": 1.0,
+        "confidence": 0.944,
+        "passed": 1,
+        "warnings": 1,
+        "failed": 2,
+        "unknown": 0,
+        "not_applicable": 1
+      },
+      {
+        "category": "measurement",
+        "score": 100,
+        "coverage": 1.0,
+        "confidence": 0.95,
+        "passed": 1,
+        "warnings": 0,
+        "failed": 0,
+        "unknown": 2,
+        "not_applicable": 0
+      },
+      {
+        "category": "aeo_geo_readiness",
+        "score": 78,
+        "coverage": 1.0,
+        "confidence": 0.884,
+        "passed": 3,
+        "warnings": 1,
+        "failed": 1,
+        "unknown": 0,
+        "not_applicable": 0
+      }
+    ],
+    "coverage": {
+      "pages_expected": 1,
+      "pages_analyzed": 1,
+      "pages_failed": 0,
+      "gaps": [],
+      "home_analyzed": true,
+      "crawl_status": "succeeded",
+      "limits_hit": [],
+      "rules": 58,
+      "rules_evaluated": 45,
+      "rules_unknown": 6,
+      "rules_not_applicable": 7
+    },
+    "pages": [
+      {
+        "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+        "url": "https://synthetic-cleaning-0602.example/",
+        "final_url": "https://synthetic-cleaning-0602.example/",
+        "page_kind": "home",
+        "depth": 0,
+        "status": "fetched",
+        "http_status": 200,
+        "method": "http_fetch",
+        "analyzed": true,
+        "gap": null,
+        "title": "Home",
+        "words": 14,
+        "redirects": 0,
+        "response_ms": 40,
+        "render_ms": null,
+        "html_bytes": 560,
+        "scripts": 2,
+        "images": 2,
+        "device_profile": "crawler_http",
+        "measured_at": "2026-01-01T00:00:00.000Z"
+      }
+    ],
+    "languages": [],
+    "lab_tool": "crawler 1.0.0: one request per page, no device or network emulation",
+    "notes": [
+      "core_web_vitals_unavailable",
+      "field_data_unavailable",
+      "security_headers_not_recorded"
+    ]
+  },
+  "findings": [
+    {
+      "rule_id": "accessibility.image_alt",
+      "rule_version": "1.0.0",
+      "title": "Text alternatives for images",
+      "category": "accessibility",
+      "result": "fail",
+      "severity": "medium",
+      "observed_value": "2 of 2 images have no alt attribute",
+      "expected_condition": "every image has an alt attribute (up to 10% missing is a warning)",
+      "remediation": "Describe meaningful images in alt text; give decorative ones alt=\"\".",
+      "commercial_relevance": "Blind visitors and search engines cannot see images without alt text.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "img.alt",
+          "snippet": "2 of 2 without alt"
+        }
+      ]
+    },
+    {
+      "rule_id": "accessibility.lang",
+      "rule_version": "1.0.0",
+      "title": "Page language declared",
+      "category": "accessibility",
+      "result": "fail",
+      "severity": "medium",
+      "observed_value": "the html element declares no language",
+      "expected_condition": "the html element of the home page declares its language",
+      "remediation": "Add lang=\"en\" or lang=\"es\" to the html element.",
+      "commercial_relevance": "Screen readers and translators need the language to read the page correctly.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "html.lang",
+          "snippet": null
+        }
+      ]
+    },
+    {
+      "rule_id": "aeo_geo.faq",
+      "rule_version": "1.0.0",
+      "title": "Questions and answers",
+      "category": "aeo_geo_readiness",
+      "result": "fail",
+      "severity": "medium",
+      "observed_value": "no questions and answers on the analyzed pages",
+      "expected_condition": "an FAQ page, FAQPage data or at least three question headings",
+      "remediation": "Answer the questions customers ask, in text, on an FAQ or on the service pages.",
+      "commercial_relevance": "Question-and-answer content is what answer engines quote.",
+      "confidence": 0.75,
+      "evidence": []
+    },
+    {
+      "rule_id": "content.contact_page",
+      "rule_version": "1.0.0",
+      "title": "Contact page",
+      "category": "content",
+      "result": "fail",
+      "severity": "medium",
+      "observed_value": "no contact page among the analyzed pages or their links",
+      "expected_condition": "a contact page is among the analyzed pages or linked from them",
+      "remediation": "Add a contact page with phone, email, a form and the address or area.",
+      "commercial_relevance": "It is where visitors who are ready to buy go first.",
+      "confidence": 0.7,
+      "evidence": []
+    },
+    {
+      "rule_id": "content.home_content",
+      "rule_version": "1.0.0",
+      "title": "Substantial home page content",
+      "category": "content",
+      "result": "fail",
+      "severity": "medium",
+      "observed_value": "14 words of main content",
+      "expected_condition": "at least 250 words of main content on the home page (80 is a warning)",
+      "remediation": "Explain the services, the area, the credentials and the next step in text.",
+      "commercial_relevance": "Thin pages give visitors, search engines and assistants little to go on.",
+      "confidence": 0.85,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "main_text",
+          "snippet": "14 words of main content"
+        }
+      ]
+    },
+    {
+      "rule_id": "conversion.lead_form",
+      "rule_version": "1.0.0",
+      "title": "Lead form",
+      "category": "conversion",
+      "result": "fail",
+      "severity": "medium",
+      "observed_value": "no contact, quote or booking form on the analyzed pages",
+      "expected_condition": "a contact, quote or booking form, or a form tool, is available",
+      "remediation": "Add a short contact or quote request form.",
+      "commercial_relevance": "Forms capture leads after hours and from people who prefer not to call.",
+      "confidence": 0.8,
+      "evidence": []
+    },
+    {
+      "rule_id": "conversion.trust_signals",
+      "rule_version": "1.0.0",
+      "title": "Trust signals",
+      "category": "conversion",
+      "result": "fail",
+      "severity": "medium",
+      "observed_value": "no reviews, licence, insurance, guarantee, portfolio or experience stated",
+      "expected_condition": "two or more kinds: reviews, rating, licence, insurance, guarantee, portfolio, experience",
+      "remediation": "Show reviews, licences, insurance, guarantees and real work.",
+      "commercial_relevance": "Trust signals turn a comparison visit into a call.",
+      "confidence": 0.7,
+      "evidence": []
+    },
+    {
+      "rule_id": "seo.meta_description",
+      "rule_version": "1.0.0",
+      "title": "Home page meta description",
+      "category": "seo",
+      "result": "fail",
+      "severity": "medium",
+      "observed_value": "the home page has no meta description",
+      "expected_condition": "a description of 50 to 170 characters",
+      "remediation": "Summarize the offer, the area and the next step in one or two sentences.",
+      "commercial_relevance": "The description is the text under the search result and often decides the click.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "meta.description",
+          "snippet": null
+        }
+      ]
+    },
+    {
+      "rule_id": "technical.mixed_content",
+      "rule_version": "1.0.0",
+      "title": "No mixed content",
+      "category": "technical",
+      "result": "fail",
+      "severity": "medium",
+      "observed_value": "1 http resources on 1 https pages",
+      "expected_condition": "https pages load no resource over http",
+      "remediation": "Load scripts, images, frames and stylesheets over https.",
+      "commercial_relevance": "Browsers block or flag insecure resources: broken images, forms and trust warnings.",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "mixed_content",
+          "snippet": "http://synthetic-cleaning-0602.example/photo.jpg"
+        }
+      ]
+    },
+    {
+      "rule_id": "conversion.primary_cta",
+      "rule_version": "1.0.0",
+      "title": "Main call to action",
+      "category": "conversion",
+      "result": "warning",
+      "severity": "high",
+      "observed_value": "actions only outside the header: (312) 555-0162",
+      "expected_condition": "a call, quote, booking or buy action in the header or as a button on the home page",
+      "remediation": "Put one clear action (call, request a quote, book) at the top of the home page.",
+      "commercial_relevance": "Without a visible next step, interested visitors leave without contacting the business.",
+      "confidence": 0.7,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "cta",
+          "snippet": "(312) 555-0162"
+        }
+      ]
+    },
+    {
+      "rule_id": "seo.title",
+      "rule_version": "1.0.0",
+      "title": "Home page title",
+      "category": "seo",
+      "result": "warning",
+      "severity": "high",
+      "observed_value": "4 characters: Home",
+      "expected_condition": "a title of 10 to 70 characters",
+      "remediation": "Write a title with the business name, its main service and its area.",
+      "commercial_relevance": "The title is the headline of the search result people click.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "title",
+          "snippet": "Home"
+        }
+      ]
+    },
+    {
+      "rule_id": "content.about_page",
+      "rule_version": "1.0.0",
+      "title": "About page",
+      "category": "content",
+      "result": "warning",
+      "severity": "medium",
+      "observed_value": "no about page among the analyzed pages or their links",
+      "expected_condition": "an about page is among the analyzed pages or linked from them",
+      "remediation": "Add an about page with the team, the history and the credentials.",
+      "commercial_relevance": "Visitors check who is behind a business before they trust it.",
+      "confidence": 0.7,
+      "evidence": []
+    },
+    {
+      "rule_id": "content.services_page",
+      "rule_version": "1.0.0",
+      "title": "Services page",
+      "category": "content",
+      "result": "warning",
+      "severity": "medium",
+      "observed_value": "no services page among the analyzed pages or their links",
+      "expected_condition": "a services page is among the analyzed pages or linked from them",
+      "remediation": "Describe every service on its own page or on a services page.",
+      "commercial_relevance": "Service pages match what people search for and explain the offer.",
+      "confidence": 0.7,
+      "evidence": []
+    },
+    {
+      "rule_id": "local_seo.address_or_area",
+      "rule_version": "1.0.0",
+      "title": "Address or service area",
+      "category": "local_seo",
+      "result": "warning",
+      "severity": "medium",
+      "observed_value": "no address or service area stated",
+      "expected_condition": "the site states an address or the area it serves",
+      "remediation": "Show the address, or the cities and areas served when the business travels to customers.",
+      "commercial_relevance": "Local search and customers both need to know where the business works.",
+      "confidence": 0.7,
+      "evidence": []
+    },
+    {
+      "rule_id": "local_seo.schema_properties",
+      "rule_version": "1.0.0",
+      "title": "Complete business data",
+      "category": "local_seo",
+      "result": "warning",
+      "severity": "medium",
+      "observed_value": "missing: address, telephone",
+      "expected_condition": "the LocalBusiness data carries name, address and telephone",
+      "remediation": "Complete the missing LocalBusiness properties.",
+      "commercial_relevance": "Incomplete data is ignored or shown without the details that bring calls.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "json_ld",
+          "snippet": "LocalBusiness"
+        }
+      ]
+    },
+    {
+      "rule_id": "accessibility.heading_order",
+      "rule_version": "1.0.0",
+      "title": "Heading order",
+      "category": "accessibility",
+      "result": "warning",
+      "severity": "low",
+      "observed_value": "1 heading levels skipped",
+      "expected_condition": "no heading level is skipped on the home page",
+      "remediation": "Nest headings in order: H1, then H2, then H3.",
+      "commercial_relevance": "Screen reader users move through a page by its headings.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "headings",
+          "snippet": null
+        }
+      ]
+    },
+    {
+      "rule_id": "aeo_geo.entity_profiles",
+      "rule_version": "1.0.0",
+      "title": "Linked profiles",
+      "category": "aeo_geo_readiness",
+      "result": "warning",
+      "severity": "low",
+      "observed_value": "no links to the business's profiles elsewhere",
+      "expected_condition": "sameAs data or links to the business's profiles elsewhere",
+      "remediation": "Link the business's profiles (Google, Facebook, Yelp) and list them in sameAs.",
+      "commercial_relevance": "Assistants connect a site with the business through its profiles.",
+      "confidence": 0.8,
+      "evidence": []
+    },
+    {
+      "rule_id": "content.favicon",
+      "rule_version": "1.0.0",
+      "title": "Favicon",
+      "category": "content",
+      "result": "warning",
+      "severity": "low",
+      "observed_value": "no icon is declared (a /favicon.ico may still be served)",
+      "expected_condition": "the home page declares an icon",
+      "remediation": "Add a favicon link.",
+      "commercial_relevance": "The icon identifies the business in tabs, bookmarks and some search results.",
+      "confidence": 0.7,
+      "evidence": []
+    },
+    {
+      "rule_id": "content.open_graph",
+      "rule_version": "1.0.0",
+      "title": "Social sharing metadata",
+      "category": "content",
+      "result": "warning",
+      "severity": "low",
+      "observed_value": "missing: og:image, og:title",
+      "expected_condition": "og:title and og:image on the home page",
+      "remediation": "Add Open Graph title, description and image tags.",
+      "commercial_relevance": "Shared links then show a proper preview in social networks and messaging apps.",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "meta.open_graph",
+          "snippet": "none"
+        }
+      ]
+    },
+    {
+      "rule_id": "content.privacy_policy",
+      "rule_version": "1.0.0",
+      "title": "Privacy policy",
+      "category": "content",
+      "result": "warning",
+      "severity": "low",
+      "observed_value": "no privacy policy among the analyzed pages or their links",
+      "expected_condition": "a privacy policy is linked, above all where forms collect personal data",
+      "remediation": "Publish a privacy policy and link it from the footer and the forms.",
+      "commercial_relevance": "Forms without a privacy policy erode trust and may breach privacy law.",
+      "confidence": 0.7,
+      "evidence": []
+    },
+    {
+      "rule_id": "conversion.booking_or_quote",
+      "rule_version": "1.0.0",
+      "title": "Online booking or quote",
+      "category": "conversion",
+      "result": "warning",
+      "severity": "low",
+      "observed_value": "no online booking or quote request",
+      "expected_condition": "a booking tool, or a quote or booking action or form, is offered",
+      "remediation": "Offer online booking or a quote request.",
+      "commercial_relevance": "Booking or asking for a price online captures leads without a call.",
+      "confidence": 0.7,
+      "evidence": []
+    },
+    {
+      "rule_id": "conversion.chat_or_messaging",
+      "rule_version": "1.0.0",
+      "title": "Chat or messaging",
+      "category": "conversion",
+      "result": "warning",
+      "severity": "low",
+      "observed_value": "not detected: no chat widget or messaging link",
+      "expected_condition": "a chat widget or a messaging link (WhatsApp, SMS, Messenger) is detected",
+      "remediation": "Offer a messaging channel, such as a WhatsApp link.",
+      "commercial_relevance": "Many customers prefer writing to calling.",
+      "confidence": 0.6,
+      "evidence": []
+    },
+    {
+      "rule_id": "conversion.contact_in_navigation",
+      "rule_version": "1.0.0",
+      "title": "Contact in the navigation",
+      "category": "conversion",
+      "result": "warning",
+      "severity": "low",
+      "observed_value": "no contact link or call button in the header or navigation",
+      "expected_condition": "the header or navigation links to contact or offers a call button",
+      "remediation": "Add a contact link or a call button to the header.",
+      "commercial_relevance": "Visitors look for contact options at the top of the page.",
+      "confidence": 0.75,
+      "evidence": []
+    },
+    {
+      "rule_id": "local_seo.hours",
+      "rule_version": "1.0.0",
+      "title": "Opening hours",
+      "category": "local_seo",
+      "result": "warning",
+      "severity": "low",
+      "observed_value": "no opening hours stated",
+      "expected_condition": "opening hours are stated on a page or in structured data",
+      "remediation": "Publish opening hours on the site and in structured data.",
+      "commercial_relevance": "People check the hours before they call or visit.",
+      "confidence": 0.7,
+      "evidence": []
+    },
+    {
+      "rule_id": "local_seo.map_or_directions",
+      "rule_version": "1.0.0",
+      "title": "Map or directions",
+      "category": "local_seo",
+      "result": "warning",
+      "severity": "low",
+      "observed_value": "no map or directions",
+      "expected_condition": "a map or directions are offered",
+      "remediation": "Embed a map or link to directions on the contact page.",
+      "commercial_relevance": "Directions turn a visit to the site into a visit to the business.",
+      "confidence": 0.8,
+      "evidence": []
+    },
+    {
+      "rule_id": "seo.canonical",
+      "rule_version": "1.0.0",
+      "title": "Canonical URL",
+      "category": "seo",
+      "result": "warning",
+      "severity": "low",
+      "observed_value": "the home page declares no canonical URL",
+      "expected_condition": "the home page declares a canonical URL on its own site",
+      "remediation": "Add <link rel=\"canonical\"> pointing at the preferred address of each page.",
+      "commercial_relevance": "Without it, duplicate addresses split ranking signals.",
+      "confidence": 0.9,
+      "evidence": []
+    },
+    {
+      "rule_id": "technical.broken_links",
+      "rule_version": "1.0.0",
+      "title": "No broken internal links",
+      "category": "technical",
+      "result": "unknown",
+      "severity": "medium",
+      "observed_value": "the crawl requested none of the linked pages",
+      "expected_condition": "links between pages lead to pages that answer",
+      "remediation": "Update or remove links to missing pages.",
+      "commercial_relevance": "Broken links end visits and waste the crawl budget of search engines.",
+      "confidence": 0.0,
+      "evidence": []
+    },
+    {
+      "rule_id": "content.freshness",
+      "rule_version": "1.0.0",
+      "title": "Signs of maintenance",
+      "category": "content",
+      "result": "unknown",
+      "severity": "low",
+      "observed_value": "no copyright year to judge by",
+      "expected_condition": "the newest copyright year is the crawl's year or the year before",
+      "remediation": "Keep the footer year and the content current.",
+      "commercial_relevance": "An outdated site suggests the business may have closed.",
+      "confidence": 0.0,
+      "evidence": []
+    },
+    {
+      "rule_id": "seo.sitemap",
+      "rule_version": "1.0.0",
+      "title": "XML sitemap",
+      "category": "seo",
+      "result": "unknown",
+      "severity": "low",
+      "observed_value": "the crawl read no sitemap",
+      "expected_condition": "a sitemap that lists URLs can be read",
+      "remediation": "Publish /sitemap.xml and declare it in robots.txt.",
+      "commercial_relevance": "Sitemaps help search engines find every service and location page.",
+      "confidence": 0.0,
+      "evidence": []
+    },
+    {
+      "rule_id": "technical.compression",
+      "rule_version": "1.0.0",
+      "title": "Compressed responses",
+      "category": "technical",
+      "result": "unknown",
+      "severity": "low",
+      "observed_value": "no response headers of the home page to read",
+      "expected_condition": "the home page is served with gzip, Brotli, Zstandard or deflate",
+      "remediation": "Enable compression on the web server or CDN.",
+      "commercial_relevance": "Uncompressed HTML loads slower, especially on mobile networks.",
+      "confidence": 0.0,
+      "evidence": []
+    },
+    {
+      "rule_id": "measurement.advertising",
+      "rule_version": "1.0.0",
+      "title": "Advertising and call tracking",
+      "category": "measurement",
+      "result": "unknown",
+      "severity": "info",
+      "observed_value": "not detected: no advertising or call-tracking tag was seen, which does not show that the business does not advertise",
+      "expected_condition": "advertising pixels or call tracking are detected",
+      "remediation": "If the business advertises, install the conversion tags of each platform.",
+      "commercial_relevance": "Informational: not detecting a pixel does not show that the business does not advertise.",
+      "confidence": 0.0,
+      "evidence": []
+    },
+    {
+      "rule_id": "measurement.tag_manager",
+      "rule_version": "1.0.0",
+      "title": "Tag manager",
+      "category": "measurement",
+      "result": "unknown",
+      "severity": "info",
+      "observed_value": "not detected",
+      "expected_condition": "a tag manager is detected",
+      "remediation": "A tag manager is optional; it makes adding tracking easier.",
+      "commercial_relevance": "Informational: tags loaded inside a tag manager are invisible to this audit.",
+      "confidence": 0.0,
+      "evidence": []
+    },
+    {
+      "rule_id": "seo.indexable",
+      "rule_version": "1.0.0",
+      "title": "Home page can be indexed",
+      "category": "seo",
+      "result": "pass",
+      "severity": "critical",
+      "observed_value": "no noindex directive, and robots.txt allows the home page",
+      "expected_condition": "no noindex directive, and robots.txt allows the home page to search engines",
+      "remediation": "Remove noindex from the home page and allow it in robots.txt.",
+      "commercial_relevance": "A page search engines may not index cannot be found by people looking for the business.",
+      "confidence": 0.9,
+      "evidence": []
+    },
+    {
+      "rule_id": "aeo_geo.content_without_javascript",
+      "rule_version": "1.0.0",
+      "title": "Content without JavaScript",
+      "category": "aeo_geo_readiness",
+      "result": "pass",
+      "severity": "high",
+      "observed_value": "1 pages show their content without JavaScript",
+      "expected_condition": "pages show their content in the HTML, without running JavaScript",
+      "remediation": "Render the main content on the server, or pre-render the pages.",
+      "commercial_relevance": "Many search and AI assistant crawlers do not run JavaScript and see an empty page.",
+      "confidence": 0.9,
+      "evidence": []
+    },
+    {
+      "rule_id": "conversion.click_to_call",
+      "rule_version": "1.0.0",
+      "title": "Tap to call",
+      "category": "conversion",
+      "result": "pass",
+      "severity": "high",
+      "observed_value": "tel: +13125550162",
+      "expected_condition": "phone numbers are tel: links",
+      "remediation": "Wrap every phone number in a tel: link.",
+      "commercial_relevance": "Most local visits happen on phones: one tap turns a visit into a call.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "tel_link",
+          "snippet": "+13125550162"
+        }
+      ]
+    },
+    {
+      "rule_id": "local_seo.local_business_schema",
+      "rule_version": "1.0.0",
+      "title": "LocalBusiness structured data",
+      "category": "local_seo",
+      "result": "pass",
+      "severity": "high",
+      "observed_value": "LocalBusiness",
+      "expected_condition": "valid JSON-LD with a LocalBusiness type or subtype",
+      "remediation": "Add LocalBusiness JSON-LD (or a more specific type) with name, address, phone and hours.",
+      "commercial_relevance": "Structured data feeds local results, maps and assistants with the business facts.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "json_ld",
+          "snippet": "LocalBusiness"
+        }
+      ]
+    },
+    {
+      "rule_id": "local_seo.phone_visible",
+      "rule_version": "1.0.0",
+      "title": "Phone number shown",
+      "category": "local_seo",
+      "result": "pass",
+      "severity": "high",
+      "observed_value": "a phone number on 1 of 1 pages",
+      "expected_condition": "a phone number appears on the site",
+      "remediation": "Show the business phone in the header or footer of every page.",
+      "commercial_relevance": "Local customers call: a phone they cannot find is a lost lead.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "phone",
+          "snippet": "3125550162"
+        }
+      ]
+    },
+    {
+      "rule_id": "mobile.viewport",
+      "rule_version": "1.0.0",
+      "title": "Mobile viewport",
+      "category": "mobile",
+      "result": "pass",
+      "severity": "high",
+      "observed_value": "width=device-width, initial-scale=1",
+      "expected_condition": "a viewport meta tag with width=device-width",
+      "remediation": "Add <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">.",
+      "commercial_relevance": "Without it phones show a shrunken desktop page.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "meta.viewport",
+          "snippet": "width=device-width, initial-scale=1"
+        }
+      ]
+    },
+    {
+      "rule_id": "technical.https",
+      "rule_version": "1.0.0",
+      "title": "Served over HTTPS",
+      "category": "technical",
+      "result": "pass",
+      "severity": "high",
+      "observed_value": "https://synthetic-cleaning-0602.example/",
+      "expected_condition": "the home page ends on an https address",
+      "remediation": "Install a TLS certificate and redirect every http address to https.",
+      "commercial_relevance": "Browsers label http pages 'Not secure', which turns visitors away before they call.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "final_url",
+          "snippet": "https://synthetic-cleaning-0602.example/"
+        }
+      ]
+    },
+    {
+      "rule_id": "technical.page_errors",
+      "rule_version": "1.0.0",
+      "title": "Pages answer",
+      "category": "technical",
+      "result": "pass",
+      "severity": "high",
+      "observed_value": "1 pages answered",
+      "expected_condition": "the crawled pages answer without errors (a failing home page or over 20% fail)",
+      "remediation": "Fix or redirect the pages that return errors, starting with the home page.",
+      "commercial_relevance": "An error page loses the visitor who reached it.",
+      "confidence": 0.95,
+      "evidence": []
+    },
+    {
+      "rule_id": "aeo_geo.ai_crawlers",
+      "rule_version": "1.0.0",
+      "title": "AI crawlers allowed",
+      "category": "aeo_geo_readiness",
+      "result": "pass",
+      "severity": "medium",
+      "observed_value": "robots.txt lets the crawlers of AI assistants read the site",
+      "expected_condition": "robots.txt does not block the crawlers of AI assistants",
+      "remediation": "Allow GPTBot, PerplexityBot, Google-Extended and others to appear in AI answers.",
+      "commercial_relevance": "Blocked crawlers cannot learn about the business; blocking may be a deliberate choice.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/robots.txt",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000843",
+          "field": "robots.txt",
+          "snippet": "User-agent: * Disallow: /admin/ # synthetic test data"
+        }
+      ]
+    },
+    {
+      "rule_id": "aeo_geo.structured_data",
+      "rule_version": "1.0.0",
+      "title": "Valid structured data",
+      "category": "aeo_geo_readiness",
+      "result": "pass",
+      "severity": "medium",
+      "observed_value": "LocalBusiness",
+      "expected_condition": "valid JSON-LD (or microdata) describing the business, its services or its FAQs",
+      "remediation": "Publish valid JSON-LD for the business, its services and FAQs; fix invalid blocks.",
+      "commercial_relevance": "Answer engines and assistants rely on structured facts to cite a business.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "json_ld",
+          "snippet": "LocalBusiness"
+        }
+      ]
+    },
+    {
+      "rule_id": "measurement.analytics",
+      "rule_version": "1.0.0",
+      "title": "Analytics",
+      "category": "measurement",
+      "result": "pass",
+      "severity": "medium",
+      "observed_value": "Google Analytics 4",
+      "expected_condition": "an analytics tag is detected on the analyzed pages",
+      "remediation": "Install analytics (Google Analytics 4 or another) to measure visits and leads.",
+      "commercial_relevance": "Without measurement nobody knows which channels bring customers.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "tech.script",
+          "snippet": "https://www.googletagmanager.com/gtag/js?id=G-TEST0602"
+        }
+      ]
+    },
+    {
+      "rule_id": "mobile.zoom",
+      "rule_version": "1.0.0",
+      "title": "Zoom allowed",
+      "category": "mobile",
+      "result": "pass",
+      "severity": "medium",
+      "observed_value": "people can zoom",
+      "expected_condition": "the viewport does not disable zooming",
+      "remediation": "Remove user-scalable=no and maximum-scale=1 from the viewport.",
+      "commercial_relevance": "People who cannot zoom cannot read small text.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "meta.viewport",
+          "snippet": "width=device-width, initial-scale=1"
+        }
+      ]
+    },
+    {
+      "rule_id": "seo.h1",
+      "rule_version": "1.0.0",
+      "title": "One main heading",
+      "category": "seo",
+      "result": "pass",
+      "severity": "medium",
+      "observed_value": "one H1: Synthetic Cleaning 0602",
+      "expected_condition": "exactly one H1 on the home page",
+      "remediation": "Use one H1 that says what the business does and where.",
+      "commercial_relevance": "The main heading tells visitors and search engines what the page is about.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "h1",
+          "snippet": "Synthetic Cleaning 0602"
+        }
+      ]
+    },
+    {
+      "rule_id": "technical.domain_redirect",
+      "rule_version": "1.0.0",
+      "title": "Stays on its own domain",
+      "category": "technical",
+      "result": "pass",
+      "severity": "medium",
+      "observed_value": "the site stays on synthetic-cleaning-0602.example",
+      "expected_condition": "the home page does not send visitors to another domain",
+      "remediation": "If the business moved, point listings and ads at the new domain; else drop the redirect.",
+      "commercial_relevance": "Listings and ads pointing at an old domain waste visits and confuse search engines.",
+      "confidence": 0.95,
+      "evidence": []
+    },
+    {
+      "rule_id": "technical.redirect_chain",
+      "rule_version": "1.0.0",
+      "title": "Short redirect chain",
+      "category": "technical",
+      "result": "pass",
+      "severity": "medium",
+      "observed_value": "no redirect",
+      "expected_condition": "the home page answers after at most one redirect (two is a warning)",
+      "remediation": "Point links and the http and www variants straight to the final address.",
+      "commercial_relevance": "Every hop delays the first screen, on mobile networks most of all.",
+      "confidence": 0.95,
+      "evidence": []
+    },
+    {
+      "rule_id": "accessibility.link_names",
+      "rule_version": "1.0.0",
+      "title": "Named links",
+      "category": "accessibility",
+      "result": "pass",
+      "severity": "low",
+      "observed_value": "0 links without a name",
+      "expected_condition": "every link has text or an accessible name (up to 3 without is a warning)",
+      "remediation": "Give icon links an aria-label or visible text.",
+      "commercial_relevance": "Links without a name are announced as 'link' and cannot be understood.",
+      "confidence": 0.9,
+      "evidence": []
+    },
+    {
+      "rule_id": "seo.robots_txt",
+      "rule_version": "1.0.0",
+      "title": "robots.txt",
+      "category": "seo",
+      "result": "pass",
+      "severity": "low",
+      "observed_value": "robots.txt was read",
+      "expected_condition": "robots.txt can be read",
+      "remediation": "Serve a robots.txt that allows the public pages and declares the sitemap.",
+      "commercial_relevance": "A robots.txt that errors can stop search engines from crawling the site at all.",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/robots.txt",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000843",
+          "field": "robots.txt",
+          "snippet": "read"
+        }
+      ]
+    },
+    {
+      "rule_id": "technical.html_weight",
+      "rule_version": "1.0.0",
+      "title": "Lean home page HTML",
+      "category": "technical",
+      "result": "pass",
+      "severity": "low",
+      "observed_value": "0 KiB of HTML",
+      "expected_condition": "home page HTML of at most 500 KiB (1.5 MiB is a warning)",
+      "remediation": "Remove inline data, unused markup and embedded assets from the HTML.",
+      "commercial_relevance": "Heavy pages load slowly on phones and cost visitors data.",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "byte_size",
+          "snippet": "560"
+        }
+      ]
+    },
+    {
+      "rule_id": "technical.server_response",
+      "rule_version": "1.0.0",
+      "title": "Server response time (lab)",
+      "category": "technical",
+      "result": "pass",
+      "severity": "low",
+      "observed_value": "median 40 ms over 1 pages (lab: one crawler request each)",
+      "expected_condition": "a median crawler response of at most 800 ms (2 s is a warning)",
+      "remediation": "Use caching, a CDN or a faster host.",
+      "commercial_relevance": "Slow answers raise abandonment; a lab measurement, not what visitors experience.",
+      "confidence": 0.5,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "fetch_ms",
+          "snippet": "slowest: 40 ms"
+        }
+      ]
+    },
+    {
+      "rule_id": "accessibility.form_labels",
+      "rule_version": "1.0.0",
+      "title": "Labelled form fields",
+      "category": "accessibility",
+      "result": "not_applicable",
+      "severity": "medium",
+      "observed_value": "no form fields",
+      "expected_condition": "every form field has a label",
+      "remediation": "Give each field a <label> or an aria-label.",
+      "commercial_relevance": "Unlabelled fields cannot be filled in with a screen reader.",
+      "confidence": 1.0,
+      "evidence": []
+    },
+    {
+      "rule_id": "conversion.form_security",
+      "rule_version": "1.0.0",
+      "title": "Forms submit securely",
+      "category": "conversion",
+      "result": "not_applicable",
+      "severity": "medium",
+      "observed_value": "no form",
+      "expected_condition": "forms are on https pages and submit to https addresses",
+      "remediation": "Serve form pages over https and point form actions at https addresses.",
+      "commercial_relevance": "Browsers warn before sending data insecurely, and visitors abandon the form.",
+      "confidence": 1.0,
+      "evidence": []
+    },
+    {
+      "rule_id": "local_seo.nap_consistency",
+      "rule_version": "1.0.0",
+      "title": "Consistent phone",
+      "category": "local_seo",
+      "result": "not_applicable",
+      "severity": "medium",
+      "observed_value": "no telephone in structured data",
+      "expected_condition": "the telephone in structured data is one the pages show",
+      "remediation": "Use the same phone number in structured data, on the pages and in listings.",
+      "commercial_relevance": "Inconsistent name, address and phone data weakens local rankings and misroutes calls.",
+      "confidence": 1.0,
+      "evidence": []
+    },
+    {
+      "rule_id": "seo.duplicate_metadata",
+      "rule_version": "1.0.0",
+      "title": "Distinct titles and descriptions",
+      "category": "seo",
+      "result": "not_applicable",
+      "severity": "medium",
+      "observed_value": "one page was analyzed",
+      "expected_condition": "every analyzed page has a title, and no two pages share a title or description",
+      "remediation": "Give each page a title and description that say what it offers.",
+      "commercial_relevance": "Duplicated metadata makes pages compete with each other in search results.",
+      "confidence": 1.0,
+      "evidence": []
+    },
+    {
+      "rule_id": "conversion.form_friction",
+      "rule_version": "1.0.0",
+      "title": "Short forms",
+      "category": "conversion",
+      "result": "not_applicable",
+      "severity": "low",
+      "observed_value": "no lead form",
+      "expected_condition": "lead forms ask for at most 7 fields (12 is a warning)",
+      "remediation": "Ask only for what is needed to reply; leave the rest for the follow-up.",
+      "commercial_relevance": "Every extra field lowers the share of visitors who send the form.",
+      "confidence": 1.0,
+      "evidence": []
+    },
+    {
+      "rule_id": "local_seo.locations",
+      "rule_version": "1.0.0",
+      "title": "Locations page",
+      "category": "local_seo",
+      "result": "not_applicable",
+      "severity": "low",
+      "observed_value": "the pages show one location or none",
+      "expected_condition": "a site that shows several addresses has a page for its locations",
+      "remediation": "Give each location its own page, or list every address on a locations page.",
+      "commercial_relevance": "Location pages let each branch rank for its own area.",
+      "confidence": 1.0,
+      "evidence": []
+    },
+    {
+      "rule_id": "seo.hreflang",
+      "rule_version": "1.0.0",
+      "title": "Language versions linked",
+      "category": "seo",
+      "result": "not_applicable",
+      "severity": "low",
+      "observed_value": "the analyzed pages are in one language",
+      "expected_condition": "a site with Spanish and English pages declares hreflang alternates",
+      "remediation": "Add hreflang links between the language versions of each page.",
+      "commercial_relevance": "Search engines can then show Spanish speakers the Spanish page.",
+      "confidence": 1.0,
+      "evidence": []
+    }
+  ],
+  "technologies": [
+    {
+      "key": "google_analytics_4",
+      "name": "Google Analytics 4",
+      "category": "analytics",
+      "version": null,
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "tech.script",
+          "snippet": "https://www.googletagmanager.com/gtag/js?id=G-TEST0602"
+        }
+      ]
+    }
+  ],
+  "conversion": [
+    {
+      "kind": "secondary_cta",
+      "label": "call: (312) 555-0162",
+      "page_url": "https://synthetic-cleaning-0602.example/",
+      "target": null,
+      "confidence": 0.75,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "cta",
+          "snippet": "(312) 555-0162"
+        }
+      ]
+    },
+    {
+      "kind": "click_to_call",
+      "label": "+13125550162",
+      "page_url": "https://synthetic-cleaning-0602.example/",
+      "target": "tel:+13125550162",
+      "confidence": 0.95,
+      "evidence": [
+        {
+          "url": "https://synthetic-cleaning-0602.example/",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "field": "tel_link",
+          "snippet": "+13125550162"
+        }
+      ]
+    }
+  ],
+  "diff": {
+    "previous_audit_id": "01900000-0000-7000-8000-000000000526",
+    "previous_created_at": "2026-01-01T00:00:00.000Z",
+    "ruleset_changed": false,
+    "final_url_before": "https://synthetic-cleaning-0602.example/",
+    "final_url_after": "https://synthetic-cleaning-0602.example/",
+    "domain_changed": false,
+    "subscores": [
+      {
+        "category": "local_seo",
+        "before": 50,
+        "after": 80
+      },
+      {
+        "category": "conversion",
+        "before": 7,
+        "after": 50
+      },
+      {
+        "category": "mobile",
+        "before": 0,
+        "after": 100
+      },
+      {
+        "category": "measurement",
+        "before": 50,
+        "after": 100
+      },
+      {
+        "category": "aeo_geo_readiness",
+        "before": 59,
+        "after": 78
+      }
+    ],
+    "findings": [
+      {
+        "rule_id": "aeo_geo.structured_data",
+        "before": "fail",
+        "after": "pass"
+      },
+      {
+        "rule_id": "conversion.click_to_call",
+        "before": "fail",
+        "after": "pass"
+      },
+      {
+        "rule_id": "conversion.primary_cta",
+        "before": "fail",
+        "after": "warning"
+      },
+      {
+        "rule_id": "local_seo.local_business_schema",
+        "before": "fail",
+        "after": "pass"
+      },
+      {
+        "rule_id": "local_seo.schema_properties",
+        "before": "not_applicable",
+        "after": "warning"
+      },
+      {
+        "rule_id": "measurement.analytics",
+        "before": "warning",
+        "after": "pass"
+      },
+      {
+        "rule_id": "mobile.viewport",
+        "before": "fail",
+        "after": "pass"
+      },
+      {
+        "rule_id": "mobile.zoom",
+        "before": "not_applicable",
+        "after": "pass"
+      }
+    ],
+    "technologies_added": [
+      "google_analytics_4"
+    ],
+    "technologies_removed": [],
+    "pages_added": [],
+    "pages_removed": []
+  },
+  "history": [
+    {
+      "id": "01900000-0000-7000-8000-000000000853",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "site": "synthetic-cleaning-0602.example",
+      "root_url": "https://synthetic-cleaning-0602.example/",
+      "final_url": "https://synthetic-cleaning-0602.example/",
+      "source_run_id": "01900000-0000-7000-8000-000000000841",
+      "previous_audit_id": "01900000-0000-7000-8000-000000000526",
+      "status": "complete",
+      "ruleset_version": "1.0.0",
+      "extractor_version": "1.0.0",
+      "pages_expected": 1,
+      "pages_analyzed": 1,
+      "coverage": 0.959,
+      "subscores": [
+        {
+          "category": "technical",
+          "score": 87,
+          "coverage": 0.852,
+          "confidence": 0.922,
+          "passed": 6,
+          "warnings": 0,
+          "failed": 1,
+          "unknown": 2,
+          "not_applicable": 0
+        },
+        {
+          "category": "seo",
+          "score": 73,
+          "coverage": 0.96,
+          "confidence": 0.927,
+          "passed": 3,
+          "warnings": 2,
+          "failed": 1,
+          "unknown": 1,
+          "not_applicable": 2
+        },
+        {
+          "category": "local_seo",
+          "score": 80,
+          "coverage": 1.0,
+          "confidence": 0.892,
+          "passed": 2,
+          "warnings": 4,
+          "failed": 0,
+          "unknown": 0,
+          "not_applicable": 2
+        },
+        {
+          "category": "content",
+          "score": 30,
+          "coverage": 0.938,
+          "confidence": 0.743,
+          "passed": 0,
+          "warnings": 5,
+          "failed": 2,
+          "unknown": 1,
+          "not_applicable": 0
+        },
+        {
+          "category": "conversion",
+          "score": 50,
+          "coverage": 1.0,
+          "confidence": 0.783,
+          "passed": 1,
+          "warnings": 4,
+          "failed": 2,
+          "unknown": 0,
+          "not_applicable": 2
+        },
+        {
+          "category": "mobile",
+          "score": 100,
+          "coverage": 1.0,
+          "confidence": 0.95,
+          "passed": 2,
+          "warnings": 0,
+          "failed": 0,
+          "unknown": 0,
+          "not_applicable": 0
+        },
+        {
+          "category": "accessibility",
+          "score": 19,
+          "coverage": 1.0,
+          "confidence": 0.944,
+          "passed": 1,
+          "warnings": 1,
+          "failed": 2,
+          "unknown": 0,
+          "not_applicable": 1
+        },
+        {
+          "category": "measurement",
+          "score": 100,
+          "coverage": 1.0,
+          "confidence": 0.95,
+          "passed": 1,
+          "warnings": 0,
+          "failed": 0,
+          "unknown": 2,
+          "not_applicable": 0
+        },
+        {
+          "category": "aeo_geo_readiness",
+          "score": 78,
+          "coverage": 1.0,
+          "confidence": 0.884,
+          "passed": 3,
+          "warnings": 1,
+          "failed": 1,
+          "unknown": 0,
+          "not_applicable": 0
+        }
+      ],
+      "failed": 9,
+      "warnings": 17,
+      "unknown": 6,
+      "crawled_at": "2026-01-01T00:00:00.000Z",
+      "created_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000000526",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "site": "synthetic-cleaning-0602.example",
+      "root_url": "https://synthetic-cleaning-0602.example/",
+      "final_url": "https://synthetic-cleaning-0602.example/",
+      "source_run_id": "01900000-0000-7000-8000-000000000454",
+      "previous_audit_id": null,
+      "status": "complete",
+      "ruleset_version": "1.0.0",
+      "extractor_version": "1.0.0",
+      "pages_expected": 1,
+      "pages_analyzed": 1,
+      "coverage": 0.957,
+      "subscores": [
+        {
+          "category": "technical",
+          "score": 87,
+          "coverage": 0.852,
+          "confidence": 0.922,
+          "passed": 6,
+          "warnings": 0,
+          "failed": 1,
+          "unknown": 2,
+          "not_applicable": 0
+        },
+        {
+          "category": "seo",
+          "score": 73,
+          "coverage": 0.96,
+          "confidence": 0.927,
+          "passed": 3,
+          "warnings": 2,
+          "failed": 1,
+          "unknown": 1,
+          "not_applicable": 2
+        },
+        {
+          "category": "local_seo",
+          "score": 50,
+          "coverage": 1.0,
+          "confidence": 0.882,
+          "passed": 1,
+          "warnings": 3,
+          "failed": 1,
+          "unknown": 0,
+          "not_applicable": 3
+        },
+        {
+          "category": "content",
+          "score": 30,
+          "coverage": 0.938,
+          "confidence": 0.743,
+          "passed": 0,
+          "warnings": 5,
+          "failed": 2,
+          "unknown": 1,
+          "not_applicable": 0
+        },
+        {
+          "category": "conversion",
+          "score": 7,
+          "coverage": 1.0,
+          "confidence": 0.812,
+          "passed": 0,
+          "warnings": 3,
+          "failed": 4,
+          "unknown": 0,
+          "not_applicable": 2
+        },
+        {
+          "category": "mobile",
+          "score": 0,
+          "coverage": 1.0,
+          "confidence": 0.95,
+          "passed": 0,
+          "warnings": 0,
+          "failed": 1,
+          "unknown": 0,
+          "not_applicable": 1
+        },
+        {
+          "category": "accessibility",
+          "score": 19,
+          "coverage": 1.0,
+          "confidence": 0.944,
+          "passed": 1,
+          "warnings": 1,
+          "failed": 2,
+          "unknown": 0,
+          "not_applicable": 1
+        },
+        {
+          "category": "measurement",
+          "score": 50,
+          "coverage": 1.0,
+          "confidence": 0.6,
+          "passed": 0,
+          "warnings": 1,
+          "failed": 0,
+          "unknown": 2,
+          "not_applicable": 0
+        },
+        {
+          "category": "aeo_geo_readiness",
+          "score": 59,
+          "coverage": 1.0,
+          "confidence": 0.884,
+          "passed": 2,
+          "warnings": 1,
+          "failed": 2,
+          "unknown": 0,
+          "not_applicable": 0
+        }
+      ],
+      "failed": 14,
+      "warnings": 16,
+      "unknown": 6,
+      "crawled_at": "2025-12-02T00:00:00.000Z",
+      "created_at": "2026-01-01T00:00:00.000Z"
+    }
+  ]
+}

@@ -388,7 +388,8 @@ def seed_synthetic_workspace(
     # duplicates to review, so the review queue can be exercised end to end in development, and
     # businesses whose evidence reaches every Latino evidence status
     seed_resolution(conn, SyntheticContext(project_id, connector_id, run.id, now))
-    seed_latino(conn, SyntheticContext(project_id, connector_id, run.id, now))
+    seed_latino(conn, SyntheticContext(project_id, connector_id, run.id, now), data_dir)
+    seed_website(conn, SyntheticContext(project_id, connector_id, run.id, now), data_dir)
     snapshot = snapshot_businesses(
         conn,
         data_dir,
@@ -1073,10 +1074,18 @@ def insert_site_pages(
     pages: Mapping[str, str],
     *,
     candidate_id: str | None = None,
+    data_dir: Path | None = None,
+    robots: str | None = None,
 ) -> list[str]:
     """A finished crawl of `site` whose pages (path -> HTML) were fetched at `ctx.now`, the way the
-    crawler stores them (test data). Returns the raw record id of each page, in order."""
-    from research_engine.crawl.engine import CONNECTOR_KEY, CONNECTOR_NAME, CONNECTOR_VERSION
+    crawler stores them (test data). With `data_dir` the bodies are stored as artifacts too, and
+    `robots` adds a robots.txt the crawl read. Returns the raw record id of each page, in order."""
+    from research_engine.crawl.engine import (
+        CONNECTOR_KEY,
+        CONNECTOR_NAME,
+        CONNECTOR_VERSION,
+        store_artifact,
+    )
     from research_engine.crawl.extract import snapshot
 
     now, ids = ctx.now, ctx.ids
@@ -1101,9 +1110,32 @@ def insert_site_pages(
     )  # fmt: skip
     records.append(run)
     raw_ids: list[str] = []
+    if robots is not None:
+        robots_url = f"https://{site}/robots.txt"
+        robots_payload: JsonObject = {"text": robots, "test_data": True}
+        robots_raw = RawRecord(
+            id=ids(), source_run_id=run.id, acquired_page_id=None, connector_id=connector_id,
+            method=AcquisitionMethod.HTTP_FETCH, external_id=None, source_url=robots_url,
+            payload_json=robots_payload,
+            payload_sha256=_sha256(orjson.dumps(robots_payload, option=orjson.OPT_SORT_KEYS)),
+            acquired_at=now, created_at=now,
+        )  # fmt: skip
+        row: dict[str, object] = dict.fromkeys(CrawlUrl.model_fields)
+        row |= {
+            "id": ids(), "source_run_id": run.id, "candidate_id": candidate_id, "url": robots_url,
+            "target": CrawlTarget.ROBOTS, "page_kind": PageKind.OTHER, "depth": 0,
+            "priority": 1000, "status": CrawlUrlStatus.FETCHED,
+            "method": AcquisitionMethod.HTTP_FETCH, "final_url": robots_url, "http_status": 200,
+            "content_type": "text/plain", "byte_size": len(robots.encode()),
+            "raw_record_id": robots_raw.id, "request_count": 1, "retry_count": 0, "fetch_ms": 20,
+            "created_at": now, "updated_at": now,
+        }  # fmt: skip
+        records += [robots_raw, CrawlUrl.model_validate(row)]
     for path, html in pages.items():
         url, body = f"https://{site}{path}", html.encode()
         digest = _sha256(body)
+        if data_dir is not None:
+            store_artifact(data_dir, body, ".html")
         acquired = AcquiredPage(
             id=ids(), source_run_id=run.id, source_query_id=None, url=url, final_url=url,
             http_status=200, content_type="text/html; charset=utf-8", content_sha256=digest,
@@ -1144,7 +1176,9 @@ class LatinoFixture:
     candidates: Mapping[str, str]
 
 
-def seed_latino(conn: sqlite3.Connection, ctx: SyntheticContext) -> LatinoFixture:
+def seed_latino(
+    conn: sqlite3.Connection, ctx: SyntheticContext, data_dir: Path | None = None
+) -> LatinoFixture:
     """Businesses whose sources and websites say different things about ownership and market,
     resolved and evaluated by the real engines (test data). Their names say nothing on purpose:
 
@@ -1212,9 +1246,170 @@ def seed_latino(conn: sqlite3.Connection, ctx: SyntheticContext) -> LatinoFixtur
     }  # fmt: skip
     for situation, (site, lang, title, text) in sites.items():
         insert_site_pages(conn, ctx, site, {"/": synthetic_page_html(lang, title, text)},
-                          candidate_id=candidates[situation])  # fmt: skip
+                          candidate_id=candidates[situation], data_dir=data_dir)  # fmt: skip
     resolved, _ = store.plan_runs(conn, ctx.project_id, actor=ACTOR_DEV_SEED)
     engine.run_resolution(conn, resolved[0], lambda: False)
     planned, _ = latino_store.plan_runs(conn, ctx.project_id, actor=ACTOR_DEV_SEED)
     latino_engine.run_latino(conn, planned[0], lambda: False)
     return LatinoFixture(job_id=planned[0], candidates=candidates)
+
+
+# ---- website intelligence (phase 08) ------------------------------------------------------------
+
+#: Synthetic sites by the situation each one stands for (see `seed_website`).
+WEBSITE_SITES: Mapping[str, str] = {
+    "complete": "synthetic-roofing-0601.example",
+    "changed": "synthetic-cleaning-0602.example",
+}
+SYNTHETIC_ROBOTS = "User-agent: *\nDisallow: /admin/\n# synthetic test data\n"
+
+
+def synthetic_complete_site(site: str, year: int) -> dict[str, str]:
+    """A bilingual business site that does most things right (test data): path -> HTML."""
+    base = f"https://{site}"
+    schema = orjson.dumps({
+        "@context": "https://schema.org", "@type": "RoofingContractor",
+        "name": "Synthetic Roofing 0601", "telephone": "(512) 555-0161",
+        "address": {"@type": "PostalAddress", "streetAddress": "601 Example Ave",
+                    "addressLocality": "Austin", "addressRegion": "TX", "postalCode": "78701"},
+        "openingHours": "Mo-Fr 08:00-17:00", "areaServed": "Example County",
+        "sameAs": ["https://profiles.example/synthetic-roofing-0601"],
+    }).decode()  # fmt: skip
+    faq = orjson.dumps({
+        "@context": "https://schema.org", "@type": "FAQPage",
+        "mainEntity": [{"@type": "Question", "name": "How long does a repair take?",
+                        "acceptedAnswer": {"@type": "Answer", "text": "One day (test data)."}}],
+    }).decode()  # fmt: skip
+    head = (
+        "<meta name='description' content='Synthetic Roofing 0601 (test data): roof repair, "
+        "inspection and replacement in Austin, with free written estimates.'>"
+        "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+        f"<link rel='canonical' href='{base}/'><link rel='icon' href='/favicon.ico'>"
+        f"<link rel='alternate' hreflang='en' href='{base}/'>"
+        f"<link rel='alternate' hreflang='es' href='{base}/es/'>"
+        f"<meta property='og:title' content='Synthetic Roofing 0601'>"
+        f"<meta property='og:image' content='{base}/og.png'>"
+        "<script async src='https://www.googletagmanager.com/gtag/js?id=G-TEST0601'></script>"
+        "<script>function gtag(){} gtag('config', 'G-TEST0601');</script>"
+        f'<script type="application/ld+json">{schema}</script>'
+    )
+    nav = (
+        "<header><nav><a href='/about'>About us</a> <a href='/services'>Services</a> "
+        "<a href='/faq'>FAQ</a> <a href='/contact'>Contact</a> <a href='/es/'>Español</a> "
+        "<a class='btn' href='tel:+15125550161'>Call (512) 555-0161</a></nav></header>"
+    )
+    footer = (
+        "<footer><p>601 Example Ave, Austin, TX 78701. Mon-Fri 8am to 5pm.</p>"
+        f"<a href='/privacy-policy'>Privacy policy</a><p>&copy; {year} Synthetic Roofing 0601 "
+        "(test data)</p></footer>"
+    )
+    filler = " ".join(
+        ["Synthetic test data: this roofing company repairs, inspects and replaces roofs for "
+         "homes and small businesses across Example County, with written estimates."] * 12
+    )  # fmt: skip
+
+    def page(title: str, main: str, lang: str = "en", extra: str = "") -> str:
+        return (
+            f"<!doctype html><html lang='{lang}'><head><title>{title}</title>{head}{extra}</head>"
+            f"<body>{nav}<main>{main}</main>{footer}</body></html>"
+        )
+
+    spanish = " ".join(
+        ["Datos de prueba: reparamos y cambiamos los techos de las casas y de los negocios de la "
+         "zona, con un presupuesto por escrito y un trabajo limpio en cada casa."] * 8
+    )  # fmt: skip
+    return {
+        "/": page(
+            "Synthetic Roofing 0601 | Roof repair in Austin",
+            f"<h1>Roof repair in Austin</h1><p>{filler}</p><h2>Why homeowners call us</h2>"
+            "<p>Licensed and fully insured since 2005. What our customers say: on time and tidy. "
+            "Proudly serving Austin and surrounding areas.</p>"
+            "<a class='btn' href='/contact'>Request a free quote</a>"
+            "<img src='/crew.jpg' alt='The synthetic crew'>",
+        ),
+        "/about": page("About us | Synthetic Roofing 0601",
+                       "<h1>About us</h1><p>A synthetic family business, licensed and fully "
+                       "insured since 2005. Testimonials from synthetic customers.</p>"),
+        "/services": page("Services | Synthetic Roofing 0601",
+                          "<h1>Services</h1><h2>Roof repair</h2><h2>Roof replacement</h2>"
+                          "<h2>Inspections</h2>"),
+        "/contact": page(
+            "Contact | Synthetic Roofing 0601",
+            "<h1>Contact us</h1><form action='/contact/send' method='post'>"
+            "<label for='name'>Name</label><input id='name' name='name' required>"
+            "<label for='email'>Email</label><input id='email' name='email' type='email' required>"
+            "<label for='message'>Message</label><textarea id='message' name='message'></textarea>"
+            "<button type='submit'>Send message</button></form>"
+            "<iframe src='https://www.google.com/maps/embed?pb=synthetic-test-data'></iframe>",
+        ),
+        "/faq": page("FAQ | Synthetic Roofing 0601",
+                     "<h1>Frequently asked questions</h1><h2>How long does a repair take?</h2>"
+                     "<p>One day.</p><h2>Do you give written estimates?</h2><p>Yes.</p>"
+                     "<h2>What areas do you serve?</h2><p>Example County.</p>",
+                     extra=f'<script type="application/ld+json">{faq}</script>'),
+        "/privacy-policy": page("Privacy policy | Synthetic Roofing 0601",
+                                "<h1>Privacy policy</h1><p>Synthetic test data.</p>"),
+        "/es/": page("Reparación de techos en Austin | Synthetic Roofing 0601",
+                     f"<h1>Reparación de techos</h1><p>{spanish}</p>", lang="es"),
+    }  # fmt: skip
+
+
+def synthetic_weak_home(site: str, *, improved: bool) -> str:
+    """A home page with no call to action or form, mixed content and broken structured data (test
+    data); `improved` adds a viewport, a tap-to-call link and analytics, and fixes the data."""
+    schema = (
+        '{"@type": "LocalBusiness", "name": "Synthetic Cleaning 0602"}'
+        if improved
+        else '{"@type": "LocalBusiness", "name": '
+    )
+    head = (
+        "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+        "<script async src='https://www.googletagmanager.com/gtag/js?id=G-TEST0602'></script>"
+        if improved
+        else ""
+    )
+    phone = "<a href='tel:+13125550162'>(312) 555-0162</a>" if improved else "(312) 555-0162"
+    return (
+        f"<!doctype html><html><head><title>Home</title>{head}"
+        f'<script type="application/ld+json">{schema}</script></head><body>'
+        f"<h1>Synthetic Cleaning 0602</h1><h3>Clean homes</h3><img src='http://{site}/photo.jpg'>"
+        f"<img src='/van.jpg'><p>Synthetic test data. Call {phone} for house cleaning.</p>"
+        "</body></html>"
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class WebsiteFixture:
+    #: The first audit run, and the run after the `changed` site was crawled again.
+    job_ids: tuple[str, str]
+    sites: Mapping[str, str]
+
+
+def seed_website(conn: sqlite3.Connection, ctx: SyntheticContext, data_dir: Path) -> WebsiteFixture:
+    """Crawled sites audited by the real engine (test data). Every crawled site of the project is
+    audited, so sites seeded by other phases are too.
+
+    - `complete`: a bilingual roofing site with structured data, analytics, a quote action, a
+      labelled form, an FAQ and a privacy policy;
+    - `changed`: a cleaning site without a call to action or a form, with mixed content and broken
+      structured data, crawled again a month later with a viewport, a tap-to-call link and
+      analytics, so its second audit shows what changed.
+    """
+    from research_engine.website import engine as website_engine
+    from research_engine.website import store as website_store
+
+    def audit() -> str:
+        created, _ = website_store.plan_runs(conn, ctx.project_id, [], actor=ACTOR_DEV_SEED)
+        website_engine.run_website(conn, data_dir, created[0], lambda: False)
+        return created[0]
+
+    earlier = replace(ctx, now=ctx.now - timedelta(days=30))
+    complete, changed = WEBSITE_SITES["complete"], WEBSITE_SITES["changed"]
+    insert_site_pages(conn, earlier, complete, synthetic_complete_site(complete, ctx.now.year),
+                      data_dir=data_dir, robots=SYNTHETIC_ROBOTS)  # fmt: skip
+    insert_site_pages(conn, earlier, changed, {"/": synthetic_weak_home(changed, improved=False)},
+                      data_dir=data_dir, robots=SYNTHETIC_ROBOTS)  # fmt: skip
+    first = audit()
+    insert_site_pages(conn, ctx, changed, {"/": synthetic_weak_home(changed, improved=True)},
+                      data_dir=data_dir, robots=SYNTHETIC_ROBOTS)  # fmt: skip
+    return WebsiteFixture(job_ids=(first, audit()), sites=dict(WEBSITE_SITES))

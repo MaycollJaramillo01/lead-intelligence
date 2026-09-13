@@ -64,7 +64,9 @@ contracts:check` (part of `pnpm check` and `pnpm build`) fails when generated fi
   `crawl.control`, `crawl.runs`, `crawl.urls`, `crawl.url`), the resolution set
   (`resolution.start`, `resolution.control`, `resolution.runs`, `matches.list`, `matches.get`,
   `matches.act`, `businesses.choose_value`), the Latino evidence set (`latino.start`,
-  `latino.control`, `latino.runs`, `latino.get`, `latino.review`) and, in development builds only,
+  `latino.control`, `latino.runs`, `latino.get`, `latino.review`), the website intelligence set
+  (`website.start`, `website.control`, `website.runs`, `website.audits`, `website.audit`) and, in
+  development builds only,
   `dev.seed_synthetic`. The answer echoes `request_id` with type `<request>.result` and carries
   either `payload` or `error`, never both.
 - Events (worker → core): `worker.ready` (handshake, carries a health payload) and
@@ -192,6 +194,23 @@ LatinoPanel ─ desktop.getLatino({business_id}) → the review or calculation, 
 
 The rules are described in [latino-evidence.md](latino-evidence.md): tracks, evidence matrix,
 factors, tiers, lifecycle, review and what a result cannot conclude.
+
+## Data flow: website intelligence
+
+```text
+ResearchCenterScreen ▸ Website intelligence ─ desktop.startWebsiteAudit({project_id, sites})  (apps/desktop)
+  → invoke("start_website_audit") → commands::start_website_audit: sites within one project  (src-tauri)
+  → worker: one job per project; on a thread, per crawled site (its latest finished crawl): crawl rows
+    and stored HTML → page facts (versioned extractor) → snapshot → versioned rules → audit, findings,
+    technologies, conversion elements and the difference with the previous audit, one transaction
+    and one checkpoint per site; a crawl already audited with these versions writes nothing  (research-engine)
+  ⟳ desktop.listWebsiteRuns / listWebsiteAudits while a run moves
+WebsiteAuditPanel ─ desktop.getWebsiteAudit({audit_id}) → findings with evidence, coverage, subscores,
+  pages, technologies, comparison and history; validate() checks every subscore against its findings
+JobsScreen ─ listWebsiteRuns; cancel goes to control_website_audit
+```
+
+Every rule, its thresholds and its limits are in [website-intelligence.md](website-intelligence.md).
 
 Worker errors keep their meaning across the boundary: `not_found` → `CommandError.not_found`,
 `not_allowed` → `not_allowed`, `invalid_payload` → `invalid_input`; anything else is `worker_error`

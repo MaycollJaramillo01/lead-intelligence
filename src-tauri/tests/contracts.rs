@@ -15,7 +15,9 @@ use lead_intelligence_lib::data::{
     ImportPreview, LatinoDetail, LatinoReviewFilter, LatinoReviewRequest, LatinoRunListQuery,
     LatinoRunPage, LatinoStartRequest, LatinoStatus, MatchActionRequest, MatchDetail,
     MatchListQuery, MatchPage, MatchStatus, ResolutionRunListQuery, ResolutionRunPage,
-    ResolutionStartRequest, SourceCatalog, SourceHealth, SyntheticSeedResult,
+    ResolutionStartRequest, SourceCatalog, SourceHealth, SyntheticSeedResult, WebsiteAuditDetail,
+    WebsiteAuditListQuery, WebsiteAuditPage, WebsiteAuditQuery, WebsiteAuditStatus,
+    WebsiteFindingResult, WebsiteRunListQuery, WebsiteRunPage, WebsiteStartRequest,
 };
 use lead_intelligence_lib::protocol::{
     DATA_CONTRACT_VERSION, DiagnosticsReport, DiagnosticsResult, Envelope, HealthResult,
@@ -511,6 +513,103 @@ fn latino_payloads_that_claim_more_than_their_evidence_are_rejected() {
 }
 
 #[test]
+fn website_fixtures_round_trip_and_pass_validation() {
+    let start: WebsiteStartRequest = round_trip("website_start_request.json");
+    start.validate().expect("fixture request is valid");
+    let run_query: WebsiteRunListQuery = round_trip("website_run_list_query.json");
+    run_query.validate().expect("fixture query is valid");
+    let runs: WebsiteRunPage = round_trip("website_run_page.json");
+    runs.validate(&run_query)
+        .expect("fixture run page matches its query");
+    assert!(
+        runs.items
+            .iter()
+            .any(|run| run.stats.audited > 0 && run.stats.unchanged > 0),
+        "a second run audits only what changed"
+    );
+
+    let query: WebsiteAuditListQuery = round_trip("website_audit_list_query.json");
+    query.validate().expect("fixture query is valid");
+    let page: WebsiteAuditPage = round_trip("website_audit_page.json");
+    page.validate(&query)
+        .expect("fixture page matches its query");
+    assert!(
+        page.items
+            .iter()
+            .any(|item| item.status == WebsiteAuditStatus::Complete)
+    );
+    assert!(
+        page.items
+            .iter()
+            .any(|item| item.status == WebsiteAuditStatus::Empty),
+        "sites without stored pages are audited as empty"
+    );
+
+    let audit: WebsiteAuditQuery = round_trip("website_audit_query.json");
+    let detail: WebsiteAuditDetail = round_trip("website_audit_detail.json");
+    detail
+        .validate(&audit.audit_id)
+        .expect("fixture detail describes its audit");
+    let diff = detail.diff.as_ref().expect("the site was crawled again");
+    assert_eq!(diff.technologies_added, ["google_analytics_4"]);
+    assert_eq!(detail.history.len(), 2);
+    assert!(
+        detail
+            .findings
+            .iter()
+            .any(|finding| finding.result == WebsiteFindingResult::Unknown)
+    );
+}
+
+#[test]
+fn website_payloads_that_do_not_add_up_are_rejected() {
+    let original: Value =
+        serde_json::from_str(&fixture_text("website_audit_detail.json")).expect("JSON");
+    let stranger = Id::parse("01900000-0000-7000-8000-000000009999").expect("id");
+    let detail: WebsiteAuditDetail = serde_json::from_value(original.clone()).expect("detail");
+    assert!(detail.validate(&stranger).is_err(), "another audit");
+
+    // an unknown result reported as a failure no longer matches its subscore
+    let mut recounted = original.clone();
+    let unknown = recounted["findings"]
+        .as_array_mut()
+        .expect("findings")
+        .iter_mut()
+        .find(|finding| finding["result"] == "unknown")
+        .expect("an unknown finding");
+    unknown["result"] = "fail".into();
+    let recounted: WebsiteAuditDetail = serde_json::from_value(recounted).expect("still a detail");
+    assert!(recounted.validate(&recounted.audit.id.clone()).is_err());
+
+    let mut invented = original.clone();
+    invented["findings"][0]["result"] = "probably_fine".into();
+    assert!(serde_json::from_value::<WebsiteAuditDetail>(invented).is_err());
+
+    let mut foreign = original.clone();
+    foreign["history"][1]["site"] = "synthetic-other.example".into();
+    let foreign: WebsiteAuditDetail = serde_json::from_value(foreign).expect("still a detail");
+    assert!(foreign.validate(&foreign.audit.id.clone()).is_err());
+
+    let mut orphan = original;
+    orphan["diff"]["previous_audit_id"] = stranger.to_string().into();
+    let orphan: WebsiteAuditDetail = serde_json::from_value(orphan).expect("still a detail");
+    assert!(orphan.validate(&orphan.audit.id.clone()).is_err());
+
+    let mut start: WebsiteStartRequest =
+        serde_json::from_str(&fixture_text("website_start_request.json")).expect("start");
+    start.project_id = None;
+    assert!(start.validate().is_err(), "sites need their project");
+
+    let query: WebsiteAuditListQuery =
+        serde_json::from_str(&fixture_text("website_audit_list_query.json")).expect("query");
+    let mut page: WebsiteAuditPage =
+        serde_json::from_str(&fixture_text("website_audit_page.json")).expect("page");
+    page.items.push(page.items[0].clone());
+    page.total += 1;
+    assert!(page.validate(&query).is_err(), "a site listed twice");
+}
+
+#[test]
 fn every_fixture_is_covered() {
     let dir = common::repo_root().join("packages/shared-types/fixtures");
     let mut names: Vec<String> = fs::read_dir(dir)
@@ -575,6 +674,13 @@ fn every_fixture_is_covered() {
             "source_catalog.json",
             "synthetic_seed_result.json",
             "ui_error_report.json",
+            "website_audit_detail.json",
+            "website_audit_list_query.json",
+            "website_audit_page.json",
+            "website_audit_query.json",
+            "website_run_list_query.json",
+            "website_run_page.json",
+            "website_start_request.json",
         ],
         "a new fixture needs a round-trip assertion above"
     );

@@ -1,0 +1,146 @@
+{
+  "items": [
+    {
+      "job_id": "01900000-0000-7000-8000-000000000847",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "project_name": "Synthetic test workspace",
+      "status": "succeeded",
+      "stage": "done",
+      "progress_done": 6,
+      "progress_total": 6,
+      "extractor_version": "1.0.0",
+      "ruleset_version": "1.0.0",
+      "stats": {
+        "sites": 6,
+        "audited": 1,
+        "unchanged": 5,
+        "partial": 0,
+        "empty": 0,
+        "pages_analyzed": 1,
+        "pages_missing": 0,
+        "failed": 9,
+        "warnings": 17,
+        "unknown": 6
+      },
+      "requested_at": "2026-01-01T00:00:00.000Z",
+      "started_at": "2026-01-01T00:00:00.000Z",
+      "finished_at": "2026-01-01T00:00:00.000Z",
+      "events": [
+        {
+          "level": "info",
+          "event": "run_succeeded",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "audited": 1,
+            "empty": 0,
+            "failed": 9,
+            "pages_analyzed": 1,
+            "pages_missing": 0,
+            "partial": 0,
+            "sites": 6,
+            "unchanged": 5,
+            "unknown": 6,
+            "warnings": 17
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "stage_started",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "sites": 6,
+            "stage": "audit"
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "run_queued",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "project_id": "01900000-0000-7000-8000-000000000001",
+            "sites": null
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "is_synthetic": true
+    },
+    {
+      "job_id": "01900000-0000-7000-8000-000000000460",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "project_name": "Synthetic test workspace",
+      "status": "succeeded",
+      "stage": "done",
+      "progress_done": 6,
+      "progress_total": 6,
+      "extractor_version": "1.0.0",
+      "ruleset_version": "1.0.0",
+      "stats": {
+        "sites": 6,
+        "audited": 6,
+        "unchanged": 0,
+        "partial": 0,
+        "empty": 4,
+        "pages_analyzed": 8,
+        "pages_missing": 6,
+        "failed": 15,
+        "warnings": 20,
+        "unknown": 218
+      },
+      "requested_at": "2026-01-01T00:00:00.000Z",
+      "started_at": "2026-01-01T00:00:00.000Z",
+      "finished_at": "2026-01-01T00:00:00.000Z",
+      "events": [
+        {
+          "level": "info",
+          "event": "run_succeeded",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "audited": 6,
+            "empty": 4,
+            "failed": 15,
+            "pages_analyzed": 8,
+            "pages_missing": 6,
+            "partial": 0,
+            "sites": 6,
+            "unchanged": 0,
+            "unknown": 218,
+            "warnings": 20
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "stage_started",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "sites": 6,
+            "stage": "audit"
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "run_queued",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "project_id": "01900000-0000-7000-8000-000000000001",
+            "sites": null
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "is_synthetic": true
+    }
+  ],
+  "next_cursor": null,
+  "total": 2
+}

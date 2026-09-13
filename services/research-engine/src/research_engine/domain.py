@@ -198,6 +198,29 @@ class WebsiteFindingResult(StrEnum):
     NOT_APPLICABLE = "not_applicable"
 
 
+class WebsiteCategory(StrEnum):
+    """What a website rule speaks to; each category has its own subscore."""
+
+    TECHNICAL = "technical"
+    SEO = "seo"
+    LOCAL_SEO = "local_seo"
+    CONTENT = "content"
+    CONVERSION = "conversion"
+    MOBILE = "mobile"
+    ACCESSIBILITY = "accessibility"
+    MEASUREMENT = "measurement"
+    AEO_GEO_READINESS = "aeo_geo_readiness"
+
+
+class WebsiteAuditStatus(StrEnum):
+    """complete: every page the crawl acquired was analyzed; partial: some were not (the coverage
+    says which and why); empty: no page could be analyzed."""
+
+    COMPLETE = "complete"
+    PARTIAL = "partial"
+    EMPTY = "empty"
+
+
 class InferenceStatus(StrEnum):
     QUEUED = "queued"
     RUNNING = "running"
@@ -437,6 +460,8 @@ ENUMS: dict[str, type[StrEnum]] = {
         ValidationStatus,
         WebsiteFindingSeverity,
         WebsiteFindingResult,
+        WebsiteCategory,
+        WebsiteAuditStatus,
         InferenceStatus,
         LeadStage,
         ExportStatus,
@@ -1050,14 +1075,35 @@ class LatinoAssessmentEvidence(Record):
 
 
 class WebsiteAudit(Record):
+    """One audit of a crawled site: rules of one version over a snapshot of what one crawl acquired.
+    History: a newer crawl or ruleset makes a new audit that points at the previous one."""
+
     TABLE = "website_audits"
     ENTITY = EntityType.WEBSITE_AUDIT
     id: Id
-    website_id: Id
+    project_id: Id
+    #: The crawled site as the crawler names it: host and non-default port, without `www.`.
+    site: Label
+    root_url: str
+    #: Where the home page ended up after its redirects.
+    final_url: str | None
+    source_run_id: Id
+    job_id: Id | None
+    previous_audit_id: Id | None
+    status: WebsiteAuditStatus
     ruleset_version: Label
-    started_at: UtcTimestamp
-    finished_at: UtcTimestamp | None
+    extractor_version: Label
+    pages_expected: Annotated[int, Field(ge=0)]
     pages_analyzed: Annotated[int, Field(ge=0)]
+    #: Share of the rule weight that could be evaluated; unknown results are not evaluated.
+    coverage: Confidence
+    #: Formula, subscores, coverage and pages with lab measurements (`WebsiteAuditSummary`).
+    summary_json: JsonObject
+    #: Every fact the rules read (`website.rules.SiteInput`): the audit is reproducible from it.
+    snapshot_json: JsonObject
+    #: What changed since the previous audit of the same site (`WebsiteDiff`).
+    diff_json: JsonObject | None
+    crawled_at: UtcTimestamp
     created_at: UtcTimestamp
 
 
@@ -1065,22 +1111,25 @@ class WebsiteTechnology(Record):
     TABLE = "website_technologies"
     id: Id
     audit_id: Id
+    technology_key: Code
     name: Label
-    category: str | None
+    category: Code
     version: str | None
     confidence: Confidence
-    evidence_item_id: Id | None
+    #: Where it was seen: `{"refs": [WebsiteEvidence, ...]}`.
+    evidence_json: JsonObject
 
 
 class ConversionElement(Record):
     TABLE = "conversion_elements"
     id: Id
     audit_id: Id
-    web_page_id: Id | None
     element_kind: ConversionElementKind
     label: str | None
+    page_url: str
+    target: str | None
     confidence: Confidence
-    evidence_item_id: Id | None
+    evidence_json: JsonObject
 
 
 class WebsiteFinding(Record):
@@ -1090,15 +1139,16 @@ class WebsiteFinding(Record):
     audit_id: Id
     rule_id: Code
     rule_version: Label
-    category: Code
+    title: Label
+    category: WebsiteCategory
     result: WebsiteFindingResult
     severity: WebsiteFindingSeverity
     observed_value: str | None
-    expected_condition: str | None
+    expected_condition: Annotated[str, Field(min_length=1)]
     remediation: str | None
+    commercial_relevance: str | None
     confidence: Confidence
-    web_page_id: Id | None
-    evidence_item_id: Id | None
+    evidence_json: JsonObject
     created_at: UtcTimestamp
 
 
@@ -2772,6 +2822,262 @@ class LatinoReviewRequest(Contract):
     reason: ReviewReason
 
 
+# ---- website intelligence (phase 08) ------------------------------------------------------------
+# Deterministic audits of crawled sites: versioned rules over a stored snapshot, findings with their
+# evidence, subscores that never count what could not be evaluated, and the difference between runs.
+
+MAX_AUDIT_SITES = 200
+NonNegative = Annotated[int, Field(ge=0)]
+Score = Annotated[int, Field(ge=0, le=100)]
+
+
+class WebsiteStartRequest(Contract):
+    """Audits the crawled sites of one project, or of every live project when `project_id` is null
+    (one job each). `sites` narrows one project's audit to some of its sites, to retry them."""
+
+    project_id: Id | None
+    sites: Annotated[list[Label], Field(max_length=MAX_AUDIT_SITES)]
+
+
+class WebsiteStats(Contract):
+    """Counts of one audit run, read back from its last checkpoint."""
+
+    sites: NonNegative
+    audited: NonNegative
+    unchanged: NonNegative
+    partial: NonNegative
+    empty: NonNegative
+    pages_analyzed: NonNegative
+    pages_missing: NonNegative
+    failed: NonNegative
+    warnings: NonNegative
+    unknown: NonNegative
+
+
+class WebsiteRun(Contract):
+    job_id: Id
+    project_id: Id
+    project_name: Label
+    status: JobStatus
+    stage: Code
+    progress_done: NonNegative
+    progress_total: NonNegative | None
+    extractor_version: Label
+    ruleset_version: Label
+    stats: WebsiteStats
+    requested_at: UtcTimestamp
+    started_at: UtcTimestamp | None
+    finished_at: UtcTimestamp | None
+    events: list[RunEvent]
+    is_synthetic: bool
+
+
+class WebsiteRunListQuery(Contract):
+    project_id: Id | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class WebsiteRunPage(Contract):
+    items: list[WebsiteRun]
+    next_cursor: Cursor | None
+    total: NonNegative
+
+
+class WebsiteEvidence(Contract):
+    """Where something was observed: the crawled URL, the field read and the fragment."""
+
+    url: str | None
+    crawl_url_id: Id | None
+    field: Code
+    snippet: Annotated[str, Field(max_length=500)] | None
+
+
+class WebsiteSubscore(Contract):
+    """`score` is null when no rule of the category could be evaluated."""
+
+    category: WebsiteCategory
+    score: Score | None
+    coverage: Confidence
+    confidence: Confidence
+    passed: NonNegative
+    warnings: NonNegative
+    failed: NonNegative
+    unknown: NonNegative
+    not_applicable: NonNegative
+
+
+class WebsitePageView(Contract):
+    """A page the crawl acquired or tried, whether it could be analyzed (and why not), with the
+    crawler's lab measurements: one sample, no device or network emulation, never field data."""
+
+    crawl_url_id: Id
+    url: str
+    final_url: str | None
+    page_kind: PageKind
+    depth: NonNegative
+    status: CrawlUrlStatus
+    http_status: Annotated[int, Field(ge=100, le=599)] | None
+    method: AcquisitionMethod | None
+    analyzed: bool
+    gap: Code | None
+    title: str | None
+    words: NonNegative | None
+    redirects: NonNegative
+    response_ms: NonNegative | None
+    render_ms: NonNegative | None
+    html_bytes: NonNegative | None
+    scripts: NonNegative | None
+    images: NonNegative | None
+    device_profile: Code
+    measured_at: UtcTimestamp
+
+
+class WebsiteCoverage(Contract):
+    pages_expected: NonNegative
+    pages_analyzed: NonNegative
+    pages_failed: NonNegative
+    #: Why expected pages could not be analyzed.
+    gaps: list[Code]
+    home_analyzed: bool
+    crawl_status: SourceRunStatus
+    #: Crawl budgets that left pages out (they are not expected pages).
+    limits_hit: list[Code]
+    rules: NonNegative
+    rules_evaluated: NonNegative
+    rules_unknown: NonNegative
+    rules_not_applicable: NonNegative
+
+
+class WebsiteAuditSummary(Contract):
+    """What an audit shows besides its findings; stored with it, so history reads the same."""
+
+    formula: Annotated[str, Field(min_length=1, max_length=2000)]
+    subscores: list[WebsiteSubscore]
+    coverage: WebsiteCoverage
+    pages: list[WebsitePageView]
+    languages: list[Code]
+    lab_tool: Label
+    notes: list[Code]
+
+
+class WebsiteAuditItem(Contract):
+    id: Id
+    project_id: Id
+    site: Label
+    root_url: str
+    final_url: str | None
+    source_run_id: Id
+    previous_audit_id: Id | None
+    status: WebsiteAuditStatus
+    ruleset_version: Label
+    extractor_version: Label
+    pages_expected: NonNegative
+    pages_analyzed: NonNegative
+    coverage: Confidence
+    subscores: list[WebsiteSubscore]
+    failed: NonNegative
+    warnings: NonNegative
+    unknown: NonNegative
+    crawled_at: UtcTimestamp
+    created_at: UtcTimestamp
+
+
+class WebsiteAuditListQuery(Contract):
+    """The latest audit of every site of a project (or of every project), or every audit of one
+    site when `site` is given, newest first."""
+
+    project_id: Id | None
+    site: Label | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class WebsiteAuditPage(Contract):
+    items: list[WebsiteAuditItem]
+    next_cursor: Cursor | None
+    total: NonNegative
+
+
+class WebsiteAuditQuery(Contract):
+    audit_id: Id
+
+
+class WebsiteFindingView(Contract):
+    rule_id: Code
+    rule_version: Label
+    title: Label
+    category: WebsiteCategory
+    result: WebsiteFindingResult
+    severity: WebsiteFindingSeverity
+    observed_value: str | None
+    expected_condition: Annotated[str, Field(min_length=1)]
+    remediation: str | None
+    commercial_relevance: str | None
+    confidence: Confidence
+    evidence: list[WebsiteEvidence]
+
+
+class WebsiteTechnologyView(Contract):
+    key: Code
+    name: Label
+    category: Code
+    version: str | None
+    confidence: Confidence
+    evidence: list[WebsiteEvidence]
+
+
+class WebsiteConversionView(Contract):
+    kind: ConversionElementKind
+    label: str | None
+    page_url: str
+    target: str | None
+    confidence: Confidence
+    evidence: list[WebsiteEvidence]
+
+
+class WebsiteFindingChange(Contract):
+    """A rule whose result changed; null when the rule did not exist on that side."""
+
+    rule_id: Code
+    before: WebsiteFindingResult | None
+    after: WebsiteFindingResult | None
+
+
+class WebsiteScoreChange(Contract):
+    category: WebsiteCategory
+    before: Score | None
+    after: Score | None
+
+
+class WebsiteDiff(Contract):
+    """What changed since the previous audit of the same site."""
+
+    previous_audit_id: Id
+    previous_created_at: UtcTimestamp
+    ruleset_changed: bool
+    final_url_before: str | None
+    final_url_after: str | None
+    domain_changed: bool
+    subscores: list[WebsiteScoreChange]
+    findings: list[WebsiteFindingChange]
+    technologies_added: list[Code]
+    technologies_removed: list[Code]
+    pages_added: list[str]
+    pages_removed: list[str]
+
+
+class WebsiteAuditDetail(Contract):
+    audit: WebsiteAuditItem
+    summary: WebsiteAuditSummary
+    findings: list[WebsiteFindingView]
+    technologies: list[WebsiteTechnologyView]
+    conversion: list[WebsiteConversionView]
+    diff: WebsiteDiff | None
+    #: Every audit of the site, newest first (at most `MAX_AUDIT_HISTORY`).
+    history: list[WebsiteAuditItem]
+
+
 DATA_MODELS: tuple[type[Contract], ...] = (
     *RECORDS,
     Provenance,
@@ -2835,4 +3141,12 @@ DATA_MODELS: tuple[type[Contract], ...] = (
     LatinoDetailQuery,
     LatinoDetail,
     LatinoReviewRequest,
+    WebsiteStartRequest,
+    WebsiteRun,
+    WebsiteRunListQuery,
+    WebsiteRunPage,
+    WebsiteAuditListQuery,
+    WebsiteAuditPage,
+    WebsiteAuditQuery,
+    WebsiteAuditDetail,
 )

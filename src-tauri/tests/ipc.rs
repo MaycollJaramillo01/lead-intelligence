@@ -14,7 +14,7 @@ use lead_intelligence_lib::data::{
     CrawlRun, CrawlRunPage, CrawlUrlDetail, CrawlUrlPage, CriteriaCheck, DatasetPage, DiscoveryRun,
     DiscoveryRunPage, ImportPreview, JobStatus, LatinoDetail, LatinoRunPage, LatinoStatus,
     MatchDetail, MatchPage, MatchStatus, ResolutionRunPage, SelectionMethod, SourceCatalog,
-    SourceRunStatus, SyntheticSeedResult,
+    SourceRunStatus, SyntheticSeedResult, WebsiteAuditDetail, WebsiteAuditPage, WebsiteRunPage,
 };
 use lead_intelligence_lib::protocol::{
     CommandError, CommandErrorCode, ComponentState, DiagnosticsReport, WorkerState,
@@ -266,6 +266,71 @@ fn data_commands_serve_real_store_queries_through_ipc() {
     }
     assert!(
         runs.items
+            .iter()
+            .all(|run| run.status == JobStatus::Succeeded)
+    );
+
+    // website intelligence: the seed audited its crawled sites twice; audits, a detail with its
+    // difference and a new audit all go through IPC and the real worker
+    let site_audits: WebsiteAuditPage = invoke(
+        &dev,
+        "list_website_audits",
+        json!({ "query": { "project_id": null, "site": null, "limit": 50, "cursor": null } }),
+    )
+    .expect("website audits")
+    .deserialize()
+    .expect("typed audits");
+    let changed = site_audits
+        .items
+        .iter()
+        .find(|item| item.previous_audit_id.is_some())
+        .expect("a site audited after a second crawl");
+    let site_detail: WebsiteAuditDetail = invoke(
+        &dev,
+        "get_website_audit",
+        json!({ "query": { "audit_id": changed.id } }),
+    )
+    .expect("website audit")
+    .deserialize()
+    .expect("typed detail");
+    assert!(site_detail.diff.is_some() && !site_detail.findings.is_empty());
+    let orphan = invoke(
+        &dev,
+        "start_website_audit",
+        json!({ "request": { "project_id": null, "sites": [changed.site] } }),
+    )
+    .expect_err("sites are chosen within a project");
+    assert_eq!(command_error(orphan).code, CommandErrorCode::InvalidInput);
+    let mut audit_runs: WebsiteRunPage = invoke(
+        &dev,
+        "start_website_audit",
+        json!({ "request": { "project_id": null, "sites": [] } }),
+    )
+    .expect("audit started")
+    .deserialize()
+    .expect("typed runs");
+    assert_eq!(audit_runs.items.len(), 1);
+    for _ in 0..400 {
+        audit_runs = invoke(
+            &dev,
+            "list_website_runs",
+            json!({ "query": { "project_id": null, "limit": 10, "cursor": null } }),
+        )
+        .expect("audit runs")
+        .deserialize()
+        .expect("typed runs");
+        if audit_runs
+            .items
+            .iter()
+            .all(|run| !matches!(run.status, JobStatus::Queued | JobStatus::Running))
+        {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    assert!(
+        audit_runs
+            .items
             .iter()
             .all(|run| run.status == JobStatus::Succeeded)
     );

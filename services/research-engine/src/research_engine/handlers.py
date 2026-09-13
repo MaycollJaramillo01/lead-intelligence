@@ -78,6 +78,14 @@ from research_engine.domain import (
     SourceCatalogQuery,
     SourceInfo,
     SyntheticSeedResult,
+    WebsiteAuditDetail,
+    WebsiteAuditListQuery,
+    WebsiteAuditPage,
+    WebsiteAuditQuery,
+    WebsiteRun,
+    WebsiteRunListQuery,
+    WebsiteRunPage,
+    WebsiteStartRequest,
     utc_now,
 )
 from research_engine.gpu import probe_gpu
@@ -89,6 +97,8 @@ from research_engine.resolution.engine import ResolutionService
 from research_engine.settings import Settings
 from research_engine.storage import check_duckdb, check_sqlite
 from research_engine.testdata import seed_synthetic_workspace
+from research_engine.website import store as website
+from research_engine.website.engine import WebsiteService
 
 #: Actor recorded for anything the operator triggered from the interface.
 ACTOR_UI = "ui"
@@ -111,6 +121,8 @@ class Context:
     resolution: ResolutionService
     #: Owns the running Latino evidence evaluations; see latino/engine.py.
     latino: LatinoService
+    #: Owns the running website audits; see website/engine.py.
+    website: WebsiteService
 
 
 @dataclass(frozen=True, slots=True)
@@ -343,6 +355,29 @@ async def _latino_review(ctx: Context, request: LatinoReviewRequest) -> LatinoDe
     return await _with_store(ctx, review)
 
 
+# ---- website intelligence (phase 08) ------------------------------------------------------------
+
+
+async def _website_start(ctx: Context, request: WebsiteStartRequest) -> WebsiteRunPage:
+    return await ctx.website.start(request)
+
+
+async def _website_control(ctx: Context, request: DiscoveryControlRequest) -> WebsiteRun:
+    return await ctx.website.control(request)
+
+
+async def _website_runs(ctx: Context, query: WebsiteRunListQuery) -> WebsiteRunPage:
+    return await _with_store(ctx, lambda conn: website.list_website_runs(conn, query))
+
+
+async def _website_audits(ctx: Context, query: WebsiteAuditListQuery) -> WebsiteAuditPage:
+    return await _with_store(ctx, lambda conn: website.list_website_audits(conn, query))
+
+
+async def _website_audit(ctx: Context, query: WebsiteAuditQuery) -> WebsiteAuditDetail:
+    return await _with_store(ctx, lambda conn: website.get_website_audit(conn, query.audit_id))
+
+
 ROUTES: dict[str, Route] = {
     MessageType.HEALTH: Route(EmptyPayload, _health, timeout_s=2.0),
     MessageType.DIAGNOSTICS: Route(EmptyPayload, _diagnostics, timeout_s=20.0),
@@ -390,5 +425,10 @@ ROUTES: dict[str, Route] = {
     MessageType.LATINO_RUNS: Route(LatinoRunListQuery, _latino_runs, timeout_s=15.0),
     MessageType.LATINO_GET: Route(LatinoDetailQuery, _latino_get, timeout_s=10.0),
     MessageType.LATINO_REVIEW: Route(LatinoReviewRequest, _latino_review, timeout_s=30.0),
+    MessageType.WEBSITE_START: Route(WebsiteStartRequest, _website_start, timeout_s=30.0),
+    MessageType.WEBSITE_CONTROL: Route(DiscoveryControlRequest, _website_control, timeout_s=30.0),
+    MessageType.WEBSITE_RUNS: Route(WebsiteRunListQuery, _website_runs, timeout_s=15.0),
+    MessageType.WEBSITE_AUDITS: Route(WebsiteAuditListQuery, _website_audits, timeout_s=15.0),
+    MessageType.WEBSITE_AUDIT: Route(WebsiteAuditQuery, _website_audit, timeout_s=10.0),
     MessageType.DEV_SEED_SYNTHETIC: Route(EmptyPayload, _dev_seed_synthetic, timeout_s=60.0),
 }

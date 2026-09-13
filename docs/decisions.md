@@ -581,3 +581,78 @@ resolution and Latino evidence now only say how to plan, run and show their jobs
 **Trade-off.** One more generic class in `jobs.py`, in exchange for not keeping two copies of the
 same concurrency code. Filters on Businesses use the kind of source that counted rather than a
 connector key, so they need no source catalogue and read the same across projects.
+
+## D-052 · An audit reads one stored crawl and parses its HTML again with its own extractor (phase 08)
+
+**Context.** The crawler's parsed snapshot keeps what acquisition needs (title, meta tags, headings
+up to h3, links, JSON-LD, main text), not forms, scripts, images, frames or every heading.
+
+**Decision.** A website audit reads the latest finished crawl of each site in a project and parses
+the HTML the crawler stored again with `website/extract.py`, versioned on its own
+(`EXTRACTOR_VERSION`). It never goes back to the network, and the crawler is unchanged.
+
+**Consequences.** Audits can be repeated offline and do not depend on how a site answers today. A
+page whose stored HTML is gone is a gap in the coverage, never a failure. What the crawler does not
+keep (security headers, hosting) is not judged.
+
+## D-053 · Deterministic rules; unknown and not applicable never lower a score (phase 08)
+
+**Decision.** 58 rules in a versioned `Ruleset`, each with a category and a severity that is its
+weight (critical 10, high 6, medium 3, low 1, info 0). A subscore is the weighted share of credit
+(pass 1, warning 0.5, fail 0) over the rules that could be evaluated, with its coverage and
+confidence; `unknown` and `not_applicable` are left out, and a category with nothing evaluated has
+no score. There is no overall score. What is not detected is reported as not detected: measurement
+rules never fail, and advertising and call tracking are informational.
+
+**Why.** The prompt forbids treating unknown as failure and concluding absence from a missing pixel.
+A single number would hide how much could not be evaluated, and the commercial score belongs to
+phase 11. No model takes part in any finding.
+
+## D-054 · The snapshot is stored with its audit; audits are history (phase 08)
+
+**Decision.** Migration 0007 rebuilds the four phase-03 website tables, which nothing had written,
+around a project, a crawled site and the crawl it read. `snapshot_json` keeps every fact the rules
+read; findings, technologies and conversion elements carry evidence references (URL, crawl URL,
+field, fragment) instead of `evidence_items`, which belong to a business. Rows are immutable and
+permanent. At most one audit exists per site, crawl, extractor version and ruleset version; newer
+rules recalculate from the stored snapshot into a new audit, and every audit stores its difference
+with the previous audit of its site.
+
+**Trade-off.** Snapshots take space (a few kilobytes per page) in exchange for audits that can be
+reproduced and compared long after the artifacts are gone. Audits belong to crawled sites, not to
+businesses: the phases that need a business's audit can link them as Latino evidence links pages
+(candidate and registrable domain).
+
+## D-055 · Lab measurements from the crawler only; never Core Web Vitals (phase 08)
+
+**Decision.** Response and render times, HTML size, scripts and images come from the crawl, with the
+tool, device profile and time of each measurement. Every audit notes that there is no field data and
+no Core Web Vitals, and no rule estimates them. Lighthouse and PageSpeed Insights are not
+integrated.
+
+**Why.** Lighthouse needs Node and a browser profile the Python sidecar does not ship (packaging is
+phase 14); PageSpeed Insights sends every address to a third party and needs a key; inventing Core
+Web Vitals is forbidden. A later integration would add its own lab and field sections next to these
+figures.
+
+## D-056 · Technologies by documented signatures, with the confidence of their trace (phase 08)
+
+**Decision.** About 70 signatures match what a page itself carries: script and iframe addresses,
+generator tags, inline script, markup and links, each trace with its own confidence (0.95 down to
+0.7). Hosting is not guessed.
+
+**Why.** Deterministic, testable and documented, with no external fingerprint database to license,
+package or keep updated. Tags loaded inside a tag manager or consent tool stay invisible, which is
+why not detected never means absent.
+
+## D-057 · Website audits are a job; the interface is a view of the Research Center (phase 08)
+
+**Decision.** `jobs.kind = website_audit` on `jobs.BackgroundJobs`: one open run per project, one
+transaction and checkpoint per site, and an optional list of sites to audit again within one
+project. Five IPC messages; the desktop core refuses a detail whose subscores do not count exactly
+its findings. The Research Center switches between Acquisition and Website intelligence, and runs
+appear in Jobs. Rule titles, conditions and remediations are English text of the ruleset;
+categories, results, severities, gaps and notes are translated.
+
+**Trade-off.** Recommendations stay in English until the ruleset gains translations, in exchange
+for rule texts that are versioned with the rules that produce them.

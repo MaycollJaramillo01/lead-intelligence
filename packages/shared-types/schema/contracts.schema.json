@@ -2691,10 +2691,12 @@
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
           "type": "string"
         },
-        "web_page_id": {
+        "element_kind": {
+          "$ref": "#/$defs/ConversionElementKind"
+        },
+        "label": {
           "anyOf": [
             {
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
               "type": "string"
             },
             {
@@ -2702,10 +2704,10 @@
             }
           ]
         },
-        "element_kind": {
-          "$ref": "#/$defs/ConversionElementKind"
+        "page_url": {
+          "type": "string"
         },
-        "label": {
+        "target": {
           "anyOf": [
             {
               "type": "string"
@@ -2720,26 +2722,22 @@
           "minimum": 0,
           "type": "number"
         },
-        "evidence_item_id": {
-          "anyOf": [
-            {
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
+        "evidence_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
         }
       },
       "required": [
         "id",
         "audit_id",
-        "web_page_id",
         "element_kind",
         "label",
+        "page_url",
+        "target",
         "confidence",
-        "evidence_item_id"
+        "evidence_json"
       ],
       "title": "ConversionElement",
       "type": "object"
@@ -10993,28 +10991,27 @@
     },
     "WebsiteAudit": {
       "additionalProperties": false,
+      "description": "One audit of a crawled site: rules of one version over a snapshot of what one crawl acquired.\nHistory: a newer crawl or ruleset makes a new audit that points at the previous one.",
       "properties": {
         "id": {
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
           "type": "string"
         },
-        "website_id": {
+        "project_id": {
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
           "type": "string"
         },
-        "ruleset_version": {
+        "site": {
           "maxLength": 300,
           "minLength": 1,
           "type": "string"
         },
-        "started_at": {
-          "format": "date-time",
+        "root_url": {
           "type": "string"
         },
-        "finished_at": {
+        "final_url": {
           "anyOf": [
             {
-              "format": "date-time",
               "type": "string"
             },
             {
@@ -11022,9 +11019,86 @@
             }
           ]
         },
+        "source_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "job_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "previous_audit_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/WebsiteAuditStatus"
+        },
+        "ruleset_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "extractor_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "pages_expected": {
+          "minimum": 0,
+          "type": "integer"
+        },
         "pages_analyzed": {
           "minimum": 0,
           "type": "integer"
+        },
+        "coverage": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "summary_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "snapshot_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "diff_json": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "crawled_at": {
+          "format": "date-time",
+          "type": "string"
         },
         "created_at": {
           "format": "date-time",
@@ -11033,14 +11107,660 @@
       },
       "required": [
         "id",
-        "website_id",
+        "project_id",
+        "site",
+        "root_url",
+        "final_url",
+        "source_run_id",
+        "job_id",
+        "previous_audit_id",
+        "status",
         "ruleset_version",
-        "started_at",
-        "finished_at",
+        "extractor_version",
+        "pages_expected",
         "pages_analyzed",
+        "coverage",
+        "summary_json",
+        "snapshot_json",
+        "diff_json",
+        "crawled_at",
         "created_at"
       ],
       "title": "WebsiteAudit",
+      "type": "object"
+    },
+    "WebsiteAuditDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "audit": {
+          "$ref": "#/$defs/WebsiteAuditItem"
+        },
+        "summary": {
+          "$ref": "#/$defs/WebsiteAuditSummary"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/WebsiteFindingView"
+          },
+          "type": "array"
+        },
+        "technologies": {
+          "items": {
+            "$ref": "#/$defs/WebsiteTechnologyView"
+          },
+          "type": "array"
+        },
+        "conversion": {
+          "items": {
+            "$ref": "#/$defs/WebsiteConversionView"
+          },
+          "type": "array"
+        },
+        "diff": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WebsiteDiff"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "history": {
+          "items": {
+            "$ref": "#/$defs/WebsiteAuditItem"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "audit",
+        "summary",
+        "findings",
+        "technologies",
+        "conversion",
+        "diff",
+        "history"
+      ],
+      "title": "WebsiteAuditDetail",
+      "type": "object"
+    },
+    "WebsiteAuditItem": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "site": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "root_url": {
+          "type": "string"
+        },
+        "final_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "previous_audit_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/WebsiteAuditStatus"
+        },
+        "ruleset_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "extractor_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "pages_expected": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pages_analyzed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "coverage": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "subscores": {
+          "items": {
+            "$ref": "#/$defs/WebsiteSubscore"
+          },
+          "type": "array"
+        },
+        "failed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "warnings": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unknown": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "crawled_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "site",
+        "root_url",
+        "final_url",
+        "source_run_id",
+        "previous_audit_id",
+        "status",
+        "ruleset_version",
+        "extractor_version",
+        "pages_expected",
+        "pages_analyzed",
+        "coverage",
+        "subscores",
+        "failed",
+        "warnings",
+        "unknown",
+        "crawled_at",
+        "created_at"
+      ],
+      "title": "WebsiteAuditItem",
+      "type": "object"
+    },
+    "WebsiteAuditListQuery": {
+      "additionalProperties": false,
+      "description": "The latest audit of every site of a project (or of every project), or every audit of one\nsite when `site` is given, newest first.",
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "site": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "site",
+        "limit",
+        "cursor"
+      ],
+      "title": "WebsiteAuditListQuery",
+      "type": "object"
+    },
+    "WebsiteAuditPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/WebsiteAuditItem"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "WebsiteAuditPage",
+      "type": "object"
+    },
+    "WebsiteAuditQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "audit_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "audit_id"
+      ],
+      "title": "WebsiteAuditQuery",
+      "type": "object"
+    },
+    "WebsiteAuditStatus": {
+      "description": "complete: every page the crawl acquired was analyzed; partial: some were not (the coverage\nsays which and why); empty: no page could be analyzed.",
+      "enum": [
+        "complete",
+        "partial",
+        "empty"
+      ],
+      "title": "WebsiteAuditStatus",
+      "type": "string"
+    },
+    "WebsiteAuditSummary": {
+      "additionalProperties": false,
+      "description": "What an audit shows besides its findings; stored with it, so history reads the same.",
+      "properties": {
+        "formula": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "subscores": {
+          "items": {
+            "$ref": "#/$defs/WebsiteSubscore"
+          },
+          "type": "array"
+        },
+        "coverage": {
+          "$ref": "#/$defs/WebsiteCoverage"
+        },
+        "pages": {
+          "items": {
+            "$ref": "#/$defs/WebsitePageView"
+          },
+          "type": "array"
+        },
+        "languages": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "lab_tool": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "notes": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "formula",
+        "subscores",
+        "coverage",
+        "pages",
+        "languages",
+        "lab_tool",
+        "notes"
+      ],
+      "title": "WebsiteAuditSummary",
+      "type": "object"
+    },
+    "WebsiteCategory": {
+      "description": "What a website rule speaks to; each category has its own subscore.",
+      "enum": [
+        "technical",
+        "seo",
+        "local_seo",
+        "content",
+        "conversion",
+        "mobile",
+        "accessibility",
+        "measurement",
+        "aeo_geo_readiness"
+      ],
+      "title": "WebsiteCategory",
+      "type": "string"
+    },
+    "WebsiteConversionView": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ConversionElementKind"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "page_url": {
+          "type": "string"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/WebsiteEvidence"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "label",
+        "page_url",
+        "target",
+        "confidence",
+        "evidence"
+      ],
+      "title": "WebsiteConversionView",
+      "type": "object"
+    },
+    "WebsiteCoverage": {
+      "additionalProperties": false,
+      "properties": {
+        "pages_expected": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pages_analyzed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pages_failed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "gaps": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "home_analyzed": {
+          "type": "boolean"
+        },
+        "crawl_status": {
+          "$ref": "#/$defs/SourceRunStatus"
+        },
+        "limits_hit": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "rules": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rules_evaluated": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rules_unknown": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rules_not_applicable": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "pages_expected",
+        "pages_analyzed",
+        "pages_failed",
+        "gaps",
+        "home_analyzed",
+        "crawl_status",
+        "limits_hit",
+        "rules",
+        "rules_evaluated",
+        "rules_unknown",
+        "rules_not_applicable"
+      ],
+      "title": "WebsiteCoverage",
+      "type": "object"
+    },
+    "WebsiteDiff": {
+      "additionalProperties": false,
+      "description": "What changed since the previous audit of the same site.",
+      "properties": {
+        "previous_audit_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "previous_created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "ruleset_changed": {
+          "type": "boolean"
+        },
+        "final_url_before": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "final_url_after": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "domain_changed": {
+          "type": "boolean"
+        },
+        "subscores": {
+          "items": {
+            "$ref": "#/$defs/WebsiteScoreChange"
+          },
+          "type": "array"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/WebsiteFindingChange"
+          },
+          "type": "array"
+        },
+        "technologies_added": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "technologies_removed": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "pages_added": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "pages_removed": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "previous_audit_id",
+        "previous_created_at",
+        "ruleset_changed",
+        "final_url_before",
+        "final_url_after",
+        "domain_changed",
+        "subscores",
+        "findings",
+        "technologies_added",
+        "technologies_removed",
+        "pages_added",
+        "pages_removed"
+      ],
+      "title": "WebsiteDiff",
+      "type": "object"
+    },
+    "WebsiteEvidence": {
+      "additionalProperties": false,
+      "description": "Where something was observed: the crawled URL, the field read and the fragment.",
+      "properties": {
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "crawl_url_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "field": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "snippet": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "url",
+        "crawl_url_id",
+        "field",
+        "snippet"
+      ],
+      "title": "WebsiteEvidence",
       "type": "object"
     },
     "WebsiteFinding": {
@@ -11064,10 +11784,13 @@
           "minLength": 1,
           "type": "string"
         },
-        "category": {
-          "maxLength": 64,
-          "pattern": "^[a-z][a-z0-9_.]*$",
+        "title": {
+          "maxLength": 300,
+          "minLength": 1,
           "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/WebsiteCategory"
         },
         "result": {
           "$ref": "#/$defs/WebsiteFindingResult"
@@ -11086,6 +11809,10 @@
           ]
         },
         "expected_condition": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "remediation": {
           "anyOf": [
             {
               "type": "string"
@@ -11095,7 +11822,7 @@
             }
           ]
         },
-        "remediation": {
+        "commercial_relevance": {
           "anyOf": [
             {
               "type": "string"
@@ -11110,27 +11837,11 @@
           "minimum": 0,
           "type": "number"
         },
-        "web_page_id": {
-          "anyOf": [
-            {
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "evidence_item_id": {
-          "anyOf": [
-            {
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
+        "evidence_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
         },
         "created_at": {
           "format": "date-time",
@@ -11142,18 +11853,57 @@
         "audit_id",
         "rule_id",
         "rule_version",
+        "title",
         "category",
         "result",
         "severity",
         "observed_value",
         "expected_condition",
         "remediation",
+        "commercial_relevance",
         "confidence",
-        "web_page_id",
-        "evidence_item_id",
+        "evidence_json",
         "created_at"
       ],
       "title": "WebsiteFinding",
+      "type": "object"
+    },
+    "WebsiteFindingChange": {
+      "additionalProperties": false,
+      "description": "A rule whose result changed; null when the rule did not exist on that side.",
+      "properties": {
+        "rule_id": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "before": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WebsiteFindingResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "after": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WebsiteFindingResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "rule_id",
+        "before",
+        "after"
+      ],
+      "title": "WebsiteFindingChange",
       "type": "object"
     },
     "WebsiteFindingResult": {
@@ -11178,6 +11928,658 @@
       "title": "WebsiteFindingSeverity",
       "type": "string"
     },
+    "WebsiteFindingView": {
+      "additionalProperties": false,
+      "properties": {
+        "rule_id": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "rule_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/WebsiteCategory"
+        },
+        "result": {
+          "$ref": "#/$defs/WebsiteFindingResult"
+        },
+        "severity": {
+          "$ref": "#/$defs/WebsiteFindingSeverity"
+        },
+        "observed_value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_condition": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "remediation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "commercial_relevance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/WebsiteEvidence"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "rule_id",
+        "rule_version",
+        "title",
+        "category",
+        "result",
+        "severity",
+        "observed_value",
+        "expected_condition",
+        "remediation",
+        "commercial_relevance",
+        "confidence",
+        "evidence"
+      ],
+      "title": "WebsiteFindingView",
+      "type": "object"
+    },
+    "WebsitePageView": {
+      "additionalProperties": false,
+      "description": "A page the crawl acquired or tried, whether it could be analyzed (and why not), with the\ncrawler's lab measurements: one sample, no device or network emulation, never field data.",
+      "properties": {
+        "crawl_url_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "final_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "page_kind": {
+          "$ref": "#/$defs/PageKind"
+        },
+        "depth": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/CrawlUrlStatus"
+        },
+        "http_status": {
+          "anyOf": [
+            {
+              "maximum": 599,
+              "minimum": 100,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "method": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AcquisitionMethod"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "analyzed": {
+          "type": "boolean"
+        },
+        "gap": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "words": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "redirects": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "response_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "render_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "html_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scripts": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "images": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "device_profile": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "measured_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "crawl_url_id",
+        "url",
+        "final_url",
+        "page_kind",
+        "depth",
+        "status",
+        "http_status",
+        "method",
+        "analyzed",
+        "gap",
+        "title",
+        "words",
+        "redirects",
+        "response_ms",
+        "render_ms",
+        "html_bytes",
+        "scripts",
+        "images",
+        "device_profile",
+        "measured_at"
+      ],
+      "title": "WebsitePageView",
+      "type": "object"
+    },
+    "WebsiteRun": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "stage": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "progress_done": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "progress_total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "extractor_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "ruleset_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "stats": {
+          "$ref": "#/$defs/WebsiteStats"
+        },
+        "requested_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/RunEvent"
+          },
+          "type": "array"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job_id",
+        "project_id",
+        "project_name",
+        "status",
+        "stage",
+        "progress_done",
+        "progress_total",
+        "extractor_version",
+        "ruleset_version",
+        "stats",
+        "requested_at",
+        "started_at",
+        "finished_at",
+        "events",
+        "is_synthetic"
+      ],
+      "title": "WebsiteRun",
+      "type": "object"
+    },
+    "WebsiteRunListQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "limit",
+        "cursor"
+      ],
+      "title": "WebsiteRunListQuery",
+      "type": "object"
+    },
+    "WebsiteRunPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/WebsiteRun"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "WebsiteRunPage",
+      "type": "object"
+    },
+    "WebsiteScoreChange": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/WebsiteCategory"
+        },
+        "before": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "after": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "category",
+        "before",
+        "after"
+      ],
+      "title": "WebsiteScoreChange",
+      "type": "object"
+    },
+    "WebsiteStartRequest": {
+      "additionalProperties": false,
+      "description": "Audits the crawled sites of one project, or of every live project when `project_id` is null\n(one job each). `sites` narrows one project's audit to some of its sites, to retry them.",
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sites": {
+          "items": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 200,
+          "type": "array"
+        }
+      },
+      "required": [
+        "project_id",
+        "sites"
+      ],
+      "title": "WebsiteStartRequest",
+      "type": "object"
+    },
+    "WebsiteStats": {
+      "additionalProperties": false,
+      "description": "Counts of one audit run, read back from its last checkpoint.",
+      "properties": {
+        "sites": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "audited": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unchanged": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "partial": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "empty": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pages_analyzed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pages_missing": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "warnings": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unknown": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sites",
+        "audited",
+        "unchanged",
+        "partial",
+        "empty",
+        "pages_analyzed",
+        "pages_missing",
+        "failed",
+        "warnings",
+        "unknown"
+      ],
+      "title": "WebsiteStats",
+      "type": "object"
+    },
+    "WebsiteSubscore": {
+      "additionalProperties": false,
+      "description": "`score` is null when no rule of the category could be evaluated.",
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/WebsiteCategory"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "coverage": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "passed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "warnings": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unknown": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "not_applicable": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "category",
+        "score",
+        "coverage",
+        "confidence",
+        "passed",
+        "warnings",
+        "failed",
+        "unknown",
+        "not_applicable"
+      ],
+      "title": "WebsiteSubscore",
+      "type": "object"
+    },
     "WebsiteTechnology": {
       "additionalProperties": false,
       "properties": {
@@ -11189,20 +12591,20 @@
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
           "type": "string"
         },
+        "technology_key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
         "name": {
           "maxLength": 300,
           "minLength": 1,
           "type": "string"
         },
         "category": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
         },
         "version": {
           "anyOf": [
@@ -11219,28 +12621,75 @@
           "minimum": 0,
           "type": "number"
         },
-        "evidence_item_id": {
+        "evidence_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "audit_id",
+        "technology_key",
+        "name",
+        "category",
+        "version",
+        "confidence",
+        "evidence_json"
+      ],
+      "title": "WebsiteTechnology",
+      "type": "object"
+    },
+    "WebsiteTechnologyView": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "category": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "version": {
           "anyOf": [
             {
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
               "type": "string"
             },
             {
               "type": "null"
             }
           ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/WebsiteEvidence"
+          },
+          "type": "array"
         }
       },
       "required": [
-        "id",
-        "audit_id",
+        "key",
         "name",
         "category",
         "version",
         "confidence",
-        "evidence_item_id"
+        "evidence"
       ],
-      "title": "WebsiteTechnology",
+      "title": "WebsiteTechnologyView",
       "type": "object"
     },
     "WorkerState": {

@@ -60,6 +60,11 @@ pub const LATINO_CONTROL: &str = "latino.control";
 pub const LATINO_RUNS: &str = "latino.runs";
 pub const LATINO_GET: &str = "latino.get";
 pub const LATINO_REVIEW: &str = "latino.review";
+pub const WEBSITE_START: &str = "website.start";
+pub const WEBSITE_CONTROL: &str = "website.control";
+pub const WEBSITE_RUNS: &str = "website.runs";
+pub const WEBSITE_AUDITS: &str = "website.audits";
+pub const WEBSITE_AUDIT: &str = "website.audit";
 pub const DEV_SEED_SYNTHETIC: &str = "dev.seed_synthetic";
 const SHUTDOWN: &str = "shutdown";
 

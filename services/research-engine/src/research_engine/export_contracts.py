@@ -93,6 +93,10 @@ from research_engine.domain import (
     SourceInfo,
     SourceKind,
     SyntheticSeedResult,
+    WebsiteAuditListQuery,
+    WebsiteAuditQuery,
+    WebsiteRunListQuery,
+    WebsiteStartRequest,
     default_crawl_settings,
 )
 from research_engine.latino import engine as latino_engine
@@ -111,10 +115,13 @@ from research_engine.testdata import (
     seed_discovery,
     seed_latino,
     seed_resolution,
+    seed_website,
     synthetic_connector,
     synthetic_project,
     synthetic_run,
 )
+from research_engine.website import engine as website_engine
+from research_engine.website import store as website_store
 
 DEFAULT_OUT = Path(__file__).resolve().parents[4] / "packages" / "shared-types"
 _T0 = datetime(2026, 1, 1, tzinfo=UTC)
@@ -390,6 +397,9 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
             latino = build_latino_fixtures(
                 conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids)
             )
+            website = build_website_fixtures(
+                conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids), data_dir
+            )
         finally:
             conn.close()
     return {
@@ -410,6 +420,39 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
         **discovery,
         **resolution,
         **latino,
+        **website,
+    }
+
+
+def build_website_fixtures(
+    conn: Any, context: SyntheticContext, data_dir: Path
+) -> dict[str, dict[str, Any]]:
+    """Website intelligence shapes from real audits of the synthetic sites (the sites of the Latino
+    fixtures have no stored pages, so their audits are empty), the second of a site crawled again,
+    read back through the real queries (fixture ids and fixed clock, as above)."""
+    project_id = context.project_id
+    with ExitStack() as stack:
+        for module in (website_store, jobs, repository):
+            stack.enter_context(patch.object(module, "new_id", context.ids))
+            stack.enter_context(patch.object(module, "utc_now", lambda: _T0))
+        stack.enter_context(patch.object(website_engine, "utc_now", lambda: _T0))
+        seeded = seed_website(conn, context, data_dir)
+    changed_site = seeded.sites["changed"]
+    run_query = WebsiteRunListQuery(project_id=project_id, limit=25, cursor=None)
+    audit_query = WebsiteAuditListQuery(project_id=project_id, site=None, limit=25, cursor=None)
+    audits = website_store.list_website_audits(conn, audit_query)
+    changed = next(item for item in audits.items if item.site == changed_site)
+    query = WebsiteAuditQuery(audit_id=changed.id)
+    return {
+        "website_start_request.json": _dump(
+            WebsiteStartRequest(project_id=project_id, sites=[changed_site])
+        ),
+        "website_run_list_query.json": _dump(run_query),
+        "website_run_page.json": _dump(website_store.list_website_runs(conn, run_query)),
+        "website_audit_list_query.json": _dump(audit_query),
+        "website_audit_page.json": _dump(audits),
+        "website_audit_query.json": _dump(query),
+        "website_audit_detail.json": _dump(website_store.get_website_audit(conn, changed.id)),
     }
 
 
