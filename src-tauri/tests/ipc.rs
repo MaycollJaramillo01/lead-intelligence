@@ -11,10 +11,12 @@ use lead_intelligence_lib::commands::{AppState, CoreInfo};
 use lead_intelligence_lib::config::Environment;
 use lead_intelligence_lib::data::{
     BusinessDetail, BusinessPage, CampaignSaved, CandidateDetail, CandidatePage, CanonicalField,
-    CrawlRun, CrawlRunPage, CrawlUrlDetail, CrawlUrlPage, CriteriaCheck, DatasetPage, DiscoveryRun,
-    DiscoveryRunPage, ImportPreview, JobStatus, LatinoDetail, LatinoRunPage, LatinoStatus,
-    MatchDetail, MatchPage, MatchStatus, ResolutionRunPage, SelectionMethod, SourceCatalog,
-    SourceRunStatus, SyntheticSeedResult, WebsiteAuditDetail, WebsiteAuditPage, WebsiteRunPage,
+    ContactDetail, ContactOrigin, ContactPage, ContactRunPage, ContactSuppression, CrawlRun,
+    CrawlRunPage, CrawlUrlDetail, CrawlUrlPage, CriteriaCheck, DatasetPage, DecisionMakerPage,
+    DiscoveryRun, DiscoveryRunPage, ImportPreview, JobStatus, LatinoDetail, LatinoRunPage,
+    LatinoStatus, MatchDetail, MatchPage, MatchStatus, ResolutionRunPage, SelectionMethod,
+    SourceCatalog, SourceRunStatus, SuppressionExport, SyntheticSeedResult, WebsiteAuditDetail,
+    WebsiteAuditPage, WebsiteRunPage,
 };
 use lead_intelligence_lib::protocol::{
     CommandError, CommandErrorCode, ComponentState, DiagnosticsReport, WorkerState,
@@ -334,6 +336,132 @@ fn data_commands_serve_real_store_queries_through_ipc() {
             .iter()
             .all(|run| run.status == JobStatus::Succeeded)
     );
+
+    // contact intelligence: the seed checked its contacts; channels, a detail, a review, the review
+    // queue, the do-not-contact list and a new run all go through IPC and the real worker
+    let listed: ContactPage = invoke(
+        &dev,
+        "list_contacts",
+        json!({ "query": {
+            "project_id": null, "contact_type": null, "validation_status": null, "role": null,
+            "freshness": null, "include_hypotheses": false, "include_suppressed": false,
+            "limit": 500, "cursor": null
+        }}),
+    )
+    .expect("contacts")
+    .deserialize()
+    .expect("typed contacts");
+    assert!(
+        listed
+            .items
+            .iter()
+            .all(|item| !item.suppressed && item.origin != ContactOrigin::Hypothesis)
+    );
+    let form = listed
+        .items
+        .iter()
+        .find(|item| item.key.starts_with("contact_form:"))
+        .expect("a published contact form");
+    let contacts: ContactDetail = invoke(
+        &dev,
+        "get_contacts",
+        json!({ "query": { "business_id": form.business_id } }),
+    )
+    .expect("contact detail")
+    .deserialize()
+    .expect("typed detail");
+    assert!(!contacts.hypotheses.is_empty());
+    let unexplained = invoke(
+        &dev,
+        "act_on_contact",
+        json!({ "request": {
+            "business_id": form.business_id, "key": form.key, "action": "confirm",
+            "reason": null, "check_mail_domains": false
+        }}),
+    )
+    .expect_err("a confirmation needs a reason");
+    assert_eq!(
+        command_error(unexplained).code,
+        CommandErrorCode::InvalidInput
+    );
+    let confirmed: ContactDetail = invoke(
+        &dev,
+        "act_on_contact",
+        json!({ "request": {
+            "business_id": form.business_id, "key": form.key, "action": "confirm",
+            "reason": "IPC test", "check_mail_domains": false
+        }}),
+    )
+    .expect("confirmed")
+    .deserialize()
+    .expect("typed detail");
+    assert!(
+        confirmed
+            .decisions
+            .iter()
+            .any(|decision| decision.reason == "IPC test")
+    );
+    let queue: DecisionMakerPage = invoke(
+        &dev,
+        "list_decision_makers",
+        json!({ "query": {
+            "project_id": null, "review_status": "ambiguous", "limit": 50, "cursor": null
+        }}),
+    )
+    .expect("review queue")
+    .deserialize()
+    .expect("typed queue");
+    assert!(!queue.items.is_empty());
+    let entry: ContactSuppression = invoke(
+        &dev,
+        "change_suppression",
+        json!({ "request": {
+            "suppression_id": null, "kind": "domain", "value": "synthetic-ipc-0797.example",
+            "reason": "IPC test"
+        }}),
+    )
+    .expect("suppression added")
+    .deserialize()
+    .expect("typed entry");
+    let export: SuppressionExport = invoke(
+        &dev,
+        "export_suppressions",
+        json!({ "request": { "include_lifted": true } }),
+    )
+    .expect("export")
+    .deserialize()
+    .expect("typed export");
+    assert!(export.content.contains(&entry.value));
+    let mut contact_runs: ContactRunPage = invoke(
+        &dev,
+        "start_contacts",
+        json!({ "request": { "project_id": null, "check_mail_domains": false } }),
+    )
+    .expect("contact run started")
+    .deserialize()
+    .expect("typed runs");
+    assert_eq!(contact_runs.items.len(), 1);
+    for _ in 0..400 {
+        contact_runs = invoke(
+            &dev,
+            "list_contact_runs",
+            json!({ "query": { "project_id": null, "limit": 10, "cursor": null } }),
+        )
+        .expect("contact runs")
+        .deserialize()
+        .expect("typed runs");
+        if contact_runs
+            .items
+            .iter()
+            .all(|run| !matches!(run.status, JobStatus::Queued | JobStatus::Running))
+        {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    let latest = &contact_runs.items[0];
+    assert_eq!(latest.status, JobStatus::Succeeded);
+    assert!(!latest.check_mail_domains && latest.stats.mail_domains_checked == 0);
 
     let datasets: DatasetPage = invoke(
         &dev,

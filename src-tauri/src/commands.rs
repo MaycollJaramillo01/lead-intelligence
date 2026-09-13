@@ -13,17 +13,21 @@ use crate::config::Environment;
 use crate::data::{
     BusinessDetail, BusinessDetailQuery, BusinessListQuery, BusinessPage, CampaignListQuery,
     CampaignPage, CampaignSaveRequest, CampaignSaved, CandidateDetail, CandidateDetailQuery,
-    CandidateListQuery, CandidatePage, CanonicalChoiceRequest, CrawlRun, CrawlRunListQuery,
+    CandidateListQuery, CandidatePage, CanonicalChoiceRequest, ContactActionRequest, ContactDetail,
+    ContactDetailQuery, ContactListQuery, ContactPage, ContactRun, ContactRunListQuery,
+    ContactRunPage, ContactStartRequest, ContactSuppression, CrawlRun, CrawlRunListQuery,
     CrawlRunPage, CrawlStartRequest, CrawlUrlDetail, CrawlUrlDetailQuery, CrawlUrlListQuery,
     CrawlUrlPage, CriteriaCheck, CriteriaCheckQuery, DatasetListQuery, DatasetPage,
+    DecisionMakerItem, DecisionMakerListQuery, DecisionMakerPage, DecisionMakerReviewRequest,
     DiscoveryControlRequest, DiscoveryRun, DiscoveryRunListQuery, DiscoveryRunPage,
     DiscoveryStartRequest, ImportPreview, ImportPreviewRequest, LatinoDetail, LatinoDetailQuery,
     LatinoReviewRequest, LatinoRun, LatinoRunListQuery, LatinoRunPage, LatinoStartRequest,
     MatchActionRequest, MatchDetail, MatchDetailQuery, MatchListQuery, MatchPage, ResolutionRun,
     ResolutionRunListQuery, ResolutionRunPage, ResolutionStartRequest, SourceCatalog,
-    SourceCatalogQuery, SyntheticSeedResult, WebsiteAuditDetail, WebsiteAuditListQuery,
-    WebsiteAuditPage, WebsiteAuditQuery, WebsiteRun, WebsiteRunListQuery, WebsiteRunPage,
-    WebsiteStartRequest,
+    SourceCatalogQuery, SuppressionChangeRequest, SuppressionExport, SuppressionExportRequest,
+    SuppressionImportRequest, SuppressionImportResult, SuppressionListQuery, SuppressionPage,
+    SyntheticSeedResult, WebsiteAuditDetail, WebsiteAuditListQuery, WebsiteAuditPage,
+    WebsiteAuditQuery, WebsiteRun, WebsiteRunListQuery, WebsiteRunPage, WebsiteStartRequest,
 };
 use crate::error::AppError;
 use crate::protocol::{
@@ -31,13 +35,16 @@ use crate::protocol::{
 };
 use crate::worker::{
     BUSINESSES_CHOOSE_VALUE, BUSINESSES_GET, BUSINESSES_LIST, CAMPAIGNS_LIST, CAMPAIGNS_SAVE,
-    CAMPAIGNS_VALIDATE, CRAWL_CONTROL, CRAWL_RUNS, CRAWL_START, CRAWL_URL, CRAWL_URLS,
-    DATA_TIMEOUT, DATASETS_LIST, DEV_SEED_SYNTHETIC, DIAGNOSTICS, DIAGNOSTICS_TIMEOUT,
-    DISCOVERY_CANDIDATE, DISCOVERY_CANDIDATES, DISCOVERY_CONTROL, DISCOVERY_RUNS, DISCOVERY_START,
-    DISCOVERY_TIMEOUT, IMPORT_TIMEOUT, LATINO_CONTROL, LATINO_GET, LATINO_REVIEW, LATINO_RUNS,
-    LATINO_START, MATCHES_ACT, MATCHES_GET, MATCHES_LIST, RESOLUTION_CONTROL, RESOLUTION_RUNS,
-    RESOLUTION_START, RESOLUTION_TIMEOUT, SEED_TIMEOUT, SOURCES_LIST, SOURCES_PREVIEW_IMPORT,
-    WEBSITE_AUDIT, WEBSITE_AUDITS, WEBSITE_CONTROL, WEBSITE_RUNS, WEBSITE_START, WorkerSupervisor,
+    CAMPAIGNS_VALIDATE, CONTACTS_ACT, CONTACTS_CONTROL, CONTACTS_GET, CONTACTS_LIST, CONTACTS_RUNS,
+    CONTACTS_START, CONTACTS_TIMEOUT, CRAWL_CONTROL, CRAWL_RUNS, CRAWL_START, CRAWL_URL,
+    CRAWL_URLS, DATA_TIMEOUT, DATASETS_LIST, DECISION_MAKERS_LIST, DECISION_MAKERS_REVIEW,
+    DEV_SEED_SYNTHETIC, DIAGNOSTICS, DIAGNOSTICS_TIMEOUT, DISCOVERY_CANDIDATE,
+    DISCOVERY_CANDIDATES, DISCOVERY_CONTROL, DISCOVERY_RUNS, DISCOVERY_START, DISCOVERY_TIMEOUT,
+    IMPORT_TIMEOUT, LATINO_CONTROL, LATINO_GET, LATINO_REVIEW, LATINO_RUNS, LATINO_START,
+    MATCHES_ACT, MATCHES_GET, MATCHES_LIST, RESOLUTION_CONTROL, RESOLUTION_RUNS, RESOLUTION_START,
+    RESOLUTION_TIMEOUT, SEED_TIMEOUT, SOURCES_LIST, SOURCES_PREVIEW_IMPORT, SUPPRESSIONS_CHANGE,
+    SUPPRESSIONS_EXPORT, SUPPRESSIONS_IMPORT, SUPPRESSIONS_LIST, WEBSITE_AUDIT, WEBSITE_AUDITS,
+    WEBSITE_CONTROL, WEBSITE_RUNS, WEBSITE_START, WorkerSupervisor,
 };
 
 pub struct AppState {
@@ -844,6 +851,252 @@ pub async fn get_website_audit(
         Ok(detail)
     }
     .instrument(ipc_span("get_website_audit"))
+    .await
+}
+
+// ---- contact intelligence (phase 09) ------------------------------------------------------------
+
+/// Checks the contacts of one project, or of every project with businesses. The runs continue
+/// inside the worker after this returns; mail domains are looked up only when the request allows.
+#[tauri::command]
+pub async fn start_contacts(
+    state: State<'_, AppState>,
+    request: ContactStartRequest,
+) -> Result<ContactRunPage, AppError> {
+    async {
+        let page: ContactRunPage = state
+            .supervisor
+            .request_with(CONTACTS_START, &request, DISCOVERY_TIMEOUT)
+            .await?;
+        page.items
+            .iter()
+            .try_for_each(ContactRun::validate)
+            .map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("start_contacts"))
+    .await
+}
+
+/// Pauses, resumes or cancels a contact run; it stops between batches and stays resumable.
+#[tauri::command]
+pub async fn control_contacts(
+    state: State<'_, AppState>,
+    request: DiscoveryControlRequest,
+) -> Result<ContactRun, AppError> {
+    async {
+        let run: ContactRun = state
+            .supervisor
+            .request_with(CONTACTS_CONTROL, &request, DISCOVERY_TIMEOUT)
+            .await?;
+        run.validate().map_err(AppError::Protocol)?;
+        Ok(run)
+    }
+    .instrument(ipc_span("control_contacts"))
+    .await
+}
+
+#[tauri::command]
+pub async fn list_contact_runs(
+    state: State<'_, AppState>,
+    query: ContactRunListQuery,
+) -> Result<ContactRunPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: ContactRunPage = state
+            .supervisor
+            .request_with(CONTACTS_RUNS, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_contact_runs"))
+    .await
+}
+
+/// Channels of canonical businesses with their exact status, filtered by channel, quality, role
+/// and freshness; hypotheses and suppressed channels only when asked for.
+#[tauri::command]
+pub async fn list_contacts(
+    state: State<'_, AppState>,
+    query: ContactListQuery,
+) -> Result<ContactPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: ContactPage = state
+            .supervisor
+            .request_with(CONTACTS_LIST, &query, CONTACTS_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_contacts"))
+    .await
+}
+
+/// The contacts of one business: channels with their sources, hypotheses apart, published people,
+/// conflicts, contactability and the review history.
+#[tauri::command]
+pub async fn get_contacts(
+    state: State<'_, AppState>,
+    query: ContactDetailQuery,
+) -> Result<ContactDetail, AppError> {
+    async {
+        let detail: ContactDetail = state
+            .supervisor
+            .request_with(CONTACTS_GET, &query, DATA_TIMEOUT)
+            .await?;
+        detail
+            .validate(&query.business_id)
+            .map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("get_contacts"))
+    .await
+}
+
+/// Validates, reviews, marks as shown or suppresses one channel; nothing is ever sent.
+#[tauri::command]
+pub async fn act_on_contact(
+    state: State<'_, AppState>,
+    request: ContactActionRequest,
+) -> Result<ContactDetail, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let detail: ContactDetail = state
+            .supervisor
+            .request_with(CONTACTS_ACT, &request, RESOLUTION_TIMEOUT)
+            .await?;
+        detail
+            .validate(&request.business_id)
+            .map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("act_on_contact"))
+    .await
+}
+
+/// Published people, by review status: the review queue asks for the ambiguous ones.
+#[tauri::command]
+pub async fn list_decision_makers(
+    state: State<'_, AppState>,
+    query: DecisionMakerListQuery,
+) -> Result<DecisionMakerPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: DecisionMakerPage = state
+            .supervisor
+            .request_with(DECISION_MAKERS_LIST, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_decision_makers"))
+    .await
+}
+
+#[tauri::command]
+pub async fn review_decision_maker(
+    state: State<'_, AppState>,
+    request: DecisionMakerReviewRequest,
+) -> Result<DecisionMakerItem, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let item: DecisionMakerItem = state
+            .supervisor
+            .request_with(DECISION_MAKERS_REVIEW, &request, DATA_TIMEOUT)
+            .await?;
+        if item.decision_maker.id != request.decision_maker_id {
+            return Err(AppError::Protocol(
+                "the review answered about another person".into(),
+            ));
+        }
+        item.validate().map_err(AppError::Protocol)?;
+        Ok(item)
+    }
+    .instrument(ipc_span("review_decision_maker"))
+    .await
+}
+
+#[tauri::command]
+pub async fn list_suppressions(
+    state: State<'_, AppState>,
+    query: SuppressionListQuery,
+) -> Result<SuppressionPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: SuppressionPage = state
+            .supervisor
+            .request_with(SUPPRESSIONS_LIST, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_suppressions"))
+    .await
+}
+
+/// Adds an entry to the do-not-contact list, or lifts one; both with a reason.
+#[tauri::command]
+pub async fn change_suppression(
+    state: State<'_, AppState>,
+    request: SuppressionChangeRequest,
+) -> Result<ContactSuppression, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let entry: ContactSuppression = state
+            .supervisor
+            .request_with(SUPPRESSIONS_CHANGE, &request, CONTACTS_TIMEOUT)
+            .await?;
+        entry.validate().map_err(AppError::Protocol)?;
+        let answered = match &request.suppression_id {
+            Some(id) => &entry.id == id && entry.lifted_at.is_some(),
+            None => request.kind == Some(entry.kind) && entry.lifted_at.is_none(),
+        };
+        if !answered {
+            return Err(AppError::Protocol(
+                "the do-not-contact list answered about another change".into(),
+            ));
+        }
+        Ok(entry)
+    }
+    .instrument(ipc_span("change_suppression"))
+    .await
+}
+
+#[tauri::command]
+pub async fn import_suppressions(
+    state: State<'_, AppState>,
+    request: SuppressionImportRequest,
+) -> Result<SuppressionImportResult, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let result: SuppressionImportResult = state
+            .supervisor
+            .request_with(SUPPRESSIONS_IMPORT, &request, RESOLUTION_TIMEOUT)
+            .await?;
+        result.validate().map_err(AppError::Protocol)?;
+        Ok(result)
+    }
+    .instrument(ipc_span("import_suppressions"))
+    .await
+}
+
+/// The do-not-contact list as CSV; the core refuses a file with a cell a spreadsheet would run.
+#[tauri::command]
+pub async fn export_suppressions(
+    state: State<'_, AppState>,
+    request: SuppressionExportRequest,
+) -> Result<SuppressionExport, AppError> {
+    async {
+        let export: SuppressionExport = state
+            .supervisor
+            .request_with(SUPPRESSIONS_EXPORT, &request, DATA_TIMEOUT)
+            .await?;
+        export.validate().map_err(AppError::Protocol)?;
+        Ok(export)
+    }
+    .instrument(ipc_span("export_suppressions"))
     .await
 }
 

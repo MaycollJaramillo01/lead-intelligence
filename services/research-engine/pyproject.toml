@@ -4,9 +4,11 @@ dynamic = ["version"]
 description = "Lead Intelligence research worker: a sidecar process driven by the desktop core over JSON Lines."
 requires-python = ">=3.12"
 dependencies = [
+    "dnspython>=2.7",
     "duckdb>=1.1",
     "httpx>=0.27",
     "orjson>=3.10",
+    "phonenumbers>=9.0",
     "playwright>=1.62.0",
     "pydantic>=2.9",
     "selectolax>=0.4.11",

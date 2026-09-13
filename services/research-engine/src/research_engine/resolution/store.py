@@ -210,6 +210,7 @@ class _Observations:
             is_primary=primary and valid,
             validation_status=status,
             validated_at=self.now,
+            validation_method="structure",
             do_not_contact=False,
             suppression_reason=None,
             confidence=self.confidence if confidence is None else confidence,

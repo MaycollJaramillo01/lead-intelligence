@@ -65,7 +65,10 @@ contracts:check` (part of `pnpm check` and `pnpm build`) fails when generated fi
   (`resolution.start`, `resolution.control`, `resolution.runs`, `matches.list`, `matches.get`,
   `matches.act`, `businesses.choose_value`), the Latino evidence set (`latino.start`,
   `latino.control`, `latino.runs`, `latino.get`, `latino.review`), the website intelligence set
-  (`website.start`, `website.control`, `website.runs`, `website.audits`, `website.audit`) and, in
+  (`website.start`, `website.control`, `website.runs`, `website.audits`, `website.audit`), the
+  contact intelligence set (`contacts.start`, `contacts.control`, `contacts.runs`, `contacts.list`,
+  `contacts.get`, `contacts.act`, `decision_makers.list`, `decision_makers.review`,
+  `suppressions.list`, `suppressions.change`, `suppressions.import`, `suppressions.export`) and, in
   development builds only,
   `dev.seed_synthetic`. The answer echoes `request_id` with type `<request>.result` and carries
   either `payload` or `error`, never both.
@@ -211,6 +214,27 @@ JobsScreen ─ listWebsiteRuns; cancel goes to control_website_audit
 ```
 
 Every rule, its thresholds and its limits are in [website-intelligence.md](website-intelligence.md).
+
+## Data flow: contact intelligence
+
+```text
+ResearchCenterScreen ▸ Contacts ─ desktop.startContacts({project_id, check_mail_domains})   (apps/desktop)
+  → invoke("start_contacts") → commands::start_contacts                                      (src-tauri)
+  → worker: one job per project; on a thread: channels and people of every crawled page that speaks
+    for a business (contacts.site extractions, checkpoint per 100 pages) → per 200 canonical
+    businesses: mail domains (cache; DNS only when allowed and online), people to review, hypotheses,
+    statuses with history, checkpoint                                                    (research-engine)
+  ⟳ desktop.listContactRuns while a run moves; desktop.listContacts with its filters
+ContactPanel (Contacts view, BusinessInspector) ─ desktop.getContacts({business_id}) → channels decided
+  now, hypotheses apart, people, conflicts, contactability; validate() refuses a hypothesis as a contact
+  ─ desktop.actOnContact({business_id, key, action, reason, check_mail_domains}) → ContactDetail
+People to review ─ listDecisionMakers({review_status: "ambiguous"}) ─ reviewDecisionMaker
+Do not contact ─ listSuppressions ─ changeSuppression ─ importSuppressions ─ exportSuppressions
+JobsScreen ─ listContactRuns; cancel goes to control_contacts
+```
+
+What each status means, the rules, contactability and the do-not-contact list are in
+[contact-intelligence.md](contact-intelligence.md).
 
 Worker errors keep their meaning across the boundary: `not_found` → `CommandError.not_found`,
 `not_allowed` → `not_allowed`, `invalid_payload` → `invalid_input`; anything else is `worker_error`

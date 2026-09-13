@@ -5,6 +5,7 @@ import type {
   BusinessDetail,
   BusinessListItem,
   BusinessPage,
+  ContactDetail,
   LatinoDetail,
   LatinoRunPage,
 } from "@lead/shared-types";
@@ -27,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   getLatino: vi.fn<typeof desktop.getLatino>(),
   listLatinoRuns: vi.fn<typeof desktop.listLatinoRuns>(),
   startLatino: vi.fn<typeof desktop.startLatino>(),
+  getContacts: vi.fn<typeof desktop.getContacts>(),
 }));
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
@@ -51,6 +53,26 @@ const NOT_EVALUATED: LatinoDetail = {
   rules_version: "1.0.0",
   extractor_version: "1.0.0",
 };
+const NO_CONTACTS: ContactDetail = {
+  business_id: "",
+  root_business_id: "",
+  channels: [],
+  hypotheses: [],
+  decision_makers: [],
+  conflicts: [],
+  contactability: {
+    score: 0,
+    version: "1.0.0",
+    formula: "synthetic",
+    components: [],
+    gates: ["no_usable_channel"],
+    channels_counted: 0,
+  },
+  business_suppression: null,
+  decisions: [],
+  rules_version: "1.0.0",
+  extractor_version: "1.0.0",
+};
 
 function renderScreen() {
   const host = document.createElement("div");
@@ -71,6 +93,11 @@ describe("BusinessesScreen", () => {
     mocks.listLatinoRuns.mockResolvedValue(NO_RUNS);
     mocks.getLatino.mockImplementation(async ({ business_id }) => ({
       ...NOT_EVALUATED,
+      business_id,
+      root_business_id: business_id,
+    }));
+    mocks.getContacts.mockImplementation(async ({ business_id }) => ({
+      ...NO_CONTACTS,
       business_id,
       root_business_id: business_id,
     }));

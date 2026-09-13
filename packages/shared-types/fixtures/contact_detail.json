@@ -1,0 +1,965 @@
+{
+  "business_id": "01900000-0000-7000-8000-000000000951",
+  "root_business_id": "01900000-0000-7000-8000-000000000951",
+  "channels": [
+    {
+      "key": "booking_form:https://calendly.com/synthetic-plumbing-0701/visit",
+      "contact_type": "booking_form",
+      "value": "https://calendly.com/synthetic-plumbing-0701/visit",
+      "platform": null,
+      "level": "business",
+      "location_id": null,
+      "decision_maker_id": null,
+      "role": "general",
+      "role_or_department": null,
+      "origin": "published",
+      "validation_status": "likely_valid",
+      "validation_method": "form_structure",
+      "validated_at": "2026-01-01T00:00:00.000Z",
+      "signals": [
+        {
+          "code": "form_fields",
+          "value": "0"
+        },
+        {
+          "code": "form_method",
+          "value": "get"
+        },
+        {
+          "code": "captcha",
+          "value": "no"
+        },
+        {
+          "code": "page_status",
+          "value": "200"
+        },
+        {
+          "code": "provider",
+          "value": "Calendly"
+        }
+      ],
+      "freshness": "fresh",
+      "first_seen_at": "2025-12-02T00:00:00.000Z",
+      "last_seen_at": "2025-12-02T00:00:00.000Z",
+      "source_count": 1,
+      "source_kinds": [
+        "business_website"
+      ],
+      "is_primary": false,
+      "suppression": null,
+      "shared_with": 0,
+      "review": null,
+      "sources": [
+        {
+          "contact_point_id": "01900000-0000-7000-8000-000000001028",
+          "business_id": "01900000-0000-7000-8000-000000000951",
+          "origin": "published",
+          "value_raw": "https://calendly.com/synthetic-plumbing-0701/visit",
+          "published_context": "Calendly booking link on https://synthetic-plumbing-0701.example/",
+          "role_or_department": null,
+          "confidence": 0.7,
+          "observed_at": "2025-12-02T00:00:00.000Z",
+          "current": true,
+          "provenance": {
+            "extraction_id": "01900000-0000-7000-8000-000000001017",
+            "extractor": "contacts.site",
+            "extractor_version": "1.0.0",
+            "extracted_at": "2026-01-01T00:00:00.000Z",
+            "raw_record_id": "01900000-0000-7000-8000-000000000930",
+            "source_run_id": "01900000-0000-7000-8000-000000000928",
+            "acquired_page_id": "01900000-0000-7000-8000-000000000929",
+            "connector_key": "web.crawler",
+            "connector_name": "Business websites (HTTP, browser when needed)",
+            "connector_kind": "business_website",
+            "method": "http_fetch",
+            "source_url": "https://synthetic-plumbing-0701.example/",
+            "external_id": null,
+            "acquired_at": "2025-12-02T00:00:00.000Z"
+          }
+        }
+      ]
+    },
+    {
+      "key": "contact_form:https://synthetic-plumbing-0701.example/contact/send",
+      "contact_type": "contact_form",
+      "value": "https://synthetic-plumbing-0701.example/contact/send",
+      "platform": null,
+      "level": "business",
+      "location_id": null,
+      "decision_maker_id": null,
+      "role": "general",
+      "role_or_department": null,
+      "origin": "published",
+      "validation_status": "likely_valid",
+      "validation_method": "form_structure",
+      "validated_at": "2026-01-01T00:00:00.000Z",
+      "signals": [
+        {
+          "code": "form_fields",
+          "value": "3"
+        },
+        {
+          "code": "form_method",
+          "value": "post"
+        },
+        {
+          "code": "captcha",
+          "value": "no"
+        },
+        {
+          "code": "form_purpose",
+          "value": "contact"
+        },
+        {
+          "code": "page_status",
+          "value": "200"
+        }
+      ],
+      "freshness": "fresh",
+      "first_seen_at": "2025-12-02T00:00:00.000Z",
+      "last_seen_at": "2025-12-02T00:00:00.000Z",
+      "source_count": 1,
+      "source_kinds": [
+        "business_website"
+      ],
+      "is_primary": false,
+      "suppression": null,
+      "shared_with": 0,
+      "review": null,
+      "sources": [
+        {
+          "contact_point_id": "01900000-0000-7000-8000-000000001037",
+          "business_id": "01900000-0000-7000-8000-000000000951",
+          "origin": "published",
+          "value_raw": "https://synthetic-plumbing-0701.example/contact/send",
+          "published_context": "contact form on https://synthetic-plumbing-0701.example/contact (3 fields, POST)",
+          "role_or_department": null,
+          "confidence": 0.7,
+          "observed_at": "2025-12-02T00:00:00.000Z",
+          "current": true,
+          "provenance": {
+            "extraction_id": "01900000-0000-7000-8000-000000001036",
+            "extractor": "contacts.site",
+            "extractor_version": "1.0.0",
+            "extracted_at": "2026-01-01T00:00:00.000Z",
+            "raw_record_id": "01900000-0000-7000-8000-000000000936",
+            "source_run_id": "01900000-0000-7000-8000-000000000928",
+            "acquired_page_id": "01900000-0000-7000-8000-000000000935",
+            "connector_key": "web.crawler",
+            "connector_name": "Business websites (HTTP, browser when needed)",
+            "connector_kind": "business_website",
+            "method": "http_fetch",
+            "source_url": "https://synthetic-plumbing-0701.example/contact",
+            "external_id": null,
+            "acquired_at": "2025-12-02T00:00:00.000Z"
+          }
+        }
+      ]
+    },
+    {
+      "key": "email:info@synthetic-plumbing-0701.example",
+      "contact_type": "email",
+      "value": "info@synthetic-plumbing-0701.example",
+      "platform": null,
+      "level": "location",
+      "location_id": "01900000-0000-7000-8000-000000000954",
+      "decision_maker_id": null,
+      "role": "role_address",
+      "role_or_department": "info",
+      "origin": "published",
+      "validation_status": "likely_valid",
+      "validation_method": "sources_agree",
+      "validated_at": "2026-01-01T00:00:00.000Z",
+      "signals": [
+        {
+          "code": "role_address",
+          "value": "info"
+        },
+        {
+          "code": "domain_matches_website",
+          "value": "yes"
+        },
+        {
+          "code": "catch_all",
+          "value": "not_checked"
+        },
+        {
+          "code": "mail_domain",
+          "value": "mx"
+        }
+      ],
+      "freshness": "fresh",
+      "first_seen_at": "2025-12-02T00:00:00.000Z",
+      "last_seen_at": "2025-12-02T00:00:00.000Z",
+      "source_count": 1,
+      "source_kinds": [
+        "business_website"
+      ],
+      "is_primary": true,
+      "suppression": null,
+      "shared_with": 0,
+      "review": null,
+      "sources": [
+        {
+          "contact_point_id": "01900000-0000-7000-8000-000000000959",
+          "business_id": "01900000-0000-7000-8000-000000000951",
+          "origin": "published",
+          "value_raw": "info@synthetic-plumbing-0701.example",
+          "published_context": "mailto link on https://synthetic-plumbing-0701.example/",
+          "role_or_department": null,
+          "confidence": 0.7,
+          "observed_at": "2025-12-02T00:00:00.000Z",
+          "current": true,
+          "provenance": {
+            "extraction_id": "01900000-0000-7000-8000-000000000958",
+            "extractor": "resolution.site",
+            "extractor_version": "1.0.0",
+            "extracted_at": "2026-01-01T00:00:00.000Z",
+            "raw_record_id": "01900000-0000-7000-8000-000000000930",
+            "source_run_id": "01900000-0000-7000-8000-000000000928",
+            "acquired_page_id": "01900000-0000-7000-8000-000000000929",
+            "connector_key": "web.crawler",
+            "connector_name": "Business websites (HTTP, browser when needed)",
+            "connector_kind": "business_website",
+            "method": "http_fetch",
+            "source_url": "https://synthetic-plumbing-0701.example/",
+            "external_id": null,
+            "acquired_at": "2025-12-02T00:00:00.000Z"
+          }
+        },
+        {
+          "contact_point_id": "01900000-0000-7000-8000-000000001018",
+          "business_id": "01900000-0000-7000-8000-000000000951",
+          "origin": "published",
+          "value_raw": "info@synthetic-plumbing-0701.example",
+          "published_context": "structured data (Plumber) on https://synthetic-plumbing-0701.example/",
+          "role_or_department": "info",
+          "confidence": 0.8,
+          "observed_at": "2025-12-02T00:00:00.000Z",
+          "current": true,
+          "provenance": {
+            "extraction_id": "01900000-0000-7000-8000-000000001017",
+            "extractor": "contacts.site",
+            "extractor_version": "1.0.0",
+            "extracted_at": "2026-01-01T00:00:00.000Z",
+            "raw_record_id": "01900000-0000-7000-8000-000000000930",
+            "source_run_id": "01900000-0000-7000-8000-000000000928",
+            "acquired_page_id": "01900000-0000-7000-8000-000000000929",
+            "connector_key": "web.crawler",
+            "connector_name": "Business websites (HTTP, browser when needed)",
+            "connector_kind": "business_website",
+            "method": "http_fetch",
+            "source_url": "https://synthetic-plumbing-0701.example/",
+            "external_id": null,
+            "acquired_at": "2025-12-02T00:00:00.000Z"
+          }
+        }
+      ]
+    },
+    {
+      "key": "email:jordan.sample@synthetic-plumbing-0701.example",
+      "contact_type": "email",
+      "value": "jordan.sample@synthetic-plumbing-0701.example",
+      "platform": null,
+      "level": "person",
+      "location_id": null,
+      "decision_maker_id": "01900000-0000-7000-8000-000000001031",
+      "role": "personal",
+      "role_or_department": null,
+      "origin": "published",
+      "validation_status": "likely_valid",
+      "validation_method": "sources_agree",
+      "validated_at": "2026-01-01T00:00:00.000Z",
+      "signals": [
+        {
+          "code": "domain_matches_website",
+          "value": "yes"
+        },
+        {
+          "code": "catch_all",
+          "value": "not_checked"
+        },
+        {
+          "code": "mail_domain",
+          "value": "mx"
+        }
+      ],
+      "freshness": "fresh",
+      "first_seen_at": "2025-12-02T00:00:00.000Z",
+      "last_seen_at": "2025-12-02T00:00:00.000Z",
+      "source_count": 1,
+      "source_kinds": [
+        "business_website"
+      ],
+      "is_primary": false,
+      "suppression": null,
+      "shared_with": 0,
+      "review": null,
+      "sources": [
+        {
+          "contact_point_id": "01900000-0000-7000-8000-000000001034",
+          "business_id": "01900000-0000-7000-8000-000000000951",
+          "origin": "published",
+          "value_raw": "jordan.sample@synthetic-plumbing-0701.example",
+          "published_context": "structured data (Person) on https://synthetic-plumbing-0701.example/about",
+          "role_or_department": null,
+          "confidence": 0.8,
+          "observed_at": "2025-12-02T00:00:00.000Z",
+          "current": true,
+          "provenance": {
+            "extraction_id": "01900000-0000-7000-8000-000000001030",
+            "extractor": "contacts.site",
+            "extractor_version": "1.0.0",
+            "extracted_at": "2026-01-01T00:00:00.000Z",
+            "raw_record_id": "01900000-0000-7000-8000-000000000933",
+            "source_run_id": "01900000-0000-7000-8000-000000000928",
+            "acquired_page_id": "01900000-0000-7000-8000-000000000932",
+            "connector_key": "web.crawler",
+            "connector_name": "Business websites (HTTP, browser when needed)",
+            "connector_kind": "business_website",
+            "method": "http_fetch",
+            "source_url": "https://synthetic-plumbing-0701.example/about",
+            "external_id": null,
+            "acquired_at": "2025-12-02T00:00:00.000Z"
+          }
+        }
+      ]
+    },
+    {
+      "key": "email:sales@synthetic-plumbing-0701.example",
+      "contact_type": "email",
+      "value": "sales@synthetic-plumbing-0701.example",
+      "platform": null,
+      "level": "business",
+      "location_id": null,
+      "decision_maker_id": null,
+      "role": "role_address",
+      "role_or_department": "sales",
+      "origin": "published",
+      "validation_status": "likely_valid",
+      "validation_method": "sources_agree",
+      "validated_at": "2026-01-01T00:00:00.000Z",
+      "signals": [
+        {
+          "code": "role_address",
+          "value": "sales"
+        },
+        {
+          "code": "domain_matches_website",
+          "value": "yes"
+        },
+        {
+          "code": "catch_all",
+          "value": "not_checked"
+        },
+        {
+          "code": "mail_domain",
+          "value": "mx"
+        }
+      ],
+      "freshness": "fresh",
+      "first_seen_at": "2025-12-02T00:00:00.000Z",
+      "last_seen_at": "2025-12-02T00:00:00.000Z",
+      "source_count": 1,
+      "source_kinds": [
+        "business_website"
+      ],
+      "is_primary": false,
+      "suppression": null,
+      "shared_with": 0,
+      "review": null,
+      "sources": [
+        {
+          "contact_point_id": "01900000-0000-7000-8000-000000001024",
+          "business_id": "01900000-0000-7000-8000-000000000951",
+          "origin": "published",
+          "value_raw": "sales@synthetic-plumbing-0701.example",
+          "published_context": "structured data (sales) on https://synthetic-plumbing-0701.example/",
+          "role_or_department": "sales",
+          "confidence": 0.8,
+          "observed_at": "2025-12-02T00:00:00.000Z",
+          "current": true,
+          "provenance": {
+            "extraction_id": "01900000-0000-7000-8000-000000001017",
+            "extractor": "contacts.site",
+            "extractor_version": "1.0.0",
+            "extracted_at": "2026-01-01T00:00:00.000Z",
+            "raw_record_id": "01900000-0000-7000-8000-000000000930",
+            "source_run_id": "01900000-0000-7000-8000-000000000928",
+            "acquired_page_id": "01900000-0000-7000-8000-000000000929",
+            "connector_key": "web.crawler",
+            "connector_name": "Business websites (HTTP, browser when needed)",
+            "connector_kind": "business_website",
+            "method": "http_fetch",
+            "source_url": "https://synthetic-plumbing-0701.example/",
+            "external_id": null,
+            "acquired_at": "2025-12-02T00:00:00.000Z"
+          }
+        }
+      ]
+    },
+    {
+      "key": "phone:+15125550171",
+      "contact_type": "phone",
+      "value": "+15125550171",
+      "platform": null,
+      "level": "location",
+      "location_id": "01900000-0000-7000-8000-000000000954",
+      "decision_maker_id": null,
+      "role": "general",
+      "role_or_department": null,
+      "origin": "published",
+      "validation_status": "structurally_valid",
+      "validation_method": "numbering_plan",
+      "validated_at": "2026-01-01T00:00:00.000Z",
+      "signals": [
+        {
+          "code": "country",
+          "value": "US"
+        },
+        {
+          "code": "line_type",
+          "value": "not_determinable"
+        },
+        {
+          "code": "fictional_range",
+          "value": null
+        }
+      ],
+      "freshness": "fresh",
+      "first_seen_at": "2025-12-02T00:00:00.000Z",
+      "last_seen_at": "2025-12-02T00:00:00.000Z",
+      "source_count": 2,
+      "source_kinds": [
+        "business_website",
+        "synthetic"
+      ],
+      "is_primary": true,
+      "suppression": null,
+      "shared_with": 0,
+      "review": null,
+      "sources": [
+        {
+          "contact_point_id": "01900000-0000-7000-8000-000000000956",
+          "business_id": "01900000-0000-7000-8000-000000000951",
+          "origin": "published",
+          "value_raw": "(512) 555-0171",
+          "published_context": null,
+          "role_or_department": null,
+          "confidence": 0.7,
+          "observed_at": "2025-12-02T00:00:00.000Z",
+          "current": true,
+          "provenance": {
+            "extraction_id": "01900000-0000-7000-8000-000000000952",
+            "extractor": "resolution.candidate",
+            "extractor_version": "1.0.0",
+            "extracted_at": "2026-01-01T00:00:00.000Z",
+            "raw_record_id": "01900000-0000-7000-8000-000000000924",
+            "source_run_id": "01900000-0000-7000-8000-000000000003",
+            "acquired_page_id": null,
+            "connector_key": "synthetic.fixture",
+            "connector_name": "Synthetic fixture source (test data)",
+            "connector_kind": "synthetic",
+            "method": "synthetic",
+            "source_url": null,
+            "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000924",
+            "acquired_at": "2025-12-02T00:00:00.000Z"
+          }
+        },
+        {
+          "contact_point_id": "01900000-0000-7000-8000-000000001020",
+          "business_id": "01900000-0000-7000-8000-000000000951",
+          "origin": "published",
+          "value_raw": "+1 512-555-0171",
+          "published_context": "structured data (Plumber) on https://synthetic-plumbing-0701.example/",
+          "role_or_department": null,
+          "confidence": 0.8,
+          "observed_at": "2025-12-02T00:00:00.000Z",
+          "current": true,
+          "provenance": {
+            "extraction_id": "01900000-0000-7000-8000-000000001017",
+            "extractor": "contacts.site",
+            "extractor_version": "1.0.0",
+            "extracted_at": "2026-01-01T00:00:00.000Z",
+            "raw_record_id": "01900000-0000-7000-8000-000000000930",
+            "source_run_id": "01900000-0000-7000-8000-000000000928",
+            "acquired_page_id": "01900000-0000-7000-8000-000000000929",
+            "connector_key": "web.crawler",
+            "connector_name": "Business websites (HTTP, browser when needed)",
+            "connector_kind": "business_website",
+            "method": "http_fetch",
+            "source_url": "https://synthetic-plumbing-0701.example/",
+            "external_id": null,
+            "acquired_at": "2025-12-02T00:00:00.000Z"
+          }
+        }
+      ]
+    },
+    {
+      "key": "phone:+15125550172",
+      "contact_type": "phone",
+      "value": "+15125550172",
+      "platform": null,
+      "level": "business",
+      "location_id": null,
+      "decision_maker_id": null,
+      "role": "department",
+      "role_or_department": "sales",
+      "origin": "published",
+      "validation_status": "structurally_valid",
+      "validation_method": "numbering_plan",
+      "validated_at": "2026-01-01T00:00:00.000Z",
+      "signals": [
+        {
+          "code": "country",
+          "value": "US"
+        },
+        {
+          "code": "line_type",
+          "value": "not_determinable"
+        },
+        {
+          "code": "fictional_range",
+          "value": null
+        }
+      ],
+      "freshness": "fresh",
+      "first_seen_at": "2025-12-02T00:00:00.000Z",
+      "last_seen_at": "2025-12-02T00:00:00.000Z",
+      "source_count": 1,
+      "source_kinds": [
+        "business_website"
+      ],
+      "is_primary": false,
+      "suppression": null,
+      "shared_with": 0,
+      "review": null,
+      "sources": [
+        {
+          "contact_point_id": "01900000-0000-7000-8000-000000001022",
+          "business_id": "01900000-0000-7000-8000-000000000951",
+          "origin": "published",
+          "value_raw": "+1 512-555-0172",
+          "published_context": "structured data (sales) on https://synthetic-plumbing-0701.example/",
+          "role_or_department": "sales",
+          "confidence": 0.8,
+          "observed_at": "2025-12-02T00:00:00.000Z",
+          "current": true,
+          "provenance": {
+            "extraction_id": "01900000-0000-7000-8000-000000001017",
+            "extractor": "contacts.site",
+            "extractor_version": "1.0.0",
+            "extracted_at": "2026-01-01T00:00:00.000Z",
+            "raw_record_id": "01900000-0000-7000-8000-000000000930",
+            "source_run_id": "01900000-0000-7000-8000-000000000928",
+            "acquired_page_id": "01900000-0000-7000-8000-000000000929",
+            "connector_key": "web.crawler",
+            "connector_name": "Business websites (HTTP, browser when needed)",
+            "connector_kind": "business_website",
+            "method": "http_fetch",
+            "source_url": "https://synthetic-plumbing-0701.example/",
+            "external_id": null,
+            "acquired_at": "2025-12-02T00:00:00.000Z"
+          }
+        }
+      ]
+    },
+    {
+      "key": "social:facebook:syntheticplumbing0701",
+      "contact_type": "social_profile",
+      "value": "https://facebook.com/syntheticplumbing0701",
+      "platform": "facebook",
+      "level": "business",
+      "location_id": null,
+      "decision_maker_id": null,
+      "role": "general",
+      "role_or_department": null,
+      "origin": "published",
+      "validation_status": "likely_valid",
+      "validation_method": "official_link",
+      "validated_at": "2026-01-01T00:00:00.000Z",
+      "signals": [
+        {
+          "code": "platform",
+          "value": "facebook"
+        }
+      ],
+      "freshness": "fresh",
+      "first_seen_at": "2025-12-02T00:00:00.000Z",
+      "last_seen_at": "2025-12-02T00:00:00.000Z",
+      "source_count": 1,
+      "source_kinds": [
+        "business_website"
+      ],
+      "is_primary": false,
+      "suppression": null,
+      "shared_with": 0,
+      "review": null,
+      "sources": [
+        {
+          "contact_point_id": "01900000-0000-7000-8000-000000000961",
+          "business_id": "01900000-0000-7000-8000-000000000951",
+          "origin": "published",
+          "value_raw": "https://www.facebook.com/syntheticplumbing0701",
+          "published_context": "link on https://synthetic-plumbing-0701.example/",
+          "role_or_department": null,
+          "confidence": 0.6,
+          "observed_at": "2025-12-02T00:00:00.000Z",
+          "current": true,
+          "provenance": {
+            "extraction_id": "01900000-0000-7000-8000-000000000958",
+            "extractor": "resolution.site",
+            "extractor_version": "1.0.0",
+            "extracted_at": "2026-01-01T00:00:00.000Z",
+            "raw_record_id": "01900000-0000-7000-8000-000000000930",
+            "source_run_id": "01900000-0000-7000-8000-000000000928",
+            "acquired_page_id": "01900000-0000-7000-8000-000000000929",
+            "connector_key": "web.crawler",
+            "connector_name": "Business websites (HTTP, browser when needed)",
+            "connector_kind": "business_website",
+            "method": "http_fetch",
+            "source_url": "https://synthetic-plumbing-0701.example/",
+            "external_id": null,
+            "acquired_at": "2025-12-02T00:00:00.000Z"
+          }
+        },
+        {
+          "contact_point_id": "01900000-0000-7000-8000-000000001026",
+          "business_id": "01900000-0000-7000-8000-000000000951",
+          "origin": "published",
+          "value_raw": "https://www.facebook.com/syntheticplumbing0701",
+          "published_context": "structured data (Plumber) on https://synthetic-plumbing-0701.example/",
+          "role_or_department": null,
+          "confidence": 0.8,
+          "observed_at": "2025-12-02T00:00:00.000Z",
+          "current": true,
+          "provenance": {
+            "extraction_id": "01900000-0000-7000-8000-000000001017",
+            "extractor": "contacts.site",
+            "extractor_version": "1.0.0",
+            "extracted_at": "2026-01-01T00:00:00.000Z",
+            "raw_record_id": "01900000-0000-7000-8000-000000000930",
+            "source_run_id": "01900000-0000-7000-8000-000000000928",
+            "acquired_page_id": "01900000-0000-7000-8000-000000000929",
+            "connector_key": "web.crawler",
+            "connector_name": "Business websites (HTTP, browser when needed)",
+            "connector_kind": "business_website",
+            "method": "http_fetch",
+            "source_url": "https://synthetic-plumbing-0701.example/",
+            "external_id": null,
+            "acquired_at": "2025-12-02T00:00:00.000Z"
+          }
+        }
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "key": "email:alex.example@synthetic-plumbing-0701.example",
+      "contact_type": "email",
+      "value": "alex.example@synthetic-plumbing-0701.example",
+      "platform": null,
+      "level": "person",
+      "location_id": null,
+      "decision_maker_id": "01900000-0000-7000-8000-000000001032",
+      "role": "personal",
+      "role_or_department": null,
+      "origin": "hypothesis",
+      "validation_status": "unknown",
+      "validation_method": "pattern_hypothesis",
+      "validated_at": "2026-01-01T00:00:00.000Z",
+      "signals": [
+        {
+          "code": "domain_matches_website",
+          "value": "yes"
+        },
+        {
+          "code": "catch_all",
+          "value": "not_checked"
+        },
+        {
+          "code": "mail_domain",
+          "value": "mx"
+        }
+      ],
+      "freshness": "fresh",
+      "first_seen_at": "2025-12-02T00:00:00.000Z",
+      "last_seen_at": "2025-12-02T00:00:00.000Z",
+      "source_count": 1,
+      "source_kinds": [
+        "business_website"
+      ],
+      "is_primary": false,
+      "suppression": null,
+      "shared_with": 0,
+      "review": null,
+      "sources": [
+        {
+          "contact_point_id": "01900000-0000-7000-8000-000000001079",
+          "business_id": "01900000-0000-7000-8000-000000000951",
+          "origin": "hypothesis",
+          "value_raw": "alex.example@synthetic-plumbing-0701.example",
+          "published_context": "hypothesis: built with the pattern first.last of jordan.sample@synthetic-plumbing-0701.example, published for Jordan Sample; not confirmed",
+          "role_or_department": null,
+          "confidence": 0.2,
+          "observed_at": "2025-12-02T00:00:00.000Z",
+          "current": true,
+          "provenance": {
+            "extraction_id": "01900000-0000-7000-8000-000000001078",
+            "extractor": "contacts.pattern",
+            "extractor_version": "1.0.0",
+            "extracted_at": "2026-01-01T00:00:00.000Z",
+            "raw_record_id": "01900000-0000-7000-8000-000000000933",
+            "source_run_id": "01900000-0000-7000-8000-000000000928",
+            "acquired_page_id": "01900000-0000-7000-8000-000000000932",
+            "connector_key": "web.crawler",
+            "connector_name": "Business websites (HTTP, browser when needed)",
+            "connector_kind": "business_website",
+            "method": "http_fetch",
+            "source_url": "https://synthetic-plumbing-0701.example/about",
+            "external_id": null,
+            "acquired_at": "2025-12-02T00:00:00.000Z"
+          }
+        }
+      ]
+    },
+    {
+      "key": "email:casey.demo@synthetic-plumbing-0701.example",
+      "contact_type": "email",
+      "value": "casey.demo@synthetic-plumbing-0701.example",
+      "platform": null,
+      "level": "person",
+      "location_id": null,
+      "decision_maker_id": "01900000-0000-7000-8000-000000001033",
+      "role": "personal",
+      "role_or_department": null,
+      "origin": "hypothesis",
+      "validation_status": "unknown",
+      "validation_method": "pattern_hypothesis",
+      "validated_at": "2026-01-01T00:00:00.000Z",
+      "signals": [
+        {
+          "code": "domain_matches_website",
+          "value": "yes"
+        },
+        {
+          "code": "catch_all",
+          "value": "not_checked"
+        },
+        {
+          "code": "mail_domain",
+          "value": "mx"
+        }
+      ],
+      "freshness": "fresh",
+      "first_seen_at": "2025-12-02T00:00:00.000Z",
+      "last_seen_at": "2025-12-02T00:00:00.000Z",
+      "source_count": 1,
+      "source_kinds": [
+        "business_website"
+      ],
+      "is_primary": false,
+      "suppression": null,
+      "shared_with": 0,
+      "review": null,
+      "sources": [
+        {
+          "contact_point_id": "01900000-0000-7000-8000-000000001080",
+          "business_id": "01900000-0000-7000-8000-000000000951",
+          "origin": "hypothesis",
+          "value_raw": "casey.demo@synthetic-plumbing-0701.example",
+          "published_context": "hypothesis: built with the pattern first.last of jordan.sample@synthetic-plumbing-0701.example, published for Jordan Sample; not confirmed",
+          "role_or_department": null,
+          "confidence": 0.2,
+          "observed_at": "2025-12-02T00:00:00.000Z",
+          "current": true,
+          "provenance": {
+            "extraction_id": "01900000-0000-7000-8000-000000001078",
+            "extractor": "contacts.pattern",
+            "extractor_version": "1.0.0",
+            "extracted_at": "2026-01-01T00:00:00.000Z",
+            "raw_record_id": "01900000-0000-7000-8000-000000000933",
+            "source_run_id": "01900000-0000-7000-8000-000000000928",
+            "acquired_page_id": "01900000-0000-7000-8000-000000000932",
+            "connector_key": "web.crawler",
+            "connector_name": "Business websites (HTTP, browser when needed)",
+            "connector_kind": "business_website",
+            "method": "http_fetch",
+            "source_url": "https://synthetic-plumbing-0701.example/about",
+            "external_id": null,
+            "acquired_at": "2025-12-02T00:00:00.000Z"
+          }
+        }
+      ]
+    }
+  ],
+  "decision_makers": [
+    {
+      "decision_maker": {
+        "id": "01900000-0000-7000-8000-000000001032",
+        "business_id": "01900000-0000-7000-8000-000000000951",
+        "extraction_id": "01900000-0000-7000-8000-000000001030",
+        "full_name_raw": "Alex Example",
+        "full_name_normalized": "alex example",
+        "role_raw": "Owner",
+        "role_normalized": "owner",
+        "relationship": "owner",
+        "published_context": "About us Alex Example, Owner, started this synthetic business. Casey Demo, Office Manager, answers the phone",
+        "review_status": "unreviewed",
+        "review_reasons_json": null,
+        "confidence": 0.6,
+        "observed_at": "2025-12-02T00:00:00.000Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "deleted_at": null,
+        "deleted_reason": null
+      },
+      "provenance": {
+        "extraction_id": "01900000-0000-7000-8000-000000001030",
+        "extractor": "contacts.site",
+        "extractor_version": "1.0.0",
+        "extracted_at": "2026-01-01T00:00:00.000Z",
+        "raw_record_id": "01900000-0000-7000-8000-000000000933",
+        "source_run_id": "01900000-0000-7000-8000-000000000928",
+        "acquired_page_id": "01900000-0000-7000-8000-000000000932",
+        "connector_key": "web.crawler",
+        "connector_name": "Business websites (HTTP, browser when needed)",
+        "connector_kind": "business_website",
+        "method": "http_fetch",
+        "source_url": "https://synthetic-plumbing-0701.example/about",
+        "external_id": null,
+        "acquired_at": "2025-12-02T00:00:00.000Z"
+      },
+      "reasons": [],
+      "channel_keys": [
+        "email:alex.example@synthetic-plumbing-0701.example"
+      ]
+    },
+    {
+      "decision_maker": {
+        "id": "01900000-0000-7000-8000-000000001033",
+        "business_id": "01900000-0000-7000-8000-000000000951",
+        "extraction_id": "01900000-0000-7000-8000-000000001030",
+        "full_name_raw": "Casey Demo",
+        "full_name_normalized": "casey demo",
+        "role_raw": "Office Manager",
+        "role_normalized": "office manager",
+        "relationship": "manager",
+        "published_context": "About us Alex Example, Owner, started this synthetic business. Casey Demo, Office Manager, answers the phone. Test data only.",
+        "review_status": "unreviewed",
+        "review_reasons_json": null,
+        "confidence": 0.6,
+        "observed_at": "2025-12-02T00:00:00.000Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "deleted_at": null,
+        "deleted_reason": null
+      },
+      "provenance": {
+        "extraction_id": "01900000-0000-7000-8000-000000001030",
+        "extractor": "contacts.site",
+        "extractor_version": "1.0.0",
+        "extracted_at": "2026-01-01T00:00:00.000Z",
+        "raw_record_id": "01900000-0000-7000-8000-000000000933",
+        "source_run_id": "01900000-0000-7000-8000-000000000928",
+        "acquired_page_id": "01900000-0000-7000-8000-000000000932",
+        "connector_key": "web.crawler",
+        "connector_name": "Business websites (HTTP, browser when needed)",
+        "connector_kind": "business_website",
+        "method": "http_fetch",
+        "source_url": "https://synthetic-plumbing-0701.example/about",
+        "external_id": null,
+        "acquired_at": "2025-12-02T00:00:00.000Z"
+      },
+      "reasons": [],
+      "channel_keys": [
+        "email:casey.demo@synthetic-plumbing-0701.example"
+      ]
+    },
+    {
+      "decision_maker": {
+        "id": "01900000-0000-7000-8000-000000001031",
+        "business_id": "01900000-0000-7000-8000-000000000951",
+        "extraction_id": "01900000-0000-7000-8000-000000001030",
+        "full_name_raw": "Jordan Sample",
+        "full_name_normalized": "jordan sample",
+        "role_raw": "General Manager",
+        "role_normalized": "general manager",
+        "relationship": "manager",
+        "published_context": "Jordan Sample (General Manager)",
+        "review_status": "unreviewed",
+        "review_reasons_json": null,
+        "confidence": 0.8,
+        "observed_at": "2025-12-02T00:00:00.000Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "deleted_at": null,
+        "deleted_reason": null
+      },
+      "provenance": {
+        "extraction_id": "01900000-0000-7000-8000-000000001030",
+        "extractor": "contacts.site",
+        "extractor_version": "1.0.0",
+        "extracted_at": "2026-01-01T00:00:00.000Z",
+        "raw_record_id": "01900000-0000-7000-8000-000000000933",
+        "source_run_id": "01900000-0000-7000-8000-000000000928",
+        "acquired_page_id": "01900000-0000-7000-8000-000000000932",
+        "connector_key": "web.crawler",
+        "connector_name": "Business websites (HTTP, browser when needed)",
+        "connector_kind": "business_website",
+        "method": "http_fetch",
+        "source_url": "https://synthetic-plumbing-0701.example/about",
+        "external_id": null,
+        "acquired_at": "2025-12-02T00:00:00.000Z"
+      },
+      "reasons": [],
+      "channel_keys": [
+        "email:jordan.sample@synthetic-plumbing-0701.example"
+      ]
+    }
+  ],
+  "conflicts": [],
+  "contactability": {
+    "score": 86,
+    "version": "1.0.0",
+    "formula": "score = round(100 x sum(weight x value) / sum(weight)) over availability 25, validation 30, role 15, freshness 15, source 15; only published or imported channels that are not invalid, suppressed or in the fictional range count; hypotheses never count; a suppressed business has no score",
+    "components": [
+      {
+        "code": "availability",
+        "weight": 25,
+        "value": 0.6,
+        "detail": "email, form, social_profile"
+      },
+      {
+        "code": "validation",
+        "weight": 30,
+        "value": 1.0,
+        "detail": "likely_valid"
+      },
+      {
+        "code": "role",
+        "weight": 15,
+        "value": 0.7,
+        "detail": "manager"
+      },
+      {
+        "code": "freshness",
+        "weight": 15,
+        "value": 1.0,
+        "detail": "fresh"
+      },
+      {
+        "code": "source",
+        "weight": 15,
+        "value": 1.0,
+        "detail": "business_website"
+      }
+    ],
+    "gates": [],
+    "channels_counted": 6
+  },
+  "business_suppression": null,
+  "decisions": [],
+  "rules_version": "1.0.0",
+  "extractor_version": "1.0.0"
+}

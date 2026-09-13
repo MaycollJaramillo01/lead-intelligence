@@ -367,6 +367,7 @@ pub struct ContactPoint {
     pub is_primary: bool,
     pub validation_status: ValidationStatus,
     pub validated_at: Option<UtcTimestamp>,
+    pub validation_method: Option<String>,
     pub do_not_contact: bool,
     pub suppression_reason: Option<String>,
     pub confidence: Confidence,
@@ -2026,6 +2027,7 @@ contract_enum!(EntityType {
     Tag,
     Note,
     MatchCandidate,
+    ContactSuppression,
 });
 contract_enum!(MatchOutcome {
     AutoMerge,
@@ -3310,10 +3312,984 @@ impl WebsiteAuditDetail {
     }
 }
 
+// ---- contact intelligence (phase 09) ------------------------------------------------------------
+// Mirrors the contact intelligence section of `domain.py`. The core checks that pages obey every
+// filter they were asked for, that a hypothesis never passes for a contact (never primary, never a
+// status that reads as validated), that a suppressed channel says so, that a detail describes the
+// business asked for, and that an exported do-not-contact file has no cell a spreadsheet would run.
+
+pub const MAX_SUPPRESSION_IMPORT_CHARS: usize = 1_000_000;
+const MAX_CHANNEL_KEY_CHARS: usize = 400;
+const MAX_SUPPRESSION_VALUE_CHARS: usize = 320;
+const MAX_FILENAME_CHARS: usize = 260;
+const SUPPRESSION_COLUMNS: [&str; 6] = [
+    "kind",
+    "value",
+    "reason",
+    "source",
+    "created_at",
+    "lifted_at",
+];
+const FORMULA_START: [char; 6] = ['=', '+', '-', '@', '\t', '\r'];
+
+contract_enum!(ContactLevel {
+    Business,
+    Location,
+    Person
+});
+contract_enum!(ContactRole {
+    General,
+    Department,
+    RoleAddress,
+    Personal
+});
+contract_enum!(ContactFreshness {
+    Fresh,
+    Aging,
+    Stale
+});
+contract_enum!(ContactAction {
+    Validate,
+    Confirm,
+    MarkInvalid,
+    ClearReview,
+    MarkPrimary,
+    Suppress
+});
+contract_enum!(SuppressionKind {
+    Email,
+    Phone,
+    Domain,
+    Business
+});
+contract_enum!(DecisionMakerReview {
+    Unreviewed,
+    Ambiguous,
+    Confirmed,
+    Rejected
+});
+contract_enum!(DecisionMakerRelationship {
+    Owner,
+    Founder,
+    Executive,
+    Partner,
+    Manager,
+    Unknown
+});
+contract_enum!(DecisionMakerDecision {
+    Confirm,
+    Reject,
+    Reset
+});
+
+impl ValidationStatus {
+    /// A status a hypothesis may carry: nothing that reads as validated or as a contact.
+    pub fn fits_a_hypothesis(self) -> bool {
+        matches!(self, Self::Unknown | Self::Invalid | Self::Stale)
+    }
+}
+
+fn check_key(key: &str) -> Result<(), String> {
+    if key.trim().is_empty() || key.chars().count() > MAX_CHANNEL_KEY_CHARS {
+        return Err(format!(
+            "a channel key must have 1 to {MAX_CHANNEL_KEY_CHARS} characters"
+        ));
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DecisionMaker {
+    pub id: Id,
+    pub business_id: Id,
+    pub extraction_id: Id,
+    pub full_name_raw: String,
+    pub full_name_normalized: String,
+    pub role_raw: Option<String>,
+    pub role_normalized: Option<String>,
+    pub relationship: DecisionMakerRelationship,
+    pub published_context: Option<String>,
+    pub review_status: DecisionMakerReview,
+    pub review_reasons_json: Option<Map<String, Value>>,
+    pub confidence: Confidence,
+    pub observed_at: UtcTimestamp,
+    pub created_at: UtcTimestamp,
+    pub updated_at: UtcTimestamp,
+    pub deleted_at: Option<UtcTimestamp>,
+    pub deleted_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactSuppression {
+    pub id: Id,
+    pub kind: SuppressionKind,
+    pub value: String,
+    pub business_id: Option<Id>,
+    pub reason: String,
+    pub source: String,
+    pub actor: String,
+    pub created_at: UtcTimestamp,
+    pub lifted_at: Option<UtcTimestamp>,
+    pub lifted_by: Option<String>,
+    pub lift_reason: Option<String>,
+}
+
+impl ContactSuppression {
+    /// A business entry names its business, and a lifted entry says who lifted it and why.
+    pub fn validate(&self) -> Result<(), String> {
+        let chars = self.value.chars().count();
+        if self.value.trim().is_empty() || chars > MAX_SUPPRESSION_VALUE_CHARS {
+            return Err(format!("suppression {} has no usable value", self.id));
+        }
+        if (self.kind == SuppressionKind::Business) != self.business_id.is_some()
+            || self
+                .business_id
+                .as_ref()
+                .is_some_and(|business| business.as_str() != self.value)
+        {
+            return Err(format!("suppression {} and its business disagree", self.id));
+        }
+        if self.lifted_at.is_some() != self.lifted_by.is_some()
+            || self.lifted_at.is_some() != self.lift_reason.is_some()
+        {
+            return Err(format!(
+                "lifted suppression {} must say who lifted it and why",
+                self.id
+            ));
+        }
+        if self.reason.trim().is_empty() {
+            return Err(format!("suppression {} has no reason", self.id));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactStartRequest {
+    pub project_id: Option<Id>,
+    /// Allows DNS lookups of mail domains that are not cached; off, the run touches no network.
+    pub check_mail_domains: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactStats {
+    pub pages_scanned: u64,
+    pub contacts_found: u64,
+    pub forms_found: u64,
+    pub people_found: u64,
+    pub hypotheses: u64,
+    pub businesses: u64,
+    pub channels: u64,
+    pub changed: u64,
+    pub mail_domains_checked: u64,
+    pub mail_domain_failures: u64,
+    pub likely_valid: u64,
+    pub domain_valid: u64,
+    pub structurally_valid: u64,
+    pub invalid: u64,
+    pub stale: u64,
+    pub suppressed: u64,
+    pub ambiguous_people: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactRun {
+    pub job_id: Id,
+    pub project_id: Id,
+    pub project_name: String,
+    pub status: JobStatus,
+    pub stage: String,
+    pub progress_done: u64,
+    pub progress_total: Option<u64>,
+    pub extractor_version: String,
+    pub rules_version: String,
+    pub check_mail_domains: bool,
+    pub stats: ContactStats,
+    pub requested_at: UtcTimestamp,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+    pub events: Vec<RunEvent>,
+    pub is_synthetic: bool,
+}
+
+impl ContactRun {
+    /// Progress within its total, statuses within the channels decided, forms within contacts
+    /// found, and no lookup at all when the run was not allowed to make one.
+    pub fn validate(&self) -> Result<(), String> {
+        if let Some(total) = self.progress_total
+            && self.progress_done > total
+        {
+            return Err("progress cannot exceed its total".into());
+        }
+        let stats = &self.stats;
+        let statuses = stats.likely_valid
+            + stats.domain_valid
+            + stats.structurally_valid
+            + stats.invalid
+            + stats.stale
+            + stats.suppressed;
+        if statuses > stats.channels
+            || stats.forms_found > stats.contacts_found
+            || stats.mail_domain_failures > stats.mail_domains_checked
+        {
+            return Err(format!("run {} reports more than it checked", self.job_id));
+        }
+        if !self.check_mail_domains && stats.mail_domains_checked > 0 {
+            return Err(format!(
+                "run {} looked mail domains up without being allowed to",
+                self.job_id
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactRunListQuery {
+    pub project_id: Option<Id>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl ContactRunListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactRunPage {
+    pub items: Vec<ContactRun>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl ContactRunPage {
+    pub fn validate(&self, query: &ContactRunListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        if let Some(project) = &query.project_id
+            && let Some(other) = self.items.iter().find(|run| &run.project_id != project)
+        {
+            return Err(format!("run {} belongs to another project", other.job_id));
+        }
+        self.items.iter().try_for_each(ContactRun::validate)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactSignal {
+    pub code: String,
+    pub value: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactSource {
+    pub contact_point_id: Id,
+    pub business_id: Id,
+    pub origin: ContactOrigin,
+    pub value_raw: String,
+    pub published_context: Option<String>,
+    pub role_or_department: Option<String>,
+    pub confidence: Confidence,
+    pub observed_at: UtcTimestamp,
+    pub current: bool,
+    pub provenance: Provenance,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactChannel {
+    pub key: String,
+    pub contact_type: ContactType,
+    pub value: String,
+    pub platform: Option<String>,
+    pub level: ContactLevel,
+    pub location_id: Option<Id>,
+    pub decision_maker_id: Option<Id>,
+    pub role: ContactRole,
+    pub role_or_department: Option<String>,
+    pub origin: ContactOrigin,
+    pub validation_status: ValidationStatus,
+    pub validation_method: Option<String>,
+    pub validated_at: Option<UtcTimestamp>,
+    pub signals: Vec<ContactSignal>,
+    pub freshness: ContactFreshness,
+    pub first_seen_at: UtcTimestamp,
+    pub last_seen_at: UtcTimestamp,
+    pub source_count: u64,
+    pub source_kinds: Vec<SourceKind>,
+    pub is_primary: bool,
+    pub suppression: Option<ContactSuppression>,
+    pub shared_with: u64,
+    pub review: Option<ReviewDecision>,
+    pub sources: Vec<ContactSource>,
+}
+
+impl ContactChannel {
+    fn validate(&self) -> Result<(), String> {
+        check_key(&self.key)?;
+        let key = &self.key;
+        if self.sources.is_empty()
+            || self.source_count == 0
+            || self.source_count > self.sources.len() as u64
+        {
+            return Err(format!("channel {key} does not count its sources"));
+        }
+        if self.first_seen_at > self.last_seen_at
+            || self
+                .sources
+                .iter()
+                .any(|source| source.observed_at > self.last_seen_at)
+        {
+            return Err(format!("channel {key} was seen after it was last seen"));
+        }
+        if self.origin == ContactOrigin::Hypothesis {
+            if self.is_primary || !self.validation_status.fits_a_hypothesis() {
+                return Err(format!("hypothesis {key} reads as a contact"));
+            }
+        } else if (self.validation_status == ValidationStatus::Suppressed)
+            != self.suppression.is_some()
+        {
+            return Err(format!("channel {key} and its suppression disagree"));
+        }
+        if (self.level == ContactLevel::Person) != self.decision_maker_id.is_some()
+            || (self.level == ContactLevel::Location && self.location_id.is_none())
+        {
+            return Err(format!("channel {key} and the one it reaches disagree"));
+        }
+        if (self.contact_type == ContactType::SocialProfile) != self.platform.is_some() {
+            return Err(format!("only a social profile has a platform ({key})"));
+        }
+        self.suppression
+            .as_ref()
+            .map_or(Ok(()), ContactSuppression::validate)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactabilityComponent {
+    pub code: String,
+    pub weight: u64,
+    pub value: Confidence,
+    pub detail: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Contactability {
+    /// Null when a gate stops it (a suppressed business).
+    pub score: Option<u8>,
+    pub version: String,
+    pub formula: String,
+    pub components: Vec<ContactabilityComponent>,
+    pub gates: Vec<String>,
+    pub channels_counted: u64,
+}
+
+impl Contactability {
+    /// A score is what its components add up to; a missing score names the gate that stopped it.
+    fn validate(&self) -> Result<(), String> {
+        let Some(score) = self.score else {
+            return if self.gates.is_empty() {
+                Err("a contactability without a score must name its gate".into())
+            } else {
+                Ok(())
+            };
+        };
+        let weight: u64 = self.components.iter().map(|part| part.weight).sum();
+        if score > 100 || weight == 0 {
+            return Err("a contactability score is a weighted share, at most 100".into());
+        }
+        let total: f64 = self
+            .components
+            .iter()
+            .map(|part| part.weight as f64 * part.value.0)
+            .sum();
+        if (100.0 * total / weight as f64 - f64::from(score)).abs() > 1.0 {
+            return Err("the contactability score does not add up its components".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactConflict {
+    pub code: String,
+    pub contact_type: Option<ContactType>,
+    pub values: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DecisionMakerView {
+    pub decision_maker: DecisionMaker,
+    pub provenance: Provenance,
+    pub reasons: Vec<String>,
+    pub channel_keys: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactDetailQuery {
+    pub business_id: Id,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactDetail {
+    pub business_id: Id,
+    pub root_business_id: Id,
+    pub channels: Vec<ContactChannel>,
+    pub hypotheses: Vec<ContactChannel>,
+    pub decision_makers: Vec<DecisionMakerView>,
+    pub conflicts: Vec<ContactConflict>,
+    pub contactability: Contactability,
+    pub business_suppression: Option<ContactSuppression>,
+    pub decisions: Vec<ReviewDecision>,
+    pub rules_version: String,
+    pub extractor_version: String,
+}
+
+impl ContactDetail {
+    /// The contacts of the business asked for: hypotheses kept apart, one shown phone and email at
+    /// most, a suppressed business without a score, people pointing at channels it holds, and
+    /// decisions about its canonical business only.
+    pub fn validate(&self, requested: &Id) -> Result<(), String> {
+        if &self.business_id != requested {
+            return Err(format!(
+                "asked for business {requested}, received {}",
+                self.business_id
+            ));
+        }
+        if self
+            .channels
+            .iter()
+            .any(|channel| channel.origin == ContactOrigin::Hypothesis)
+            || self
+                .hypotheses
+                .iter()
+                .any(|channel| channel.origin != ContactOrigin::Hypothesis)
+        {
+            return Err("hypotheses are kept apart from contacts".into());
+        }
+        for channel in self.channels.iter().chain(&self.hypotheses) {
+            channel.validate()?;
+        }
+        for shown in [ContactType::Phone, ContactType::Email] {
+            let primary = self
+                .channels
+                .iter()
+                .filter(|channel| channel.is_primary && channel.contact_type == shown)
+                .count();
+            if primary > 1 {
+                return Err(format!("the business shows {primary} {shown:?} channels"));
+            }
+        }
+        if let Some(entry) = &self.business_suppression {
+            entry.validate()?;
+            if self.contactability.score.is_some()
+                || self
+                    .channels
+                    .iter()
+                    .any(|channel| channel.validation_status != ValidationStatus::Suppressed)
+            {
+                return Err("a suppressed business is suppressed on every channel".into());
+            }
+        }
+        self.contactability.validate()?;
+        let keys: HashSet<&str> = self
+            .channels
+            .iter()
+            .chain(&self.hypotheses)
+            .map(|channel| channel.key.as_str())
+            .collect();
+        for view in &self.decision_makers {
+            if view.decision_maker.extraction_id != view.provenance.extraction_id {
+                return Err("a person does not match their provenance".into());
+            }
+            if let Some(key) = view
+                .channel_keys
+                .iter()
+                .find(|key| !keys.contains(key.as_str()))
+            {
+                return Err(format!(
+                    "a person points at channel {key}, which is not listed"
+                ));
+            }
+        }
+        let root = &self.root_business_id;
+        match self.decisions.iter().find(|decision| {
+            decision.entity_type != EntityType::Business || &decision.entity_id != root
+        }) {
+            Some(decision) => Err(format!(
+                "decision {} is not about this business",
+                decision.id
+            )),
+            None => Ok(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactActionRequest {
+    pub business_id: Id,
+    pub key: String,
+    pub action: ContactAction,
+    pub reason: Option<String>,
+    pub check_mail_domains: bool,
+}
+
+impl ContactActionRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        check_key(&self.key)?;
+        check_reason(&self.reason)?;
+        let optional = matches!(
+            self.action,
+            ContactAction::Validate | ContactAction::MarkPrimary
+        );
+        if !optional && self.reason.is_none() {
+            return Err("this action needs a reason".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactListQuery {
+    pub project_id: Option<Id>,
+    pub contact_type: Option<ContactType>,
+    pub validation_status: Option<ValidationStatus>,
+    pub role: Option<ContactRole>,
+    pub freshness: Option<ContactFreshness>,
+    pub include_hypotheses: bool,
+    pub include_suppressed: bool,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl ContactListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactListItem {
+    pub business_id: Id,
+    pub business_name: String,
+    pub project_id: Id,
+    pub key: String,
+    pub contact_type: ContactType,
+    pub value: String,
+    pub platform: Option<String>,
+    pub level: ContactLevel,
+    pub role: ContactRole,
+    pub role_or_department: Option<String>,
+    pub origin: ContactOrigin,
+    pub validation_status: ValidationStatus,
+    pub freshness: ContactFreshness,
+    pub source_count: u64,
+    pub last_seen_at: UtcTimestamp,
+    pub is_primary: bool,
+    pub suppressed: bool,
+    pub is_synthetic: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContactPage {
+    pub items: Vec<ContactListItem>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl ContactPage {
+    /// Every row obeys the filters; hypotheses and suppressed channels only when asked for.
+    pub fn validate(&self, query: &ContactListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        for item in &self.items {
+            check_key(&item.key)?;
+            let hypothesis = item.origin == ContactOrigin::Hypothesis;
+            let outside = query
+                .project_id
+                .as_ref()
+                .is_some_and(|project| &item.project_id != project)
+                || (hypothesis && !query.include_hypotheses)
+                || (item.suppressed && !query.include_suppressed)
+                || query
+                    .contact_type
+                    .is_some_and(|kind| item.contact_type != kind)
+                || query
+                    .validation_status
+                    .is_some_and(|status| item.validation_status != status)
+                || query.role.is_some_and(|role| item.role != role)
+                || query
+                    .freshness
+                    .is_some_and(|freshness| item.freshness != freshness);
+            if outside {
+                return Err(format!("channel {} does not match the filters", item.key));
+            }
+            if hypothesis && (item.is_primary || !item.validation_status.fits_a_hypothesis()) {
+                return Err(format!("hypothesis {} reads as a contact", item.key));
+            }
+            if !hypothesis
+                && item.suppressed != (item.validation_status == ValidationStatus::Suppressed)
+            {
+                return Err(format!("channel {} and its suppression disagree", item.key));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DecisionMakerListQuery {
+    pub project_id: Option<Id>,
+    pub review_status: Option<DecisionMakerReview>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl DecisionMakerListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DecisionMakerItem {
+    pub decision_maker: DecisionMaker,
+    pub business_name: String,
+    pub root_business_id: Id,
+    pub reasons: Vec<String>,
+    pub provenance: Provenance,
+    pub is_synthetic: bool,
+}
+
+impl DecisionMakerItem {
+    /// A person matches their provenance, and an ambiguous one says why.
+    pub fn validate(&self) -> Result<(), String> {
+        let person = &self.decision_maker;
+        if person.extraction_id != self.provenance.extraction_id {
+            return Err(format!(
+                "person {} does not match their provenance",
+                person.id
+            ));
+        }
+        if person.review_status == DecisionMakerReview::Ambiguous && self.reasons.is_empty() {
+            return Err(format!("ambiguous person {} must say why", person.id));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DecisionMakerPage {
+    pub items: Vec<DecisionMakerItem>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl DecisionMakerPage {
+    pub fn validate(&self, query: &DecisionMakerListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        if let Some(status) = query.review_status
+            && let Some(other) = self
+                .items
+                .iter()
+                .find(|item| item.decision_maker.review_status != status)
+        {
+            return Err(format!(
+                "person {} is outside the review filter",
+                other.decision_maker.id
+            ));
+        }
+        self.items.iter().try_for_each(DecisionMakerItem::validate)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DecisionMakerReviewRequest {
+    pub decision_maker_id: Id,
+    pub decision: DecisionMakerDecision,
+    pub reason: String,
+}
+
+impl DecisionMakerReviewRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        check_reason(&Some(self.reason.clone()))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SuppressionListQuery {
+    pub kind: Option<SuppressionKind>,
+    pub include_lifted: bool,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl SuppressionListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SuppressionPage {
+    pub items: Vec<ContactSuppression>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl SuppressionPage {
+    pub fn validate(&self, query: &SuppressionListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        for entry in &self.items {
+            if query.kind.is_some_and(|kind| entry.kind != kind)
+                || (!query.include_lifted && entry.lifted_at.is_some())
+            {
+                return Err(format!("suppression {} is outside the filters", entry.id));
+            }
+            entry.validate()?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SuppressionChangeRequest {
+    /// Set to lift an entry; null to add one with `kind` and `value`.
+    pub suppression_id: Option<Id>,
+    pub kind: Option<SuppressionKind>,
+    pub value: Option<String>,
+    pub reason: String,
+}
+
+impl SuppressionChangeRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        check_reason(&Some(self.reason.clone()))?;
+        match (&self.suppression_id, &self.kind, &self.value) {
+            (Some(_), None, None) => Ok(()),
+            (None, Some(_), Some(value))
+                if !value.trim().is_empty()
+                    && value.chars().count() <= MAX_SUPPRESSION_VALUE_CHARS =>
+            {
+                Ok(())
+            }
+            _ => Err("add an entry with a kind and a value, or lift one by its id".into()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SuppressionImportRequest {
+    pub filename: String,
+    pub content: String,
+}
+
+impl SuppressionImportRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.filename.trim().is_empty() || self.filename.chars().count() > MAX_FILENAME_CHARS {
+            return Err(format!(
+                "a file name must have 1 to {MAX_FILENAME_CHARS} characters"
+            ));
+        }
+        if self.content.chars().count() > MAX_SUPPRESSION_IMPORT_CHARS {
+            return Err(format!(
+                "a do-not-contact file is at most {MAX_SUPPRESSION_IMPORT_CHARS} characters"
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SuppressionImportProblem {
+    pub row: u64,
+    pub code: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SuppressionImportResult {
+    pub rows: u64,
+    pub added: u64,
+    pub already_suppressed: u64,
+    pub problems: Vec<SuppressionImportProblem>,
+}
+
+impl SuppressionImportResult {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.added + self.already_suppressed + self.problems.len() as u64 > self.rows
+            || self.problems.iter().any(|problem| problem.row == 0)
+        {
+            return Err("an import reports more rows than the file had".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SuppressionExportRequest {
+    pub include_lifted: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SuppressionExport {
+    pub filename: String,
+    pub content: String,
+    pub rows: u64,
+    pub exported_at: UtcTimestamp,
+}
+
+/// The records and cells of a CSV text (RFC 4180 quoting).
+fn csv_records(content: &str) -> Vec<Vec<String>> {
+    let mut records = Vec::new();
+    let mut record = Vec::new();
+    let mut cell = String::new();
+    let mut quoted = false;
+    let mut chars = content.chars().peekable();
+    while let Some(ch) = chars.next() {
+        match (quoted, ch) {
+            (true, '"') if chars.peek() == Some(&'"') => {
+                cell.push('"');
+                chars.next();
+            }
+            (true, '"') => quoted = false,
+            (false, '"') if cell.is_empty() => quoted = true,
+            (false, ',') => record.push(std::mem::take(&mut cell)),
+            (false, '\n') => {
+                record.push(std::mem::take(&mut cell));
+                records.push(std::mem::take(&mut record));
+            }
+            (false, '\r') if chars.peek() == Some(&'\n') => {}
+            (_, ch) => cell.push(ch),
+        }
+    }
+    if !cell.is_empty() || !record.is_empty() {
+        record.push(cell);
+        records.push(record);
+    }
+    records
+}
+
+impl SuppressionExport {
+    /// The file an operator saves: the expected columns, one record per entry it reports, and no
+    /// cell a spreadsheet would run as a formula.
+    pub fn validate(&self) -> Result<(), String> {
+        if !self.filename.ends_with(".csv") || self.filename.chars().count() > MAX_FILENAME_CHARS {
+            return Err("a do-not-contact export is a .csv file".into());
+        }
+        let records = csv_records(&self.content);
+        let Some((header, entries)) = records.split_first() else {
+            return Err("a do-not-contact export has a header".into());
+        };
+        if header.as_slice() != SUPPRESSION_COLUMNS {
+            return Err("a do-not-contact export has unexpected columns".into());
+        }
+        if entries.len() as u64 != self.rows
+            || entries
+                .iter()
+                .any(|record| record.len() != SUPPRESSION_COLUMNS.len())
+        {
+            return Err("a do-not-contact export does not hold the rows it reports".into());
+        }
+        if entries
+            .iter()
+            .flatten()
+            .any(|cell| cell.starts_with(FORMULA_START))
+        {
+            return Err("a do-not-contact export has a cell a spreadsheet would run".into());
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn exported_do_not_contact_files_are_checked_cell_by_cell() {
+        let export = |content: &str, rows: u64| SuppressionExport {
+            filename: "do-not-contact-20260101.csv".into(),
+            content: content.into(),
+            rows,
+            exported_at: UtcTimestamp::parse("2026-01-01T00:00:00.000Z").expect("timestamp"),
+        };
+        let header = "kind,value,reason,source,created_at,lifted_at\n";
+        let safe = format!(
+            "{header}phone,'+15125552368,\"asked, twice\",manual,2026-01-01T00:00:00.000Z,\n\
+             email,a@shop.example,\"line one\nline two\",manual,2026-01-01T00:00:00.000Z,\n"
+        );
+        assert!(export(&safe, 2).validate().is_ok());
+        assert!(
+            export(&safe, 3).validate().is_err(),
+            "rows it does not hold"
+        );
+        let formula = format!("{header}phone,+15125552368,x,manual,t,\n");
+        assert!(
+            export(&formula, 1).validate().is_err(),
+            "a cell that would run"
+        );
+        let quoted = format!("{header}email,a@shop.example,\"=cmd\",manual,t,\n");
+        assert!(
+            export(&quoted, 1).validate().is_err(),
+            "quoting does not neutralise"
+        );
+        assert!(
+            export("kind,value\n", 0).validate().is_err(),
+            "unexpected columns"
+        );
+    }
 
     #[test]
     fn ids_must_be_canonical_uuids() {

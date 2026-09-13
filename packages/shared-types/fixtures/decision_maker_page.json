@@ -1,0 +1,179 @@
+{
+  "items": [
+    {
+      "decision_maker": {
+        "id": "01900000-0000-7000-8000-000000001032",
+        "business_id": "01900000-0000-7000-8000-000000000951",
+        "extraction_id": "01900000-0000-7000-8000-000000001030",
+        "full_name_raw": "Alex Example",
+        "full_name_normalized": "alex example",
+        "role_raw": "Owner",
+        "role_normalized": "owner",
+        "relationship": "owner",
+        "published_context": "About us Alex Example, Owner, started this synthetic business. Casey Demo, Office Manager, answers the phone",
+        "review_status": "unreviewed",
+        "review_reasons_json": null,
+        "confidence": 0.6,
+        "observed_at": "2025-12-02T00:00:00.000Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "deleted_at": null,
+        "deleted_reason": null
+      },
+      "business_name": "Synthetic Plumbing 0701",
+      "root_business_id": "01900000-0000-7000-8000-000000000951",
+      "reasons": [],
+      "provenance": {
+        "extraction_id": "01900000-0000-7000-8000-000000001030",
+        "extractor": "contacts.site",
+        "extractor_version": "1.0.0",
+        "extracted_at": "2026-01-01T00:00:00.000Z",
+        "raw_record_id": "01900000-0000-7000-8000-000000000933",
+        "source_run_id": "01900000-0000-7000-8000-000000000928",
+        "acquired_page_id": "01900000-0000-7000-8000-000000000932",
+        "connector_key": "web.crawler",
+        "connector_name": "Business websites (HTTP, browser when needed)",
+        "connector_kind": "business_website",
+        "method": "http_fetch",
+        "source_url": "https://synthetic-plumbing-0701.example/about",
+        "external_id": null,
+        "acquired_at": "2025-12-02T00:00:00.000Z"
+      },
+      "is_synthetic": true
+    },
+    {
+      "decision_maker": {
+        "id": "01900000-0000-7000-8000-000000001033",
+        "business_id": "01900000-0000-7000-8000-000000000951",
+        "extraction_id": "01900000-0000-7000-8000-000000001030",
+        "full_name_raw": "Casey Demo",
+        "full_name_normalized": "casey demo",
+        "role_raw": "Office Manager",
+        "role_normalized": "office manager",
+        "relationship": "manager",
+        "published_context": "About us Alex Example, Owner, started this synthetic business. Casey Demo, Office Manager, answers the phone. Test data only.",
+        "review_status": "unreviewed",
+        "review_reasons_json": null,
+        "confidence": 0.6,
+        "observed_at": "2025-12-02T00:00:00.000Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "deleted_at": null,
+        "deleted_reason": null
+      },
+      "business_name": "Synthetic Plumbing 0701",
+      "root_business_id": "01900000-0000-7000-8000-000000000951",
+      "reasons": [],
+      "provenance": {
+        "extraction_id": "01900000-0000-7000-8000-000000001030",
+        "extractor": "contacts.site",
+        "extractor_version": "1.0.0",
+        "extracted_at": "2026-01-01T00:00:00.000Z",
+        "raw_record_id": "01900000-0000-7000-8000-000000000933",
+        "source_run_id": "01900000-0000-7000-8000-000000000928",
+        "acquired_page_id": "01900000-0000-7000-8000-000000000932",
+        "connector_key": "web.crawler",
+        "connector_name": "Business websites (HTTP, browser when needed)",
+        "connector_kind": "business_website",
+        "method": "http_fetch",
+        "source_url": "https://synthetic-plumbing-0701.example/about",
+        "external_id": null,
+        "acquired_at": "2025-12-02T00:00:00.000Z"
+      },
+      "is_synthetic": true
+    },
+    {
+      "decision_maker": {
+        "id": "01900000-0000-7000-8000-000000001031",
+        "business_id": "01900000-0000-7000-8000-000000000951",
+        "extraction_id": "01900000-0000-7000-8000-000000001030",
+        "full_name_raw": "Jordan Sample",
+        "full_name_normalized": "jordan sample",
+        "role_raw": "General Manager",
+        "role_normalized": "general manager",
+        "relationship": "manager",
+        "published_context": "Jordan Sample (General Manager)",
+        "review_status": "unreviewed",
+        "review_reasons_json": null,
+        "confidence": 0.8,
+        "observed_at": "2025-12-02T00:00:00.000Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "deleted_at": null,
+        "deleted_reason": null
+      },
+      "business_name": "Synthetic Plumbing 0701",
+      "root_business_id": "01900000-0000-7000-8000-000000000951",
+      "reasons": [],
+      "provenance": {
+        "extraction_id": "01900000-0000-7000-8000-000000001030",
+        "extractor": "contacts.site",
+        "extractor_version": "1.0.0",
+        "extracted_at": "2026-01-01T00:00:00.000Z",
+        "raw_record_id": "01900000-0000-7000-8000-000000000933",
+        "source_run_id": "01900000-0000-7000-8000-000000000928",
+        "acquired_page_id": "01900000-0000-7000-8000-000000000932",
+        "connector_key": "web.crawler",
+        "connector_name": "Business websites (HTTP, browser when needed)",
+        "connector_kind": "business_website",
+        "method": "http_fetch",
+        "source_url": "https://synthetic-plumbing-0701.example/about",
+        "external_id": null,
+        "acquired_at": "2025-12-02T00:00:00.000Z"
+      },
+      "is_synthetic": true
+    },
+    {
+      "decision_maker": {
+        "id": "01900000-0000-7000-8000-000000001046",
+        "business_id": "01900000-0000-7000-8000-000000000965",
+        "extraction_id": "01900000-0000-7000-8000-000000001045",
+        "full_name_raw": "Morgan Placeholder",
+        "full_name_normalized": "morgan placeholder",
+        "role_raw": null,
+        "role_normalized": null,
+        "relationship": "founder",
+        "published_context": "Synthetic Painting 0702 Founded by Morgan Placeholder in 1998. Call (312) 555-0182 or email hel",
+        "review_status": "ambiguous",
+        "review_reasons_json": {
+          "codes": [
+            "historical_role"
+          ],
+          "page": [
+            "historical_role"
+          ]
+        },
+        "confidence": 0.5,
+        "observed_at": "2026-01-01T00:00:00.000Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "deleted_at": null,
+        "deleted_reason": null
+      },
+      "business_name": "Synthetic Painting 0702",
+      "root_business_id": "01900000-0000-7000-8000-000000000965",
+      "reasons": [
+        "historical_role"
+      ],
+      "provenance": {
+        "extraction_id": "01900000-0000-7000-8000-000000001045",
+        "extractor": "contacts.site",
+        "extractor_version": "1.0.0",
+        "extracted_at": "2026-01-01T00:00:00.000Z",
+        "raw_record_id": "01900000-0000-7000-8000-000000000944",
+        "source_run_id": "01900000-0000-7000-8000-000000000942",
+        "acquired_page_id": "01900000-0000-7000-8000-000000000943",
+        "connector_key": "web.crawler",
+        "connector_name": "Business websites (HTTP, browser when needed)",
+        "connector_kind": "business_website",
+        "method": "http_fetch",
+        "source_url": "https://synthetic-painting-0702.example/",
+        "external_id": null,
+        "acquired_at": "2026-01-01T00:00:00.000Z"
+      },
+      "is_synthetic": true
+    }
+  ],
+  "next_cursor": null,
+  "total": 4
+}

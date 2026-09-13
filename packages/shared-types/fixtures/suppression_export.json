@@ -1,0 +1,6 @@
+{
+  "filename": "do-not-contact-20260101.csv",
+  "content": "kind,value,reason,source,created_at,lifted_at\nemail,hello@synthetic-painting-0702.example,Asked not to be contacted (synthetic test data),manual,2026-01-01T00:00:00.000Z,\nemail,owner@synthetic-closed-0799.example,Asked by email (synthetic test data),import:synthetic-do-not-contact.csv,2026-01-01T00:00:00.000Z,\ndomain,synthetic-closed-0799.example,Imported from synthetic-do-not-contact.csv,import:synthetic-do-not-contact.csv,2026-01-01T00:00:00.000Z,\n",
+  "rows": 3,
+  "exported_at": "2026-01-01T00:00:00.000Z"
+}

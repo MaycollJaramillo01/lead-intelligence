@@ -20,6 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Textarea } from "@/components/ui/textarea";
+import { ContactsView } from "@/features/contacts/ContactsView";
 import { CrawlRunPanel } from "@/features/research/CrawlRunPanel";
 import { CrawlUrlInspector } from "@/features/research/CrawlUrlInspector";
 import {
@@ -134,7 +135,7 @@ export function ResearchCenterScreen() {
   const [status, setStatus] = useState<CrawlUrlStatus | "">("");
   const [selected, setSelected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [view, setView] = useState<"crawl" | "website">("crawl");
+  const [view, setView] = useState<"crawl" | "website" | "contacts">("crawl");
 
   const fetchCampaigns = useCallback(
     () => desktop.listCampaigns({ project_id: null, limit: 100, cursor: null }),
@@ -242,7 +243,7 @@ export function ResearchCenterScreen() {
           aria-label={t("research.view")}
           className="flex items-center gap-0.5 rounded-md border p-0.5"
         >
-          {(["crawl", "website"] as const).map((value) => (
+          {(["crawl", "website", "contacts"] as const).map((value) => (
             <Button
               key={value}
               variant={view === value ? "outline" : "ghost"}
@@ -293,6 +294,8 @@ export function ResearchCenterScreen() {
 
       {view === "website" ? (
         <WebsiteIntelligenceView />
+      ) : view === "contacts" ? (
+        <ContactsView />
       ) : (
         <ResizablePanelGroup orientation="horizontal" className="min-h-0 flex-1">
           <ResizablePanel defaultSize={`${100 - inspectorSize}%`} minSize="40%">

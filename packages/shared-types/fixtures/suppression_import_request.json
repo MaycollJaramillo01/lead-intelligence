@@ -1,0 +1,4 @@
+{
+  "filename": "synthetic-do-not-contact.csv",
+  "content": "kind,value,reason\nemail,owner@synthetic-closed-0799.example,Asked by email (synthetic test data)\ndomain,synthetic-closed-0799.example,\nbogus,x,\n"
+}

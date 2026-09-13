@@ -2393,6 +2393,587 @@
       "title": "ConfigFieldKind",
       "type": "string"
     },
+    "ContactAction": {
+      "description": "validate: run the non-intrusive checks again now; confirm / mark_invalid: a person's review\n(with a reason); clear_review: withdraw it; mark_primary: the channel the business shows;\nsuppress: add the phone or email to the do-not-contact list.",
+      "enum": [
+        "validate",
+        "confirm",
+        "mark_invalid",
+        "clear_review",
+        "mark_primary",
+        "suppress"
+      ],
+      "title": "ContactAction",
+      "type": "string"
+    },
+    "ContactActionRequest": {
+      "additionalProperties": false,
+      "description": "An action on one channel of a business. Every action but `validate` and `mark_primary` needs\na reason; `check_mail_domains` lets `validate` ask DNS for an uncached mail domain.",
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "key": {
+          "maxLength": 400,
+          "minLength": 1,
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/ContactAction"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "check_mail_domains": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "business_id",
+        "key",
+        "action",
+        "reason",
+        "check_mail_domains"
+      ],
+      "title": "ContactActionRequest",
+      "type": "object"
+    },
+    "ContactChannel": {
+      "additionalProperties": false,
+      "description": "A contact channel of a canonical business: every observation of the same value,\nconsolidated. `validation_status` is the exact status its observations carry (see\ndocs/contact-intelligence.md).",
+      "properties": {
+        "key": {
+          "maxLength": 400,
+          "minLength": 1,
+          "type": "string"
+        },
+        "contact_type": {
+          "$ref": "#/$defs/ContactType"
+        },
+        "value": {
+          "type": "string"
+        },
+        "platform": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "level": {
+          "$ref": "#/$defs/ContactLevel"
+        },
+        "location_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decision_maker_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "role": {
+          "$ref": "#/$defs/ContactRole"
+        },
+        "role_or_department": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "origin": {
+          "$ref": "#/$defs/ContactOrigin"
+        },
+        "validation_status": {
+          "$ref": "#/$defs/ValidationStatus"
+        },
+        "validation_method": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "validated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "signals": {
+          "items": {
+            "$ref": "#/$defs/ContactSignal"
+          },
+          "type": "array"
+        },
+        "freshness": {
+          "$ref": "#/$defs/ContactFreshness"
+        },
+        "first_seen_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "last_seen_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "source_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source_kinds": {
+          "items": {
+            "$ref": "#/$defs/SourceKind"
+          },
+          "type": "array"
+        },
+        "is_primary": {
+          "type": "boolean"
+        },
+        "suppression": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContactSuppression"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "shared_with": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "review": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReviewDecision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/ContactSource"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "contact_type",
+        "value",
+        "platform",
+        "level",
+        "location_id",
+        "decision_maker_id",
+        "role",
+        "role_or_department",
+        "origin",
+        "validation_status",
+        "validation_method",
+        "validated_at",
+        "signals",
+        "freshness",
+        "first_seen_at",
+        "last_seen_at",
+        "source_count",
+        "source_kinds",
+        "is_primary",
+        "suppression",
+        "shared_with",
+        "review",
+        "sources"
+      ],
+      "title": "ContactChannel",
+      "type": "object"
+    },
+    "ContactConflict": {
+      "additionalProperties": false,
+      "description": "Values that disagree (`values_disagree`), or a value other businesses publish too\n(`shared_value`). Shown, never resolved silently.",
+      "properties": {
+        "code": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "contact_type": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContactType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "values": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "code",
+        "contact_type",
+        "values"
+      ],
+      "title": "ContactConflict",
+      "type": "object"
+    },
+    "ContactDetail": {
+      "additionalProperties": false,
+      "description": "The contacts of a canonical business: channels (published or imported), hypotheses kept\napart, published people, conflicts, the contactability subscore and the review history.",
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "root_business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "channels": {
+          "items": {
+            "$ref": "#/$defs/ContactChannel"
+          },
+          "type": "array"
+        },
+        "hypotheses": {
+          "items": {
+            "$ref": "#/$defs/ContactChannel"
+          },
+          "type": "array"
+        },
+        "decision_makers": {
+          "items": {
+            "$ref": "#/$defs/DecisionMakerView"
+          },
+          "type": "array"
+        },
+        "conflicts": {
+          "items": {
+            "$ref": "#/$defs/ContactConflict"
+          },
+          "type": "array"
+        },
+        "contactability": {
+          "$ref": "#/$defs/Contactability"
+        },
+        "business_suppression": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContactSuppression"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decisions": {
+          "items": {
+            "$ref": "#/$defs/ReviewDecision"
+          },
+          "type": "array"
+        },
+        "rules_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "extractor_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_id",
+        "root_business_id",
+        "channels",
+        "hypotheses",
+        "decision_makers",
+        "conflicts",
+        "contactability",
+        "business_suppression",
+        "decisions",
+        "rules_version",
+        "extractor_version"
+      ],
+      "title": "ContactDetail",
+      "type": "object"
+    },
+    "ContactDetailQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_id"
+      ],
+      "title": "ContactDetailQuery",
+      "type": "object"
+    },
+    "ContactFreshness": {
+      "enum": [
+        "fresh",
+        "aging",
+        "stale"
+      ],
+      "title": "ContactFreshness",
+      "type": "string"
+    },
+    "ContactLevel": {
+      "description": "Whom a channel reaches: the business, one of its locations, or a published person.",
+      "enum": [
+        "business",
+        "location",
+        "person"
+      ],
+      "title": "ContactLevel",
+      "type": "string"
+    },
+    "ContactListItem": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "business_name": {
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "key": {
+          "maxLength": 400,
+          "minLength": 1,
+          "type": "string"
+        },
+        "contact_type": {
+          "$ref": "#/$defs/ContactType"
+        },
+        "value": {
+          "type": "string"
+        },
+        "platform": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "level": {
+          "$ref": "#/$defs/ContactLevel"
+        },
+        "role": {
+          "$ref": "#/$defs/ContactRole"
+        },
+        "role_or_department": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "origin": {
+          "$ref": "#/$defs/ContactOrigin"
+        },
+        "validation_status": {
+          "$ref": "#/$defs/ValidationStatus"
+        },
+        "freshness": {
+          "$ref": "#/$defs/ContactFreshness"
+        },
+        "source_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "last_seen_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "is_primary": {
+          "type": "boolean"
+        },
+        "suppressed": {
+          "type": "boolean"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "business_id",
+        "business_name",
+        "project_id",
+        "key",
+        "contact_type",
+        "value",
+        "platform",
+        "level",
+        "role",
+        "role_or_department",
+        "origin",
+        "validation_status",
+        "freshness",
+        "source_count",
+        "last_seen_at",
+        "is_primary",
+        "suppressed",
+        "is_synthetic"
+      ],
+      "title": "ContactListItem",
+      "type": "object"
+    },
+    "ContactListQuery": {
+      "additionalProperties": false,
+      "description": "Channels of the canonical businesses of a project (or of every project). Hypotheses and\nsuppressed channels are left out unless asked for.",
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "contact_type": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContactType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "validation_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ValidationStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "role": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContactRole"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "freshness": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContactFreshness"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "include_hypotheses": {
+          "type": "boolean"
+        },
+        "include_suppressed": {
+          "type": "boolean"
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "contact_type",
+        "validation_status",
+        "role",
+        "freshness",
+        "include_hypotheses",
+        "include_suppressed",
+        "limit",
+        "cursor"
+      ],
+      "title": "ContactListQuery",
+      "type": "object"
+    },
     "ContactOrigin": {
       "enum": [
         "published",
@@ -2401,6 +2982,41 @@
       ],
       "title": "ContactOrigin",
       "type": "string"
+    },
+    "ContactPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ContactListItem"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "ContactPage",
+      "type": "object"
     },
     "ContactPoint": {
       "additionalProperties": false,
@@ -2513,6 +3129,18 @@
             }
           ]
         },
+        "validation_method": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "do_not_contact": {
           "type": "boolean"
         },
@@ -2589,6 +3217,7 @@
         "is_primary",
         "validation_status",
         "validated_at",
+        "validation_method",
         "do_not_contact",
         "suppression_reason",
         "confidence",
@@ -2601,6 +3230,517 @@
         "deleted_reason"
       ],
       "title": "ContactPoint",
+      "type": "object"
+    },
+    "ContactRole": {
+      "description": "general: the business's own line, form or profile; department: a named department;\nrole_address: a shared mailbox (`info@`, `sales@`); personal: a published person's address or\nnumber.",
+      "enum": [
+        "general",
+        "department",
+        "role_address",
+        "personal"
+      ],
+      "title": "ContactRole",
+      "type": "string"
+    },
+    "ContactRun": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "stage": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "progress_done": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "progress_total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "extractor_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "rules_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "check_mail_domains": {
+          "type": "boolean"
+        },
+        "stats": {
+          "$ref": "#/$defs/ContactStats"
+        },
+        "requested_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/RunEvent"
+          },
+          "type": "array"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job_id",
+        "project_id",
+        "project_name",
+        "status",
+        "stage",
+        "progress_done",
+        "progress_total",
+        "extractor_version",
+        "rules_version",
+        "check_mail_domains",
+        "stats",
+        "requested_at",
+        "started_at",
+        "finished_at",
+        "events",
+        "is_synthetic"
+      ],
+      "title": "ContactRun",
+      "type": "object"
+    },
+    "ContactRunListQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "limit",
+        "cursor"
+      ],
+      "title": "ContactRunListQuery",
+      "type": "object"
+    },
+    "ContactRunPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ContactRun"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "ContactRunPage",
+      "type": "object"
+    },
+    "ContactSignal": {
+      "additionalProperties": false,
+      "description": "One fact a validation read: `line_type`, `role_address`, `disposable`, `mail_domain`,\n`catch_all` (always `not_checked`), `form_fields`... with its value when it has one.",
+      "properties": {
+        "code": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "code",
+        "value"
+      ],
+      "title": "ContactSignal",
+      "type": "object"
+    },
+    "ContactSource": {
+      "additionalProperties": false,
+      "description": "One observation of a channel: the record business it belongs to and where it came from.\n`current` is false when a newer crawl of the same page no longer shows it.",
+      "properties": {
+        "contact_point_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "origin": {
+          "$ref": "#/$defs/ContactOrigin"
+        },
+        "value_raw": {
+          "type": "string"
+        },
+        "published_context": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "role_or_department": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "current": {
+          "type": "boolean"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      },
+      "required": [
+        "contact_point_id",
+        "business_id",
+        "origin",
+        "value_raw",
+        "published_context",
+        "role_or_department",
+        "confidence",
+        "observed_at",
+        "current",
+        "provenance"
+      ],
+      "title": "ContactSource",
+      "type": "object"
+    },
+    "ContactStartRequest": {
+      "additionalProperties": false,
+      "description": "Checks the contacts of one project, or of every live project when `project_id` is null (one\njob each). `check_mail_domains` allows DNS lookups of mail domains missing from the cache; off,\nor with the worker offline, the run never touches the network.",
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "check_mail_domains": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "project_id",
+        "check_mail_domains"
+      ],
+      "title": "ContactStartRequest",
+      "type": "object"
+    },
+    "ContactStats": {
+      "additionalProperties": false,
+      "description": "Counts of one contact run, read back from its last checkpoint.",
+      "properties": {
+        "pages_scanned": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "contacts_found": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "forms_found": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "people_found": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "hypotheses": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "businesses": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "channels": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "changed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mail_domains_checked": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mail_domain_failures": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "likely_valid": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "domain_valid": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "structurally_valid": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "invalid": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "stale": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "suppressed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ambiguous_people": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "pages_scanned",
+        "contacts_found",
+        "forms_found",
+        "people_found",
+        "hypotheses",
+        "businesses",
+        "channels",
+        "changed",
+        "mail_domains_checked",
+        "mail_domain_failures",
+        "likely_valid",
+        "domain_valid",
+        "structurally_valid",
+        "invalid",
+        "stale",
+        "suppressed",
+        "ambiguous_people"
+      ],
+      "title": "ContactStats",
+      "type": "object"
+    },
+    "ContactSuppression": {
+      "additionalProperties": false,
+      "description": "One entry of the local do-not-contact list (phase 09). `value` is the normalised address,\nE.164 number, registrable domain or business id. Lifting keeps the entry as history.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/SuppressionKind"
+        },
+        "value": {
+          "maxLength": 320,
+          "minLength": 1,
+          "type": "string"
+        },
+        "business_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "source": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "actor": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "lifted_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lifted_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lift_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "value",
+        "business_id",
+        "reason",
+        "source",
+        "actor",
+        "created_at",
+        "lifted_at",
+        "lifted_by",
+        "lift_reason"
+      ],
+      "title": "ContactSuppression",
       "type": "object"
     },
     "ContactType": {
@@ -2678,6 +3818,100 @@
         "expires_at"
       ],
       "title": "ContactValidation",
+      "type": "object"
+    },
+    "Contactability": {
+      "additionalProperties": false,
+      "description": "An explainable subscore of how reachable a business is through the channels it publishes or\nthe operator imported. Not the lead score; `score` is null when a gate stops it.",
+      "properties": {
+        "score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "formula": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "components": {
+          "items": {
+            "$ref": "#/$defs/ContactabilityComponent"
+          },
+          "type": "array"
+        },
+        "gates": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "channels_counted": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "score",
+        "version",
+        "formula",
+        "components",
+        "gates",
+        "channels_counted"
+      ],
+      "title": "Contactability",
+      "type": "object"
+    },
+    "ContactabilityComponent": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "weight": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "value": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "code",
+        "weight",
+        "value",
+        "detail"
+      ],
+      "title": "ContactabilityComponent",
       "type": "object"
     },
     "ConversionElement": {
@@ -4630,10 +5864,29 @@
             }
           ]
         },
+        "relationship": {
+          "$ref": "#/$defs/DecisionMakerRelationship"
+        },
         "published_context": {
           "anyOf": [
             {
               "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "review_status": {
+          "$ref": "#/$defs/DecisionMakerReview"
+        },
+        "review_reasons_json": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
             },
             {
               "type": "null"
@@ -4687,7 +5940,10 @@
         "full_name_normalized",
         "role_raw",
         "role_normalized",
+        "relationship",
         "published_context",
+        "review_status",
+        "review_reasons_json",
         "confidence",
         "observed_at",
         "created_at",
@@ -4696,6 +5952,225 @@
         "deleted_reason"
       ],
       "title": "DecisionMaker",
+      "type": "object"
+    },
+    "DecisionMakerDecision": {
+      "enum": [
+        "confirm",
+        "reject",
+        "reset"
+      ],
+      "title": "DecisionMakerDecision",
+      "type": "string"
+    },
+    "DecisionMakerItem": {
+      "additionalProperties": false,
+      "properties": {
+        "decision_maker": {
+          "$ref": "#/$defs/DecisionMaker"
+        },
+        "business_name": {
+          "type": "string"
+        },
+        "root_business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "reasons": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "decision_maker",
+        "business_name",
+        "root_business_id",
+        "reasons",
+        "provenance",
+        "is_synthetic"
+      ],
+      "title": "DecisionMakerItem",
+      "type": "object"
+    },
+    "DecisionMakerListQuery": {
+      "additionalProperties": false,
+      "description": "Published people of a project, by review status (the review queue asks for `ambiguous`).",
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "review_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DecisionMakerReview"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "review_status",
+        "limit",
+        "cursor"
+      ],
+      "title": "DecisionMakerListQuery",
+      "type": "object"
+    },
+    "DecisionMakerPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/DecisionMakerItem"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "DecisionMakerPage",
+      "type": "object"
+    },
+    "DecisionMakerRelationship": {
+      "description": "The relationship a published role states; `unknown` when the role says none of these.",
+      "enum": [
+        "owner",
+        "founder",
+        "executive",
+        "partner",
+        "manager",
+        "unknown"
+      ],
+      "title": "DecisionMakerRelationship",
+      "type": "string"
+    },
+    "DecisionMakerReview": {
+      "description": "unreviewed: extracted with nothing that makes it doubtful; ambiguous: waits in the review\nqueue (its reasons say why); confirmed or rejected: a person decided.",
+      "enum": [
+        "unreviewed",
+        "ambiguous",
+        "confirmed",
+        "rejected"
+      ],
+      "title": "DecisionMakerReview",
+      "type": "string"
+    },
+    "DecisionMakerReviewRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "decision_maker_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/DecisionMakerDecision"
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision_maker_id",
+        "decision",
+        "reason"
+      ],
+      "title": "DecisionMakerReviewRequest",
+      "type": "object"
+    },
+    "DecisionMakerView": {
+      "additionalProperties": false,
+      "properties": {
+        "decision_maker": {
+          "$ref": "#/$defs/DecisionMaker"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "reasons": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "channel_keys": {
+          "items": {
+            "maxLength": 400,
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "decision_maker",
+        "provenance",
+        "reasons",
+        "channel_keys"
+      ],
+      "title": "DecisionMakerView",
       "type": "object"
     },
     "DiagnosticsReport": {
@@ -5576,7 +7051,8 @@
         "export",
         "tag",
         "note",
-        "match_candidate"
+        "match_candidate",
+        "contact_suppression"
       ],
       "title": "EntityType",
       "type": "string"
@@ -8015,6 +9491,67 @@
         "not_interested"
       ],
       "title": "LeadStage",
+      "type": "string"
+    },
+    "MailDomainCheck": {
+      "additionalProperties": false,
+      "description": "The cached answer of one mail-domain lookup; asked again once it expires.",
+      "properties": {
+        "domain": {
+          "maxLength": 253,
+          "minLength": 3,
+          "type": "string"
+        },
+        "result": {
+          "$ref": "#/$defs/MailDomainResult"
+        },
+        "exchanges_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "checked_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "result",
+        "exchanges_json",
+        "checked_at",
+        "expires_at",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "MailDomainCheck",
+      "type": "object"
+    },
+    "MailDomainResult": {
+      "description": "What a mail-domain lookup answered. `timeout` and `error` say nothing about the domain.",
+      "enum": [
+        "mx",
+        "implicit_mx",
+        "null_mx",
+        "no_mail",
+        "nxdomain",
+        "timeout",
+        "error"
+      ],
+      "title": "MailDomainResult",
       "type": "string"
     },
     "MatchAction": {
@@ -10654,6 +12191,268 @@
         "config_json"
       ],
       "title": "SourceSelection",
+      "type": "object"
+    },
+    "SuppressionChangeRequest": {
+      "additionalProperties": false,
+      "description": "Adds an entry (`suppression_id` null, with `kind` and `value`) or lifts one\n(`suppression_id`); both need a reason.",
+      "properties": {
+        "suppression_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SuppressionKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maxLength": 320,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "suppression_id",
+        "kind",
+        "value",
+        "reason"
+      ],
+      "title": "SuppressionChangeRequest",
+      "type": "object"
+    },
+    "SuppressionExport": {
+      "additionalProperties": false,
+      "description": "The list as CSV; cells that a spreadsheet would run as a formula are neutralised.",
+      "properties": {
+        "filename": {
+          "maxLength": 260,
+          "minLength": 1,
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "rows": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "exported_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "filename",
+        "content",
+        "rows",
+        "exported_at"
+      ],
+      "title": "SuppressionExport",
+      "type": "object"
+    },
+    "SuppressionExportRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "include_lifted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "include_lifted"
+      ],
+      "title": "SuppressionExportRequest",
+      "type": "object"
+    },
+    "SuppressionImportProblem": {
+      "additionalProperties": false,
+      "properties": {
+        "row": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "code": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 500,
+          "type": "string"
+        }
+      },
+      "required": [
+        "row",
+        "code",
+        "message"
+      ],
+      "title": "SuppressionImportProblem",
+      "type": "object"
+    },
+    "SuppressionImportRequest": {
+      "additionalProperties": false,
+      "description": "A CSV of `kind,value,reason` rows the operator picked; the content travels once.",
+      "properties": {
+        "filename": {
+          "maxLength": 260,
+          "minLength": 1,
+          "type": "string"
+        },
+        "content": {
+          "maxLength": 1000000,
+          "type": "string"
+        }
+      },
+      "required": [
+        "filename",
+        "content"
+      ],
+      "title": "SuppressionImportRequest",
+      "type": "object"
+    },
+    "SuppressionImportResult": {
+      "additionalProperties": false,
+      "properties": {
+        "rows": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "added": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "already_suppressed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "problems": {
+          "items": {
+            "$ref": "#/$defs/SuppressionImportProblem"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "rows",
+        "added",
+        "already_suppressed",
+        "problems"
+      ],
+      "title": "SuppressionImportResult",
+      "type": "object"
+    },
+    "SuppressionKind": {
+      "description": "What a do-not-contact entry covers (phase 09): one address, one number, every address and\nform of a domain, or every contact of a business.",
+      "enum": [
+        "email",
+        "phone",
+        "domain",
+        "business"
+      ],
+      "title": "SuppressionKind",
+      "type": "string"
+    },
+    "SuppressionListQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SuppressionKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "include_lifted": {
+          "type": "boolean"
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "include_lifted",
+        "limit",
+        "cursor"
+      ],
+      "title": "SuppressionListQuery",
+      "type": "object"
+    },
+    "SuppressionPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ContactSuppression"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "SuppressionPage",
       "type": "object"
     },
     "SyntheticSeedResult": {

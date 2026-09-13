@@ -446,6 +446,14 @@ _LATINO_REVIEW: dict[LatinoReviewFilter, str] = {
     LatinoReviewFilter.OUTDATED: _REVIEW_OUTDATED,
 }
 
+#: The phone `c` of business `b` is on the do-not-contact list, by number or by business (phase 09).
+_SUPPRESSED_PHONE = (
+    "EXISTS (SELECT 1 FROM contact_suppressions s WHERE s.lifted_at IS NULL "
+    "AND ((s.kind = 'phone' AND s.value = c.value_normalized) OR (s.kind = 'business' "
+    "AND (s.business_id = b.id OR s.business_id IN (SELECT m.id FROM businesses m "
+    "WHERE m.merged_into_id = b.id)))))"
+)
+
 #: Records whose observations describe business `b`: itself and every record merged into it.
 _CLUSTER_OF_B = "(o.business_id = b.id OR o.business_id IN (SELECT m.id FROM businesses m " \
     "WHERE m.merged_into_id = b.id AND m.deleted_at IS NULL))"  # fmt: skip
@@ -454,7 +462,8 @@ _CLUSTER_OF_B = "(o.business_id = b.id OR o.business_id IN (SELECT m.id FROM bus
 BUSINESS_SUMMARY_SQL = f"""
 SELECT b.id, b.project_id, b.display_name, b.status, b.lead_stage,
     l.locality, l.region, l.postal_code, w.domain AS primary_domain,
-    coalesce(c.value_normalized, c.value_raw) AS primary_phone,
+    CASE WHEN c.origin = 'hypothesis' OR c.do_not_contact = 1 OR {_SUPPRESSED_PHONE} THEN NULL
+        ELSE coalesce(c.value_normalized, c.value_raw) END AS primary_phone,
     cl.label_raw AS primary_category,
     (SELECT count(DISTINCT x.raw_record_id) FROM business_names o
         JOIN extractions x ON x.id = o.extraction_id WHERE {_CLUSTER_OF_B}) AS source_count,

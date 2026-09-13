@@ -16,6 +16,16 @@ import {
   type CandidatePage,
   type CanonicalChoiceRequest,
   type CommandError,
+  type ContactActionRequest,
+  type ContactDetail,
+  type ContactDetailQuery,
+  type ContactListQuery,
+  type ContactPage,
+  type ContactRun,
+  type ContactRunListQuery,
+  type ContactRunPage,
+  type ContactStartRequest,
+  type ContactSuppression,
   type CrawlRun,
   type CrawlRunListQuery,
   type CrawlRunPage,
@@ -28,6 +38,10 @@ import {
   type CriteriaCheckQuery,
   type DatasetListQuery,
   type DatasetPage,
+  type DecisionMakerItem,
+  type DecisionMakerListQuery,
+  type DecisionMakerPage,
+  type DecisionMakerReviewRequest,
   type DiagnosticsReport,
   type DiscoveryControlRequest,
   type DiscoveryRun,
@@ -54,6 +68,13 @@ import {
   type ResolutionStartRequest,
   type SourceCatalog,
   type SourceCatalogQuery,
+  type SuppressionChangeRequest,
+  type SuppressionExport,
+  type SuppressionExportRequest,
+  type SuppressionImportRequest,
+  type SuppressionImportResult,
+  type SuppressionListQuery,
+  type SuppressionPage,
   type SyntheticSeedResult,
   type UiErrorReport,
   type WebsiteAuditDetail,
@@ -163,6 +184,28 @@ export const desktop = {
     call<WebsiteAuditPage>("list_website_audits", { query }),
   getWebsiteAudit: (query: WebsiteAuditQuery) =>
     call<WebsiteAuditDetail>("get_website_audit", { query }),
+  startContacts: (request: ContactStartRequest) =>
+    call<ContactRunPage>("start_contacts", { request }),
+  controlContacts: (request: DiscoveryControlRequest) =>
+    call<ContactRun>("control_contacts", { request }),
+  listContactRuns: (query: ContactRunListQuery) =>
+    call<ContactRunPage>("list_contact_runs", { query }),
+  listContacts: (query: ContactListQuery) => call<ContactPage>("list_contacts", { query }),
+  getContacts: (query: ContactDetailQuery) => call<ContactDetail>("get_contacts", { query }),
+  actOnContact: (request: ContactActionRequest) =>
+    call<ContactDetail>("act_on_contact", { request }),
+  listDecisionMakers: (query: DecisionMakerListQuery) =>
+    call<DecisionMakerPage>("list_decision_makers", { query }),
+  reviewDecisionMaker: (request: DecisionMakerReviewRequest) =>
+    call<DecisionMakerItem>("review_decision_maker", { request }),
+  listSuppressions: (query: SuppressionListQuery) =>
+    call<SuppressionPage>("list_suppressions", { query }),
+  changeSuppression: (request: SuppressionChangeRequest) =>
+    call<ContactSuppression>("change_suppression", { request }),
+  importSuppressions: (request: SuppressionImportRequest) =>
+    call<SuppressionImportResult>("import_suppressions", { request }),
+  exportSuppressions: (request: SuppressionExportRequest) =>
+    call<SuppressionExport>("export_suppressions", { request }),
   /** Development builds only; the desktop core refuses it in release builds. */
   seedSyntheticData: () => call<SyntheticSeedResult>("seed_synthetic_data"),
   onWorkerStatus: async (handler: (status: WorkerStatus) => void): Promise<UnlistenFn> => {

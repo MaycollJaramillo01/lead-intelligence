@@ -20,6 +20,9 @@ import orjson
 from pydantic import ValidationError
 
 from research_engine import __version__
+from research_engine.contacts.engine import ContactService
+from research_engine.contacts.mail_dns import lookup_mail_domain
+from research_engine.contacts.store import ContactError
 from research_engine.contracts import (
     MAX_LINE_BYTES,
     PROTOCOL_VERSION,
@@ -106,6 +109,11 @@ class Worker:
         self._resolution = ResolutionService(lambda: connect(settings.data_dir))
         self._latino = LatinoService(lambda: connect(settings.data_dir))
         self._website = WebsiteService(settings.data_dir, lambda: connect(settings.data_dir))
+        self._contacts = ContactService(
+            settings.data_dir,
+            lambda: connect(settings.data_dir),
+            None if settings.discovery_offline else lookup_mail_domain,
+        )
         self._ctx = Context(
             settings,
             datetime.now(UTC),
@@ -115,6 +123,7 @@ class Worker:
             self._resolution,
             self._latino,
             self._website,
+            self._contacts,
         )
 
     async def run(self) -> None:
@@ -134,7 +143,8 @@ class Worker:
                 | CrawlService
                 | ResolutionService
                 | LatinoService
-                | WebsiteService,
+                | WebsiteService
+                | ContactService,
             ],
             ...,
         ] = (
@@ -143,6 +153,7 @@ class Worker:
             ("resolution", self._resolution),
             ("latino", self._latino),
             ("website", self._website),
+            ("contacts", self._contacts),
         )
         for name, engine in engines:
             try:
@@ -183,6 +194,7 @@ class Worker:
             await self._resolution.shutdown()
             await self._latino.shutdown()
             await self._website.shutdown()
+            await self._contacts.shutdown()
             await self._drain()
         logger.info("worker stopped")
 
@@ -306,6 +318,7 @@ class Worker:
             ResolutionError,
             LatinoError,
             WebsiteError,
+            ContactError,
         ) as exc:
             raise WorkerError(ErrorCode.INVALID_PAYLOAD, str(exc)) from exc
         return result.model_dump(mode="json")

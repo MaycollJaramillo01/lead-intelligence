@@ -298,6 +298,7 @@ class EntityType(StrEnum):
     TAG = "tag"
     NOTE = "note"
     MATCH_CANDIDATE = "match_candidate"
+    CONTACT_SUPPRESSION = "contact_suppression"
 
 
 class AuditAction(StrEnum):
@@ -442,6 +443,51 @@ class SelectionMethod(StrEnum):
     MANUAL = "manual"
 
 
+class SuppressionKind(StrEnum):
+    """What a do-not-contact entry covers (phase 09): one address, one number, every address and
+    form of a domain, or every contact of a business."""
+
+    EMAIL = "email"
+    PHONE = "phone"
+    DOMAIN = "domain"
+    BUSINESS = "business"
+
+
+class DecisionMakerReview(StrEnum):
+    """unreviewed: extracted with nothing that makes it doubtful; ambiguous: waits in the review
+    queue (its reasons say why); confirmed or rejected: a person decided."""
+
+    UNREVIEWED = "unreviewed"
+    AMBIGUOUS = "ambiguous"
+    CONFIRMED = "confirmed"
+    REJECTED = "rejected"
+
+
+class DecisionMakerRelationship(StrEnum):
+    """The relationship a published role states; `unknown` when the role says none of these."""
+
+    OWNER = "owner"
+    FOUNDER = "founder"
+    EXECUTIVE = "executive"
+    PARTNER = "partner"
+    MANAGER = "manager"
+    UNKNOWN = "unknown"
+
+
+class MailDomainResult(StrEnum):
+    """What a mail-domain lookup answered. `timeout` and `error` say nothing about the domain."""
+
+    MX = "mx"
+    #: No MX record, but the domain has an address: mail goes there (RFC 5321 section 5.1).
+    IMPLICIT_MX = "implicit_mx"
+    #: The domain publishes that it accepts no mail (RFC 7505).
+    NULL_MX = "null_mx"
+    NO_MAIL = "no_mail"
+    NXDOMAIN = "nxdomain"
+    TIMEOUT = "timeout"
+    ERROR = "error"
+
+
 def _table_name(enum: type[StrEnum]) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "_", enum.__name__).lower()
 
@@ -487,6 +533,10 @@ ENUMS: dict[str, type[StrEnum]] = {
         MatchRisk,
         CanonicalField,
         SelectionMethod,
+        SuppressionKind,
+        DecisionMakerReview,
+        DecisionMakerRelationship,
+        MailDomainResult,
     )
 }
 
@@ -961,7 +1011,12 @@ class DecisionMaker(Record):
     full_name_normalized: str
     role_raw: str | None
     role_normalized: str | None
+    #: What the published role states (phase 09); never inferred from the name.
+    relationship: DecisionMakerRelationship
     published_context: str | None
+    review_status: DecisionMakerReview
+    #: `{"codes": [...]}`: why the person waits in the review queue.
+    review_reasons_json: JsonObject | None
     confidence: Confidence
     observed_at: UtcTimestamp
     created_at: UtcTimestamp
@@ -990,6 +1045,9 @@ class ContactPoint(Record):
     is_primary: bool
     validation_status: ValidationStatus
     validated_at: UtcTimestamp | None
+    #: How `validation_status` was reached (phase 09): `structure`, `numbering_plan`, `mail_domain`,
+    #: `form_structure`, `sources_agree`, `freshness`, `suppression_list`, `manual_review`...
+    validation_method: Code | None
     do_not_contact: bool
     suppression_reason: str | None
     confidence: Confidence
@@ -1012,6 +1070,40 @@ class ContactValidation(Record):
     detail_json: JsonObject | None
     validated_at: UtcTimestamp
     expires_at: UtcTimestamp | None
+
+
+class ContactSuppression(Record):
+    """One entry of the local do-not-contact list (phase 09). `value` is the normalised address,
+    E.164 number, registrable domain or business id. Lifting keeps the entry as history."""
+
+    TABLE = "contact_suppressions"
+    ENTITY = EntityType.CONTACT_SUPPRESSION
+    id: Id
+    kind: SuppressionKind
+    value: Annotated[str, Field(min_length=1, max_length=320)]
+    business_id: Id | None
+    reason: Annotated[str, Field(min_length=1, max_length=2000)]
+    #: `manual`, or `import:<file name>`.
+    source: Label
+    actor: Label
+    created_at: UtcTimestamp
+    lifted_at: UtcTimestamp | None
+    lifted_by: str | None
+    lift_reason: str | None
+
+
+class MailDomainCheck(Record):
+    """The cached answer of one mail-domain lookup; asked again once it expires."""
+
+    TABLE = "mail_domain_checks"
+    domain: Annotated[str, Field(min_length=3, max_length=253)]
+    result: MailDomainResult
+    #: `{"exchanges": [...]}`, by preference.
+    exchanges_json: JsonObject
+    checked_at: UtcTimestamp
+    expires_at: UtcTimestamp
+    created_at: UtcTimestamp
+    updated_at: UtcTimestamp
 
 
 class EvidenceItem(Record):
@@ -1607,6 +1699,8 @@ RECORDS: tuple[type[Record], ...] = (
     MatchCandidate,
     BusinessMerge,
     CanonicalValue,
+    ContactSuppression,
+    MailDomainCheck,
 )
 
 # ---- read models, queries and pages (IPC) ------------------------------------------------------
@@ -3078,6 +3172,376 @@ class WebsiteAuditDetail(Contract):
     history: list[WebsiteAuditItem]
 
 
+# ---- contact intelligence (phase 09) ------------------------------------------------------------
+# Business contact channels published by legitimate sources or imported by the operator: extracted
+# with their source, consolidated per canonical business, validated without contacting anyone,
+# reviewed and suppressed. Nothing here calls, emails or submits; a hypothesis is never a contact.
+
+MAX_SUPPRESSION_IMPORT_CHARS = 1_000_000
+ChannelKey = Annotated[str, Field(min_length=1, max_length=400)]
+
+
+class ContactLevel(StrEnum):
+    """Whom a channel reaches: the business, one of its locations, or a published person."""
+
+    BUSINESS = "business"
+    LOCATION = "location"
+    PERSON = "person"
+
+
+class ContactRole(StrEnum):
+    """general: the business's own line, form or profile; department: a named department;
+    role_address: a shared mailbox (`info@`, `sales@`); personal: a published person's address or
+    number."""
+
+    GENERAL = "general"
+    DEPARTMENT = "department"
+    ROLE_ADDRESS = "role_address"
+    PERSONAL = "personal"
+
+
+class ContactFreshness(StrEnum):
+    FRESH = "fresh"
+    AGING = "aging"
+    STALE = "stale"
+
+
+class ContactAction(StrEnum):
+    """validate: run the non-intrusive checks again now; confirm / mark_invalid: a person's review
+    (with a reason); clear_review: withdraw it; mark_primary: the channel the business shows;
+    suppress: add the phone or email to the do-not-contact list."""
+
+    VALIDATE = "validate"
+    CONFIRM = "confirm"
+    MARK_INVALID = "mark_invalid"
+    CLEAR_REVIEW = "clear_review"
+    MARK_PRIMARY = "mark_primary"
+    SUPPRESS = "suppress"
+
+
+class DecisionMakerDecision(StrEnum):
+    CONFIRM = "confirm"
+    REJECT = "reject"
+    #: Back to what the extraction said (unreviewed or ambiguous).
+    RESET = "reset"
+
+
+class ContactStartRequest(Contract):
+    """Checks the contacts of one project, or of every live project when `project_id` is null (one
+    job each). `check_mail_domains` allows DNS lookups of mail domains missing from the cache; off,
+    or with the worker offline, the run never touches the network."""
+
+    project_id: Id | None
+    check_mail_domains: bool
+
+
+class ContactStats(Contract):
+    """Counts of one contact run, read back from its last checkpoint."""
+
+    pages_scanned: NonNegative
+    contacts_found: NonNegative
+    forms_found: NonNegative
+    people_found: NonNegative
+    hypotheses: NonNegative
+    businesses: NonNegative
+    channels: NonNegative
+    changed: NonNegative
+    mail_domains_checked: NonNegative
+    mail_domain_failures: NonNegative
+    likely_valid: NonNegative
+    domain_valid: NonNegative
+    structurally_valid: NonNegative
+    invalid: NonNegative
+    stale: NonNegative
+    suppressed: NonNegative
+    ambiguous_people: NonNegative
+
+
+class ContactRun(Contract):
+    job_id: Id
+    project_id: Id
+    project_name: Label
+    status: JobStatus
+    stage: Code
+    progress_done: NonNegative
+    progress_total: NonNegative | None
+    extractor_version: Label
+    rules_version: Label
+    check_mail_domains: bool
+    stats: ContactStats
+    requested_at: UtcTimestamp
+    started_at: UtcTimestamp | None
+    finished_at: UtcTimestamp | None
+    events: list[RunEvent]
+    is_synthetic: bool
+
+
+class ContactRunListQuery(Contract):
+    project_id: Id | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class ContactRunPage(Contract):
+    items: list[ContactRun]
+    next_cursor: Cursor | None
+    total: NonNegative
+
+
+class ContactSignal(Contract):
+    """One fact a validation read: `line_type`, `role_address`, `disposable`, `mail_domain`,
+    `catch_all` (always `not_checked`), `form_fields`... with its value when it has one."""
+
+    code: Code
+    value: Annotated[str, Field(max_length=300)] | None
+
+
+class ContactSource(Contract):
+    """One observation of a channel: the record business it belongs to and where it came from.
+    `current` is false when a newer crawl of the same page no longer shows it."""
+
+    contact_point_id: Id
+    business_id: Id
+    origin: ContactOrigin
+    value_raw: str
+    published_context: str | None
+    role_or_department: str | None
+    confidence: Confidence
+    observed_at: UtcTimestamp
+    current: bool
+    provenance: Provenance
+
+
+class ContactChannel(Contract):
+    """A contact channel of a canonical business: every observation of the same value,
+    consolidated. `validation_status` is the exact status its observations carry (see
+    docs/contact-intelligence.md)."""
+
+    key: ChannelKey
+    contact_type: ContactType
+    value: str
+    platform: str | None
+    level: ContactLevel
+    location_id: Id | None
+    decision_maker_id: Id | None
+    role: ContactRole
+    role_or_department: str | None
+    origin: ContactOrigin
+    validation_status: ValidationStatus
+    validation_method: Code | None
+    validated_at: UtcTimestamp | None
+    signals: list[ContactSignal]
+    freshness: ContactFreshness
+    first_seen_at: UtcTimestamp
+    last_seen_at: UtcTimestamp
+    #: Distinct acquired records (pages, listings, imports) that show it.
+    source_count: NonNegative
+    source_kinds: list[SourceKind]
+    is_primary: bool
+    suppression: ContactSuppression | None
+    #: Other canonical businesses of the project that publish the same value.
+    shared_with: NonNegative
+    #: A person's latest decision about it, if any.
+    review: ReviewDecision | None
+    sources: list[ContactSource]
+
+
+class ContactabilityComponent(Contract):
+    code: Code
+    weight: NonNegative
+    value: Confidence
+    detail: Annotated[str, Field(max_length=300)] | None
+
+
+class Contactability(Contract):
+    """An explainable subscore of how reachable a business is through the channels it publishes or
+    the operator imported. Not the lead score; `score` is null when a gate stops it."""
+
+    score: Score | None
+    version: Label
+    formula: Annotated[str, Field(min_length=1, max_length=2000)]
+    components: list[ContactabilityComponent]
+    gates: list[Code]
+    channels_counted: NonNegative
+
+
+class ContactConflict(Contract):
+    """Values that disagree (`values_disagree`), or a value other businesses publish too
+    (`shared_value`). Shown, never resolved silently."""
+
+    code: Code
+    contact_type: ContactType | None
+    values: list[str]
+
+
+class DecisionMakerView(Contract):
+    decision_maker: DecisionMaker
+    provenance: Provenance
+    reasons: list[Code]
+    #: Channels published for this person.
+    channel_keys: list[ChannelKey]
+
+
+class ContactDetailQuery(Contract):
+    business_id: Id
+
+
+class ContactDetail(Contract):
+    """The contacts of a canonical business: channels (published or imported), hypotheses kept
+    apart, published people, conflicts, the contactability subscore and the review history."""
+
+    business_id: Id
+    root_business_id: Id
+    channels: list[ContactChannel]
+    hypotheses: list[ContactChannel]
+    decision_makers: list[DecisionMakerView]
+    conflicts: list[ContactConflict]
+    contactability: Contactability
+    business_suppression: ContactSuppression | None
+    decisions: list[ReviewDecision]
+    rules_version: Label
+    extractor_version: Label
+
+
+class ContactActionRequest(Contract):
+    """An action on one channel of a business. Every action but `validate` and `mark_primary` needs
+    a reason; `check_mail_domains` lets `validate` ask DNS for an uncached mail domain."""
+
+    business_id: Id
+    key: ChannelKey
+    action: ContactAction
+    reason: ReviewReason | None
+    check_mail_domains: bool
+
+
+class ContactListQuery(Contract):
+    """Channels of the canonical businesses of a project (or of every project). Hypotheses and
+    suppressed channels are left out unless asked for."""
+
+    project_id: Id | None
+    contact_type: ContactType | None
+    validation_status: ValidationStatus | None
+    role: ContactRole | None
+    freshness: ContactFreshness | None
+    include_hypotheses: bool
+    include_suppressed: bool
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class ContactListItem(Contract):
+    business_id: Id
+    business_name: str
+    project_id: Id
+    key: ChannelKey
+    contact_type: ContactType
+    value: str
+    platform: str | None
+    level: ContactLevel
+    role: ContactRole
+    role_or_department: str | None
+    origin: ContactOrigin
+    validation_status: ValidationStatus
+    freshness: ContactFreshness
+    source_count: NonNegative
+    last_seen_at: UtcTimestamp
+    is_primary: bool
+    suppressed: bool
+    is_synthetic: bool
+
+
+class ContactPage(Contract):
+    items: list[ContactListItem]
+    next_cursor: Cursor | None
+    total: NonNegative
+
+
+class DecisionMakerListQuery(Contract):
+    """Published people of a project, by review status (the review queue asks for `ambiguous`)."""
+
+    project_id: Id | None
+    review_status: DecisionMakerReview | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class DecisionMakerItem(Contract):
+    decision_maker: DecisionMaker
+    business_name: str
+    root_business_id: Id
+    reasons: list[Code]
+    provenance: Provenance
+    is_synthetic: bool
+
+
+class DecisionMakerPage(Contract):
+    items: list[DecisionMakerItem]
+    next_cursor: Cursor | None
+    total: NonNegative
+
+
+class DecisionMakerReviewRequest(Contract):
+    decision_maker_id: Id
+    decision: DecisionMakerDecision
+    reason: ReviewReason
+
+
+class SuppressionListQuery(Contract):
+    kind: SuppressionKind | None
+    include_lifted: bool
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class SuppressionPage(Contract):
+    items: list[ContactSuppression]
+    next_cursor: Cursor | None
+    total: NonNegative
+
+
+class SuppressionChangeRequest(Contract):
+    """Adds an entry (`suppression_id` null, with `kind` and `value`) or lifts one
+    (`suppression_id`); both need a reason."""
+
+    suppression_id: Id | None
+    kind: SuppressionKind | None
+    value: Annotated[str, Field(min_length=1, max_length=320)] | None
+    reason: ReviewReason
+
+
+class SuppressionImportRequest(Contract):
+    """A CSV of `kind,value,reason` rows the operator picked; the content travels once."""
+
+    filename: Annotated[str, Field(min_length=1, max_length=260)]
+    content: Annotated[str, Field(max_length=MAX_SUPPRESSION_IMPORT_CHARS)]
+
+
+class SuppressionImportProblem(Contract):
+    row: Annotated[int, Field(ge=1)]
+    code: Code
+    message: Annotated[str, Field(max_length=500)]
+
+
+class SuppressionImportResult(Contract):
+    rows: NonNegative
+    added: NonNegative
+    already_suppressed: NonNegative
+    problems: list[SuppressionImportProblem]
+
+
+class SuppressionExportRequest(Contract):
+    include_lifted: bool
+
+
+class SuppressionExport(Contract):
+    """The list as CSV; cells that a spreadsheet would run as a formula are neutralised."""
+
+    filename: Annotated[str, Field(min_length=1, max_length=260)]
+    content: str
+    rows: NonNegative
+    exported_at: UtcTimestamp
+
+
 DATA_MODELS: tuple[type[Contract], ...] = (
     *RECORDS,
     Provenance,
@@ -3149,4 +3613,24 @@ DATA_MODELS: tuple[type[Contract], ...] = (
     WebsiteAuditPage,
     WebsiteAuditQuery,
     WebsiteAuditDetail,
+    ContactStartRequest,
+    ContactRun,
+    ContactRunListQuery,
+    ContactRunPage,
+    ContactListQuery,
+    ContactPage,
+    ContactDetailQuery,
+    ContactDetail,
+    ContactActionRequest,
+    DecisionMakerListQuery,
+    DecisionMakerPage,
+    DecisionMakerItem,
+    DecisionMakerReviewRequest,
+    SuppressionListQuery,
+    SuppressionPage,
+    SuppressionChangeRequest,
+    SuppressionImportRequest,
+    SuppressionImportResult,
+    SuppressionExportRequest,
+    SuppressionExport,
 )

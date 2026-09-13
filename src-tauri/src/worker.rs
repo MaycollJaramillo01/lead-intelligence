@@ -65,6 +65,18 @@ pub const WEBSITE_CONTROL: &str = "website.control";
 pub const WEBSITE_RUNS: &str = "website.runs";
 pub const WEBSITE_AUDITS: &str = "website.audits";
 pub const WEBSITE_AUDIT: &str = "website.audit";
+pub const CONTACTS_START: &str = "contacts.start";
+pub const CONTACTS_CONTROL: &str = "contacts.control";
+pub const CONTACTS_RUNS: &str = "contacts.runs";
+pub const CONTACTS_LIST: &str = "contacts.list";
+pub const CONTACTS_GET: &str = "contacts.get";
+pub const CONTACTS_ACT: &str = "contacts.act";
+pub const DECISION_MAKERS_LIST: &str = "decision_makers.list";
+pub const DECISION_MAKERS_REVIEW: &str = "decision_makers.review";
+pub const SUPPRESSIONS_LIST: &str = "suppressions.list";
+pub const SUPPRESSIONS_CHANGE: &str = "suppressions.change";
+pub const SUPPRESSIONS_IMPORT: &str = "suppressions.import";
+pub const SUPPRESSIONS_EXPORT: &str = "suppressions.export";
 pub const DEV_SEED_SYNTHETIC: &str = "dev.seed_synthetic";
 const SHUTDOWN: &str = "shutdown";
 
@@ -79,6 +91,9 @@ pub const DISCOVERY_TIMEOUT: Duration = Duration::from_secs(70);
 pub const IMPORT_TIMEOUT: Duration = Duration::from_secs(40);
 /// A review decision recomputes the clusters of a whole project; the worker bounds it at 60 s.
 pub const RESOLUTION_TIMEOUT: Duration = Duration::from_secs(70);
+/// A contact list decides every channel of its project, and a suppression change rewrites the
+/// statuses it covers; the worker bounds both at 30 s.
+pub const CONTACTS_TIMEOUT: Duration = Duration::from_secs(40);
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 const READER_DRAIN_TIMEOUT: Duration = Duration::from_secs(2);
 const HEALTH_FAILURES_BEFORE_RESTART: u32 = 2;

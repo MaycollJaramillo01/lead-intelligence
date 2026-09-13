@@ -50,7 +50,8 @@ export type EntityType =
   | "export"
   | "tag"
   | "note"
-  | "match_candidate";
+  | "match_candidate"
+  | "contact_suppression";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "JsonValue".
@@ -262,6 +263,66 @@ export type ComponentState = "ok" | "degraded" | "unavailable" | "error";
  */
 export type ConfigFieldKind = "text" | "number" | "secret" | "file_text";
 /**
+ * validate: run the non-intrusive checks again now; confirm / mark_invalid: a person's review
+ * (with a reason); clear_review: withdraw it; mark_primary: the channel the business shows;
+ * suppress: add the phone or email to the do-not-contact list.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactAction".
+ */
+export type ContactAction =
+  "validate" | "confirm" | "mark_invalid" | "clear_review" | "mark_primary" | "suppress";
+/**
+ * Whom a channel reaches: the business, one of its locations, or a published person.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactLevel".
+ */
+export type ContactLevel = "business" | "location" | "person";
+/**
+ * general: the business's own line, form or profile; department: a named department;
+ * role_address: a shared mailbox (`info@`, `sales@`); personal: a published person's address or
+ * number.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactRole".
+ */
+export type ContactRole = "general" | "department" | "role_address" | "personal";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactFreshness".
+ */
+export type ContactFreshness = "fresh" | "aging" | "stale";
+/**
+ * What a do-not-contact entry covers (phase 09): one address, one number, every address and
+ * form of a domain, or every contact of a business.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SuppressionKind".
+ */
+export type SuppressionKind = "email" | "phone" | "domain" | "business";
+/**
+ * The relationship a published role states; `unknown` when the role says none of these.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DecisionMakerRelationship".
+ */
+export type DecisionMakerRelationship =
+  "owner" | "founder" | "executive" | "partner" | "manager" | "unknown";
+/**
+ * unreviewed: extracted with nothing that makes it doubtful; ambiguous: waits in the review
+ * queue (its reasons say why); confirmed or rejected: a person decided.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DecisionMakerReview".
+ */
+export type DecisionMakerReview = "unreviewed" | "ambiguous" | "confirmed" | "rejected";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EventLevel".
+ */
+export type EventLevel = "debug" | "info" | "warning" | "error";
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ConversionElementKind".
  */
@@ -274,11 +335,6 @@ export type ConversionElementKind =
   | "click_to_call"
   | "messaging_link"
   | "other";
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "EventLevel".
- */
-export type EventLevel = "debug" | "info" | "warning" | "error";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "CrawlTarget".
@@ -296,6 +352,11 @@ export type PageKind = "home" | "about" | "contact" | "services" | "other";
  * via the `definition` "CrawlUrlStatus".
  */
 export type CrawlUrlStatus = "queued" | "fetched" | "skipped" | "failed";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DecisionMakerDecision".
+ */
+export type DecisionMakerDecision = "confirm" | "reject" | "reset";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "WorkerState".
@@ -375,6 +436,14 @@ export type InferenceStatus =
  * via the `definition` "LatinoTrack".
  */
 export type LatinoTrack = "ownership" | "market" | "contradiction";
+/**
+ * What a mail-domain lookup answered. `timeout` and `error` say nothing about the domain.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MailDomainResult".
+ */
+export type MailDomainResult =
+  "mx" | "implicit_mx" | "null_mx" | "no_mail" | "nxdomain" | "timeout" | "error";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "MatchAction".
@@ -682,6 +751,7 @@ export interface ContactPoint {
   is_primary: boolean;
   validation_status: ValidationStatus;
   validated_at: string | null;
+  validation_method: string | null;
   do_not_contact: boolean;
   suppression_reason: string | null;
   confidence: number;
@@ -1314,6 +1384,366 @@ export interface ConfigField {
   help: string;
 }
 /**
+ * An action on one channel of a business. Every action but `validate` and `mark_primary` needs
+ * a reason; `check_mail_domains` lets `validate` ask DNS for an uncached mail domain.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactActionRequest".
+ */
+export interface ContactActionRequest {
+  business_id: string;
+  key: string;
+  action: ContactAction;
+  reason: string | null;
+  check_mail_domains: boolean;
+}
+/**
+ * A contact channel of a canonical business: every observation of the same value,
+ * consolidated. `validation_status` is the exact status its observations carry (see
+ * docs/contact-intelligence.md).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactChannel".
+ */
+export interface ContactChannel {
+  key: string;
+  contact_type: ContactType;
+  value: string;
+  platform: string | null;
+  level: ContactLevel;
+  location_id: string | null;
+  decision_maker_id: string | null;
+  role: ContactRole;
+  role_or_department: string | null;
+  origin: ContactOrigin;
+  validation_status: ValidationStatus;
+  validation_method: string | null;
+  validated_at: string | null;
+  signals: ContactSignal[];
+  freshness: ContactFreshness;
+  first_seen_at: string;
+  last_seen_at: string;
+  source_count: number;
+  source_kinds: SourceKind[];
+  is_primary: boolean;
+  suppression: ContactSuppression | null;
+  shared_with: number;
+  review: ReviewDecision | null;
+  sources: ContactSource[];
+}
+/**
+ * One fact a validation read: `line_type`, `role_address`, `disposable`, `mail_domain`,
+ * `catch_all` (always `not_checked`), `form_fields`... with its value when it has one.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactSignal".
+ */
+export interface ContactSignal {
+  code: string;
+  value: string | null;
+}
+/**
+ * One entry of the local do-not-contact list (phase 09). `value` is the normalised address,
+ * E.164 number, registrable domain or business id. Lifting keeps the entry as history.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactSuppression".
+ */
+export interface ContactSuppression {
+  id: string;
+  kind: SuppressionKind;
+  value: string;
+  business_id: string | null;
+  reason: string;
+  source: string;
+  actor: string;
+  created_at: string;
+  lifted_at: string | null;
+  lifted_by: string | null;
+  lift_reason: string | null;
+}
+/**
+ * A human decision with its mandatory reason. Never edited; a new decision supersedes it.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ReviewDecision".
+ */
+export interface ReviewDecision {
+  id: string;
+  entity_type: EntityType;
+  entity_id: string;
+  decision: string;
+  previous_value: string | null;
+  new_value: string | null;
+  reason: string;
+  actor: string;
+  decided_at: string;
+}
+/**
+ * One observation of a channel: the record business it belongs to and where it came from.
+ * `current` is false when a newer crawl of the same page no longer shows it.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactSource".
+ */
+export interface ContactSource {
+  contact_point_id: string;
+  business_id: string;
+  origin: ContactOrigin;
+  value_raw: string;
+  published_context: string | null;
+  role_or_department: string | null;
+  confidence: number;
+  observed_at: string;
+  current: boolean;
+  provenance: Provenance;
+}
+/**
+ * Values that disagree (`values_disagree`), or a value other businesses publish too
+ * (`shared_value`). Shown, never resolved silently.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactConflict".
+ */
+export interface ContactConflict {
+  code: string;
+  contact_type: ContactType | null;
+  values: string[];
+}
+/**
+ * The contacts of a canonical business: channels (published or imported), hypotheses kept
+ * apart, published people, conflicts, the contactability subscore and the review history.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactDetail".
+ */
+export interface ContactDetail {
+  business_id: string;
+  root_business_id: string;
+  channels: ContactChannel[];
+  hypotheses: ContactChannel[];
+  decision_makers: DecisionMakerView[];
+  conflicts: ContactConflict[];
+  contactability: Contactability;
+  business_suppression: ContactSuppression | null;
+  decisions: ReviewDecision[];
+  rules_version: string;
+  extractor_version: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DecisionMakerView".
+ */
+export interface DecisionMakerView {
+  decision_maker: DecisionMaker;
+  provenance: Provenance;
+  reasons: string[];
+  channel_keys: string[];
+}
+/**
+ * A person only when published by a legitimate business source, with context.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DecisionMaker".
+ */
+export interface DecisionMaker {
+  id: string;
+  business_id: string;
+  extraction_id: string;
+  full_name_raw: string;
+  full_name_normalized: string;
+  role_raw: string | null;
+  role_normalized: string | null;
+  relationship: DecisionMakerRelationship;
+  published_context: string | null;
+  review_status: DecisionMakerReview;
+  review_reasons_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  confidence: number;
+  observed_at: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  deleted_reason: string | null;
+}
+/**
+ * An explainable subscore of how reachable a business is through the channels it publishes or
+ * the operator imported. Not the lead score; `score` is null when a gate stops it.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Contactability".
+ */
+export interface Contactability {
+  score: number | null;
+  version: string;
+  formula: string;
+  components: ContactabilityComponent[];
+  gates: string[];
+  channels_counted: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactabilityComponent".
+ */
+export interface ContactabilityComponent {
+  code: string;
+  weight: number;
+  value: number;
+  detail: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactDetailQuery".
+ */
+export interface ContactDetailQuery {
+  business_id: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactListItem".
+ */
+export interface ContactListItem {
+  business_id: string;
+  business_name: string;
+  project_id: string;
+  key: string;
+  contact_type: ContactType;
+  value: string;
+  platform: string | null;
+  level: ContactLevel;
+  role: ContactRole;
+  role_or_department: string | null;
+  origin: ContactOrigin;
+  validation_status: ValidationStatus;
+  freshness: ContactFreshness;
+  source_count: number;
+  last_seen_at: string;
+  is_primary: boolean;
+  suppressed: boolean;
+  is_synthetic: boolean;
+}
+/**
+ * Channels of the canonical businesses of a project (or of every project). Hypotheses and
+ * suppressed channels are left out unless asked for.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactListQuery".
+ */
+export interface ContactListQuery {
+  project_id: string | null;
+  contact_type: ContactType | null;
+  validation_status: ValidationStatus | null;
+  role: ContactRole | null;
+  freshness: ContactFreshness | null;
+  include_hypotheses: boolean;
+  include_suppressed: boolean;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactPage".
+ */
+export interface ContactPage {
+  items: ContactListItem[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactRun".
+ */
+export interface ContactRun {
+  job_id: string;
+  project_id: string;
+  project_name: string;
+  status: JobStatus;
+  stage: string;
+  progress_done: number;
+  progress_total: number | null;
+  extractor_version: string;
+  rules_version: string;
+  check_mail_domains: boolean;
+  stats: ContactStats;
+  requested_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  events: RunEvent[];
+  is_synthetic: boolean;
+}
+/**
+ * Counts of one contact run, read back from its last checkpoint.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactStats".
+ */
+export interface ContactStats {
+  pages_scanned: number;
+  contacts_found: number;
+  forms_found: number;
+  people_found: number;
+  hypotheses: number;
+  businesses: number;
+  channels: number;
+  changed: number;
+  mail_domains_checked: number;
+  mail_domain_failures: number;
+  likely_valid: number;
+  domain_valid: number;
+  structurally_valid: number;
+  invalid: number;
+  stale: number;
+  suppressed: number;
+  ambiguous_people: number;
+}
+/**
+ * One line of a run's log: progress, a limit reached, or a structured error.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "RunEvent".
+ */
+export interface RunEvent {
+  level: EventLevel;
+  event: string;
+  error_code: string | null;
+  retryable: boolean | null;
+  detail_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactRunListQuery".
+ */
+export interface ContactRunListQuery {
+  project_id: string | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactRunPage".
+ */
+export interface ContactRunPage {
+  items: ContactRun[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * Checks the contacts of one project, or of every live project when `project_id` is null (one
+ * job each). `check_mail_domains` allows DNS lookups of mail domains missing from the cache; off,
+ * or with the worker offline, the run never touches the network.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactStartRequest".
+ */
+export interface ContactStartRequest {
+  project_id: string | null;
+  check_mail_domains: boolean;
+}
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ContactValidation".
  */
@@ -1473,22 +1903,6 @@ export interface CrawlSite {
   error_message: string | null;
   started_at: string | null;
   finished_at: string | null;
-}
-/**
- * One line of a run's log: progress, a limit reached, or a structured error.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "RunEvent".
- */
-export interface RunEvent {
-  level: EventLevel;
-  event: string;
-  error_code: string | null;
-  retryable: boolean | null;
-  detail_json: {
-    [k: string]: JsonValue | undefined;
-  } | null;
-  created_at: string;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -1768,26 +2182,46 @@ export interface DatasetSnapshotSource {
   created_at: string;
 }
 /**
- * A person only when published by a legitimate business source, with context.
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DecisionMakerItem".
+ */
+export interface DecisionMakerItem {
+  decision_maker: DecisionMaker;
+  business_name: string;
+  root_business_id: string;
+  reasons: string[];
+  provenance: Provenance;
+  is_synthetic: boolean;
+}
+/**
+ * Published people of a project, by review status (the review queue asks for `ambiguous`).
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "DecisionMaker".
+ * via the `definition` "DecisionMakerListQuery".
  */
-export interface DecisionMaker {
-  id: string;
-  business_id: string;
-  extraction_id: string;
-  full_name_raw: string;
-  full_name_normalized: string;
-  role_raw: string | null;
-  role_normalized: string | null;
-  published_context: string | null;
-  confidence: number;
-  observed_at: string;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-  deleted_reason: string | null;
+export interface DecisionMakerListQuery {
+  project_id: string | null;
+  review_status: DecisionMakerReview | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DecisionMakerPage".
+ */
+export interface DecisionMakerPage {
+  items: DecisionMakerItem[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DecisionMakerReviewRequest".
+ */
+export interface DecisionMakerReviewRequest {
+  decision_maker_id: string;
+  decision: DecisionMakerDecision;
+  reason: string;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -2397,23 +2831,6 @@ export interface LatinoEvidence {
   organizational: boolean;
 }
 /**
- * A human decision with its mandatory reason. Never edited; a new decision supersedes it.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ReviewDecision".
- */
-export interface ReviewDecision {
-  id: string;
-  entity_type: EntityType;
-  entity_id: string;
-  decision: string;
-  previous_value: string | null;
-  new_value: string | null;
-  reason: string;
-  actor: string;
-  decided_at: string;
-}
-/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "LatinoDetailQuery".
  */
@@ -2503,6 +2920,23 @@ export interface LatinoRunPage {
  */
 export interface LatinoStartRequest {
   project_id: string | null;
+}
+/**
+ * The cached answer of one mail-domain lookup; asked again once it expires.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MailDomainCheck".
+ */
+export interface MailDomainCheck {
+  domain: string;
+  result: MailDomainResult;
+  exchanges_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  checked_at: string;
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -2888,6 +3322,86 @@ export interface SourceConnectorConfig {
   max_concurrency: number | null;
   created_at: string;
   superseded_at: string | null;
+}
+/**
+ * Adds an entry (`suppression_id` null, with `kind` and `value`) or lifts one
+ * (`suppression_id`); both need a reason.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SuppressionChangeRequest".
+ */
+export interface SuppressionChangeRequest {
+  suppression_id: string | null;
+  kind: SuppressionKind | null;
+  value: string | null;
+  reason: string;
+}
+/**
+ * The list as CSV; cells that a spreadsheet would run as a formula are neutralised.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SuppressionExport".
+ */
+export interface SuppressionExport {
+  filename: string;
+  content: string;
+  rows: number;
+  exported_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SuppressionExportRequest".
+ */
+export interface SuppressionExportRequest {
+  include_lifted: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SuppressionImportProblem".
+ */
+export interface SuppressionImportProblem {
+  row: number;
+  code: string;
+  message: string;
+}
+/**
+ * A CSV of `kind,value,reason` rows the operator picked; the content travels once.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SuppressionImportRequest".
+ */
+export interface SuppressionImportRequest {
+  filename: string;
+  content: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SuppressionImportResult".
+ */
+export interface SuppressionImportResult {
+  rows: number;
+  added: number;
+  already_suppressed: number;
+  problems: SuppressionImportProblem[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SuppressionListQuery".
+ */
+export interface SuppressionListQuery {
+  kind: SuppressionKind | null;
+  include_lifted: boolean;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SuppressionPage".
+ */
+export interface SuppressionPage {
+  items: ContactSuppression[];
+  next_cursor: string | null;
+  total: number;
 }
 /**
  * Development-only seed. `created` is false when the synthetic workspace already existed.

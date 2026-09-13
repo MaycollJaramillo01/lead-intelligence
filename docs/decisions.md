@@ -656,3 +656,88 @@ categories, results, severities, gaps and notes are translated.
 
 **Trade-off.** Recommendations stay in English until the ruleset gains translations, in exchange
 for rule texts that are versioned with the rules that produce them.
+
+## D-058 · A contact status says exactly what its check proved (phase 09)
+
+**Context.** The prompt forbids calling a contact validated when only its syntax passed, and forbids
+SMTP probing, calls, messages and form submissions.
+
+**Decision.** Eight statuses with fixed meanings (contact-intelligence.md section 3): `observed`,
+`structurally_valid` (well formed only), `domain_valid` (the domain says it accepts mail),
+`likely_valid` (independent evidence agrees, or a person confirmed it), `invalid`, `unknown`,
+`stale` and `suppressed`, decided most restrictive first by `rules.channel_status`. Catch-all is
+always `not_checked`. Numbers in the fictional 555-0100 to 0199 range stay well formed with a signal
+and never become likely valid.
+
+**Why.** No check available without contacting someone proves that a person answers; the words say
+only what was checked. A domain that accepts mail says nothing about one mailbox.
+
+## D-059 · Phones by libphonenumber; mail domains by DNS only, cached, bounded and opt-in (phase 09)
+
+**Decision.** `phonenumbers` (the libphonenumber port) parses numbers with an explicit `+` or the
+country of the business, never guessing one. `dnspython` asks MX, then A/AAAA (implicit MX, RFC
+5321), and recognises null MX (RFC 7505), with a 3 s timeout. Answers are cached in
+`mail_domain_checks`: MX 7 days; null MX, no mail and NXDOMAIN 1 day; timeout and error 1 hour. A
+failed lookup never replaces an answer the domain gave. A run looks domains up only when asked
+(`check_mail_domains`) and the worker is not offline (`LEAD_DISCOVERY_OFFLINE=1`), at most 1 000 per
+run; reads use the cache only.
+
+**Trade-off.** Two dependencies instead of hand-written patterns that would be wrong on
+international numbers and domain edge cases. Lookups tell the system resolver which domains are
+being researched, which is why they are opt-in.
+
+## D-060 · Channels are consolidated per canonical business and decided again on every read (phase 09)
+
+**Decision.** Observations are never edited: a channel is every live observation with the same key
+in a root business and the records merged into it. Runs and actions write the decided status, its
+method and a `contact_validations` row to every observation; reads decide it again from what is
+stored, with cached mail answers only, so a suppression, a merge or a review shows at once. An
+observation from a crawled page stops being current when a newer crawl of that page no longer shows
+it, and the channel becomes `stale`.
+
+**Trade-off.** A contact list decides every channel of its project on each page. Fine for the
+thousands of channels a project holds today; the store notes where to materialise them.
+
+## D-061 · People only from published roles; hypotheses are kept apart by the schema (phase 09)
+
+**Decision.** `decision_makers` is rebuilt (nothing had written it) with the relationship the
+published role states and a review status. A person is a name published next to a decision role, or
+a structured-data `Person`; a name is never used to infer a role, an origin or anything else, and
+never feeds Latino evidence. Doubtful people (a founding role, roles that disagree, a shared site, a
+name inside the business name) wait for a person's decision. An email pattern is taken only from a
+published personal address on the business's own domain that matches a published name; the addresses
+it builds for other published people are `hypothesis` rows that triggers keep `unknown`, `invalid` or
+`stale` and never primary. They are never confirmed, never counted, left out of lists and exports
+unless asked for, and withdrawn when the business publishes the address or the person is rejected.
+
+**Why.** The prompt forbids inventing people and presenting guesses as contacts; enforcing it in the
+schema holds for any future writer, not only this engine.
+
+## D-062 · The do-not-contact list is local, permanent and applied three times (phase 09)
+
+**Decision.** `contact_suppressions` holds emails, E.164 phones, registrable domains and businesses,
+each with reason, source (`manual`, `import:<file>`), actor and date; an entry is lifted once, with
+a reason, and never deleted (triggers). It is applied (1) at once to the observations it covers
+(`do_not_contact`, status `suppressed`, history), (2) by the queries: the business list's phone and
+every contact read and export check live entries again, and (3) by the desktop core, which refuses a
+channel whose status and suppression disagree and a hypothesis that reads as a contact. Lifting an
+entry returns what it alone covered to `observed`. Import reads `kind,value[,reason]` with a header,
+at most 5 000 rows (1 000 000 characters in the core), and reports every unusable line; export
+neutralises cells a spreadsheet would run, and the core checks every cell again.
+
+**Why.** One flag can be missed by a future query; three independent guards make a suppressed
+contact hard to leak into a screen or an export.
+
+## D-063 · Contactability is its own subscore; contact checks are a job and a Research Center view (phase 09)
+
+**Decision.** `round(100 × Σ weight × value / Σ weight)` over availability 25, validation 30, role
+15, freshness 15 and source 15, counting only published or imported channels that are not invalid,
+suppressed or fictional; hypotheses never count, a suppressed business has no score, and every
+component says what it read. It is not the lead score (phase 11). `jobs.kind = contact_intelligence`
+on `jobs.BackgroundJobs`: one open run per project, an extraction stage (checkpoint per 100 pages)
+and a validation stage (checkpoint per 200 businesses), both idempotent. Twelve IPC messages. The
+Research Center gains a Contacts view (channels, people to review, do-not-contact list), the
+business inspector a contact panel, and runs appear in Jobs.
+
+**Trade-off.** The weights are a documented, versioned judgement (`CONTACTABILITY_VERSION`), not a
+fitted model; changing them is a new version, never a silent edit.

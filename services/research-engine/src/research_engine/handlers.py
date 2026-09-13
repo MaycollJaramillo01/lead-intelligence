@@ -12,6 +12,8 @@ from typing import Any
 from pydantic import BaseModel
 
 from research_engine import __version__, repository
+from research_engine.contacts import store as contacts
+from research_engine.contacts.engine import ContactService
 from research_engine.contracts import (
     DATA_CONTRACT_VERSION,
     PROTOCOL_VERSION,
@@ -39,6 +41,16 @@ from research_engine.domain import (
     CandidateListQuery,
     CandidatePage,
     CanonicalChoiceRequest,
+    ContactActionRequest,
+    ContactDetail,
+    ContactDetailQuery,
+    ContactListQuery,
+    ContactPage,
+    ContactRun,
+    ContactRunListQuery,
+    ContactRunPage,
+    ContactStartRequest,
+    ContactSuppression,
     CrawlRun,
     CrawlRunListQuery,
     CrawlRunPage,
@@ -51,6 +63,10 @@ from research_engine.domain import (
     CriteriaCheckQuery,
     DatasetListQuery,
     DatasetPage,
+    DecisionMakerItem,
+    DecisionMakerListQuery,
+    DecisionMakerPage,
+    DecisionMakerReviewRequest,
     DiscoveryControlRequest,
     DiscoveryRun,
     DiscoveryRunListQuery,
@@ -77,6 +93,13 @@ from research_engine.domain import (
     SourceCatalog,
     SourceCatalogQuery,
     SourceInfo,
+    SuppressionChangeRequest,
+    SuppressionExport,
+    SuppressionExportRequest,
+    SuppressionImportRequest,
+    SuppressionImportResult,
+    SuppressionListQuery,
+    SuppressionPage,
     SyntheticSeedResult,
     WebsiteAuditDetail,
     WebsiteAuditListQuery,
@@ -123,6 +146,8 @@ class Context:
     latino: LatinoService
     #: Owns the running website audits; see website/engine.py.
     website: WebsiteService
+    #: Owns the running contact checks and the mail-domain lookup; see contacts/engine.py.
+    contacts: ContactService
 
 
 @dataclass(frozen=True, slots=True)
@@ -378,6 +403,75 @@ async def _website_audit(ctx: Context, query: WebsiteAuditQuery) -> WebsiteAudit
     return await _with_store(ctx, lambda conn: website.get_website_audit(conn, query.audit_id))
 
 
+# ---- contact intelligence (phase 09) ------------------------------------------------------------
+
+
+async def _contacts_start(ctx: Context, request: ContactStartRequest) -> ContactRunPage:
+    return await ctx.contacts.start(request)
+
+
+async def _contacts_control(ctx: Context, request: DiscoveryControlRequest) -> ContactRun:
+    return await ctx.contacts.control(request)
+
+
+async def _contacts_runs(ctx: Context, query: ContactRunListQuery) -> ContactRunPage:
+    return await _with_store(ctx, lambda conn: contacts.list_contact_runs(conn, query))
+
+
+async def _contacts_list(ctx: Context, query: ContactListQuery) -> ContactPage:
+    return await _with_store(ctx, lambda conn: contacts.list_contacts(conn, query))
+
+
+async def _contacts_get(ctx: Context, query: ContactDetailQuery) -> ContactDetail:
+    return await _with_store(ctx, lambda conn: contacts.get_contact_detail(conn, query.business_id))
+
+
+async def _contacts_act(ctx: Context, request: ContactActionRequest) -> ContactDetail:
+    def act(conn: sqlite3.Connection) -> ContactDetail:
+        contacts.act(conn, request, actor=ACTOR_UI, lookup=ctx.contacts.lookup)
+        return contacts.get_contact_detail(conn, request.business_id)
+
+    return await _with_store(ctx, act)
+
+
+async def _decision_makers_list(ctx: Context, query: DecisionMakerListQuery) -> DecisionMakerPage:
+    return await _with_store(ctx, lambda conn: contacts.list_decision_makers(conn, query))
+
+
+async def _decision_makers_review(
+    ctx: Context, request: DecisionMakerReviewRequest
+) -> DecisionMakerItem:
+    return await _with_store(
+        ctx, lambda conn: contacts.review_decision_maker(conn, request, actor=ACTOR_UI)
+    )
+
+
+async def _suppressions_list(ctx: Context, query: SuppressionListQuery) -> SuppressionPage:
+    return await _with_store(ctx, lambda conn: contacts.list_suppressions(conn, query))
+
+
+async def _suppressions_change(
+    ctx: Context, request: SuppressionChangeRequest
+) -> ContactSuppression:
+    return await _with_store(
+        ctx, lambda conn: contacts.change_suppression(conn, request, actor=ACTOR_UI)
+    )
+
+
+async def _suppressions_import(
+    ctx: Context, request: SuppressionImportRequest
+) -> SuppressionImportResult:
+    return await _with_store(
+        ctx, lambda conn: contacts.import_suppressions(conn, request, actor=ACTOR_UI)
+    )
+
+
+async def _suppressions_export(
+    ctx: Context, request: SuppressionExportRequest
+) -> SuppressionExport:
+    return await _with_store(ctx, lambda conn: contacts.export_suppressions(conn, request))
+
+
 ROUTES: dict[str, Route] = {
     MessageType.HEALTH: Route(EmptyPayload, _health, timeout_s=2.0),
     MessageType.DIAGNOSTICS: Route(EmptyPayload, _diagnostics, timeout_s=20.0),
@@ -430,5 +524,29 @@ ROUTES: dict[str, Route] = {
     MessageType.WEBSITE_RUNS: Route(WebsiteRunListQuery, _website_runs, timeout_s=15.0),
     MessageType.WEBSITE_AUDITS: Route(WebsiteAuditListQuery, _website_audits, timeout_s=15.0),
     MessageType.WEBSITE_AUDIT: Route(WebsiteAuditQuery, _website_audit, timeout_s=10.0),
+    MessageType.CONTACTS_START: Route(ContactStartRequest, _contacts_start, timeout_s=30.0),
+    MessageType.CONTACTS_CONTROL: Route(DiscoveryControlRequest, _contacts_control, timeout_s=30.0),
+    MessageType.CONTACTS_RUNS: Route(ContactRunListQuery, _contacts_runs, timeout_s=15.0),
+    # a page decides every channel of its project (contacts.store.list_contacts)
+    MessageType.CONTACTS_LIST: Route(ContactListQuery, _contacts_list, timeout_s=30.0),
+    MessageType.CONTACTS_GET: Route(ContactDetailQuery, _contacts_get, timeout_s=10.0),
+    # marking a primary phone or email recomputes the clusters of a project, as matches.act does
+    MessageType.CONTACTS_ACT: Route(ContactActionRequest, _contacts_act, timeout_s=60.0),
+    MessageType.DECISION_MAKERS_LIST: Route(
+        DecisionMakerListQuery, _decision_makers_list, timeout_s=15.0
+    ),
+    MessageType.DECISION_MAKERS_REVIEW: Route(
+        DecisionMakerReviewRequest, _decision_makers_review, timeout_s=15.0
+    ),
+    MessageType.SUPPRESSIONS_LIST: Route(SuppressionListQuery, _suppressions_list, timeout_s=10.0),
+    MessageType.SUPPRESSIONS_CHANGE: Route(
+        SuppressionChangeRequest, _suppressions_change, timeout_s=30.0
+    ),
+    MessageType.SUPPRESSIONS_IMPORT: Route(
+        SuppressionImportRequest, _suppressions_import, timeout_s=60.0
+    ),
+    MessageType.SUPPRESSIONS_EXPORT: Route(
+        SuppressionExportRequest, _suppressions_export, timeout_s=15.0
+    ),
     MessageType.DEV_SEED_SYNTHETIC: Route(EmptyPayload, _dev_seed_synthetic, timeout_s=60.0),
 }

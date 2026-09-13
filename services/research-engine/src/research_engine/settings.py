@@ -19,7 +19,8 @@ class Settings:
     ollama_timeout_s: float
     # development builds only: enables the synthetic test-data seed (LEAD_DEV_TOOLS=1)
     dev_tools: bool = False
-    # LEAD_DISCOVERY_OFFLINE=1: sources that need the network refuse instead of reaching out
+    # LEAD_DISCOVERY_OFFLINE=1: sources that need the network refuse instead of reaching out, and
+    # contact validation looks up no mail domain (phase 09)
     discovery_offline: bool = False
 
     @classmethod

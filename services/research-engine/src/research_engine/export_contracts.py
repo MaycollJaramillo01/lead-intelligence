@@ -26,6 +26,8 @@ from pydantic import BaseModel
 from pydantic.json_schema import models_json_schema
 
 from research_engine import jobs, repository
+from research_engine.contacts import engine as contacts_engine
+from research_engine.contacts import store as contacts_store
 from research_engine.contracts import (
     DATA_CONTRACT_VERSION,
     EXPORTED_MODELS,
@@ -63,6 +65,11 @@ from research_engine.domain import (
     CandidateListQuery,
     CanonicalChoiceRequest,
     CanonicalField,
+    ContactAction,
+    ContactActionRequest,
+    ContactListQuery,
+    ContactRunListQuery,
+    ContactStartRequest,
     ContactType,
     CrawlRunListQuery,
     CrawlStartRequest,
@@ -72,6 +79,10 @@ from research_engine.domain import (
     Dataset,
     DatasetListQuery,
     DatasetSnapshot,
+    DecisionMakerDecision,
+    DecisionMakerListQuery,
+    DecisionMakerReview,
+    DecisionMakerReviewRequest,
     DiscoveryRunListQuery,
     DiscoveryStartRequest,
     ImportPreviewRequest,
@@ -92,6 +103,11 @@ from research_engine.domain import (
     SourceHealth,
     SourceInfo,
     SourceKind,
+    SuppressionChangeRequest,
+    SuppressionExportRequest,
+    SuppressionImportRequest,
+    SuppressionKind,
+    SuppressionListQuery,
     SyntheticSeedResult,
     WebsiteAuditListQuery,
     WebsiteAuditQuery,
@@ -104,6 +120,7 @@ from research_engine.latino import store as latino_store
 from research_engine.resolution import store as resolution_store
 from research_engine.storage import check_sqlite
 from research_engine.testdata import (
+    CONTACT_SITES,
     SYNTHETIC_DATASET_NAME,
     SYNTHETIC_IMPORT_CSV,
     SYNTHETIC_IMPORT_FILE,
@@ -111,6 +128,7 @@ from research_engine.testdata import (
     DiscoveryFixture,
     SyntheticContext,
     seed_businesses,
+    seed_contacts,
     seed_crawl,
     seed_discovery,
     seed_latino,
@@ -400,6 +418,9 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
             website = build_website_fixtures(
                 conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids), data_dir
             )
+            contacts = build_contact_fixtures(
+                conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids), data_dir
+            )
         finally:
             conn.close()
     return {
@@ -421,7 +442,109 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
         **resolution,
         **latino,
         **website,
+        **contacts,
     }
+
+
+def build_contact_fixtures(
+    conn: Any, context: SyntheticContext, data_dir: Path
+) -> dict[str, dict[str, Any]]:
+    """Contact intelligence shapes from a real run of the engine over the synthetic contact sites
+    (with a mail-domain lookup that never touches the network), a suppression import and export,
+    read back through the real queries. Reads happen under the fixed clock too, because freshness
+    is decided when a channel is read."""
+    project_id = context.project_id
+    run_query = ContactRunListQuery(project_id=project_id, limit=25, cursor=None)
+    list_query = ContactListQuery(
+        project_id=project_id,
+        contact_type=None,
+        validation_status=None,
+        role=None,
+        freshness=None,
+        include_hypotheses=True,
+        include_suppressed=True,
+        limit=500,
+        cursor=None,
+    )
+    people_query = DecisionMakerListQuery(
+        project_id=project_id, review_status=None, limit=50, cursor=None
+    )
+    suppression_query = SuppressionListQuery(kind=None, include_lifted=True, limit=50, cursor=None)
+    import_request = SuppressionImportRequest(
+        filename="synthetic-do-not-contact.csv",
+        content=(
+            "kind,value,reason\n"
+            "email,owner@synthetic-closed-0799.example,Asked by email (synthetic test data)\n"
+            "domain,synthetic-closed-0799.example,\n"
+            "bogus,x,\n"
+        ),
+    )
+    export_request = SuppressionExportRequest(include_lifted=True)
+    with ExitStack() as stack:
+        for module in (contacts_store, resolution_store, jobs, repository):
+            stack.enter_context(patch.object(module, "new_id", context.ids))
+            stack.enter_context(patch.object(module, "utc_now", lambda: _T0))
+        stack.enter_context(patch.object(contacts_engine, "utc_now", lambda: _T0))
+        seeded = seed_contacts(conn, context, data_dir)
+        (published,) = conn.execute(
+            "SELECT coalesce(b.merged_into_id, b.id) FROM entity_records er "
+            "JOIN businesses b ON b.id = er.business_id WHERE er.candidate_id = ?",
+            (seeded.candidates["published"],),
+        ).fetchone()
+        people = contacts_store.list_decision_makers(conn, people_query)
+        ambiguous = next(
+            item
+            for item in people.items
+            if item.decision_maker.review_status is DecisionMakerReview.AMBIGUOUS
+        )
+        imported = contacts_store.import_suppressions(conn, import_request, actor="fixture")
+        fixtures = {
+            "contact_start_request.json": _dump(
+                ContactStartRequest(project_id=project_id, check_mail_domains=False)
+            ),
+            "contact_run_list_query.json": _dump(run_query),
+            "contact_run_page.json": _dump(contacts_store.list_contact_runs(conn, run_query)),
+            "contact_list_query.json": _dump(list_query),
+            "contact_page.json": _dump(contacts_store.list_contacts(conn, list_query)),
+            "contact_detail.json": _dump(contacts_store.get_contact_detail(conn, published)),
+            "contact_action_request.json": _dump(
+                ContactActionRequest(
+                    business_id=published,
+                    key=f"email:info@{CONTACT_SITES['published']}",
+                    action=ContactAction.CONFIRM,
+                    reason="Synthetic fixture: confirmed by a colleague on the phone.",
+                    check_mail_domains=False,
+                )
+            ),
+            "decision_maker_list_query.json": _dump(people_query),
+            "decision_maker_page.json": _dump(people),
+            "decision_maker_review_request.json": _dump(
+                DecisionMakerReviewRequest(
+                    decision_maker_id=ambiguous.decision_maker.id,
+                    decision=DecisionMakerDecision.CONFIRM,
+                    reason="Synthetic fixture: the founder still runs the business.",
+                )
+            ),
+            "suppression_list_query.json": _dump(suppression_query),
+            "suppression_page.json": _dump(
+                contacts_store.list_suppressions(conn, suppression_query)
+            ),
+            "suppression_change_request.json": _dump(
+                SuppressionChangeRequest(
+                    suppression_id=None,
+                    kind=SuppressionKind.DOMAIN,
+                    value="synthetic-moved-away-0798.example",
+                    reason="Synthetic fixture: the business asked for its domain to be left out.",
+                )
+            ),
+            "suppression_import_request.json": _dump(import_request),
+            "suppression_import_result.json": _dump(imported),
+            "suppression_export_request.json": _dump(export_request),
+            "suppression_export.json": _dump(
+                contacts_store.export_suppressions(conn, export_request)
+            ),
+        }
+    return fixtures
 
 
 def build_website_fixtures(

@@ -4,6 +4,8 @@ import type {
   BusinessDetail,
   BusinessListItem,
   BusinessPage,
+  ContactChannel,
+  ContactDetail,
   DatasetListItem,
   DatasetPage,
   DatasetSnapshot,
@@ -14,6 +16,7 @@ import type {
   WebsiteFindingView,
 } from "@lead/shared-types";
 import detailFixture from "@lead/shared-types/fixtures/business_detail.json";
+import contactFixture from "@lead/shared-types/fixtures/contact_detail.json";
 import pageFixture from "@lead/shared-types/fixtures/business_page.json";
 import datasetFixture from "@lead/shared-types/fixtures/dataset_page.json";
 import latinoFixture from "@lead/shared-types/fixtures/latino_detail.json";
@@ -95,6 +98,47 @@ const WEBSITE_FINDING_KEYS = {
   confidence: true,
   evidence: true,
 } satisfies Record<keyof WebsiteFindingView, true>;
+
+const CONTACT_DETAIL_KEYS = {
+  business_id: true,
+  root_business_id: true,
+  channels: true,
+  hypotheses: true,
+  decision_makers: true,
+  conflicts: true,
+  contactability: true,
+  business_suppression: true,
+  decisions: true,
+  rules_version: true,
+  extractor_version: true,
+} satisfies Record<keyof ContactDetail, true>;
+
+const CONTACT_CHANNEL_KEYS = {
+  key: true,
+  contact_type: true,
+  value: true,
+  platform: true,
+  level: true,
+  location_id: true,
+  decision_maker_id: true,
+  role: true,
+  role_or_department: true,
+  origin: true,
+  validation_status: true,
+  validation_method: true,
+  validated_at: true,
+  signals: true,
+  freshness: true,
+  first_seen_at: true,
+  last_seen_at: true,
+  source_count: true,
+  source_kinds: true,
+  is_primary: true,
+  suppression: true,
+  shared_with: true,
+  review: true,
+  sources: true,
+} satisfies Record<keyof ContactChannel, true>;
 
 const BUSINESS_KEYS = {
   id: true,
@@ -207,6 +251,20 @@ describe("data contract fixtures match the generated TypeScript types", () => {
       expect(keys(finding)).toEqual(expected(WEBSITE_FINDING_KEYS));
     }
     expect(detail.findings.some((finding) => finding.evidence.length > 0)).toBe(true);
+  });
+
+  it("contact detail keeps hypotheses apart, with the provenance of every source", () => {
+    const detail = contactFixture as ContactDetail;
+    expect(keys(detail)).toEqual(expected(CONTACT_DETAIL_KEYS));
+    for (const channel of [...detail.channels, ...detail.hypotheses]) {
+      expect(keys(channel)).toEqual(expected(CONTACT_CHANNEL_KEYS));
+      for (const source of channel.sources) {
+        expect(keys(source.provenance)).toEqual(expected(PROVENANCE_KEYS));
+      }
+    }
+    expect(detail.hypotheses.length).toBeGreaterThan(0);
+    expect(detail.hypotheses.every((c) => c.origin === "hypothesis" && !c.is_primary)).toBe(true);
+    expect(detail.channels.some((c) => c.origin === "hypothesis")).toBe(false);
   });
 
   it("timestamps use the single contract format", () => {

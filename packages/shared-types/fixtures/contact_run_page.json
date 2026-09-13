@@ -1,0 +1,114 @@
+{
+  "items": [
+    {
+      "job_id": "01900000-0000-7000-8000-000000000999",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "project_name": "Synthetic test workspace",
+      "status": "succeeded",
+      "stage": "done",
+      "progress_done": 20,
+      "progress_total": 20,
+      "extractor_version": "1.0.0",
+      "rules_version": "1.0.0",
+      "check_mail_domains": true,
+      "stats": {
+        "pages_scanned": 10,
+        "contacts_found": 16,
+        "forms_found": 2,
+        "people_found": 5,
+        "hypotheses": 2,
+        "businesses": 20,
+        "channels": 34,
+        "changed": 37,
+        "mail_domains_checked": 4,
+        "mail_domain_failures": 0,
+        "likely_valid": 9,
+        "domain_valid": 0,
+        "structurally_valid": 24,
+        "invalid": 0,
+        "stale": 0,
+        "suppressed": 1,
+        "ambiguous_people": 2
+      },
+      "requested_at": "2026-01-01T00:00:00.000Z",
+      "started_at": "2026-01-01T00:00:00.000Z",
+      "finished_at": "2026-01-01T00:00:00.000Z",
+      "events": [
+        {
+          "level": "info",
+          "event": "run_succeeded",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "ambiguous_people": 2,
+            "businesses": 20,
+            "changed": 37,
+            "channels": 34,
+            "contacts_found": 16,
+            "domain_valid": 0,
+            "forms_found": 2,
+            "hypotheses": 2,
+            "invalid": 0,
+            "likely_valid": 9,
+            "mail_domain_failures": 0,
+            "mail_domains_checked": 4,
+            "pages_scanned": 10,
+            "people_found": 5,
+            "stale": 0,
+            "structurally_valid": 24,
+            "suppressed": 1
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "stage_finished",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "changed": 37,
+            "stage": "validate"
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "stage_started",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "businesses": 20,
+            "mail_domains": "checked",
+            "stage": "validate"
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "stage_started",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "pages": 10,
+            "stage": "extract"
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "run_queued",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "check_mail_domains": true,
+            "project_id": "01900000-0000-7000-8000-000000000001"
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "is_synthetic": true
+    }
+  ],
+  "next_cursor": null,
+  "total": 1
+}

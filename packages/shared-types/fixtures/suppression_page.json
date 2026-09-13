@@ -1,0 +1,45 @@
+{
+  "items": [
+    {
+      "id": "01900000-0000-7000-8000-000000001101",
+      "kind": "domain",
+      "value": "synthetic-closed-0799.example",
+      "business_id": null,
+      "reason": "Imported from synthetic-do-not-contact.csv",
+      "source": "import:synthetic-do-not-contact.csv",
+      "actor": "fixture",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "lifted_at": null,
+      "lifted_by": null,
+      "lift_reason": null
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000001099",
+      "kind": "email",
+      "value": "owner@synthetic-closed-0799.example",
+      "business_id": null,
+      "reason": "Asked by email (synthetic test data)",
+      "source": "import:synthetic-do-not-contact.csv",
+      "actor": "fixture",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "lifted_at": null,
+      "lifted_by": null,
+      "lift_reason": null
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000000996",
+      "kind": "email",
+      "value": "hello@synthetic-painting-0702.example",
+      "business_id": null,
+      "reason": "Asked not to be contacted (synthetic test data)",
+      "source": "manual",
+      "actor": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "lifted_at": null,
+      "lifted_by": null,
+      "lift_reason": null
+    }
+  ],
+  "next_cursor": null,
+  "total": 3
+}

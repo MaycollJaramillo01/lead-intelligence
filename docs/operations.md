@@ -32,6 +32,11 @@ Precedence, later wins:
 Crawl limits are not configuration: each crawl carries its own `CrawlSettings`, bounded by the safe
 limits in [crawling.md](crawling.md) section 6.
 
+`LEAD_DISCOVERY_OFFLINE=1` keeps the worker off the network wherever the network is optional:
+sources that need it refuse, and contact checks never look up mail domains (addresses stay
+`structurally_valid`). Contact validation never talks to a mail server, calls a number or submits a
+form in any mode ([contact-intelligence.md](contact-intelligence.md)).
+
 ### Browser for the crawler
 
 The crawler renders a page in Chromium only when a criterion asks for it. It uses Playwright's own
@@ -65,31 +70,36 @@ Run only the tests that need local services: `uv run --directory services/resear
 
 ## Troubleshooting
 
-| Symptom                                                              | Cause / fix                                                                                                                                                                  |
-| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Python Worker: `worker executable not found`                         | Development virtualenv missing: `pnpm run setup`.                                                                                                                            |
-| Python Worker: `Failed` with a traceback                             | Read the stderr tail on the diagnostics screen and the `worker` records in the log.                                                                                          |
-| Python Worker: `automatic restarts exhausted`                        | The worker crashed 3 times in 5 minutes; fix the cause, then press **Restart worker**.                                                                                       |
-| Ollama: `installed but not running`                                  | Start Ollama (tray app or `ollama serve`). Nothing is downloaded automatically.                                                                                              |
-| GPU: `nvidia-smi not found`                                          | No NVIDIA driver; local AI will use the CPU.                                                                                                                                 |
-| DuckDB: `could not set lock on file`                                 | Another app instance (or tool) has the database open. Close it (single-instance lock: phase 14).                                                                             |
-| SQLite: `degraded · recovered from backup …`                         | The store was damaged and replaced by the named backup; the damaged file is kept as `lead.sqlite3.corrupt-<utc>`. Changes after that backup are lost.                        |
-| SQLite: `… is damaged … and no usable backup exists`                 | Follow **Recover a damaged database** below.                                                                                                                                 |
-| SQLite/DuckDB: `… is at schema vN, this build needs vM`              | A migration failed at startup (see the error on System and in the log). The store is unchanged and a backup was taken before the attempt.                                    |
-| Businesses: `the cursor does not belong to …`                        | The list was paged with a cursor from another sort or a stale build; reload the screen.                                                                                      |
-| Research Center: sites fail with `Private or local address refused`  | The address resolves to this machine or the local network; the crawler only visits public internet addresses, by design.                                                     |
-| Research Center: `No browser available`                              | Neither Playwright's Chromium, Edge nor Chrome could start, or free memory is under 2 GiB; pages stay as fetched over HTTP.                                                  |
-| Research Center: `robots.txt unreadable: nothing allowed`            | The site's robots.txt answered 5xx or 429, or did not answer; RFC 9309 says to fetch nothing. Try again later.                                                               |
-| Businesses: `a resolution run is working on this project`            | Review decisions and value choices wait while a resolution run is queued or running on that project. Let it finish, or pause it in Jobs.                                     |
-| Businesses: `an evaluation is already open for this project`         | A Latino evidence evaluation is queued, running or paused for that project. Resume or cancel it in Jobs before starting another.                                             |
-| Latino review: `an ownership status needs active ownership evidence` | By design: a person can only choose a status the evidence can support (market affinity needs market signals, verified needs strong ownership evidence).                      |
-| Latino evidence: everything stays `Unknown`                          | Expected without explicit declarations: names, Spanish and places never count. Crawl the websites (Research Center) and resolve before evaluating.                           |
-| Website intelligence: `this project has no finished crawl yet`       | Audits read what a crawl stored. Crawl the websites in Research Center ▸ Acquisition first.                                                                                  |
-| Website intelligence: an audit is `Partial` or `Empty`               | Pages the crawl failed, left queued, or whose stored HTML is missing cannot be analyzed; the rules that need them are unknown, not failed. Crawl the site again, then audit. |
-| Website intelligence: auditing again changes nothing                 | By design: a crawl already audited with the same rules writes nothing. Crawl the site again to read fresh pages.                                                             |
-| Website intelligence: analytics `not detected`                       | Tags loaded by a tag manager or a consent tool leave no trace in the HTML; not detected never means absent.                                                                  |
-| `uv` fails with `os error 1921` when run from a packaged app         | Cache entries created inside an MSIX-virtualised process. Retry with `uv --no-cache …` or clear the affected entries with `uv cache clean <package>`.                        |
-| `git` reports _dubious ownership_                                    | The `.git` directory belongs to another Windows account; use `git -c safe.directory=<repo> …` or add the exception yourself.                                                 |
+| Symptom                                                              | Cause / fix                                                                                                                                                                       |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Python Worker: `worker executable not found`                         | Development virtualenv missing: `pnpm run setup`.                                                                                                                                 |
+| Python Worker: `Failed` with a traceback                             | Read the stderr tail on the diagnostics screen and the `worker` records in the log.                                                                                               |
+| Python Worker: `automatic restarts exhausted`                        | The worker crashed 3 times in 5 minutes; fix the cause, then press **Restart worker**.                                                                                            |
+| Ollama: `installed but not running`                                  | Start Ollama (tray app or `ollama serve`). Nothing is downloaded automatically.                                                                                                   |
+| GPU: `nvidia-smi not found`                                          | No NVIDIA driver; local AI will use the CPU.                                                                                                                                      |
+| DuckDB: `could not set lock on file`                                 | Another app instance (or tool) has the database open. Close it (single-instance lock: phase 14).                                                                                  |
+| SQLite: `degraded · recovered from backup …`                         | The store was damaged and replaced by the named backup; the damaged file is kept as `lead.sqlite3.corrupt-<utc>`. Changes after that backup are lost.                             |
+| SQLite: `… is damaged … and no usable backup exists`                 | Follow **Recover a damaged database** below.                                                                                                                                      |
+| SQLite/DuckDB: `… is at schema vN, this build needs vM`              | A migration failed at startup (see the error on System and in the log). The store is unchanged and a backup was taken before the attempt.                                         |
+| Businesses: `the cursor does not belong to …`                        | The list was paged with a cursor from another sort or a stale build; reload the screen.                                                                                           |
+| Research Center: sites fail with `Private or local address refused`  | The address resolves to this machine or the local network; the crawler only visits public internet addresses, by design.                                                          |
+| Research Center: `No browser available`                              | Neither Playwright's Chromium, Edge nor Chrome could start, or free memory is under 2 GiB; pages stay as fetched over HTTP.                                                       |
+| Research Center: `robots.txt unreadable: nothing allowed`            | The site's robots.txt answered 5xx or 429, or did not answer; RFC 9309 says to fetch nothing. Try again later.                                                                    |
+| Businesses: `a resolution run is working on this project`            | Review decisions and value choices wait while a resolution run is queued or running on that project. Let it finish, or pause it in Jobs.                                          |
+| Businesses: `an evaluation is already open for this project`         | A Latino evidence evaluation is queued, running or paused for that project. Resume or cancel it in Jobs before starting another.                                                  |
+| Latino review: `an ownership status needs active ownership evidence` | By design: a person can only choose a status the evidence can support (market affinity needs market signals, verified needs strong ownership evidence).                           |
+| Latino evidence: everything stays `Unknown`                          | Expected without explicit declarations: names, Spanish and places never count. Crawl the websites (Research Center) and resolve before evaluating.                                |
+| Website intelligence: `this project has no finished crawl yet`       | Audits read what a crawl stored. Crawl the websites in Research Center ▸ Acquisition first.                                                                                       |
+| Website intelligence: an audit is `Partial` or `Empty`               | Pages the crawl failed, left queued, or whose stored HTML is missing cannot be analyzed; the rules that need them are unknown, not failed. Crawl the site again, then audit.      |
+| Website intelligence: auditing again changes nothing                 | By design: a crawl already audited with the same rules writes nothing. Crawl the site again to read fresh pages.                                                                  |
+| Website intelligence: analytics `not detected`                       | Tags loaded by a tag manager or a consent tool leave no trace in the HTML; not detected never means absent.                                                                       |
+| Contacts: every email stays `Well-formed only`                       | Mail domains are looked up only when **Look up mail domains (DNS)** is ticked and the worker is not offline. A DNS timeout keeps an address well formed; it never invalidates it. |
+| Contacts: a hypothesis cannot be confirmed or shown                  | By design: an address built from a pattern is never a contact. Crawl a page where the business publishes it, or mark it invalid.                                                  |
+| Contacts: `this value is already on the do-not-contact list`         | A live entry covers the value after normalisation (lower-case address, E.164 number, registrable domain). Lift it first to add it again with another reason.                      |
+| Contacts: a do-not-contact import reports problems                   | Each problem names its line: the header needs `kind` and `value`, kinds are email, phone, domain or business, and at most 5 000 rows are read.                                    |
+| Contacts: `there are no businesses to check yet`                     | Discover or import businesses and resolve them first; crawl their websites to read the channels they publish.                                                                     |
+| `uv` fails with `os error 1921` when run from a packaged app         | Cache entries created inside an MSIX-virtualised process. Retry with `uv --no-cache …` or clear the affected entries with `uv cache clean <package>`.                             |
+| `git` reports _dubious ownership_                                    | The `.git` directory belongs to another Windows account; use `git -c safe.directory=<repo> …` or add the exception yourself.                                                      |
 
 ## Data, backups and recovery
 
@@ -121,8 +131,9 @@ Integrity of any copy can be checked with
 ## Synthetic test data (development only)
 
 `pnpm dev` passes `LEAD_DEV_TOOLS=1` to the worker, and the Businesses screen shows **Load synthetic
-test data · Dev**. It creates, once, a project flagged as synthetic with 24 fictitious businesses and
-a dataset snapshot, then opens one in the inspector. Release builds refuse the action in the core and
+test data · Dev**. It creates, once, a project flagged as synthetic with 38 fictitious businesses
+(duplicates to resolve, Latino evidence cases, crawled sites to audit and contacts to check) and a
+dataset snapshot, then opens one in the inspector. Release builds refuse the action in the core and
 the worker. To remove it in development, stop the app and delete the development `data/` folder.
 
 ## Clean

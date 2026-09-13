@@ -251,14 +251,14 @@ def test_development_seed_creates_openable_synthetic_data(dev_worker: WorkerProc
     _ready(dev_worker)
     created = dev_worker.request("dev.seed_synthetic")["payload"]
     assert created["created"] is True
-    # 24 businesses, 6 records to resolve (two are the same plumber) and 8 records whose Latino
-    # evidence differs (two describe the same grocery)
-    assert created["business_count"] == 36
+    # 24 businesses, 6 records to resolve (two are the same plumber), 8 records whose Latino
+    # evidence differs (two describe the same grocery) and 2 businesses whose contacts are checked
+    assert created["business_count"] == 38
     again = dev_worker.request("dev.seed_synthetic")["payload"]
     assert again == {**created, "created": False}  # seeded once, then reused
 
     page = dev_worker.request("businesses.list", {**_LIST, "limit": 10, "cursor": None})["payload"]
-    assert page["total"] == 36
+    assert page["total"] == 38
     assert page["next_cursor"] is not None
     assert all(item["is_synthetic"] for item in page["items"])
     assert page["items"][0]["id"] == created["business_id"]
@@ -273,4 +273,4 @@ def test_development_seed_creates_openable_synthetic_data(dev_worker: WorkerProc
     )
     (dataset,) = datasets["payload"]["items"]
     assert dataset["dataset"]["id"] == created["dataset_id"]
-    assert dataset["latest_snapshot"]["row_count"] == 36
+    assert dataset["latest_snapshot"]["row_count"] == 38

@@ -9,15 +9,20 @@ use std::fs;
 use lead_intelligence_lib::data::{
     AssessmentMethod, BusinessDetail, BusinessListQuery, BusinessPage, CampaignListQuery,
     CampaignPage, CampaignSaved, CandidateDetail, CandidateListQuery, CandidatePage,
-    CanonicalChoiceRequest, CrawlRunListQuery, CrawlRunPage, CrawlStartRequest, CrawlUrlDetail,
-    CrawlUrlListQuery, CrawlUrlPage, CrawlUrlStatus, CriteriaCheck, DatasetListQuery, DatasetPage,
-    DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest, EvidenceStatus, Id,
-    ImportPreview, LatinoDetail, LatinoReviewFilter, LatinoReviewRequest, LatinoRunListQuery,
-    LatinoRunPage, LatinoStartRequest, LatinoStatus, MatchActionRequest, MatchDetail,
-    MatchListQuery, MatchPage, MatchStatus, ResolutionRunListQuery, ResolutionRunPage,
-    ResolutionStartRequest, SourceCatalog, SourceHealth, SyntheticSeedResult, WebsiteAuditDetail,
-    WebsiteAuditListQuery, WebsiteAuditPage, WebsiteAuditQuery, WebsiteAuditStatus,
-    WebsiteFindingResult, WebsiteRunListQuery, WebsiteRunPage, WebsiteStartRequest,
+    CanonicalChoiceRequest, ContactActionRequest, ContactDetail, ContactListQuery, ContactOrigin,
+    ContactPage, ContactRunListQuery, ContactRunPage, ContactStartRequest, CrawlRunListQuery,
+    CrawlRunPage, CrawlStartRequest, CrawlUrlDetail, CrawlUrlListQuery, CrawlUrlPage,
+    CrawlUrlStatus, CriteriaCheck, DatasetListQuery, DatasetPage, DecisionMakerListQuery,
+    DecisionMakerPage, DecisionMakerReview, DecisionMakerReviewRequest, DiscoveryRunListQuery,
+    DiscoveryRunPage, DiscoveryStartRequest, EvidenceStatus, Id, ImportPreview, LatinoDetail,
+    LatinoReviewFilter, LatinoReviewRequest, LatinoRunListQuery, LatinoRunPage, LatinoStartRequest,
+    LatinoStatus, MatchActionRequest, MatchDetail, MatchListQuery, MatchPage, MatchStatus,
+    ResolutionRunListQuery, ResolutionRunPage, ResolutionStartRequest, SourceCatalog, SourceHealth,
+    SuppressionChangeRequest, SuppressionExport, SuppressionExportRequest,
+    SuppressionImportRequest, SuppressionImportResult, SuppressionListQuery, SuppressionPage,
+    SyntheticSeedResult, ValidationStatus, WebsiteAuditDetail, WebsiteAuditListQuery,
+    WebsiteAuditPage, WebsiteAuditQuery, WebsiteAuditStatus, WebsiteFindingResult,
+    WebsiteRunListQuery, WebsiteRunPage, WebsiteStartRequest,
 };
 use lead_intelligence_lib::protocol::{
     DATA_CONTRACT_VERSION, DiagnosticsReport, DiagnosticsResult, Envelope, HealthResult,
@@ -610,6 +615,159 @@ fn website_payloads_that_do_not_add_up_are_rejected() {
 }
 
 #[test]
+fn contact_fixtures_round_trip_and_pass_validation() {
+    let start: ContactStartRequest = round_trip("contact_start_request.json");
+    assert!(!start.check_mail_domains);
+    let run_query: ContactRunListQuery = round_trip("contact_run_list_query.json");
+    run_query.validate().expect("fixture query is valid");
+    let runs: ContactRunPage = round_trip("contact_run_page.json");
+    runs.validate(&run_query)
+        .expect("fixture run page matches its query");
+    assert!(
+        runs.items
+            .iter()
+            .any(|run| run.stats.hypotheses > 0 && run.stats.mail_domains_checked > 0)
+    );
+
+    let query: ContactListQuery = round_trip("contact_list_query.json");
+    query.validate().expect("fixture query is valid");
+    let page: ContactPage = round_trip("contact_page.json");
+    page.validate(&query)
+        .expect("fixture page matches its query");
+    assert!(page.items.iter().any(|item| item.suppressed));
+    assert!(
+        page.items
+            .iter()
+            .any(|item| item.origin == ContactOrigin::Hypothesis)
+    );
+
+    let detail: ContactDetail = round_trip("contact_detail.json");
+    detail
+        .validate(&detail.business_id.clone())
+        .expect("fixture detail describes its business");
+    assert!(!detail.hypotheses.is_empty() && !detail.decision_makers.is_empty());
+    assert!(
+        detail
+            .channels
+            .iter()
+            .any(|channel| channel.validation_status == ValidationStatus::LikelyValid)
+    );
+    let action: ContactActionRequest = round_trip("contact_action_request.json");
+    action.validate().expect("fixture action is valid");
+
+    let people_query: DecisionMakerListQuery = round_trip("decision_maker_list_query.json");
+    people_query.validate().expect("fixture query is valid");
+    let people: DecisionMakerPage = round_trip("decision_maker_page.json");
+    people
+        .validate(&people_query)
+        .expect("fixture people match their query");
+    assert!(
+        people
+            .items
+            .iter()
+            .any(|item| item.decision_maker.review_status == DecisionMakerReview::Ambiguous)
+    );
+    let review: DecisionMakerReviewRequest = round_trip("decision_maker_review_request.json");
+    review.validate().expect("fixture review is valid");
+
+    let suppression_query: SuppressionListQuery = round_trip("suppression_list_query.json");
+    suppression_query
+        .validate()
+        .expect("fixture query is valid");
+    let suppressions: SuppressionPage = round_trip("suppression_page.json");
+    suppressions
+        .validate(&suppression_query)
+        .expect("fixture suppressions match their query");
+    let change: SuppressionChangeRequest = round_trip("suppression_change_request.json");
+    change.validate().expect("fixture change is valid");
+    let import: SuppressionImportRequest = round_trip("suppression_import_request.json");
+    import.validate().expect("fixture import is valid");
+    let imported: SuppressionImportResult = round_trip("suppression_import_result.json");
+    imported.validate().expect("fixture import result adds up");
+    assert_eq!(imported.problems.len(), 1);
+    round_trip::<SuppressionExportRequest>("suppression_export_request.json");
+    let export: SuppressionExport = round_trip("suppression_export.json");
+    export.validate().expect("the export is a safe CSV");
+    assert_eq!(export.rows, suppressions.total);
+}
+
+#[test]
+fn contact_payloads_that_claim_too_much_are_rejected() {
+    let original: Value = serde_json::from_str(&fixture_text("contact_detail.json")).expect("JSON");
+    let stranger = Id::parse("01900000-0000-7000-8000-000000009999").expect("id");
+    let detail: ContactDetail = serde_json::from_value(original.clone()).expect("detail");
+    assert!(detail.validate(&stranger).is_err(), "another business");
+
+    let rejected = |mutate: &dyn Fn(&mut Value)| {
+        let mut changed = original.clone();
+        mutate(&mut changed);
+        let changed: ContactDetail = serde_json::from_value(changed).expect("still a detail");
+        changed.validate(&changed.business_id.clone()).is_err()
+    };
+    assert!(
+        rejected(&|detail| detail["hypotheses"][0]["validation_status"] = "likely_valid".into()),
+        "a hypothesis dressed up as validated"
+    );
+    assert!(
+        rejected(&|detail| detail["hypotheses"][0]["is_primary"] = true.into()),
+        "a hypothesis shown as the business's address"
+    );
+    assert!(
+        rejected(&|detail| {
+            let hypothesis = detail["hypotheses"][0].clone();
+            detail["channels"]
+                .as_array_mut()
+                .expect("channels")
+                .push(hypothesis);
+        }),
+        "a hypothesis listed among contacts"
+    );
+    assert!(
+        rejected(&|detail| detail["channels"][0]["validation_status"] = "suppressed".into()),
+        "suppressed without an entry"
+    );
+    assert!(
+        rejected(&|detail| detail["contactability"]["score"] = 100.into()),
+        "a score its components do not add up to"
+    );
+    let mut invented = original;
+    invented["channels"][0]["validation_status"] = "verified".into();
+    assert!(serde_json::from_value::<ContactDetail>(invented).is_err());
+
+    let query: ContactListQuery =
+        serde_json::from_str(&fixture_text("contact_list_query.json")).expect("query");
+    let page: ContactPage = serde_json::from_str(&fixture_text("contact_page.json")).expect("page");
+    let mut without_hypotheses = query.clone();
+    without_hypotheses.include_hypotheses = false;
+    assert!(
+        page.validate(&without_hypotheses).is_err(),
+        "hypotheses only when asked"
+    );
+    let mut without_suppressed = query;
+    without_suppressed.include_suppressed = false;
+    assert!(
+        page.validate(&without_suppressed).is_err(),
+        "suppressed only when asked"
+    );
+
+    let mut export: SuppressionExport =
+        serde_json::from_str(&fixture_text("suppression_export.json")).expect("export");
+    export
+        .content
+        .push_str("email,=cmd@synthetic.example,x,manual,2026-01-01T00:00:00.000Z,\n");
+    export.rows += 1;
+    assert!(export.validate().is_err(), "a cell a spreadsheet would run");
+
+    let mut unexplained: ContactActionRequest =
+        serde_json::from_str(&fixture_text("contact_action_request.json")).expect("action");
+    unexplained.reason = None;
+    assert!(
+        unexplained.validate().is_err(),
+        "a confirmation needs a reason"
+    );
+}
+
+#[test]
 fn every_fixture_is_covered() {
     let dir = common::repo_root().join("packages/shared-types/fixtures");
     let mut names: Vec<String> = fs::read_dir(dir)
@@ -638,6 +796,13 @@ fn every_fixture_is_covered() {
             "candidate_list_query.json",
             "candidate_page.json",
             "canonical_choice_request.json",
+            "contact_action_request.json",
+            "contact_detail.json",
+            "contact_list_query.json",
+            "contact_page.json",
+            "contact_run_list_query.json",
+            "contact_run_page.json",
+            "contact_start_request.json",
             "crawl_run_list_query.json",
             "crawl_run_page.json",
             "crawl_start_request.json",
@@ -647,6 +812,9 @@ fn every_fixture_is_covered() {
             "criteria_check.json",
             "dataset_list_query.json",
             "dataset_page.json",
+            "decision_maker_list_query.json",
+            "decision_maker_page.json",
+            "decision_maker_review_request.json",
             "diagnostics_report.json",
             "diagnostics_report.worker_down.json",
             "discovery_run_list_query.json",
@@ -672,6 +840,13 @@ fn every_fixture_is_covered() {
             "resolution_run_page.json",
             "resolution_start_request.json",
             "source_catalog.json",
+            "suppression_change_request.json",
+            "suppression_export.json",
+            "suppression_export_request.json",
+            "suppression_import_request.json",
+            "suppression_import_result.json",
+            "suppression_list_query.json",
+            "suppression_page.json",
             "synthetic_seed_result.json",
             "ui_error_report.json",
             "website_audit_detail.json",

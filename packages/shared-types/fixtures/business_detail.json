@@ -135,6 +135,7 @@
         "is_primary": true,
         "validation_status": "observed",
         "validated_at": null,
+        "validation_method": null,
         "do_not_contact": false,
         "suppression_reason": null,
         "confidence": 0.9,

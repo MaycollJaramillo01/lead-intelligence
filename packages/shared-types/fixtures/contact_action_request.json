@@ -1,0 +1,7 @@
+{
+  "business_id": "01900000-0000-7000-8000-000000000951",
+  "key": "email:info@synthetic-plumbing-0701.example",
+  "action": "confirm",
+  "reason": "Synthetic fixture: confirmed by a colleague on the phone.",
+  "check_mail_domains": false
+}

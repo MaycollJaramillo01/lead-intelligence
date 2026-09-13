@@ -1,0 +1,12 @@
+{
+  "rows": 3,
+  "added": 2,
+  "already_suppressed": 0,
+  "problems": [
+    {
+      "row": 4,
+      "code": "unknown_kind",
+      "message": "kind must be email, phone, domain or business"
+    }
+  ]
+}

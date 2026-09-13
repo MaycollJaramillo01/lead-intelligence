@@ -3,7 +3,8 @@
 Nothing here is product output. Every value is fictitious on purpose: business names start with
 "Synthetic", domains use the reserved `.example` top-level domain, phone numbers use the 555-01xx
 range reserved for fiction, addresses are on "Example Ave", payloads carry `"test_data": true`,
-every project created here is flagged `is_synthetic`, and no person is represented at all.
+every project created here is flagged `is_synthetic`, and the only people are obviously fictional
+names on synthetic sites ("Alex Example", "Jordan Sample").
 """
 
 import csv
@@ -54,6 +55,7 @@ from research_engine.domain import (
     JobTask,
     JsonObject,
     LeadStage,
+    MailDomainResult,
     NameKind,
     PageKind,
     Project,
@@ -65,6 +67,7 @@ from research_engine.domain import (
     SourceRun,
     SourceRunStatus,
     SourceSelection,
+    SuppressionKind,
     SyntheticSeedResult,
     ValidationStatus,
     Website,
@@ -287,6 +290,7 @@ def synthetic_business(ctx: SyntheticContext, index: int) -> list[Record]:
             is_primary=True,
             validation_status=ValidationStatus.OBSERVED,
             validated_at=None,
+            validation_method=None,
             do_not_contact=False,
             suppression_reason=None,
             confidence=0.9,
@@ -390,6 +394,7 @@ def seed_synthetic_workspace(
     seed_resolution(conn, SyntheticContext(project_id, connector_id, run.id, now))
     seed_latino(conn, SyntheticContext(project_id, connector_id, run.id, now), data_dir)
     seed_website(conn, SyntheticContext(project_id, connector_id, run.id, now), data_dir)
+    seed_contacts(conn, SyntheticContext(project_id, connector_id, run.id, now), data_dir)
     snapshot = snapshot_businesses(
         conn,
         data_dir,
@@ -1413,3 +1418,146 @@ def seed_website(conn: sqlite3.Connection, ctx: SyntheticContext, data_dir: Path
     insert_site_pages(conn, ctx, changed, {"/": synthetic_weak_home(changed, improved=True)},
                       data_dir=data_dir, robots=SYNTHETIC_ROBOTS)  # fmt: skip
     return WebsiteFixture(job_ids=(first, audit()), sites=dict(WEBSITE_SITES))
+
+
+# ---- contact intelligence (phase 09) -------------------------------------------------------------
+
+#: Synthetic sites by the situation each one stands for (see `seed_contacts`).
+CONTACT_SITES: Mapping[str, str] = {
+    "published": "synthetic-plumbing-0701.example",
+    "moved": "synthetic-painting-0702.example",
+}
+#: The fictional people those sites publish (test data).
+CONTACT_PEOPLE: Mapping[str, str] = {
+    "owner": "Alex Example",
+    "manager": "Jordan Sample",
+    "office": "Casey Demo",
+    "founder": "Morgan Placeholder",
+}
+
+
+def synthetic_mail_lookup(domain: str) -> tuple[MailDomainResult, tuple[str, ...]]:
+    """A mail-domain lookup that never touches the network (test data): synthetic `.example`
+    domains accept mail and every other domain does not exist."""
+    if domain.startswith("synthetic-") and domain.endswith(".example"):
+        return MailDomainResult.MX, (f"mx.{domain}",)
+    return MailDomainResult.NXDOMAIN, ()
+
+
+def synthetic_contact_site(site: str) -> dict[str, str]:
+    """A small business site that publishes its contacts in every usual way (test data)."""
+    business = orjson.dumps({
+        "@context": "https://schema.org", "@type": "Plumber", "name": "Synthetic Plumbing 0701",
+        "telephone": "+1 512-555-0171", "email": f"info@{site}",
+        "address": {"@type": "PostalAddress", "streetAddress": "701 Example Ave",
+                    "addressLocality": "Austin", "addressRegion": "TX", "postalCode": "78701"},
+        "contactPoint": {"@type": "ContactPoint", "contactType": "sales",
+                         "telephone": "+1 512-555-0172", "email": f"sales@{site}"},
+        "sameAs": ["https://www.facebook.com/syntheticplumbing0701"],
+    }).decode()  # fmt: skip
+    manager = orjson.dumps({
+        "@context": "https://schema.org", "@type": "Person", "name": CONTACT_PEOPLE["manager"],
+        "jobTitle": "General Manager", "email": f"jordan.sample@{site}",
+    }).decode()  # fmt: skip
+
+    def page(title: str, main: str, extra: str = "") -> str:
+        return (
+            f"<!doctype html><html lang='en'><head><title>{title}</title>{extra}</head><body>"
+            f"<main>{main}</main></body></html>"
+        )
+
+    return {
+        "/": page(
+            "Synthetic Plumbing 0701",
+            "<h1>Synthetic Plumbing 0701</h1><p>Synthetic test data. Call "
+            "<a href='tel:+15125550171'>(512) 555-0171</a> or write to "
+            f"<a href='mailto:info@{site}'>info@{site}</a>.</p>"
+            "<a href='https://calendly.com/synthetic-plumbing-0701/visit'>Book a visit</a> "
+            "<a href='https://www.facebook.com/syntheticplumbing0701'>Facebook</a>",
+            f'<script type="application/ld+json">{business}</script>',
+        ),
+        "/about": page(
+            "About us | Synthetic Plumbing 0701",
+            f"<h1>About us</h1><p>{CONTACT_PEOPLE['owner']}, Owner, started this synthetic "
+            f"business. {CONTACT_PEOPLE['office']}, Office Manager, answers the phone. Test data "
+            "only.</p>",
+            f'<script type="application/ld+json">{manager}</script>',
+        ),
+        "/contact": page(
+            "Contact | Synthetic Plumbing 0701",
+            "<h1>Contact us</h1><form action='/contact/send' method='post'>"
+            "<label for='name'>Name</label><input id='name' name='name' required>"
+            "<label for='email'>Email</label><input id='email' name='email' type='email' required>"
+            "<label for='message'>Message</label><textarea id='message' name='message'></textarea>"
+            "<button type='submit'>Send message</button></form>",
+        ),
+    }
+
+
+def synthetic_moved_home(site: str, *, moved: bool) -> str:
+    """The home page of a business before and after it changed its number (test data)."""
+    number = "(312) 555-0182" if moved else "(312) 555-0181"
+    return (
+        "<!doctype html><html lang='en'><head><title>Synthetic Painting 0702</title></head><body>"
+        f"<main><h1>Synthetic Painting 0702</h1><p>Founded by {CONTACT_PEOPLE['founder']} in 1998. "
+        f"Call {number} or email hello@{site}. Test data only.</p></main></body></html>"
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class ContactFixture:
+    job_id: str
+    #: Candidate ids by situation (see `seed_contacts`).
+    candidates: Mapping[str, str]
+    sites: Mapping[str, str]
+    suppression_id: str | None
+
+
+def seed_contacts(
+    conn: sqlite3.Connection, ctx: SyntheticContext, data_dir: Path
+) -> ContactFixture:
+    """Businesses whose listings and websites publish contacts, checked by the real engine with a
+    mail-domain lookup that never touches the network (test data):
+
+    - `published`: a site with a tap-to-call number and a mail link, structured data for the
+      business with a sales contact point and a manager, a booking link, a profile, a contact form
+      and an about page naming its owner and office manager; the manager's published address follows
+      a pattern, so the engine suggests hypotheses for the other two, kept apart as hypotheses;
+    - `moved`: a business whose listing and first crawl show one number and whose crawl a month
+      later shows another, so the old number is stale and the values disagree; its founder is only
+      named historically (ambiguous) and its address is on the do-not-contact list.
+    """
+    from research_engine.contacts import engine as contacts_engine
+    from research_engine.contacts import store as contacts_store
+    from research_engine.resolution import engine, store
+
+    published, moved = CONTACT_SITES["published"], CONTACT_SITES["moved"]
+    earlier = replace(ctx, now=ctx.now - timedelta(days=30))
+    rows = {
+        "published": {"name": "Synthetic Plumbing 0701", "address": "701 Example Ave",
+                      "city": "Austin", "state": "TX", "zip": "78701", "phone": "(512) 555-0171",
+                      "website": f"https://{published}/"},
+        "moved": {"name": "Synthetic Painting 0702", "address": "702 Example Ave",
+                  "city": "Chicago", "state": "IL", "zip": "60601", "phone": "(312) 555-0181",
+                  "website": f"https://{moved}/"},
+    }  # fmt: skip
+    candidates = {
+        situation: insert_candidates(conn, earlier, [row])[0] for situation, row in rows.items()
+    }
+    insert_site_pages(conn, earlier, published, synthetic_contact_site(published),
+                      candidate_id=candidates["published"], data_dir=data_dir)  # fmt: skip
+    insert_site_pages(conn, earlier, moved, {"/": synthetic_moved_home(moved, moved=False)},
+                      candidate_id=candidates["moved"], data_dir=data_dir)  # fmt: skip
+    insert_site_pages(conn, ctx, moved, {"/": synthetic_moved_home(moved, moved=True)},
+                      candidate_id=candidates["moved"], data_dir=data_dir)  # fmt: skip
+    resolved, _ = store.plan_runs(conn, ctx.project_id, actor=ACTOR_DEV_SEED)
+    engine.run_resolution(conn, resolved[0], lambda: False)
+    suppression = contacts_store.add_suppression(
+        conn, SuppressionKind.EMAIL, f"hello@{moved}", business_id=None,
+        reason="Asked not to be contacted (synthetic test data)", source="manual",
+        actor=ACTOR_DEV_SEED, now=ctx.now,
+    )  # fmt: skip
+    planned, _ = contacts_store.plan_runs(conn, ctx.project_id, True, actor=ACTOR_DEV_SEED)
+    contacts_engine.run_contacts(conn, data_dir, planned[0], lambda: False, synthetic_mail_lookup)
+    return ContactFixture(job_id=planned[0], candidates=candidates, sites=dict(CONTACT_SITES),
+                          suppression_id=suppression.id if suppression else None)  # fmt: skip

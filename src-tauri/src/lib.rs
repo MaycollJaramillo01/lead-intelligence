@@ -65,6 +65,18 @@ pub fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Build
         commands::list_website_runs,
         commands::list_website_audits,
         commands::get_website_audit,
+        commands::start_contacts,
+        commands::control_contacts,
+        commands::list_contact_runs,
+        commands::list_contacts,
+        commands::get_contacts,
+        commands::act_on_contact,
+        commands::list_decision_makers,
+        commands::review_decision_maker,
+        commands::list_suppressions,
+        commands::change_suppression,
+        commands::import_suppressions,
+        commands::export_suppressions,
         commands::seed_synthetic_data
     ])
 }
