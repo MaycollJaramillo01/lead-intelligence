@@ -55,6 +55,11 @@ pub fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Build
         commands::get_match,
         commands::act_on_match,
         commands::choose_canonical_value,
+        commands::start_latino,
+        commands::control_latino,
+        commands::list_latino_runs,
+        commands::get_latino,
+        commands::review_latino,
         commands::seed_synthetic_data
     ])
 }

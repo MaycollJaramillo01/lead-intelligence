@@ -1,0 +1,12 @@
+{
+  "project_id": "01900000-0000-7000-8000-000000000001",
+  "search": null,
+  "status": null,
+  "latino_status": "probable_latino_owned",
+  "latino_min_confidence": 0.5,
+  "latino_source_kind": "business_website",
+  "latino_review": "unreviewed",
+  "sort": "name",
+  "limit": 50,
+  "cursor": null
+}

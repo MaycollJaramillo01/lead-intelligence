@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { buildBusinessColumns } from "@/features/businesses/columns";
 import { TableWorkspace } from "@/features/businesses/TableWorkspace";
+import { NO_LATINO_FILTER, latinoQuery, type LatinoFilter } from "@/features/latino/filters";
+import { LatinoFilters } from "@/features/latino/LatinoFilters";
 import { DuplicatesView } from "@/features/resolution/DuplicatesView";
 import { useT } from "@/lib/i18n";
 import { desktop, toIpcError } from "@/lib/ipc";
@@ -68,6 +70,7 @@ function BusinessList({ toggle }: { toggle: ReactNode }) {
   const filterFields = useMemo(() => filterFieldsFrom(columns), [columns]);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
+  const [latino, setLatino] = useState<LatinoFilter>(NO_LATINO_FILTER);
   const [seeding, setSeeding] = useState(false);
 
   useEffect(() => {
@@ -81,13 +84,15 @@ function BusinessList({ toggle }: { toggle: ReactNode }) {
         project_id: null,
         search: query || null,
         status: null,
+        ...latinoQuery(latino),
         sort: "name",
         limit: BUSINESS_PAGE_SIZE,
         cursor,
       }),
-    [query],
+    [query, latino],
   );
   const pages = useKeysetPages(fetchPage, "list_businesses");
+  const filtered = Object.values(latino).some(Boolean);
 
   const seed = async () => {
     setSeeding(true);
@@ -117,7 +122,7 @@ function BusinessList({ toggle }: { toggle: ReactNode }) {
         </Button>
       }
     />
-  ) : query ? (
+  ) : query || filtered ? (
     <StateBlock variant="empty" title={t("businesses.noMatchesTitle")} />
   ) : (
     <StateBlock
@@ -141,6 +146,7 @@ function BusinessList({ toggle }: { toggle: ReactNode }) {
       filterFields={filterFields}
       isLoading={pages.loading && pages.items.length === 0 && !pages.error}
       emptyState={emptyState}
+      toolbar={<LatinoFilters value={latino} onChange={setLatino} onEvaluated={pages.reload} />}
       actions={
         <>
           {toggle}

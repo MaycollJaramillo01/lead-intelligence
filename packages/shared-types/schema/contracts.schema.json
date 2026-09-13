@@ -572,6 +572,24 @@
           "minimum": 0,
           "type": "integer"
         },
+        "latino_status": {
+          "$ref": "#/$defs/LatinoStatus"
+        },
+        "latino_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latino_reviewed": {
+          "type": "boolean"
+        },
         "last_seen_at": {
           "format": "date-time",
           "type": "string"
@@ -595,6 +613,9 @@
         "evidence_count",
         "member_count",
         "conflict_count",
+        "latino_status",
+        "latino_confidence",
+        "latino_reviewed",
         "last_seen_at",
         "is_synthetic"
       ],
@@ -636,6 +657,48 @@
             }
           ]
         },
+        "latino_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LatinoStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latino_min_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latino_source_kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latino_review": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LatinoReviewFilter"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "sort": {
           "$ref": "#/$defs/BusinessSort"
         },
@@ -662,6 +725,10 @@
         "project_id",
         "search",
         "status",
+        "latino_status",
+        "latino_min_confidence",
+        "latino_source_kind",
+        "latino_review",
         "sort",
         "limit",
         "cursor"
@@ -5618,6 +5685,15 @@
       "title": "EventLevel",
       "type": "string"
     },
+    "EvidenceFreshness": {
+      "enum": [
+        "fresh",
+        "aging",
+        "stale"
+      ],
+      "title": "EvidenceFreshness",
+      "type": "string"
+    },
     "EvidenceItem": {
       "additionalProperties": false,
       "description": "An observed claim: value, snippet and hash, strength, confidence. Only `status` changes.",
@@ -7277,6 +7353,19 @@
         "created_at": {
           "format": "date-time",
           "type": "string"
+        },
+        "details_json": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -7291,13 +7380,15 @@
         "limitations",
         "assessed_at",
         "superseded_at",
-        "created_at"
+        "created_at",
+        "details_json"
       ],
       "title": "LatinoAssessment",
       "type": "object"
     },
     "LatinoAssessmentEvidence": {
       "additionalProperties": false,
+      "description": "Evidence an assessment cites, with the factors the rules gave it at that moment.",
       "properties": {
         "assessment_id": {
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
@@ -7309,14 +7400,586 @@
         },
         "role": {
           "$ref": "#/$defs/EvidenceRole"
+        },
+        "source_reliability": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "freshness": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "score": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "counted": {
+          "type": "boolean"
+        },
+        "organizational": {
+          "type": "boolean"
         }
       },
       "required": [
         "assessment_id",
         "evidence_item_id",
-        "role"
+        "role",
+        "source_reliability",
+        "freshness",
+        "score",
+        "counted",
+        "organizational"
       ],
       "title": "LatinoAssessmentEvidence",
+      "type": "object"
+    },
+    "LatinoAssessmentView": {
+      "additionalProperties": false,
+      "description": "One assessment with its warnings and what it cannot conclude (from `details_json`).",
+      "properties": {
+        "assessment": {
+          "$ref": "#/$defs/LatinoAssessment"
+        },
+        "warnings": {
+          "items": {
+            "$ref": "#/$defs/LatinoNote"
+          },
+          "type": "array"
+        },
+        "cannot_conclude": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "assessment",
+        "warnings",
+        "cannot_conclude"
+      ],
+      "title": "LatinoAssessmentView",
+      "type": "object"
+    },
+    "LatinoDetail": {
+      "additionalProperties": false,
+      "description": "The Latino evidence of a canonical business: what it shows (a person's review, else the\nrules), the automatic calculation, every piece of evidence of its records ordered by track,\nstrength and freshness, and the history of assessments and review decisions.",
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "root_business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "effective": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LatinoAssessmentView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "automatic": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LatinoAssessmentView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "review_outdated": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/LatinoEvidence"
+          },
+          "type": "array"
+        },
+        "history": {
+          "items": {
+            "$ref": "#/$defs/LatinoAssessmentView"
+          },
+          "type": "array"
+        },
+        "decisions": {
+          "items": {
+            "$ref": "#/$defs/ReviewDecision"
+          },
+          "type": "array"
+        },
+        "rules_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "extractor_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_id",
+        "root_business_id",
+        "effective",
+        "automatic",
+        "review_outdated",
+        "evidence",
+        "history",
+        "decisions",
+        "rules_version",
+        "extractor_version"
+      ],
+      "title": "LatinoDetail",
+      "type": "object"
+    },
+    "LatinoDetailQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_id"
+      ],
+      "title": "LatinoDetailQuery",
+      "type": "object"
+    },
+    "LatinoEvidence": {
+      "additionalProperties": false,
+      "description": "One piece of evidence with the factors the rules give it now.",
+      "properties": {
+        "evidence": {
+          "$ref": "#/$defs/ObservedEvidence"
+        },
+        "claim": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "track": {
+          "$ref": "#/$defs/LatinoTrack"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvidenceRole"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "counted": {
+          "type": "boolean"
+        },
+        "source_reliability": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "freshness": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "freshness_label": {
+          "$ref": "#/$defs/EvidenceFreshness"
+        },
+        "organizational": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "evidence",
+        "claim",
+        "track",
+        "role",
+        "counted",
+        "source_reliability",
+        "freshness",
+        "freshness_label",
+        "organizational"
+      ],
+      "title": "LatinoEvidence",
+      "type": "object"
+    },
+    "LatinoNote": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "code",
+        "detail"
+      ],
+      "title": "LatinoNote",
+      "type": "object"
+    },
+    "LatinoReviewFilter": {
+      "description": "Businesses by the state of a person's review of their Latino evidence (phase 07).",
+      "enum": [
+        "reviewed",
+        "unreviewed",
+        "outdated"
+      ],
+      "title": "LatinoReviewFilter",
+      "type": "string"
+    },
+    "LatinoReviewRequest": {
+      "additionalProperties": false,
+      "description": "A person's assessment with its mandatory reason. A null status withdraws the review, so the\nbusiness shows the automatic calculation again.",
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LatinoStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_id",
+        "status",
+        "reason"
+      ],
+      "title": "LatinoReviewRequest",
+      "type": "object"
+    },
+    "LatinoRun": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "stage": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "progress_done": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "progress_total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "extractor_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "rules_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "stats": {
+          "$ref": "#/$defs/LatinoStats"
+        },
+        "requested_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/RunEvent"
+          },
+          "type": "array"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job_id",
+        "project_id",
+        "project_name",
+        "status",
+        "stage",
+        "progress_done",
+        "progress_total",
+        "extractor_version",
+        "rules_version",
+        "stats",
+        "requested_at",
+        "started_at",
+        "finished_at",
+        "events",
+        "is_synthetic"
+      ],
+      "title": "LatinoRun",
+      "type": "object"
+    },
+    "LatinoRunListQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "limit",
+        "cursor"
+      ],
+      "title": "LatinoRunListQuery",
+      "type": "object"
+    },
+    "LatinoRunPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/LatinoRun"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "LatinoRunPage",
+      "type": "object"
+    },
+    "LatinoStartRequest": {
+      "additionalProperties": false,
+      "description": "Evaluates one project, or every live project when `project_id` is null (one job each).",
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id"
+      ],
+      "title": "LatinoStartRequest",
+      "type": "object"
+    },
+    "LatinoStats": {
+      "additionalProperties": false,
+      "description": "Counts of one evaluation run, read back from its last checkpoint.",
+      "properties": {
+        "sources_scanned": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pages_scanned": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "evidence_found": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "businesses": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "changed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ownership_evidence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "market_evidence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "contradictions": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "stale": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "revoked": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "verified": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "high_confidence": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "probable": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "affinity": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unknown": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reviewed": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sources_scanned",
+        "pages_scanned",
+        "evidence_found",
+        "businesses",
+        "changed",
+        "ownership_evidence",
+        "market_evidence",
+        "contradictions",
+        "stale",
+        "revoked",
+        "verified",
+        "high_confidence",
+        "probable",
+        "affinity",
+        "unknown",
+        "reviewed"
+      ],
+      "title": "LatinoStats",
       "type": "object"
     },
     "LatinoStatus": {
@@ -7328,6 +7991,16 @@
         "unknown"
       ],
       "title": "LatinoStatus",
+      "type": "string"
+    },
+    "LatinoTrack": {
+      "description": "What a piece of evidence can speak to. Market affinity never speaks to ownership.",
+      "enum": [
+        "ownership",
+        "market",
+        "contradiction"
+      ],
+      "title": "LatinoTrack",
       "type": "string"
     },
     "LeadStage": {

@@ -58,6 +58,13 @@ from research_engine.domain import (
     DiscoveryStartRequest,
     ImportPreview,
     ImportPreviewRequest,
+    LatinoDetail,
+    LatinoDetailQuery,
+    LatinoReviewRequest,
+    LatinoRun,
+    LatinoRunListQuery,
+    LatinoRunPage,
+    LatinoStartRequest,
     MatchActionRequest,
     MatchDetail,
     MatchDetailQuery,
@@ -74,6 +81,8 @@ from research_engine.domain import (
     utc_now,
 )
 from research_engine.gpu import probe_gpu
+from research_engine.latino import store as latino
+from research_engine.latino.engine import LatinoService
 from research_engine.ollama import probe_ollama
 from research_engine.resolution import store as resolution
 from research_engine.resolution.engine import ResolutionService
@@ -100,6 +109,8 @@ class Context:
     crawl: CrawlService
     #: Owns the running entity resolution jobs; see resolution/engine.py.
     resolution: ResolutionService
+    #: Owns the running Latino evidence evaluations; see latino/engine.py.
+    latino: LatinoService
 
 
 @dataclass(frozen=True, slots=True)
@@ -305,6 +316,33 @@ async def _businesses_choose_value(ctx: Context, request: CanonicalChoiceRequest
     return await _with_store(ctx, choose)
 
 
+# ---- Latino evidence (phase 07) -----------------------------------------------------------------
+
+
+async def _latino_start(ctx: Context, request: LatinoStartRequest) -> LatinoRunPage:
+    return await ctx.latino.start(request)
+
+
+async def _latino_control(ctx: Context, request: DiscoveryControlRequest) -> LatinoRun:
+    return await ctx.latino.control(request)
+
+
+async def _latino_runs(ctx: Context, query: LatinoRunListQuery) -> LatinoRunPage:
+    return await _with_store(ctx, lambda conn: latino.list_latino_runs(conn, query))
+
+
+async def _latino_get(ctx: Context, query: LatinoDetailQuery) -> LatinoDetail:
+    return await _with_store(ctx, lambda conn: latino.get_latino_detail(conn, query.business_id))
+
+
+async def _latino_review(ctx: Context, request: LatinoReviewRequest) -> LatinoDetail:
+    def review(conn: sqlite3.Connection) -> LatinoDetail:
+        latino.review(conn, request, actor=ACTOR_UI)
+        return latino.get_latino_detail(conn, request.business_id)
+
+    return await _with_store(ctx, review)
+
+
 ROUTES: dict[str, Route] = {
     MessageType.HEALTH: Route(EmptyPayload, _health, timeout_s=2.0),
     MessageType.DIAGNOSTICS: Route(EmptyPayload, _diagnostics, timeout_s=20.0),
@@ -347,5 +385,10 @@ ROUTES: dict[str, Route] = {
     MessageType.BUSINESSES_CHOOSE_VALUE: Route(
         CanonicalChoiceRequest, _businesses_choose_value, timeout_s=60.0
     ),
+    MessageType.LATINO_START: Route(LatinoStartRequest, _latino_start, timeout_s=30.0),
+    MessageType.LATINO_CONTROL: Route(DiscoveryControlRequest, _latino_control, timeout_s=30.0),
+    MessageType.LATINO_RUNS: Route(LatinoRunListQuery, _latino_runs, timeout_s=15.0),
+    MessageType.LATINO_GET: Route(LatinoDetailQuery, _latino_get, timeout_s=10.0),
+    MessageType.LATINO_REVIEW: Route(LatinoReviewRequest, _latino_review, timeout_s=30.0),
     MessageType.DEV_SEED_SYNTHETIC: Route(EmptyPayload, _dev_seed_synthetic, timeout_s=60.0),
 }

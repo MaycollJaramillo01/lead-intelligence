@@ -46,7 +46,7 @@ export const ACTION_KEYS: Record<MatchAction, TranslationKey> = {
 };
 
 /** A code in words when this build knows it; an unknown code is shown as it is, not hidden. */
-function known(t: Translator, prefix: string, code: string): string {
+export function known(t: Translator, prefix: string, code: string): string {
   const key = `${prefix}.${code}`;
   return key in en ? t(key as TranslationKey) : code;
 }

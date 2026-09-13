@@ -32,6 +32,8 @@ from research_engine.contracts import (
 from research_engine.crawl.engine import CrawlerSettings, CrawlService, CrawlStartError
 from research_engine.discovery.engine import DiscoveryService, DiscoveryStartError, EngineSettings
 from research_engine.handlers import ROUTES, Context, NotAllowedError, health
+from research_engine.latino.engine import LatinoService
+from research_engine.latino.store import LatinoError
 from research_engine.logs import configure_logging, request_id_var
 from research_engine.repository import (
     InvalidCursorError,
@@ -100,6 +102,7 @@ class Worker:
             lambda: connect(settings.data_dir),
         )
         self._resolution = ResolutionService(lambda: connect(settings.data_dir))
+        self._latino = LatinoService(lambda: connect(settings.data_dir))
         self._ctx = Context(
             settings,
             datetime.now(UTC),
@@ -107,6 +110,7 @@ class Worker:
             self._discovery,
             self._crawl,
             self._resolution,
+            self._latino,
         )
 
     async def run(self) -> None:
@@ -119,10 +123,13 @@ class Worker:
         for check in (check_sqlite, check_duckdb):
             store = await asyncio.to_thread(check, self._settings.data_dir)
             logger.info("store checked", extra={"engine": store.engine, "state": store.state})
-        engines: tuple[tuple[str, DiscoveryService | CrawlService | ResolutionService], ...] = (
+        engines: tuple[
+            tuple[str, DiscoveryService | CrawlService | ResolutionService | LatinoService], ...
+        ] = (
             ("discovery", self._discovery),
             ("crawl", self._crawl),
             ("resolution", self._resolution),
+            ("latino", self._latino),
         )
         for name, engine in engines:
             try:
@@ -161,6 +168,7 @@ class Worker:
             await self._discovery.shutdown()
             await self._crawl.shutdown()
             await self._resolution.shutdown()
+            await self._latino.shutdown()
             await self._drain()
         logger.info("worker stopped")
 
@@ -282,6 +290,7 @@ class Worker:
             DiscoveryStartError,
             CrawlStartError,
             ResolutionError,
+            LatinoError,
         ) as exc:
             raise WorkerError(ErrorCode.INVALID_PAYLOAD, str(exc)) from exc
         return result.model_dump(mode="json")

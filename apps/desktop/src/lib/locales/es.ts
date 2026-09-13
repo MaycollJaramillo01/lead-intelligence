@@ -714,4 +714,135 @@ export const es: Partial<Record<TranslationKey, string>> = {
   "resolutionReason.different_state_same_source": "Un registro de la fuente, dos estados",
   "resolutionReason.cluster_conflict": "Uniría registros que se mantuvieron separados",
   "resolutionReason.no_longer_compared": "Ya no se compara",
+
+  "jobs.kind.latino": "Evidencia latina",
+  "jobs.latinoDetail":
+    "{businesses} negocios · {ownership} con evidencia de propiedad · {affinity} con afinidad de mercado · {unknown} desconocidos",
+
+  "latino.title": "Evidencia de propiedad latina y de mercado",
+  "latino.loadErrorTitle": "No se pudo leer la evidencia latina",
+  "latino.ownership": "Propiedad",
+  "latino.market": "Mercado hispanohablante",
+  "latino.noOwnership": "No se contó evidencia de propiedad",
+  "latino.marketAffinity": "Afinidad de mercado (no es propiedad)",
+  "latino.marketSignals": "{n} señal(es) de mercado, no cuentan como propiedad",
+  "latino.noMarket": "Sin señales de mercado",
+  "latino.confidence": "{confidence}% de confianza",
+  "latino.byRules": "calculado por las reglas {version}",
+  "latino.byReview": "revisado por {actor}",
+  "latino.automatic": "Las reglas calculan: {status} ({confidence}%)",
+  "latino.notEvaluated": "Aún sin evaluar. Ejecuta la evaluación desde la lista de negocios.",
+  "latino.reviewOutdated":
+    "Las reglas recalcularon después de esta revisión. Vuelve a mirar la evidencia antes de confiar en ella.",
+  "latino.belongsTo":
+    "Este registro pertenece a otro negocio: se muestra la evidencia de ese negocio completo.",
+  "latino.warnings": "Advertencias",
+  "latino.cannotConclude": "Lo que esto no puede concluir",
+  "latino.evidence": "Evidencia ({n})",
+  "latino.noEvidence": "No se encontró evidencia en las fuentes adquiridas.",
+  "latino.counted": "Cuenta",
+  "latino.notCounted": "No cuenta",
+  "latino.organizational": "Compartida por varias ubicaciones",
+  "latino.strength": "fuerza {value}",
+  "latino.freshness": "frescura {value}",
+  "latino.reliability": "fiabilidad de la fuente {value}%",
+  "latino.field": "campo {path}",
+  "latino.history": "Historial de evaluaciones",
+  "latino.historyLine": "{status} · {method} · {confidence}% · reglas {version} · {time}",
+  "latino.superseded": "reemplazada",
+  "latino.method.rules": "reglas",
+  "latino.method.manual_review": "revisión de una persona",
+  "latino.decisions": "Decisiones de revisión",
+  "latino.decisionLine": "{decision} por {actor} · {time}",
+  "latino.decision.latino_review": "Revisado",
+  "latino.decision.latino_review_withdrawn": "Revisión retirada",
+  "latino.review": "Revisión",
+  "latino.reviewHint":
+    "Una persona decide solo dentro de lo que la evidencia puede sostener. El cálculo automático se conserva.",
+  "latino.reviewStatus": "Evaluación",
+  "latino.reviewChoose": "Elige una evaluación",
+  "latino.reviewWithdraw": "Retirar la revisión (mostrar el cálculo)",
+  "latino.reviewReason": "Motivo (obligatorio)",
+  "latino.reviewReasonPlaceholder": "¿Qué comprobaste y dónde?",
+  "latino.reviewSubmit": "Registrar revisión",
+  "latino.reviewDone": "Revisión registrada",
+  "latino.reviewFailed": "No se registró la revisión",
+  "latino.reviewedBadge": "Revisado",
+  "latino.run": "Evaluar evidencia latina",
+  "latino.started": "Evaluación iniciada en {n} espacio(s) de trabajo",
+  "latino.startFailed": "No se pudo iniciar la evaluación",
+  "latino.running": "Evaluando ({stage}): {done} de {total}",
+  "latino.lastRun":
+    "Última evaluación: {businesses} negocios · {ownership} con evidencia de propiedad · {affinity} con afinidad de mercado",
+  "latino.filterStatus": "Evidencia latina",
+  "latino.filterConfidence": "Confianza mínima %",
+  "latino.filterSource": "Fuente contada",
+  "latino.filterReview": "Revisión",
+  "latino.any": "Cualquiera",
+  "latino.explain":
+    "La propiedad necesita evidencia explícita. El español o una clientela hispana solo son afinidad de mercado; nunca se usan nombres, fotos ni lugares.",
+
+  "latinoStatus.verified_latino_owned": "Propiedad latina verificada",
+  "latinoStatus.high_confidence_latino_owned": "Propiedad latina, confianza alta",
+  "latinoStatus.probable_latino_owned": "Probable propiedad latina",
+  "latinoStatus.spanish_market_affinity": "Afinidad con el mercado hispanohablante",
+  "latinoStatus.unknown": "Desconocido",
+  "latinoTrack.ownership": "Evidencia de propiedad",
+  "latinoTrack.contradiction": "Evidencia en contra de la propiedad",
+  "latinoTrack.market": "Señales de afinidad de mercado",
+  "latinoReview.reviewed": "Revisado por una persona",
+  "latinoReview.unreviewed": "Sin revisar",
+  "latinoReview.outdated": "Revisión desactualizada",
+  "evidenceStatus.active": "Vigente",
+  "evidenceStatus.stale": "Caducada",
+  "evidenceStatus.contradicted": "Contradicha",
+  "evidenceStatus.revoked": "Retirada en la fuente",
+  "strength.strong": "fuerte",
+  "strength.moderate": "moderada",
+  "strength.weak": "débil",
+  "freshness.fresh": "reciente",
+  "freshness.aging": "envejeciendo",
+  "freshness.stale": "caducada",
+
+  "latinoClaim.ownership_statement": "El negocio declara ser de propiedad latina o hispana",
+  "latinoClaim.ownership_mention":
+    "Una página describe el negocio como de propiedad latina o hispana",
+  "latinoClaim.ownership_attribute":
+    "Una fuente lista el negocio como de propiedad latina o hispana",
+  "latinoClaim.certification": "Consta una certificación de empresa de propiedad hispana o latina",
+  "latinoClaim.certification_statement":
+    "El negocio afirma estar certificado como de propiedad hispana o latina",
+  "latinoClaim.ownership_directory":
+    "Aparece en un directorio de negocios de propiedad latina o hispana",
+  "latinoClaim.ownership_denied": "Una fuente afirma que no es de propiedad latina o hispana",
+  "latinoClaim.ownership_changed": "El negocio anuncia nuevos propietarios",
+  "latinoClaim.spanish_service": "Ofrece atención en español",
+  "latinoClaim.hispanic_community": "Dice atender a la comunidad hispana o latina",
+  "latinoClaim.spanish_language_attribute": "Una fuente incluye el español entre sus idiomas",
+  "latinoClaim.structured_language": "Los datos estructurados del sitio incluyen el español",
+  "latinoClaim.community_directory":
+    "Aparece en un directorio o cámara de la comunidad hispana o latina (no es una lista de propiedad)",
+  "latinoClaim.spanish_page": "Una página está publicada en español",
+  "latinoClaim.spanish_version": "El sitio enlaza a una versión en español",
+
+  "latinoNote.contradicted": "Hay evidencia en contra de la propiedad",
+  "latinoNote.ownership_changed":
+    "El negocio anunció nuevos propietarios: las declaraciones anteriores ya no cuentan",
+  "latinoNote.untrusted_source":
+    "Evidencia fuerte de una fuente no confiable para decir quién es el dueño",
+  "latinoNote.organizational_evidence":
+    "La evidencia describe una organización con varias ubicaciones",
+  "latinoNote.stale_evidence": "La evidencia caducada o vencida no cuenta",
+  "latinoNote.revoked_evidence": "La evidencia retirada en su fuente no cuenta",
+
+  "latinoLimit.names_not_used":
+    "Nunca se usan nombres, apellidos, fotos, direcciones ni nacionalidad supuesta.",
+  "latinoLimit.affinity_is_not_ownership":
+    "La atención en español o una clientela hispana muestran afinidad de mercado, no quién es el dueño.",
+  "latinoLimit.absence_is_not_evidence":
+    "No encontrar evidencia no significa que el negocio no sea de propiedad latina.",
+  "latinoLimit.self_declared":
+    "La propiedad se basa en lo que declara el negocio o un listado; ninguna certificación o registro lo confirma.",
+  "latinoLimit.location_ownership_unknown":
+    "La evidencia describe una organización con varias ubicaciones; esta ubicación puede tener otros dueños.",
 };

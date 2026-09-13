@@ -17,10 +17,11 @@ use crate::data::{
     CrawlRunPage, CrawlStartRequest, CrawlUrlDetail, CrawlUrlDetailQuery, CrawlUrlListQuery,
     CrawlUrlPage, CriteriaCheck, CriteriaCheckQuery, DatasetListQuery, DatasetPage,
     DiscoveryControlRequest, DiscoveryRun, DiscoveryRunListQuery, DiscoveryRunPage,
-    DiscoveryStartRequest, ImportPreview, ImportPreviewRequest, MatchActionRequest, MatchDetail,
-    MatchDetailQuery, MatchListQuery, MatchPage, ResolutionRun, ResolutionRunListQuery,
-    ResolutionRunPage, ResolutionStartRequest, SourceCatalog, SourceCatalogQuery,
-    SyntheticSeedResult,
+    DiscoveryStartRequest, ImportPreview, ImportPreviewRequest, LatinoDetail, LatinoDetailQuery,
+    LatinoReviewRequest, LatinoRun, LatinoRunListQuery, LatinoRunPage, LatinoStartRequest,
+    MatchActionRequest, MatchDetail, MatchDetailQuery, MatchListQuery, MatchPage, ResolutionRun,
+    ResolutionRunListQuery, ResolutionRunPage, ResolutionStartRequest, SourceCatalog,
+    SourceCatalogQuery, SyntheticSeedResult,
 };
 use crate::error::AppError;
 use crate::protocol::{
@@ -31,9 +32,10 @@ use crate::worker::{
     CAMPAIGNS_VALIDATE, CRAWL_CONTROL, CRAWL_RUNS, CRAWL_START, CRAWL_URL, CRAWL_URLS,
     DATA_TIMEOUT, DATASETS_LIST, DEV_SEED_SYNTHETIC, DIAGNOSTICS, DIAGNOSTICS_TIMEOUT,
     DISCOVERY_CANDIDATE, DISCOVERY_CANDIDATES, DISCOVERY_CONTROL, DISCOVERY_RUNS, DISCOVERY_START,
-    DISCOVERY_TIMEOUT, IMPORT_TIMEOUT, MATCHES_ACT, MATCHES_GET, MATCHES_LIST, RESOLUTION_CONTROL,
-    RESOLUTION_RUNS, RESOLUTION_START, RESOLUTION_TIMEOUT, SEED_TIMEOUT, SOURCES_LIST,
-    SOURCES_PREVIEW_IMPORT, WorkerSupervisor,
+    DISCOVERY_TIMEOUT, IMPORT_TIMEOUT, LATINO_CONTROL, LATINO_GET, LATINO_REVIEW, LATINO_RUNS,
+    LATINO_START, MATCHES_ACT, MATCHES_GET, MATCHES_LIST, RESOLUTION_CONTROL, RESOLUTION_RUNS,
+    RESOLUTION_START, RESOLUTION_TIMEOUT, SEED_TIMEOUT, SOURCES_LIST, SOURCES_PREVIEW_IMPORT,
+    WorkerSupervisor,
 };
 
 pub struct AppState {
@@ -637,6 +639,108 @@ pub async fn choose_canonical_value(
         Ok(detail)
     }
     .instrument(ipc_span("choose_canonical_value"))
+    .await
+}
+
+// ---- Latino evidence (phase 07) -----------------------------------------------------------------
+
+/// Evaluates the Latino evidence of one project, or of every project with businesses. The runs
+/// continue inside the worker after this returns.
+#[tauri::command]
+pub async fn start_latino(
+    state: State<'_, AppState>,
+    request: LatinoStartRequest,
+) -> Result<LatinoRunPage, AppError> {
+    async {
+        let page: LatinoRunPage = state
+            .supervisor
+            .request_with(LATINO_START, &request, DISCOVERY_TIMEOUT)
+            .await?;
+        page.items
+            .iter()
+            .try_for_each(LatinoRun::validate)
+            .map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("start_latino"))
+    .await
+}
+
+/// Pauses, resumes or cancels an evaluation; it stops between batches and stays resumable.
+#[tauri::command]
+pub async fn control_latino(
+    state: State<'_, AppState>,
+    request: DiscoveryControlRequest,
+) -> Result<LatinoRun, AppError> {
+    async {
+        let run: LatinoRun = state
+            .supervisor
+            .request_with(LATINO_CONTROL, &request, DISCOVERY_TIMEOUT)
+            .await?;
+        run.validate().map_err(AppError::Protocol)?;
+        Ok(run)
+    }
+    .instrument(ipc_span("control_latino"))
+    .await
+}
+
+#[tauri::command]
+pub async fn list_latino_runs(
+    state: State<'_, AppState>,
+    query: LatinoRunListQuery,
+) -> Result<LatinoRunPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: LatinoRunPage = state
+            .supervisor
+            .request_with(LATINO_RUNS, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_latino_runs"))
+    .await
+}
+
+/// The Latino evidence of one business: what it shows, the calculation, every piece of evidence
+/// with its source and the history of assessments and reviews.
+#[tauri::command]
+pub async fn get_latino(
+    state: State<'_, AppState>,
+    query: LatinoDetailQuery,
+) -> Result<LatinoDetail, AppError> {
+    async {
+        let detail: LatinoDetail = state
+            .supervisor
+            .request_with(LATINO_GET, &query, DATA_TIMEOUT)
+            .await?;
+        detail
+            .validate(&query.business_id)
+            .map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("get_latino"))
+    .await
+}
+
+/// Records a person's assessment with its mandatory reason, or withdraws it.
+#[tauri::command]
+pub async fn review_latino(
+    state: State<'_, AppState>,
+    request: LatinoReviewRequest,
+) -> Result<LatinoDetail, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let detail: LatinoDetail = state
+            .supervisor
+            .request_with(LATINO_REVIEW, &request, RESOLUTION_TIMEOUT)
+            .await?;
+        detail
+            .validate(&request.business_id)
+            .map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("review_latino"))
     .await
 }
 

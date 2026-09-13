@@ -36,6 +36,13 @@ import {
   type DiscoveryStartRequest,
   type ImportPreview,
   type ImportPreviewRequest,
+  type LatinoDetail,
+  type LatinoDetailQuery,
+  type LatinoReviewRequest,
+  type LatinoRun,
+  type LatinoRunListQuery,
+  type LatinoRunPage,
+  type LatinoStartRequest,
   type MatchActionRequest,
   type MatchDetail,
   type MatchDetailQuery,
@@ -132,6 +139,12 @@ export const desktop = {
   actOnMatch: (request: MatchActionRequest) => call<MatchDetail>("act_on_match", { request }),
   chooseCanonicalValue: (request: CanonicalChoiceRequest) =>
     call<BusinessDetail>("choose_canonical_value", { request }),
+  startLatino: (request: LatinoStartRequest) => call<LatinoRunPage>("start_latino", { request }),
+  controlLatino: (request: DiscoveryControlRequest) =>
+    call<LatinoRun>("control_latino", { request }),
+  listLatinoRuns: (query: LatinoRunListQuery) => call<LatinoRunPage>("list_latino_runs", { query }),
+  getLatino: (query: LatinoDetailQuery) => call<LatinoDetail>("get_latino", { query }),
+  reviewLatino: (request: LatinoReviewRequest) => call<LatinoDetail>("review_latino", { request }),
   /** Development builds only; the desktop core refuses it in release builds. */
   seedSyntheticData: () => call<SyntheticSeedResult>("seed_synthetic_data"),
   onWorkerStatus: async (handler: (status: WorkerStatus) => void): Promise<UnlistenFn> => {

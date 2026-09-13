@@ -2,6 +2,10 @@
   "project_id": null,
   "search": "synthetic",
   "status": null,
+  "latino_status": null,
+  "latino_min_confidence": null,
+  "latino_source_kind": null,
+  "latino_review": null,
   "sort": "name",
   "limit": 2,
   "cursor": null

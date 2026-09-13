@@ -11,8 +11,8 @@ import hashlib
 import io
 import sqlite3
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, replace
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import orjson
@@ -385,8 +385,10 @@ def seed_synthetic_workspace(
         run = synthetic_run(project_id, connector_id, now)
         insert(conn, run)
         seed_businesses(conn, SyntheticContext(project_id, connector_id, run.id, now), count)
-    # duplicates to review, so the review queue can be exercised end to end in development
+    # duplicates to review, so the review queue can be exercised end to end in development, and
+    # businesses whose evidence reaches every Latino evidence status
     seed_resolution(conn, SyntheticContext(project_id, connector_id, run.id, now))
+    seed_latino(conn, SyntheticContext(project_id, connector_id, run.id, now))
     snapshot = snapshot_businesses(
         conn,
         data_dir,
@@ -1030,3 +1032,189 @@ def seed_resolution(conn: sqlite3.Connection, ctx: SyntheticContext) -> Resoluti
     created, _ = store.plan_runs(conn, ctx.project_id, actor=ACTOR_DEV_SEED)
     engine.run_resolution(conn, created[0], lambda: False)
     return ResolutionFixture(job_id=created[0], candidate_ids=candidate_ids)
+
+
+# ---- Latino evidence (phase 07) -----------------------------------------------------------------
+
+
+def synthetic_source(
+    conn: sqlite3.Connection, ctx: SyntheticContext, key: str, kind: SourceKind
+) -> SyntheticContext:
+    """Another synthetic source of the same project, of a kind the Latino rules trust differently.
+    Records inserted through the returned context come from it."""
+    now, ids = ctx.now, ctx.ids
+    connector_id = _scalar(conn, "SELECT id FROM source_connectors WHERE key = ?", key)
+    records: list[Record] = []
+    if connector_id is None:
+        connector = SourceConnector(
+            id=ids(), key=key, name=f"Synthetic {kind.value.replace('_', ' ')} (test data)",
+            kind=kind, connector_version="1.0.0", terms_url=None, requires_credentials=False,
+            enabled=True, created_at=now, updated_at=now,
+        )  # fmt: skip
+        records.append(connector)
+        connector_id = connector.id
+    run = synthetic_run(ctx.project_id, connector_id, now, ids)
+    with atomic(conn):
+        insert(conn, *records, run)
+    return replace(ctx, connector_id=connector_id, source_run_id=run.id)
+
+
+def synthetic_page_html(lang: str, title: str, text: str) -> str:
+    return (
+        f"<!doctype html><html lang='{lang}'><head><title>{title}</title></head><body><main>"
+        f"<h1>{title}</h1><p>{text}</p></main></body></html>"
+    )
+
+
+def insert_site_pages(
+    conn: sqlite3.Connection,
+    ctx: SyntheticContext,
+    site: str,
+    pages: Mapping[str, str],
+    *,
+    candidate_id: str | None = None,
+) -> list[str]:
+    """A finished crawl of `site` whose pages (path -> HTML) were fetched at `ctx.now`, the way the
+    crawler stores them (test data). Returns the raw record id of each page, in order."""
+    from research_engine.crawl.engine import CONNECTOR_KEY, CONNECTOR_NAME, CONNECTOR_VERSION
+    from research_engine.crawl.extract import snapshot
+
+    now, ids = ctx.now, ctx.ids
+    connector_id = _scalar(conn, "SELECT id FROM source_connectors WHERE key = ?", CONNECTOR_KEY)
+    records: list[Record] = []
+    if connector_id is None:
+        connector = SourceConnector(
+            id=ids(), key=CONNECTOR_KEY, name=CONNECTOR_NAME, kind=SourceKind.BUSINESS_WEBSITE,
+            connector_version=CONNECTOR_VERSION, terms_url=None, requires_credentials=False,
+            enabled=True, created_at=now, updated_at=now,
+        )  # fmt: skip
+        records.append(connector)
+        connector_id = connector.id
+    run = SourceRun(
+        id=ids(), project_id=ctx.project_id, campaign_id=None, connector_id=connector_id,
+        connector_version=CONNECTOR_VERSION, config_id=None, job_id=None,
+        status=SourceRunStatus.SUCCEEDED,
+        effective_config_json={"connector_key": CONNECTOR_KEY, "site": site,
+                               "candidate_id": candidate_id, "test_data": True},
+        started_at=now, finished_at=now, error_code=None, error_message=None, created_at=now,
+        updated_at=now,
+    )  # fmt: skip
+    records.append(run)
+    raw_ids: list[str] = []
+    for path, html in pages.items():
+        url, body = f"https://{site}{path}", html.encode()
+        digest = _sha256(body)
+        acquired = AcquiredPage(
+            id=ids(), source_run_id=run.id, source_query_id=None, url=url, final_url=url,
+            http_status=200, content_type="text/html; charset=utf-8", content_sha256=digest,
+            byte_size=len(body), artifact_path=f"artifacts/web/{digest[:2]}/{digest}.html",
+            fetched_at=now,
+        )  # fmt: skip
+        payload = snapshot(url, url, html, rendered=False) | {"test_data": True}
+        raw = RawRecord(
+            id=ids(), source_run_id=run.id, acquired_page_id=acquired.id,
+            connector_id=connector_id, method=AcquisitionMethod.HTTP_FETCH, external_id=None,
+            source_url=url, payload_json=payload,
+            payload_sha256=_sha256(orjson.dumps(payload, option=orjson.OPT_SORT_KEYS)),
+            acquired_at=now, created_at=now,
+        )  # fmt: skip
+        values: dict[str, object] = dict.fromkeys(CrawlUrl.model_fields)
+        values |= {
+            "id": ids(), "source_run_id": run.id, "candidate_id": candidate_id, "url": url,
+            "target": CrawlTarget.PAGE,
+            "page_kind": PageKind.HOME if path == "/" else PageKind.OTHER,
+            "depth": 0 if path == "/" else 1, "priority": 100, "status": CrawlUrlStatus.FETCHED,
+            "method": AcquisitionMethod.HTTP_FETCH, "final_url": url, "http_status": 200,
+            "content_type": "text/html; charset=utf-8", "byte_size": len(body),
+            "body_sha256": digest, "content_sha256": payload["content_sha256"],
+            "acquired_page_id": acquired.id, "raw_record_id": raw.id, "request_count": 1,
+            "retry_count": 0, "fetch_ms": 40, "created_at": now, "updated_at": now,
+        }  # fmt: skip
+        records += [acquired, raw, CrawlUrl.model_validate(values)]
+        raw_ids.append(raw.id)
+    with atomic(conn):
+        insert(conn, *records)
+    return raw_ids
+
+
+@dataclass(frozen=True, slots=True)
+class LatinoFixture:
+    job_id: str
+    #: Candidate ids by the situation each one stands for (see `seed_latino`).
+    candidates: Mapping[str, str]
+
+
+def seed_latino(conn: sqlite3.Connection, ctx: SyntheticContext) -> LatinoFixture:
+    """Businesses whose sources and websites say different things about ownership and market,
+    resolved and evaluated by the real engines (test data). Their names say nothing on purpose:
+
+    - `certified`: a public registry records a Hispanic-owned certification (verified);
+    - `listed`: a directory of Latino-owned businesses lists it (probable);
+    - `declared`: its own website declares Latina ownership (high confidence);
+    - `spanish`: its website is in Spanish and serves the Hispanic community (market affinity);
+    - `brand_austin`, `brand_denver`: two locations of one brand whose shared website declares
+      Hispanic ownership (organizational evidence: probable, with a warning);
+    - `disputed_listing`, `disputed_registry`: records of one business that an ownership directory
+      lists and a newer registry record says is not Hispanic-owned (contradicted: unknown).
+    """
+    from research_engine.latino import engine as latino_engine
+    from research_engine.latino import store as latino_store
+    from research_engine.resolution import engine, store
+
+    registry = synthetic_source(conn, ctx, "synthetic.registry", SourceKind.PUBLIC_REGISTRY)
+    directory = synthetic_source(conn, ctx, "synthetic.directory", SourceKind.DIRECTORY)
+    disputed = {"name": "Synthetic Grocery 0507", "address": "507 Example Ave", "city": "Austin",
+                "state": "TX", "zip": "78702", "phone": "(512) 555-0157",
+                "website": "https://synthetic-grocery-0507.example/"}  # fmt: skip
+    rows: dict[str, tuple[SyntheticContext, Mapping[str, str]]] = {
+        "certified": (registry, {
+            "name": "Synthetic Auto Repair 0501", "address": "501 Example Ave", "city": "Austin",
+            "state": "TX", "zip": "78701", "phone": "(512) 555-0151",
+            "certification": "Hispanic-owned business enterprise (synthetic certificate)",
+            "certification_expires": "2030-12-31"}),
+        "listed": (directory, {
+            "name": "Synthetic Bakery 0502", "address": "502 Example Ave", "city": "Phoenix",
+            "state": "AZ", "zip": "85004", "phone": "(602) 555-0152",
+            "directory": "Latino-owned business directory (synthetic)"}),
+        "declared": (ctx, {
+            "name": "Synthetic Dental Clinic 0503", "address": "503 Example Ave", "city": "Miami",
+            "state": "FL", "zip": "33130", "phone": "(305) 555-0153",
+            "website": "https://synthetic-dental-clinic-0503.example/"}),
+        "spanish": (ctx, {
+            "name": "Synthetic Landscaping 0504", "address": "504 Example Ave", "city": "Chicago",
+            "state": "IL", "zip": "60601", "phone": "(312) 555-0154",
+            "website": "https://synthetic-landscaping-0504.example/"}),
+        "brand_austin": (ctx, {
+            "name": "Synthetic Tax Preparation 0505", "address": "505 Example Ave",
+            "city": "Austin", "state": "TX", "zip": "78701", "phone": "(512) 555-0155",
+            "website": "https://synthetic-tax-0505.example/"}),
+        "brand_denver": (ctx, {
+            "name": "Synthetic Tax Preparation 0505", "address": "12 Sample Mill Rd",
+            "city": "Denver", "state": "CO", "zip": "80202", "phone": "(303) 555-0156",
+            "website": "https://synthetic-tax-0505.example/"}),
+        "disputed_listing": (directory, disputed | {
+            "directory": "Hispanic-owned business directory (synthetic)"}),
+        "disputed_registry": (replace(registry, now=ctx.now + timedelta(days=1)),
+                              disputed | {"hispanic_owned": "no"}),
+    }  # fmt: skip
+    candidates: dict[str, str] = {}
+    for situation, (source, row) in rows.items():
+        (candidates[situation],) = insert_candidates(conn, source, [row])
+    sites = {
+        "declared": ("synthetic-dental-clinic-0503.example", "en", "About the clinic",
+                     "We are a proud Latina-owned family practice on Example Ave. Test data only."),
+        "spanish": ("synthetic-landscaping-0504.example", "es", "Jardinería",
+                    "Se habla español. Atendemos a la comunidad hispana de Example Ave. "
+                    "Datos de prueba."),
+        "brand_austin": ("synthetic-tax-0505.example", "en", "Two offices, one team",
+                         "Proudly Hispanic-owned since 1998, with offices in two states. "
+                         "Test data only."),
+    }  # fmt: skip
+    for situation, (site, lang, title, text) in sites.items():
+        insert_site_pages(conn, ctx, site, {"/": synthetic_page_html(lang, title, text)},
+                          candidate_id=candidates[situation])  # fmt: skip
+    resolved, _ = store.plan_runs(conn, ctx.project_id, actor=ACTOR_DEV_SEED)
+    engine.run_resolution(conn, resolved[0], lambda: False)
+    planned, _ = latino_store.plan_runs(conn, ctx.project_id, actor=ACTOR_DEV_SEED)
+    latino_engine.run_latino(conn, planned[0], lambda: False)
+    return LatinoFixture(job_id=planned[0], candidates=candidates)

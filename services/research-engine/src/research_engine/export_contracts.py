@@ -75,6 +75,11 @@ from research_engine.domain import (
     DiscoveryRunListQuery,
     DiscoveryStartRequest,
     ImportPreviewRequest,
+    LatinoReviewFilter,
+    LatinoReviewRequest,
+    LatinoRunListQuery,
+    LatinoStartRequest,
+    LatinoStatus,
     MatchAction,
     MatchActionRequest,
     MatchListQuery,
@@ -86,9 +91,12 @@ from research_engine.domain import (
     SourceEstimate,
     SourceHealth,
     SourceInfo,
+    SourceKind,
     SyntheticSeedResult,
     default_crawl_settings,
 )
+from research_engine.latino import engine as latino_engine
+from research_engine.latino import store as latino_store
 from research_engine.resolution import store as resolution_store
 from research_engine.storage import check_sqlite
 from research_engine.testdata import (
@@ -101,6 +109,7 @@ from research_engine.testdata import (
     seed_businesses,
     seed_crawl,
     seed_discovery,
+    seed_latino,
     seed_resolution,
     synthetic_connector,
     synthetic_project,
@@ -326,6 +335,10 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
         project_id=None,
         search="synthetic",
         status=None,
+        latino_status=None,
+        latino_min_confidence=None,
+        latino_source_kind=None,
+        latino_review=None,
         sort=BusinessSort.NAME,
         limit=2,
         cursor=None,
@@ -374,6 +387,9 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
             resolution = build_resolution_fixtures(
                 conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids)
             )
+            latino = build_latino_fixtures(
+                conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids)
+            )
         finally:
             conn.close()
     return {
@@ -393,6 +409,55 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
         ),
         **discovery,
         **resolution,
+        **latino,
+    }
+
+
+def build_latino_fixtures(conn: Any, context: SyntheticContext) -> dict[str, dict[str, Any]]:
+    """Latino evidence shapes from real runs of the engines over the synthetic situations, with a
+    person's review, read back through the real queries (fixture ids and fixed clock, as above)."""
+    project_id = context.project_id
+    run_query = LatinoRunListQuery(project_id=project_id, limit=25, cursor=None)
+    business_query = BusinessListQuery(
+        project_id=project_id,
+        search=None,
+        status=None,
+        latino_status=LatinoStatus.PROBABLE_LATINO_OWNED,
+        latino_min_confidence=0.5,
+        latino_source_kind=SourceKind.BUSINESS_WEBSITE,
+        latino_review=LatinoReviewFilter.UNREVIEWED,
+        sort=BusinessSort.NAME,
+        limit=50,
+        cursor=None,
+    )
+    with ExitStack() as stack:
+        for module in (latino_store, resolution_store, jobs, repository):
+            stack.enter_context(patch.object(module, "new_id", context.ids))
+            stack.enter_context(patch.object(module, "utc_now", lambda: _T0))
+        stack.enter_context(patch.object(latino_engine, "utc_now", lambda: _T0))
+        seeded = seed_latino(conn, context)
+        (disputed,) = conn.execute(
+            "SELECT coalesce(b.merged_into_id, b.id) FROM entity_records er "
+            "JOIN businesses b ON b.id = er.business_id WHERE er.candidate_id = ?",
+            (seeded.candidates["disputed_listing"],),
+        ).fetchone()
+        review = LatinoReviewRequest(
+            business_id=disputed,
+            status=LatinoStatus.UNKNOWN,
+            reason="Synthetic fixture: the directory and the registry disagree; kept unknown.",
+        )
+        latino_store.review(conn, review, actor="fixture-reviewer")
+        detail = latino_store.get_latino_detail(conn, disputed)
+        runs = latino_store.list_latino_runs(conn, run_query)
+        page = repository.list_businesses(conn, business_query)
+    return {
+        "latino_start_request.json": _dump(LatinoStartRequest(project_id=None)),
+        "latino_run_list_query.json": _dump(run_query),
+        "latino_run_page.json": _dump(runs),
+        "latino_detail.json": _dump(detail),
+        "latino_review_request.json": _dump(review),
+        "latino_business_list_query.json": _dump(business_query),
+        "latino_business_page.json": _dump(page),
     }
 
 

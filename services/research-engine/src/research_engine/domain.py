@@ -1029,13 +1029,24 @@ class LatinoAssessment(Record):
     assessed_at: UtcTimestamp
     superseded_at: UtcTimestamp | None
     created_at: UtcTimestamp
+    #: Warnings, what the evidence cannot conclude and, for a review, the calculation it reviewed.
+    details_json: JsonObject | None
 
 
 class LatinoAssessmentEvidence(Record):
+    """Evidence an assessment cites, with the factors the rules gave it at that moment."""
+
     TABLE = "latino_assessment_evidence"
     assessment_id: Id
     evidence_item_id: Id
     role: EvidenceRole
+    source_reliability: Confidence
+    freshness: Confidence
+    score: Confidence
+    #: Whether it decided the status: stale, revoked or contradicted evidence is cited, not counted.
+    counted: bool
+    #: Whether it describes an organization several locations share (a brand's website).
+    organizational: bool
 
 
 class WebsiteAudit(Record):
@@ -1604,6 +1615,15 @@ class BusinessSort(StrEnum):
     LAST_SEEN = "last_seen"
 
 
+class LatinoReviewFilter(StrEnum):
+    """Businesses by the state of a person's review of their Latino evidence (phase 07)."""
+
+    REVIEWED = "reviewed"
+    UNREVIEWED = "unreviewed"
+    #: Reviewed, but the automatic calculation has changed since the review.
+    OUTDATED = "outdated"
+
+
 PageSize = Annotated[int, Field(ge=1, le=MAX_PAGE_SIZE)]
 # the cursor carries the last sort key: a 300-character name in UTF-8 fits comfortably
 Cursor = Annotated[str, Field(min_length=1, max_length=2048, pattern=r"^[A-Za-z0-9_-]+$")]
@@ -1613,6 +1633,12 @@ class BusinessListQuery(Contract):
     project_id: Id | None
     search: Annotated[str, Field(max_length=200)] | None
     status: BusinessStatus | None
+    #: Phase 07: the Latino evidence status a business shows, its minimum confidence, a kind of
+    #: source whose evidence that assessment counted, and the state of a person's review.
+    latino_status: LatinoStatus | None
+    latino_min_confidence: Confidence | None
+    latino_source_kind: SourceKind | None
+    latino_review: LatinoReviewFilter | None
     sort: BusinessSort
     limit: PageSize
     cursor: Cursor | None
@@ -1635,6 +1661,11 @@ class BusinessListItem(Contract):
     member_count: Annotated[int, Field(ge=1)]
     #: Fields whose records disagree (different phones, addresses...): shown, never hidden.
     conflict_count: Annotated[int, Field(ge=0)]
+    #: What the business shows (phase 07): a person's review, else the rules; `unknown` and a null
+    #: confidence when it was never evaluated.
+    latino_status: LatinoStatus
+    latino_confidence: Confidence | None
+    latino_reviewed: bool
     last_seen_at: UtcTimestamp
     is_synthetic: bool
 
@@ -2607,6 +2638,140 @@ class CanonicalChoiceRequest(Contract):
     reason: ReviewReason | None
 
 
+# ---- Latino evidence (phase 07) -----------------------------------------------------------------
+
+
+class LatinoTrack(StrEnum):
+    """What a piece of evidence can speak to. Market affinity never speaks to ownership."""
+
+    OWNERSHIP = "ownership"
+    MARKET = "market"
+    CONTRADICTION = "contradiction"
+
+
+class EvidenceFreshness(StrEnum):
+    FRESH = "fresh"
+    AGING = "aging"
+    STALE = "stale"
+
+
+class LatinoStartRequest(Contract):
+    """Evaluates one project, or every live project when `project_id` is null (one job each)."""
+
+    project_id: Id | None
+
+
+class LatinoStats(Contract):
+    """Counts of one evaluation run, read back from its last checkpoint."""
+
+    sources_scanned: Annotated[int, Field(ge=0)]
+    pages_scanned: Annotated[int, Field(ge=0)]
+    evidence_found: Annotated[int, Field(ge=0)]
+    businesses: Annotated[int, Field(ge=0)]
+    changed: Annotated[int, Field(ge=0)]
+    ownership_evidence: Annotated[int, Field(ge=0)]
+    market_evidence: Annotated[int, Field(ge=0)]
+    contradictions: Annotated[int, Field(ge=0)]
+    stale: Annotated[int, Field(ge=0)]
+    revoked: Annotated[int, Field(ge=0)]
+    verified: Annotated[int, Field(ge=0)]
+    high_confidence: Annotated[int, Field(ge=0)]
+    probable: Annotated[int, Field(ge=0)]
+    affinity: Annotated[int, Field(ge=0)]
+    unknown: Annotated[int, Field(ge=0)]
+    reviewed: Annotated[int, Field(ge=0)]
+
+
+class LatinoRun(Contract):
+    job_id: Id
+    project_id: Id
+    project_name: Label
+    status: JobStatus
+    stage: Code
+    progress_done: Annotated[int, Field(ge=0)]
+    progress_total: Annotated[int, Field(ge=0)] | None
+    extractor_version: Label
+    rules_version: Label
+    stats: LatinoStats
+    requested_at: UtcTimestamp
+    started_at: UtcTimestamp | None
+    finished_at: UtcTimestamp | None
+    events: list[RunEvent]
+    is_synthetic: bool
+
+
+class LatinoRunListQuery(Contract):
+    project_id: Id | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class LatinoRunPage(Contract):
+    items: list[LatinoRun]
+    next_cursor: Cursor | None
+    total: Annotated[int, Field(ge=0)]
+
+
+class LatinoDetailQuery(Contract):
+    business_id: Id
+
+
+class LatinoNote(Contract):
+    code: Code
+    detail: str | None
+
+
+class LatinoAssessmentView(Contract):
+    """One assessment with its warnings and what it cannot conclude (from `details_json`)."""
+
+    assessment: LatinoAssessment
+    warnings: list[LatinoNote]
+    cannot_conclude: list[Code]
+
+
+class LatinoEvidence(Contract):
+    """One piece of evidence with the factors the rules give it now."""
+
+    evidence: ObservedEvidence
+    claim: Code
+    track: LatinoTrack
+    #: Its role in the assessment the business shows; null when that assessment does not cite it.
+    role: EvidenceRole | None
+    counted: bool
+    source_reliability: Confidence
+    freshness: Confidence
+    freshness_label: EvidenceFreshness
+    organizational: bool
+
+
+class LatinoDetail(Contract):
+    """The Latino evidence of a canonical business: what it shows (a person's review, else the
+    rules), the automatic calculation, every piece of evidence of its records ordered by track,
+    strength and freshness, and the history of assessments and review decisions."""
+
+    business_id: Id
+    #: The canonical business the assessments belong to (a merged record shows its business's).
+    root_business_id: Id
+    effective: LatinoAssessmentView | None
+    automatic: LatinoAssessmentView | None
+    #: A person reviewed an automatic calculation that has changed since.
+    review_outdated: bool
+    evidence: list[LatinoEvidence]
+    history: list[LatinoAssessmentView]
+    decisions: list[ReviewDecision]
+    rules_version: Label
+    extractor_version: Label
+
+
+class LatinoReviewRequest(Contract):
+    """A person's assessment with its mandatory reason. A null status withdraws the review, so the
+    business shows the automatic calculation again."""
+
+    business_id: Id
+    status: LatinoStatus | None
+    reason: ReviewReason
+
+
 DATA_MODELS: tuple[type[Contract], ...] = (
     *RECORDS,
     Provenance,
@@ -2663,4 +2828,11 @@ DATA_MODELS: tuple[type[Contract], ...] = (
     MatchDetail,
     MatchActionRequest,
     CanonicalChoiceRequest,
+    LatinoStartRequest,
+    LatinoRun,
+    LatinoRunListQuery,
+    LatinoRunPage,
+    LatinoDetailQuery,
+    LatinoDetail,
+    LatinoReviewRequest,
 )

@@ -497,3 +497,87 @@ domain or phone is exactly the kind of heuristic that must not become a fact.
 
 **Consequences.** When a phase needs company-level rollups, `organizations` can be built from the
 stored `same_brand_different_location` pairs without touching records or merges.
+
+## D-045 · Ownership and market affinity are separate tracks; names and places are never read (phase 07)
+
+**Context.** Spanish on a website, a Hispanic clientele or a Spanish surname are routinely used as
+proxies for Latino ownership. They are not evidence of who owns a business, and using them would
+turn a stereotype into data.
+
+**Decision.** Every claim belongs to one track: ownership, market or contradiction. Only ownership
+evidence can produce an ownership status; market signals produce at most `spanish_market_affinity`,
+whatever their number or source. The extractors never read names, people, photos, addresses,
+nationality or ethnicity columns: the payload scanner opens only ownership, certification, directory
+and language columns, and pages are read for explicit phrases.
+
+**Consequences.** Most businesses stay `unknown`, which is the honest answer. A test proves that no
+combination of market signals from any kind of source reaches ownership, and that names, surnames,
+photos and places never raise a status above `unknown`.
+
+## D-046 · Transparent, versioned rules instead of a model (phase 07)
+
+**Decision.** A score is strength × source reliability × freshness; independent sources combine as
+`1 − Π(1 − score)`; tiers are named rules (verified needs strong, fresh evidence about the location
+from an official or registry source; high confidence a trusted strong source or two independent
+ones; probable anything else). Every value lives in a versioned `Ruleset`, and each assessment stores
+the factors of every piece of evidence it cites.
+
+**Why.** There is no labelled ground truth, and every result must explain itself line by line. A
+self-declaration on the business's own website is explicit but not independently confirmed: it
+reaches high confidence and carries `self_declared`, never `verified`.
+
+## D-047 · Evidence from versioned extractions of acquired data; assessments are superseded, never edited (phase 07)
+
+**Decision.** Evidence is written through extractions (`latino.payload`, `latino.site`,
+`latino.model`) over raw records, at most one item per claim, extraction and business, with the
+sentence that shows it and its hash. Only its status moves (`stale`, `revoked`, `contradicted`),
+each move audited with a reason. A run writes a new assessment only when status, confidence, rules
+version, cited evidence or warnings differ, and supersedes the previous one; migration 0006 allows one
+current assessment per business **and method**, stores warnings and limitations in `details_json`,
+the per-evidence factors in `latino_assessment_evidence`, and makes the citations immutable.
+
+**Consequences.** Recalculating with new rules or new evidence keeps the full history, and a second
+run over the same data writes nothing.
+
+## D-048 · A person's review coexists with the calculation and is bounded by the evidence (phase 07)
+
+**Decision.** A review is a `manual_review` assessment with a mandatory reason in `review_decisions`
+and the id of the calculation it reviewed. The business shows the review; the rules keep
+recalculating underneath, and a recalculation flags the review as outdated. A person cannot give a
+status the evidence cannot reach at all (ownership without ownership evidence, `verified` without
+strong ownership evidence, affinity without market signals). A review can be withdrawn, with its
+reason.
+
+**Why.** People catch what patterns miss, but a review must not become a back door for the
+proxies D-045 excludes, nor erase what the rules concluded.
+
+## D-049 · A model points, the rules decide (phase 07)
+
+**Decision.** Model output about Latino ownership is only a candidate: a claim plus the literal quote
+from an acquired page. It becomes evidence only if the quote is in the page and the extraction
+patterns read that quote as the same claim; the evidence links to the inference run. The model never
+adjudicates ownership and never browses.
+
+**Why.** The prompt allows a model to help find declarations, not to decide them. Verifying against
+the fragment keeps hallucinated or paraphrased declarations out of the store.
+
+## D-050 · A website several businesses list is organizational evidence (phase 07)
+
+**Decision.** A crawled page speaks for the business whose candidate asked for the crawl and for
+every canonical business whose website is on the same registrable domain. When all of a business's
+ownership evidence is shared that way, its status is capped at probable with
+`location_ownership_unknown`.
+
+**Why.** A franchise or brand declaring Hispanic ownership says who owns the brand, not each location
+(D-044 keeps locations separate).
+
+## D-051 · Evaluation is a job; engines without source runs share one background runner (phase 07)
+
+**Decision.** `jobs.kind = latino_evidence`, one open run per project, stages extract → lifecycle →
+evaluate with batch checkpoints. The thread, control, recovery and shutdown code that resolution had
+on its own moved to `jobs.BackgroundJobs`, together with checkpoint, progress and finish helpers;
+resolution and Latino evidence now only say how to plan, run and show their jobs.
+
+**Trade-off.** One more generic class in `jobs.py`, in exchange for not keeping two copies of the
+same concurrency code. Filters on Businesses use the kind of source that counted rather than a
+connector key, so they need no source catalogue and read the same across projects.

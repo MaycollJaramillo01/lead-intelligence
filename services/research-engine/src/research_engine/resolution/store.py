@@ -45,7 +45,6 @@ from research_engine.domain import (
     Extraction,
     FieldComparison,
     Job,
-    JobCheckpoint,
     JobStatus,
     JsonObject,
     LeadStage,
@@ -1204,30 +1203,6 @@ def guard_idle(conn: sqlite3.Connection, project_id: str) -> None:
         )
 
 
-def checkpoint(conn: sqlite3.Connection, job_id: str, state: JsonObject) -> None:
-    repository.insert(
-        conn,
-        JobCheckpoint(id=new_id(), job_id=job_id, task_id=None, state_json=state,
-                      created_at=utc_now()),
-    )  # fmt: skip
-
-
-def latest_state(conn: sqlite3.Connection, job_id: str) -> JsonObject:
-    row = conn.execute(
-        "SELECT state_json FROM job_checkpoints WHERE job_id = ? AND task_id IS NULL "
-        "ORDER BY created_at DESC, id DESC LIMIT 1",
-        (job_id,),
-    ).fetchone()
-    return _object(row["state_json"]) if row else {}
-
-
-def set_progress(conn: sqlite3.Connection, job_id: str, done: int, total: int | None) -> None:
-    conn.execute(
-        "UPDATE jobs SET progress_done = ?, progress_total = ?, updated_at = ? WHERE id = ?",
-        (done if total is None else min(done, total), total, format_ts(utc_now()), job_id),
-    )
-
-
 def outcome_counts(conn: sqlite3.Connection, project_id: str) -> dict[str, int]:
     counts = {outcome.value: 0 for outcome in MatchOutcome}
     for row in conn.execute(
@@ -1243,24 +1218,11 @@ def outcome_counts(conn: sqlite3.Connection, project_id: str) -> dict[str, int]:
     return counts
 
 
-def finish_run(conn: sqlite3.Connection, job_id: str, state: JsonObject) -> None:
-    now = format_ts(utc_now())
-    with repository.atomic(conn):
-        checkpoint(conn, job_id, state)
-        repository.change_status(conn, Job, job_id, JobStatus.SUCCEEDED, actor=ACTOR)
-        conn.execute(
-            "UPDATE jobs SET finished_at = ?, updated_at = ? WHERE id = ?", (now, now, job_id)
-        )
-        stats = state.get("stats")
-        jobs.write_event(conn, job_id, None, "run_succeeded", EventLevel.INFO,
-                         stats if isinstance(stats, dict) else None)  # fmt: skip
-
-
 # ---- reads -------------------------------------------------------------------------------------
 
 
 def _resolution_run(conn: sqlite3.Connection, job: Job) -> ResolutionRun:
-    state = latest_state(conn, job.id)
+    state = jobs.latest_state(conn, job.id)
     stats = state.get("stats")
     counters = stats if isinstance(stats, dict) else {}
     project = repository.get(conn, Project, job.project_id)

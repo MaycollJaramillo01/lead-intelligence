@@ -11,6 +11,7 @@ import { InlineNotice, StateBlock } from "@/components/states/StateBlock";
 import { Text, TestDataBadge } from "@/components/data/cells";
 import { Button } from "@/components/ui/button";
 import { BUSINESS_STATUS_KEYS } from "@/features/businesses/columns";
+import { LatinoPanel } from "@/features/latino/LatinoPanel";
 import { formatDateTime, useLanguage, useT } from "@/lib/i18n";
 import { desktop, toIpcError, type IpcError } from "@/lib/ipc";
 import { cn } from "@/lib/utils";
@@ -206,6 +207,10 @@ export function BusinessInspector({ businessId }: { businessId: string }) {
   };
   const nameOf = (id: string) =>
     detail.members.find((member) => member.business_id === id)?.display_name ?? id.slice(-12);
+  // Latino evidence is shown with its tracks, factors and history by its own panel
+  const evidence = detail.evidence.filter(
+    ({ provenance }) => !provenance.extractor.startsWith("latino."),
+  );
 
   return (
     <div className="space-y-3">
@@ -302,12 +307,13 @@ export function BusinessInspector({ businessId }: { businessId: string }) {
         fieldOf={(label) => (label.kind === "category" ? "category" : null)}
         {...choice}
       />
-      {detail.evidence.length > 0 && (
+      <LatinoPanel key={business.id} businessId={business.id} />
+      {evidence.length > 0 && (
         <section className="space-y-1.5">
           <Heading>
-            {t("inspector.evidence")} ({detail.evidence.length})
+            {t("inspector.evidence")} ({evidence.length})
           </Heading>
-          {detail.evidence.map(({ value, provenance }) => (
+          {evidence.map(({ value, provenance }) => (
             <EvidenceItem
               key={value.id}
               evidence={{

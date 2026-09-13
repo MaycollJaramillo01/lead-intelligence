@@ -1,0 +1,48 @@
+{
+  "items": [
+    {
+      "id": "01900000-0000-7000-8000-000000000295",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Tax Preparation 0505",
+      "status": "candidate",
+      "lead_stage": "not_contacted",
+      "locality": "Austin",
+      "region": "TX",
+      "primary_domain": "synthetic-tax-0505.example",
+      "primary_phone": "+15125550155",
+      "primary_category": null,
+      "source_count": 1,
+      "evidence_count": 1,
+      "member_count": 1,
+      "conflict_count": 0,
+      "latino_status": "probable_latino_owned",
+      "latino_confidence": 0.72,
+      "latino_reviewed": false,
+      "last_seen_at": "2026-01-01T00:00:00.000Z",
+      "is_synthetic": true
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000000303",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Tax Preparation 0505",
+      "status": "candidate",
+      "lead_stage": "not_contacted",
+      "locality": "Denver",
+      "region": "CO",
+      "primary_domain": "synthetic-tax-0505.example",
+      "primary_phone": "+13035550156",
+      "primary_category": null,
+      "source_count": 1,
+      "evidence_count": 1,
+      "member_count": 1,
+      "conflict_count": 0,
+      "latino_status": "probable_latino_owned",
+      "latino_confidence": 0.72,
+      "latino_reviewed": false,
+      "last_seen_at": "2026-01-01T00:00:00.000Z",
+      "is_synthetic": true
+    }
+  ],
+  "next_cursor": null,
+  "total": 2
+}

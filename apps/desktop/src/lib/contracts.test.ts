@@ -7,11 +7,14 @@ import type {
   DatasetListItem,
   DatasetPage,
   DatasetSnapshot,
+  LatinoDetail,
+  LatinoEvidence,
   Provenance,
 } from "@lead/shared-types";
 import detailFixture from "@lead/shared-types/fixtures/business_detail.json";
 import pageFixture from "@lead/shared-types/fixtures/business_page.json";
 import datasetFixture from "@lead/shared-types/fixtures/dataset_page.json";
+import latinoFixture from "@lead/shared-types/fixtures/latino_detail.json";
 
 /*
  * TypeScript half of the contract round-trip. `satisfies Record<keyof T, true>` fails to compile
@@ -33,9 +36,37 @@ const LIST_ITEM_KEYS = {
   evidence_count: true,
   member_count: true,
   conflict_count: true,
+  latino_status: true,
+  latino_confidence: true,
+  latino_reviewed: true,
   last_seen_at: true,
   is_synthetic: true,
 } satisfies Record<keyof BusinessListItem, true>;
+
+const LATINO_DETAIL_KEYS = {
+  business_id: true,
+  root_business_id: true,
+  effective: true,
+  automatic: true,
+  review_outdated: true,
+  evidence: true,
+  history: true,
+  decisions: true,
+  rules_version: true,
+  extractor_version: true,
+} satisfies Record<keyof LatinoDetail, true>;
+
+const LATINO_EVIDENCE_KEYS = {
+  evidence: true,
+  claim: true,
+  track: true,
+  role: true,
+  counted: true,
+  source_reliability: true,
+  freshness: true,
+  freshness_label: true,
+  organizational: true,
+} satisfies Record<keyof LatinoEvidence, true>;
 
 const BUSINESS_KEYS = {
   id: true,
@@ -127,6 +158,16 @@ describe("data contract fixtures match the generated TypeScript types", () => {
     for (const item of page.items) {
       expect(keys(item)).toEqual(expected(DATASET_ITEM_KEYS));
       expect(keys(item.latest_snapshot ?? {})).toEqual(expected(SNAPSHOT_KEYS));
+    }
+  });
+
+  it("latino evidence detail with provenance", () => {
+    const detail = latinoFixture as LatinoDetail;
+    expect(keys(detail)).toEqual(expected(LATINO_DETAIL_KEYS));
+    expect(detail.evidence.length).toBeGreaterThan(0);
+    for (const entry of detail.evidence) {
+      expect(keys(entry)).toEqual(expected(LATINO_EVIDENCE_KEYS));
+      expect(keys(entry.evidence.provenance)).toEqual(expected(PROVENANCE_KEYS));
     }
   });
 

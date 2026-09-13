@@ -7,14 +7,15 @@ mod common;
 use std::fs;
 
 use lead_intelligence_lib::data::{
-    BusinessDetail, BusinessListQuery, BusinessPage, CampaignListQuery, CampaignPage,
-    CampaignSaved, CandidateDetail, CandidateListQuery, CandidatePage, CanonicalChoiceRequest,
-    CrawlRunListQuery, CrawlRunPage, CrawlStartRequest, CrawlUrlDetail, CrawlUrlListQuery,
-    CrawlUrlPage, CrawlUrlStatus, CriteriaCheck, DatasetListQuery, DatasetPage,
-    DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest, Id, ImportPreview,
-    MatchActionRequest, MatchDetail, MatchListQuery, MatchPage, MatchStatus,
-    ResolutionRunListQuery, ResolutionRunPage, ResolutionStartRequest, SourceCatalog, SourceHealth,
-    SyntheticSeedResult,
+    AssessmentMethod, BusinessDetail, BusinessListQuery, BusinessPage, CampaignListQuery,
+    CampaignPage, CampaignSaved, CandidateDetail, CandidateListQuery, CandidatePage,
+    CanonicalChoiceRequest, CrawlRunListQuery, CrawlRunPage, CrawlStartRequest, CrawlUrlDetail,
+    CrawlUrlListQuery, CrawlUrlPage, CrawlUrlStatus, CriteriaCheck, DatasetListQuery, DatasetPage,
+    DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest, EvidenceStatus, Id,
+    ImportPreview, LatinoDetail, LatinoReviewFilter, LatinoReviewRequest, LatinoRunListQuery,
+    LatinoRunPage, LatinoStartRequest, LatinoStatus, MatchActionRequest, MatchDetail,
+    MatchListQuery, MatchPage, MatchStatus, ResolutionRunListQuery, ResolutionRunPage,
+    ResolutionStartRequest, SourceCatalog, SourceHealth, SyntheticSeedResult,
 };
 use lead_intelligence_lib::protocol::{
     DATA_CONTRACT_VERSION, DiagnosticsReport, DiagnosticsResult, Envelope, HealthResult,
@@ -409,6 +410,107 @@ fn tampered_resolution_payloads_are_rejected() {
 }
 
 #[test]
+fn latino_fixtures_round_trip_and_pass_validation() {
+    round_trip::<LatinoStartRequest>("latino_start_request.json");
+    let run_query: LatinoRunListQuery = round_trip("latino_run_list_query.json");
+    run_query.validate().expect("fixture query is valid");
+    let runs: LatinoRunPage = round_trip("latino_run_page.json");
+    runs.validate(&run_query)
+        .expect("fixture run page matches its query");
+    assert!(
+        runs.items
+            .iter()
+            .any(|run| run.stats.verified > 0 && run.stats.affinity > 0),
+        "the synthetic situations reach ownership and market affinity"
+    );
+
+    let detail: LatinoDetail = round_trip("latino_detail.json");
+    detail
+        .validate(&detail.business_id.clone())
+        .expect("fixture detail describes its business");
+    let effective = detail
+        .effective
+        .as_ref()
+        .expect("the business shows a review");
+    assert_eq!(effective.assessment.method, AssessmentMethod::ManualReview);
+    let automatic = detail.automatic.as_ref().expect("the calculation is kept");
+    assert!(
+        automatic
+            .warnings
+            .iter()
+            .any(|note| note.code == "contradicted"),
+        "a contradiction stays visible"
+    );
+    assert!(
+        detail
+            .evidence
+            .iter()
+            .any(|entry| entry.evidence.value.status == EvidenceStatus::Contradicted)
+    );
+    assert_eq!(detail.decisions.len(), 1);
+
+    let review: LatinoReviewRequest = round_trip("latino_review_request.json");
+    review.validate().expect("fixture review is valid");
+    assert_eq!(review.business_id, detail.business_id);
+
+    let query: BusinessListQuery = round_trip("latino_business_list_query.json");
+    query.validate().expect("fixture query is valid");
+    let page: BusinessPage = round_trip("latino_business_page.json");
+    page.validate(&query)
+        .expect("fixture page obeys the Latino filters");
+    assert!(!page.items.is_empty());
+}
+
+#[test]
+fn latino_payloads_that_claim_more_than_their_evidence_are_rejected() {
+    let original: Value = serde_json::from_str(&fixture_text("latino_detail.json")).expect("JSON");
+    let mut surname = original.clone();
+    surname["automatic"]["assessment"]["status"] = "latino_by_surname".into();
+    assert!(serde_json::from_value::<LatinoDetail>(surname).is_err());
+
+    // a verified status with no ownership evidence behind it is refused before the interface
+    let mut inflated = original.clone();
+    inflated["effective"]["assessment"]["status"] = "verified_latino_owned".into();
+    let without_ownership: Vec<Value> = inflated["evidence"]
+        .as_array()
+        .expect("evidence list")
+        .iter()
+        .filter(|entry| entry["track"] != "ownership")
+        .cloned()
+        .collect();
+    inflated["evidence"] = Value::Array(without_ownership);
+    let inflated: LatinoDetail = serde_json::from_value(inflated).expect("still a detail");
+    assert!(inflated.validate(&inflated.business_id.clone()).is_err());
+
+    let stranger = "01900000-0000-7000-8000-000000009999";
+    let detail: LatinoDetail = serde_json::from_value(original.clone()).expect("detail");
+    assert!(detail.validate(&Id::parse(stranger).expect("id")).is_err());
+    let mut foreign = original;
+    foreign["history"][0]["assessment"]["business_id"] = stranger.into();
+    let foreign: LatinoDetail = serde_json::from_value(foreign).expect("still a detail");
+    assert!(foreign.validate(&foreign.business_id.clone()).is_err());
+
+    let mut review: LatinoReviewRequest =
+        serde_json::from_str(&fixture_text("latino_review_request.json")).expect("review");
+    review.reason = "   ".into();
+    assert!(review.validate().is_err(), "a review needs a reason");
+    review.reason = "x".repeat(2001);
+    assert!(review.validate().is_err(), "an endless reason is refused");
+
+    // a page that shows rows its Latino filters exclude
+    let query: BusinessListQuery =
+        serde_json::from_str(&fixture_text("latino_business_list_query.json")).expect("query");
+    let page: BusinessPage =
+        serde_json::from_str(&fixture_text("latino_business_page.json")).expect("page");
+    let mut verified_only = query.clone();
+    verified_only.latino_status = Some(LatinoStatus::VerifiedLatinoOwned);
+    assert!(page.validate(&verified_only).is_err());
+    let mut reviewed = query;
+    reviewed.latino_review = Some(LatinoReviewFilter::Reviewed);
+    assert!(page.validate(&reviewed).is_err());
+}
+
+#[test]
 fn every_fixture_is_covered() {
     let dir = common::repo_root().join("packages/shared-types/fixtures");
     let mut names: Vec<String> = fs::read_dir(dir)
@@ -456,6 +558,13 @@ fn every_fixture_is_covered() {
             "envelope.result.diagnostics.json",
             "envelope.result.error.json",
             "import_preview.json",
+            "latino_business_list_query.json",
+            "latino_business_page.json",
+            "latino_detail.json",
+            "latino_review_request.json",
+            "latino_run_list_query.json",
+            "latino_run_page.json",
+            "latino_start_request.json",
             "match_action_request.json",
             "match_detail.json",
             "match_list_query.json",

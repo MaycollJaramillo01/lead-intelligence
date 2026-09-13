@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   listResolutionRuns: vi.fn<typeof desktop.listResolutionRuns>(),
   startResolution: vi.fn<typeof desktop.startResolution>(),
   listSources: vi.fn<typeof desktop.listSources>(),
+  listLatinoRuns: vi.fn<typeof desktop.listLatinoRuns>(),
 }));
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
@@ -63,6 +64,7 @@ describe("Possible duplicates", () => {
     mocks.getMatch.mockResolvedValue(detail);
     mocks.listResolutionRuns.mockResolvedValue(runs);
     mocks.listSources.mockResolvedValue(catalogFixture as SourceCatalog);
+    mocks.listLatinoRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
   });
 
   it("lists the pairs to review from the store and filters them there", async () => {

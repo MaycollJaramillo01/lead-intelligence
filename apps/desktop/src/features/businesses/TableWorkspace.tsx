@@ -22,6 +22,8 @@ interface TableWorkspaceProps<TData> {
   isLoading?: boolean;
   /** Screen actions placed in the top bar next to the inspector toggle. */
   actions?: ReactNode;
+  /** Above the table, e.g. filters that query the store. */
+  toolbar?: ReactNode;
   /** Below the table, e.g. the paging bar. */
   footer?: ReactNode;
   pinnedLeft?: string[];
@@ -37,6 +39,7 @@ export function TableWorkspace<TData>({
   emptyState,
   isLoading = false,
   actions,
+  toolbar,
   footer,
   pinnedLeft = ["name"],
 }: TableWorkspaceProps<TData>) {
@@ -68,6 +71,7 @@ export function TableWorkspace<TData>({
       <ResizablePanelGroup orientation="horizontal" className="min-h-0 flex-1">
         <ResizablePanel defaultSize={`${100 - inspectorSize}%`} minSize="40%">
           <div className="flex h-full min-h-0 flex-col">
+            {toolbar}
             <div className="min-h-0 flex-1">
               <DataTable
                 tableId={tableId}

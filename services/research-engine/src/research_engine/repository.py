@@ -86,6 +86,7 @@ from research_engine.domain import (
     Job,
     JobTask,
     JsonObject,
+    LatinoReviewFilter,
     Observed,
     ObservedClassification,
     ObservedContact,
@@ -409,6 +410,42 @@ def _chosen(field: str, fallback: str) -> str:
     )
 
 
+#: The Latino evidence assessment business `b` shows (phase 07): a person's review, else the rules.
+_LATINO_STATUS = (
+    "coalesce((SELECT la.status FROM latino_assessments la WHERE la.business_id = b.id "
+    "AND la.superseded_at IS NULL ORDER BY la.method = 'manual_review' DESC LIMIT 1), 'unknown')"
+)
+_LATINO_CONFIDENCE = (
+    "(SELECT la.assessment_confidence FROM latino_assessments la WHERE la.business_id = b.id "
+    "AND la.superseded_at IS NULL ORDER BY la.method = 'manual_review' DESC LIMIT 1)"
+)
+#: A kind of source whose evidence the assessment `b` shows counted.
+_LATINO_SOURCE = (
+    "EXISTS (SELECT 1 FROM latino_assessments la "
+    "JOIN latino_assessment_evidence le ON le.assessment_id = la.id AND le.counted = 1 "
+    "JOIN evidence_items e ON e.id = le.evidence_item_id "
+    "JOIN extractions x ON x.id = e.extraction_id JOIN raw_records r ON r.id = x.raw_record_id "
+    "JOIN source_connectors sc ON sc.id = r.connector_id "
+    "WHERE la.business_id = b.id AND la.superseded_at IS NULL AND sc.kind = ?)"
+)
+_REVIEWED = (
+    "EXISTS (SELECT 1 FROM latino_assessments m WHERE m.business_id = b.id "
+    "AND m.superseded_at IS NULL AND m.method = 'manual_review')"
+)
+#: Reviewed, but the rules have recalculated since: the review names another calculation.
+_REVIEW_OUTDATED = (
+    "EXISTS (SELECT 1 FROM latino_assessments m WHERE m.business_id = b.id "
+    "AND m.superseded_at IS NULL AND m.method = 'manual_review' "
+    "AND json_extract(m.details_json, '$.reviewed_assessment_id') IS NOT "
+    "(SELECT a.id FROM latino_assessments a WHERE a.business_id = b.id "
+    "AND a.superseded_at IS NULL AND a.method = 'rules'))"
+)
+_LATINO_REVIEW: dict[LatinoReviewFilter, str] = {
+    LatinoReviewFilter.REVIEWED: _REVIEWED,
+    LatinoReviewFilter.UNREVIEWED: f"NOT {_REVIEWED}",
+    LatinoReviewFilter.OUTDATED: _REVIEW_OUTDATED,
+}
+
 #: Records whose observations describe business `b`: itself and every record merged into it.
 _CLUSTER_OF_B = "(o.business_id = b.id OR o.business_id IN (SELECT m.id FROM businesses m " \
     "WHERE m.merged_into_id = b.id AND m.deleted_at IS NULL))"  # fmt: skip
@@ -427,6 +464,8 @@ SELECT b.id, b.project_id, b.display_name, b.status, b.lead_stage,
         AS member_count,
     (SELECT count(*) FROM canonical_values v WHERE v.business_id = b.id
         AND v.superseded_at IS NULL AND v.alternative_count > 1) AS conflict_count,
+    {_LATINO_STATUS} AS latino_status, {_LATINO_CONFIDENCE} AS latino_confidence,
+    {_REVIEWED} AS latino_reviewed,
     b.first_seen_at, b.last_seen_at, p.is_synthetic, {{key}} AS sort_value
 FROM businesses b
 JOIN projects p ON p.id = b.project_id
@@ -468,6 +507,17 @@ def list_businesses(conn: sqlite3.Connection, query: BusinessListQuery) -> Busin
         params.append(query.status.value)
     else:  # a merged record is shown inside the business it belongs to, not as a business
         where.append("b.status <> 'merged'")
+    if query.latino_status is not None:
+        where.append(f"{_LATINO_STATUS} = ?")
+        params.append(query.latino_status.value)
+    if query.latino_min_confidence is not None:
+        where.append(f"coalesce({_LATINO_CONFIDENCE}, 0) >= ?")
+        params.append(query.latino_min_confidence)
+    if query.latino_source_kind is not None:
+        where.append(_LATINO_SOURCE)
+        params.append(query.latino_source_kind.value)
+    if query.latino_review is not None:
+        where.append(_LATINO_REVIEW[query.latino_review])
     if (match := fts_query(query.search)) is not None:
         # a name or place of any record of the cluster finds the business it belongs to
         where.append(

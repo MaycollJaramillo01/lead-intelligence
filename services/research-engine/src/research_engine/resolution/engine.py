@@ -9,19 +9,14 @@ back between batches, so pause, cancel and a worker restart leave the job resuma
 worker left running is paused at startup, never resumed silently (D-027).
 """
 
-import asyncio
-import contextlib
-import logging
 import sqlite3
-import threading
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Final
 
 from pydantic import JsonValue
 
 from research_engine import jobs, repository
 from research_engine.domain import (
-    DiscoveryControlRequest,
     EventLevel,
     Job,
     JobStatus,
@@ -30,11 +25,8 @@ from research_engine.domain import (
     ResolutionRunPage,
     ResolutionStartRequest,
     ResolutionStats,
-    RunControlAction,
 )
 from research_engine.resolution import matching, store
-
-logger = logging.getLogger(__name__)
 
 JOB_KIND: Final = store.JOB_KIND
 ACTOR: Final = store.ACTOR
@@ -49,7 +41,7 @@ def run_resolution(conn: sqlite3.Connection, job_id: str, should_stop: Callable[
         return False
     project_id = str(job.params_json["project_id"])
     jobs.mark_running(conn, job_id, ACTOR)
-    state = store.latest_state(conn, job_id)
+    state = jobs.latest_state(conn, job_id)
     saved = state.get("stats")
     stats = {name: 0 for name in ResolutionStats.model_fields}
     if isinstance(saved, dict):
@@ -59,8 +51,8 @@ def run_resolution(conn: sqlite3.Connection, job_id: str, should_stop: Callable[
     def save(stage: str, done: int, total: int | None, **extra: JsonValue) -> None:
         state: JsonObject = {"stage": stage, "stats": dict[str, JsonValue](stats), **extra}
         with repository.atomic(conn):
-            store.set_progress(conn, job_id, done, total)
-            store.checkpoint(conn, job_id, state)
+            jobs.set_progress(conn, job_id, done, total)
+            jobs.checkpoint(conn, job_id, state)
 
     def event(name: str, **detail: JsonValue) -> None:
         with repository.atomic(conn):
@@ -111,7 +103,7 @@ def run_resolution(conn: sqlite3.Connection, job_id: str, should_stop: Callable[
             if should_stop():
                 return False
             with repository.atomic(conn):
-                store.set_progress(conn, job_id, index, len(pairs))
+                jobs.set_progress(conn, job_id, index, len(pairs))
         comparisons[pair] = matching.compare(by_id[pair[0]], by_id[pair[1]], keys)
 
     if should_stop():
@@ -136,105 +128,27 @@ def run_resolution(conn: sqlite3.Connection, job_id: str, should_stop: Callable[
           refused=clusters.refused, canonical_changes=clusters.canonical_changes)  # fmt: skip
     if repository.get(conn, Job, job_id).status is not JobStatus.RUNNING:
         return False  # paused or cancelled while applying: the writes are idempotent
-    store.finish_run(conn, job_id, {"stage": "done", "stats": dict[str, JsonValue](stats)})
+    jobs.finish_job(conn, job_id, {"stage": "done", "stats": dict[str, JsonValue](stats)}, ACTOR)
     return True
 
 
-class ResolutionService:
-    """Owns the resolution jobs this worker runs. The work happens on a thread with its own
-    connection; pause, cancel and shutdown are observed between batches."""
+class ResolutionService(jobs.BackgroundJobs[ResolutionRun, ResolutionRunPage]):
+    """Owns the resolution jobs this worker runs (threads, control and recovery: `jobs`)."""
 
-    def __init__(self, connect: Callable[[], sqlite3.Connection]) -> None:
-        self._connect = connect
-        self._tasks: dict[str, asyncio.Task[None]] = {}
-        self._stops: dict[str, threading.Event] = {}
-
-    async def _in_store[T](self, action: Callable[[sqlite3.Connection], T]) -> T:
-        def run() -> T:
-            conn = self._connect()
-            try:
-                return action(conn)
-            finally:
-                conn.close()
-
-        return await asyncio.to_thread(run)
+    kind = JOB_KIND
+    actor = ACTOR
 
     async def start(self, request: ResolutionStartRequest) -> ResolutionRunPage:
-        created, listed = await self._in_store(
-            lambda conn: store.plan_runs(conn, request.project_id, actor=ACTOR)
-        )
-        for job_id in created:
-            self._spawn(job_id)
-        return await self._in_store(lambda conn: store.runs_by_id(conn, [*created, *listed]))
+        return await self.start_project(request.project_id)
 
-    async def control(self, request: DiscoveryControlRequest) -> ResolutionRun:
-        def apply(conn: sqlite3.Connection) -> None:
-            jobs.live_job(conn, request.job_id, JOB_KIND)
-            jobs.apply_control(conn, request.job_id, request.action, ACTOR)
+    def plan(self, conn: sqlite3.Connection, project_id: str | None) -> tuple[list[str], list[str]]:
+        return store.plan_runs(conn, project_id, actor=ACTOR)
 
-        await self._in_store(apply)
-        if request.action is RunControlAction.RESUME:
-            self._spawn(request.job_id)
-        else:
-            await self._halt(request.job_id)
-        return await self._in_store(lambda conn: store.get_resolution_run(conn, request.job_id))
+    def run(self, conn: sqlite3.Connection, job_id: str, should_stop: Callable[[], bool]) -> bool:
+        return run_resolution(conn, job_id, should_stop)
 
-    async def idle(self, job_id: str) -> None:
-        """Waits until this job's background work has stopped, if this worker runs it."""
-        if (task := self._tasks.get(job_id)) is not None:
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
+    def view(self, conn: sqlite3.Connection, job_id: str) -> ResolutionRun:
+        return store.get_resolution_run(conn, job_id)
 
-    async def recover(self) -> int:
-        """At startup: runs a dead worker left running are paused, never resumed silently."""
-        return await self._in_store(lambda conn: jobs.pause_interrupted(conn, JOB_KIND, ACTOR))
-
-    async def shutdown(self) -> None:
-        for job_id in list(self._tasks):
-            await self._halt(job_id)
-
-            def pause(conn: sqlite3.Connection, job_id: str = job_id) -> None:
-                jobs.pause_job(conn, job_id, "worker_stopping", ACTOR)
-
-            with contextlib.suppress(Exception):
-                await self._in_store(pause)
-
-    def _spawn(self, job_id: str) -> None:
-        existing = self._tasks.get(job_id)
-        if existing is not None and not existing.done():
-            return
-        stop = threading.Event()
-        task = asyncio.create_task(self._execute(job_id, stop), name=f"resolution:{job_id}")
-        self._tasks[job_id], self._stops[job_id] = task, stop
-        task.add_done_callback(lambda done: self._forget(job_id, done))
-
-    def _forget(self, job_id: str, task: asyncio.Task[None]) -> None:
-        if self._tasks.get(job_id) is task:
-            del self._tasks[job_id]
-            self._stops.pop(job_id, None)
-
-    async def _halt(self, job_id: str) -> None:
-        if (stop := self._stops.get(job_id)) is not None:
-            stop.set()
-        await self.idle(job_id)
-
-    async def _execute(self, job_id: str, stop: threading.Event) -> None:
-        try:
-            await asyncio.to_thread(self._work, job_id, stop)
-        except Exception:
-            logger.exception("resolution job failed", extra={"job_id": job_id})
-            await self._in_store(lambda conn: jobs.fail_job(conn, job_id, "internal error", ACTOR))
-
-    def _work(self, job_id: str, stop: threading.Event) -> None:
-        conn = self._connect()
-        try:
-
-            def should_stop() -> bool:
-                return stop.is_set() or (
-                    repository.get(conn, Job, job_id).status is not JobStatus.RUNNING
-                )
-
-            finished = run_resolution(conn, job_id, should_stop)
-            logger.info("resolution job stopped", extra={"job_id": job_id, "finished": finished})
-        finally:
-            conn.close()
+    def page(self, conn: sqlite3.Connection, job_ids: Sequence[str]) -> ResolutionRunPage:
+        return store.runs_by_id(conn, job_ids)

@@ -227,6 +227,10 @@ pub struct BusinessListQuery {
     pub project_id: Option<Id>,
     pub search: Option<String>,
     pub status: Option<BusinessStatus>,
+    pub latino_status: Option<LatinoStatus>,
+    pub latino_min_confidence: Option<Confidence>,
+    pub latino_source_kind: Option<SourceKind>,
+    pub latino_review: Option<LatinoReviewFilter>,
     pub sort: BusinessSort,
     pub limit: u32,
     pub cursor: Option<Cursor>,
@@ -511,6 +515,9 @@ pub struct BusinessListItem {
     pub evidence_count: u64,
     pub member_count: u64,
     pub conflict_count: u64,
+    pub latino_status: LatinoStatus,
+    pub latino_confidence: Option<Confidence>,
+    pub latino_reviewed: bool,
     pub last_seen_at: UtcTimestamp,
     pub is_synthetic: bool,
 }
@@ -595,11 +602,30 @@ impl BusinessPage {
         {
             return Err(format!("business {} belongs to another project", other.id));
         }
-        match query.status {
-            Some(status) if self.items.iter().any(|item| item.status != status) => {
-                Err("page contains businesses outside the status filter".into())
-            }
-            _ => Ok(()),
+        if query
+            .status
+            .is_some_and(|status| self.items.iter().any(|item| item.status != status))
+        {
+            return Err("page contains businesses outside the status filter".into());
+        }
+        // a Latino filter is a claim about every row it lets through (phase 07)
+        let outside = self.items.iter().find(|item| {
+            query
+                .latino_status
+                .is_some_and(|status| item.latino_status != status)
+                || query
+                    .latino_min_confidence
+                    .is_some_and(|min| item.latino_confidence.map_or(0.0, |value| value.0) < min.0)
+                || query.latino_review.is_some_and(|review| {
+                    item.latino_reviewed == (review == LatinoReviewFilter::Unreviewed)
+                })
+        });
+        match outside {
+            Some(item) => Err(format!(
+                "business {} does not match the Latino evidence filters",
+                item.id
+            )),
+            None => Ok(()),
         }
     }
 }
@@ -2420,6 +2446,319 @@ impl CanonicalChoiceRequest {
     }
 }
 
+// ---- Latino evidence (phase 07) -----------------------------------------------------------------
+// Mirrors the Latino evidence section of `domain.py`. Ownership and market affinity are separate
+// tracks. The core checks that a detail describes the business asked for, that no status claims
+// more than the evidence behind it can say, and that a review carries a usable reason.
+
+contract_enum!(LatinoStatus {
+    VerifiedLatinoOwned,
+    HighConfidenceLatinoOwned,
+    ProbableLatinoOwned,
+    SpanishMarketAffinity,
+    Unknown
+});
+contract_enum!(AssessmentMethod {
+    Rules,
+    ManualReview
+});
+contract_enum!(EvidenceRole {
+    Supports,
+    Contradicts,
+    Context
+});
+contract_enum!(LatinoTrack {
+    Ownership,
+    Market,
+    Contradiction
+});
+contract_enum!(EvidenceFreshness {
+    Fresh,
+    Aging,
+    Stale
+});
+contract_enum!(LatinoReviewFilter {
+    Reviewed,
+    Unreviewed,
+    Outdated
+});
+
+impl LatinoStatus {
+    /// A status that says something about who owns the business (market affinity does not).
+    pub fn is_ownership(self) -> bool {
+        matches!(
+            self,
+            Self::VerifiedLatinoOwned | Self::HighConfidenceLatinoOwned | Self::ProbableLatinoOwned
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LatinoAssessment {
+    pub id: Id,
+    pub business_id: Id,
+    pub status: LatinoStatus,
+    pub assessment_confidence: Confidence,
+    pub method: AssessmentMethod,
+    pub rules_version: String,
+    pub inference_run_id: Option<Id>,
+    pub rationale: String,
+    pub limitations: Option<String>,
+    pub assessed_at: UtcTimestamp,
+    pub superseded_at: Option<UtcTimestamp>,
+    pub created_at: UtcTimestamp,
+    pub details_json: Option<Map<String, Value>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LatinoStartRequest {
+    pub project_id: Option<Id>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LatinoStats {
+    pub sources_scanned: u64,
+    pub pages_scanned: u64,
+    pub evidence_found: u64,
+    pub businesses: u64,
+    pub changed: u64,
+    pub ownership_evidence: u64,
+    pub market_evidence: u64,
+    pub contradictions: u64,
+    pub stale: u64,
+    pub revoked: u64,
+    pub verified: u64,
+    pub high_confidence: u64,
+    pub probable: u64,
+    pub affinity: u64,
+    pub unknown: u64,
+    pub reviewed: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LatinoRun {
+    pub job_id: Id,
+    pub project_id: Id,
+    pub project_name: String,
+    pub status: JobStatus,
+    pub stage: String,
+    pub progress_done: u64,
+    pub progress_total: Option<u64>,
+    pub extractor_version: String,
+    pub rules_version: String,
+    pub stats: LatinoStats,
+    pub requested_at: UtcTimestamp,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+    pub events: Vec<RunEvent>,
+    pub is_synthetic: bool,
+}
+
+impl LatinoRun {
+    /// A run cannot report more progress than its total, nor more statuses than businesses.
+    pub fn validate(&self) -> Result<(), String> {
+        if let Some(total) = self.progress_total
+            && self.progress_done > total
+        {
+            return Err("progress cannot exceed its total".into());
+        }
+        let stats = &self.stats;
+        let shown = stats.verified
+            + stats.high_confidence
+            + stats.probable
+            + stats.affinity
+            + stats.unknown;
+        if shown > stats.businesses
+            || stats.reviewed > stats.businesses
+            || stats.pages_scanned > stats.sources_scanned
+        {
+            return Err(format!(
+                "run {} reports more than it evaluated",
+                self.job_id
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LatinoRunListQuery {
+    pub project_id: Option<Id>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl LatinoRunListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LatinoRunPage {
+    pub items: Vec<LatinoRun>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl LatinoRunPage {
+    pub fn validate(&self, query: &LatinoRunListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        if let Some(project) = &query.project_id
+            && let Some(other) = self.items.iter().find(|run| &run.project_id != project)
+        {
+            return Err(format!("run {} belongs to another project", other.job_id));
+        }
+        self.items.iter().try_for_each(LatinoRun::validate)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LatinoDetailQuery {
+    pub business_id: Id,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LatinoNote {
+    pub code: String,
+    pub detail: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LatinoAssessmentView {
+    pub assessment: LatinoAssessment,
+    pub warnings: Vec<LatinoNote>,
+    pub cannot_conclude: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LatinoEvidence {
+    pub evidence: Observed<EvidenceItem>,
+    pub claim: String,
+    pub track: LatinoTrack,
+    pub role: Option<EvidenceRole>,
+    pub counted: bool,
+    pub source_reliability: Confidence,
+    pub freshness: Confidence,
+    pub freshness_label: EvidenceFreshness,
+    pub organizational: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LatinoDetail {
+    pub business_id: Id,
+    pub root_business_id: Id,
+    pub effective: Option<LatinoAssessmentView>,
+    pub automatic: Option<LatinoAssessmentView>,
+    pub review_outdated: bool,
+    pub evidence: Vec<LatinoEvidence>,
+    pub history: Vec<LatinoAssessmentView>,
+    pub decisions: Vec<ReviewDecision>,
+    pub rules_version: String,
+    pub extractor_version: String,
+}
+
+impl LatinoDetail {
+    /// The evidence of the business asked for: assessments of its canonical business, decisions
+    /// about it, and no status beyond what the evidence listed with it can say.
+    pub fn validate(&self, requested: &Id) -> Result<(), String> {
+        if &self.business_id != requested {
+            return Err(format!(
+                "asked for business {requested}, received {}",
+                self.business_id
+            ));
+        }
+        let root = &self.root_business_id;
+        let views = self
+            .effective
+            .iter()
+            .chain(&self.automatic)
+            .chain(&self.history);
+        for view in views {
+            if &view.assessment.business_id != root {
+                return Err(format!(
+                    "assessment {} belongs to another business",
+                    view.assessment.id
+                ));
+            }
+        }
+        if let Some(automatic) = &self.automatic
+            && automatic.assessment.method != AssessmentMethod::Rules
+        {
+            return Err("the automatic assessment must come from the rules".into());
+        }
+        if let Some(effective) = &self.effective {
+            let status = effective.assessment.status;
+            let has = |track| self.evidence.iter().any(|entry| entry.track == track);
+            if status.is_ownership() && !has(LatinoTrack::Ownership) {
+                return Err(format!("{status:?} without any ownership evidence"));
+            }
+            if status == LatinoStatus::SpanishMarketAffinity && !has(LatinoTrack::Market) {
+                return Err("market affinity without any market evidence".into());
+            }
+        }
+        if self.review_outdated
+            && self
+                .effective
+                .as_ref()
+                .is_none_or(|view| view.assessment.method != AssessmentMethod::ManualReview)
+        {
+            return Err("only a person's review can be outdated".into());
+        }
+        for entry in &self.evidence {
+            if entry.evidence.value.extraction_id != entry.evidence.provenance.extraction_id {
+                return Err("an evidence item does not match its provenance".into());
+            }
+            if entry.counted && entry.role.is_none() {
+                return Err(format!(
+                    "evidence {} counts without a role",
+                    entry.evidence.value.id
+                ));
+            }
+        }
+        match self.decisions.iter().find(|decision| {
+            decision.entity_type != EntityType::Business || &decision.entity_id != root
+        }) {
+            Some(decision) => Err(format!(
+                "decision {} is not about this business",
+                decision.id
+            )),
+            None => Ok(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LatinoReviewRequest {
+    pub business_id: Id,
+    /// A person's assessment; null withdraws the review and shows the calculation again.
+    pub status: Option<LatinoStatus>,
+    pub reason: String,
+}
+
+impl LatinoReviewRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        check_reason(&Some(self.reason.clone()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2465,8 +2804,9 @@ mod tests {
 
     fn query() -> BusinessListQuery {
         serde_json::from_value(json!({
-            "project_id": null, "search": null, "status": null, "sort": "name",
-            "limit": 2, "cursor": null
+            "project_id": null, "search": null, "status": null, "latino_status": null,
+            "latino_min_confidence": null, "latino_source_kind": null, "latino_review": null,
+            "sort": "name", "limit": 2, "cursor": null
         }))
         .expect("valid query")
     }
@@ -2499,7 +2839,8 @@ mod tests {
                 "display_name": "Synthetic", "status": status, "lead_stage": "not_contacted",
                 "locality": null, "region": null, "primary_domain": null, "primary_phone": null,
                 "primary_category": null, "source_count": 1, "evidence_count": 0,
-                "member_count": 1, "conflict_count": 0,
+                "member_count": 1, "conflict_count": 0, "latino_status": "unknown",
+                "latino_confidence": null, "latino_reviewed": false,
                 "last_seen_at": "2026-01-01T00:00:00.000Z", "is_synthetic": true
             })
         };
@@ -2522,6 +2863,28 @@ mod tests {
         assert!(
             page(vec![item("candidate")], 1, None)
                 .validate(&filtered)
+                .is_err()
+        );
+        // an unknown status is never let through a filter for an ownership status or confidence
+        let mut verified = q.clone();
+        verified.latino_status = Some(LatinoStatus::VerifiedLatinoOwned);
+        assert!(
+            page(vec![item("candidate")], 1, None)
+                .validate(&verified)
+                .is_err()
+        );
+        let mut confident = q.clone();
+        confident.latino_min_confidence = Some(Confidence(0.5));
+        assert!(
+            page(vec![item("candidate")], 1, None)
+                .validate(&confident)
+                .is_err()
+        );
+        let mut reviewed = q;
+        reviewed.latino_review = Some(LatinoReviewFilter::Reviewed);
+        assert!(
+            page(vec![item("candidate")], 1, None)
+                .validate(&reviewed)
                 .is_err()
         );
     }

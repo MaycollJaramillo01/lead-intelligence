@@ -63,7 +63,9 @@ contracts:check` (part of `pnpm check` and `pnpm build`) fails when generated fi
   `discovery.runs`, `discovery.candidates`, `discovery.candidate`), the crawl set (`crawl.start`,
   `crawl.control`, `crawl.runs`, `crawl.urls`, `crawl.url`), the resolution set
   (`resolution.start`, `resolution.control`, `resolution.runs`, `matches.list`, `matches.get`,
-  `matches.act`, `businesses.choose_value`) and, in development builds only, `dev.seed_synthetic`. The answer echoes `request_id` with type `<request>.result` and carries
+  `matches.act`, `businesses.choose_value`), the Latino evidence set (`latino.start`,
+  `latino.control`, `latino.runs`, `latino.get`, `latino.review`) and, in development builds only,
+  `dev.seed_synthetic`. The answer echoes `request_id` with type `<request>.result` and carries
   either `payload` or `error`, never both.
 - Events (worker → core): `worker.ready` (handshake, carries a health payload) and
   `worker.protocol_error` (malformed input; correlated to the request id when recoverable).
@@ -174,6 +176,22 @@ BusinessInspector ─ desktop.chooseCanonicalValue({business_id, field, observat
 
 The engine is described in [resolution.md](resolution.md): normalisers, blocking, weights,
 thresholds, safety rules, clusters, canonical values and the reversible flow.
+
+## Data flow: Latino evidence
+
+```text
+BusinessesScreen ▸ LatinoFilters ─ desktop.startLatino({project_id: null})             (apps/desktop)
+  → invoke("start_latino") → commands::start_latino                                  (src-tauri)
+  → worker: one job per project; on a thread: extract claims from the raw records and crawled pages
+    behind its businesses (versioned extractions, checkpoint) → move stale, revoked and contradicted
+    evidence → evaluate each canonical business with the rules, superseding what changed (research-engine)
+  ⟳ desktop.listLatinoRuns while a run moves, then the list is read again with its Latino filters
+LatinoPanel ─ desktop.getLatino({business_id}) → the review or calculation, evidence, history
+  ─ desktop.reviewLatino({business_id, status, reason}) → bounded by the evidence → LatinoDetail
+```
+
+The rules are described in [latino-evidence.md](latino-evidence.md): tracks, evidence matrix,
+factors, tiers, lifecycle, review and what a result cannot conclude.
 
 Worker errors keep their meaning across the boundary: `not_found` → `CommandError.not_found`,
 `not_allowed` → `not_allowed`, `invalid_payload` → `invalid_input`; anything else is `worker_error`

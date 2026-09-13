@@ -169,6 +169,23 @@ export type CanonicalField = "name" | "location" | "website" | "phone" | "email"
 export type SelectionMethod = "policy" | "manual";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoStatus".
+ */
+export type LatinoStatus =
+  | "verified_latino_owned"
+  | "high_confidence_latino_owned"
+  | "probable_latino_owned"
+  | "spanish_market_affinity"
+  | "unknown";
+/**
+ * Businesses by the state of a person's review of their Latino evidence (phase 07).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoReviewFilter".
+ */
+export type LatinoReviewFilter = "reviewed" | "unreviewed" | "outdated";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "BusinessSort".
  */
 export type BusinessSort = "name" | "last_seen";
@@ -306,6 +323,11 @@ export type ErrorCode =
   | "internal";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EvidenceFreshness".
+ */
+export type EvidenceFreshness = "fresh" | "aging" | "stale";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "EvidenceRole".
  */
 export type EvidenceRole = "supports" | "contradicts" | "context";
@@ -347,15 +369,12 @@ export type InferenceStatus =
   | "failed"
   | "cancelled";
 /**
+ * What a piece of evidence can speak to. Market affinity never speaks to ownership.
+ *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "LatinoStatus".
+ * via the `definition` "LatinoTrack".
  */
-export type LatinoStatus =
-  | "verified_latino_owned"
-  | "high_confidence_latino_owned"
-  | "probable_latino_owned"
-  | "spanish_market_affinity"
-  | "unknown";
+export type LatinoTrack = "ownership" | "market" | "contradiction";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "MatchAction".
@@ -780,6 +799,9 @@ export interface BusinessListItem {
   evidence_count: number;
   member_count: number;
   conflict_count: number;
+  latino_status: LatinoStatus;
+  latino_confidence: number | null;
+  latino_reviewed: boolean;
   last_seen_at: string;
   is_synthetic: boolean;
 }
@@ -791,6 +813,10 @@ export interface BusinessListQuery {
   project_id: string | null;
   search: string | null;
   status: BusinessStatus | null;
+  latino_status: LatinoStatus | null;
+  latino_min_confidence: number | null;
+  latino_source_kind: SourceKind | null;
+  latino_review: LatinoReviewFilter | null;
   sort: BusinessSort;
   limit: number;
   cursor: string | null;
@@ -2267,8 +2293,13 @@ export interface LatinoAssessment {
   assessed_at: string;
   superseded_at: string | null;
   created_at: string;
+  details_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
 }
 /**
+ * Evidence an assessment cites, with the factors the rules gave it at that moment.
+ *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "LatinoAssessmentEvidence".
  */
@@ -2276,6 +2307,175 @@ export interface LatinoAssessmentEvidence {
   assessment_id: string;
   evidence_item_id: string;
   role: EvidenceRole;
+  source_reliability: number;
+  freshness: number;
+  score: number;
+  counted: boolean;
+  organizational: boolean;
+}
+/**
+ * One assessment with its warnings and what it cannot conclude (from `details_json`).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoAssessmentView".
+ */
+export interface LatinoAssessmentView {
+  assessment: LatinoAssessment;
+  warnings: LatinoNote[];
+  cannot_conclude: string[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoNote".
+ */
+export interface LatinoNote {
+  code: string;
+  detail: string | null;
+}
+/**
+ * The Latino evidence of a canonical business: what it shows (a person's review, else the
+ * rules), the automatic calculation, every piece of evidence of its records ordered by track,
+ * strength and freshness, and the history of assessments and review decisions.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoDetail".
+ */
+export interface LatinoDetail {
+  business_id: string;
+  root_business_id: string;
+  effective: LatinoAssessmentView | null;
+  automatic: LatinoAssessmentView | null;
+  review_outdated: boolean;
+  evidence: LatinoEvidence[];
+  history: LatinoAssessmentView[];
+  decisions: ReviewDecision[];
+  rules_version: string;
+  extractor_version: string;
+}
+/**
+ * One piece of evidence with the factors the rules give it now.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoEvidence".
+ */
+export interface LatinoEvidence {
+  evidence: ObservedEvidence;
+  claim: string;
+  track: LatinoTrack;
+  role: EvidenceRole | null;
+  counted: boolean;
+  source_reliability: number;
+  freshness: number;
+  freshness_label: EvidenceFreshness;
+  organizational: boolean;
+}
+/**
+ * A human decision with its mandatory reason. Never edited; a new decision supersedes it.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ReviewDecision".
+ */
+export interface ReviewDecision {
+  id: string;
+  entity_type: EntityType;
+  entity_id: string;
+  decision: string;
+  previous_value: string | null;
+  new_value: string | null;
+  reason: string;
+  actor: string;
+  decided_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoDetailQuery".
+ */
+export interface LatinoDetailQuery {
+  business_id: string;
+}
+/**
+ * A person's assessment with its mandatory reason. A null status withdraws the review, so the
+ * business shows the automatic calculation again.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoReviewRequest".
+ */
+export interface LatinoReviewRequest {
+  business_id: string;
+  status: LatinoStatus | null;
+  reason: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoRun".
+ */
+export interface LatinoRun {
+  job_id: string;
+  project_id: string;
+  project_name: string;
+  status: JobStatus;
+  stage: string;
+  progress_done: number;
+  progress_total: number | null;
+  extractor_version: string;
+  rules_version: string;
+  stats: LatinoStats;
+  requested_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  events: RunEvent[];
+  is_synthetic: boolean;
+}
+/**
+ * Counts of one evaluation run, read back from its last checkpoint.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoStats".
+ */
+export interface LatinoStats {
+  sources_scanned: number;
+  pages_scanned: number;
+  evidence_found: number;
+  businesses: number;
+  changed: number;
+  ownership_evidence: number;
+  market_evidence: number;
+  contradictions: number;
+  stale: number;
+  revoked: number;
+  verified: number;
+  high_confidence: number;
+  probable: number;
+  affinity: number;
+  unknown: number;
+  reviewed: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoRunListQuery".
+ */
+export interface LatinoRunListQuery {
+  project_id: string | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoRunPage".
+ */
+export interface LatinoRunPage {
+  items: LatinoRun[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * Evaluates one project, or every live project when `project_id` is null (one job each).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoStartRequest".
+ */
+export interface LatinoStartRequest {
+  project_id: string | null;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -2345,23 +2545,6 @@ export interface MatchReason {
   direction: ReasonDirection;
   weight: number;
   detail: string | null;
-}
-/**
- * A human decision with its mandatory reason. Never edited; a new decision supersedes it.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ReviewDecision".
- */
-export interface ReviewDecision {
-  id: string;
-  entity_type: EntityType;
-  entity_id: string;
-  decision: string;
-  previous_value: string | null;
-  new_value: string | null;
-  reason: string;
-  actor: string;
-  decided_at: string;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema

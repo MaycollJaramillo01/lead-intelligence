@@ -55,6 +55,11 @@ pub const MATCHES_LIST: &str = "matches.list";
 pub const MATCHES_GET: &str = "matches.get";
 pub const MATCHES_ACT: &str = "matches.act";
 pub const BUSINESSES_CHOOSE_VALUE: &str = "businesses.choose_value";
+pub const LATINO_START: &str = "latino.start";
+pub const LATINO_CONTROL: &str = "latino.control";
+pub const LATINO_RUNS: &str = "latino.runs";
+pub const LATINO_GET: &str = "latino.get";
+pub const LATINO_REVIEW: &str = "latino.review";
 pub const DEV_SEED_SYNTHETIC: &str = "dev.seed_synthetic";
 const SHUTDOWN: &str = "shutdown";
 

@@ -1,0 +1,260 @@
+{
+  "business_id": "01900000-0000-7000-8000-000000000310",
+  "root_business_id": "01900000-0000-7000-8000-000000000310",
+  "effective": {
+    "assessment": {
+      "id": "01900000-0000-7000-8000-000000000428",
+      "business_id": "01900000-0000-7000-8000-000000000310",
+      "status": "unknown",
+      "assessment_confidence": 0.0,
+      "method": "manual_review",
+      "rules_version": "1.0.0",
+      "inference_run_id": null,
+      "rationale": "Reviewed by fixture-reviewer: unknown; the rules (1.0.0) gave unknown.",
+      "limitations": "Names of the business or of people, photos, the address or neighbourhood and presumed nationality are never used as evidence. Finding no evidence does not mean the business is not Latino-owned.",
+      "assessed_at": "2026-01-01T00:00:00.000Z",
+      "superseded_at": null,
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "details_json": {
+        "automatic_status": "unknown",
+        "cannot_conclude": [
+          "names_not_used",
+          "absence_is_not_evidence"
+        ],
+        "reviewed_assessment_id": "01900000-0000-7000-8000-000000000422",
+        "warnings": []
+      }
+    },
+    "warnings": [],
+    "cannot_conclude": [
+      "names_not_used",
+      "absence_is_not_evidence"
+    ]
+  },
+  "automatic": {
+    "assessment": {
+      "id": "01900000-0000-7000-8000-000000000422",
+      "business_id": "01900000-0000-7000-8000-000000000310",
+      "status": "unknown",
+      "assessment_confidence": 0.0,
+      "method": "rules",
+      "rules_version": "1.0.0",
+      "inference_run_id": null,
+      "rationale": "Rules 1.0.0: unknown. Ownership evidence counted: 0 of 0 active; denials: 1; market signals: 0; not counted: 0 stale, 0 revoked, 1 contradicted. Confidence 0.00.",
+      "limitations": "Names of the business or of people, photos, the address or neighbourhood and presumed nationality are never used as evidence. Finding no evidence does not mean the business is not Latino-owned.",
+      "assessed_at": "2026-01-01T00:00:00.000Z",
+      "superseded_at": null,
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "details_json": {
+        "cannot_conclude": [
+          "names_not_used",
+          "absence_is_not_evidence"
+        ],
+        "warnings": [
+          {
+            "code": "contradicted",
+            "detail": null
+          }
+        ]
+      }
+    },
+    "warnings": [
+      {
+        "code": "contradicted",
+        "detail": null
+      }
+    ],
+    "cannot_conclude": [
+      "names_not_used",
+      "absence_is_not_evidence"
+    ]
+  },
+  "review_outdated": false,
+  "evidence": [
+    {
+      "evidence": {
+        "value": {
+          "id": "01900000-0000-7000-8000-000000000389",
+          "business_id": "01900000-0000-7000-8000-000000000310",
+          "evidence_type": "directory_membership",
+          "claim": "Listed in a directory of Latino- or Hispanic-owned businesses",
+          "value_json": {
+            "claim": "ownership_directory",
+            "observed_value": "Hispanic-owned business directory (synthetic)",
+            "track": "ownership"
+          },
+          "strength": "moderate",
+          "status": "contradicted",
+          "confidence": 0.75,
+          "extraction_id": "01900000-0000-7000-8000-000000000388",
+          "web_page_id": null,
+          "field_path": "payload.directory",
+          "snippet": "directory: Hispanic-owned business directory (synthetic)",
+          "snippet_sha256": "51e2bc4c170e6f047c628a90a9712a286f90caf3ddbf41b233c6a32c49e83a8b",
+          "observed_at": "2026-01-01T00:00:00.000Z",
+          "created_at": "2026-01-01T00:00:00.000Z",
+          "updated_at": "2026-01-01T00:00:00.000Z"
+        },
+        "provenance": {
+          "extraction_id": "01900000-0000-7000-8000-000000000388",
+          "extractor": "latino.payload",
+          "extractor_version": "1.0.0",
+          "extracted_at": "2026-01-01T00:00:00.000Z",
+          "raw_record_id": "01900000-0000-7000-8000-000000000246",
+          "source_run_id": "01900000-0000-7000-8000-000000000233",
+          "acquired_page_id": null,
+          "connector_key": "synthetic.directory",
+          "connector_name": "Synthetic directory (test data)",
+          "connector_kind": "directory",
+          "method": "synthetic",
+          "source_url": null,
+          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000246",
+          "acquired_at": "2026-01-01T00:00:00.000Z"
+        }
+      },
+      "claim": "ownership_directory",
+      "track": "ownership",
+      "role": "supports",
+      "counted": false,
+      "source_reliability": 0.8,
+      "freshness": 1.0,
+      "freshness_label": "fresh",
+      "organizational": false
+    },
+    {
+      "evidence": {
+        "value": {
+          "id": "01900000-0000-7000-8000-000000000391",
+          "business_id": "01900000-0000-7000-8000-000000000317",
+          "evidence_type": "ownership_declaration",
+          "claim": "A source states that the business is not Latino- or Hispanic-owned",
+          "value_json": {
+            "claim": "ownership_denied",
+            "observed_value": "no",
+            "track": "contradiction"
+          },
+          "strength": "strong",
+          "status": "active",
+          "confidence": 0.9,
+          "extraction_id": "01900000-0000-7000-8000-000000000390",
+          "web_page_id": null,
+          "field_path": "payload.hispanic_owned",
+          "snippet": "hispanic_owned: no",
+          "snippet_sha256": "e5f8dca77612007167501ac7543dc258d340f41d1e83506788899f83e893894f",
+          "observed_at": "2026-01-02T00:00:00.000Z",
+          "created_at": "2026-01-01T00:00:00.000Z",
+          "updated_at": "2026-01-01T00:00:00.000Z"
+        },
+        "provenance": {
+          "extraction_id": "01900000-0000-7000-8000-000000000390",
+          "extractor": "latino.payload",
+          "extractor_version": "1.0.0",
+          "extracted_at": "2026-01-01T00:00:00.000Z",
+          "raw_record_id": "01900000-0000-7000-8000-000000000248",
+          "source_run_id": "01900000-0000-7000-8000-000000000231",
+          "acquired_page_id": null,
+          "connector_key": "synthetic.registry",
+          "connector_name": "Synthetic public registry (test data)",
+          "connector_kind": "public_registry",
+          "method": "synthetic",
+          "source_url": null,
+          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000248",
+          "acquired_at": "2026-01-02T00:00:00.000Z"
+        }
+      },
+      "claim": "ownership_denied",
+      "track": "contradiction",
+      "role": "contradicts",
+      "counted": false,
+      "source_reliability": 0.95,
+      "freshness": 1.0,
+      "freshness_label": "fresh",
+      "organizational": false
+    }
+  ],
+  "history": [
+    {
+      "assessment": {
+        "id": "01900000-0000-7000-8000-000000000428",
+        "business_id": "01900000-0000-7000-8000-000000000310",
+        "status": "unknown",
+        "assessment_confidence": 0.0,
+        "method": "manual_review",
+        "rules_version": "1.0.0",
+        "inference_run_id": null,
+        "rationale": "Reviewed by fixture-reviewer: unknown; the rules (1.0.0) gave unknown.",
+        "limitations": "Names of the business or of people, photos, the address or neighbourhood and presumed nationality are never used as evidence. Finding no evidence does not mean the business is not Latino-owned.",
+        "assessed_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "details_json": {
+          "automatic_status": "unknown",
+          "cannot_conclude": [
+            "names_not_used",
+            "absence_is_not_evidence"
+          ],
+          "reviewed_assessment_id": "01900000-0000-7000-8000-000000000422",
+          "warnings": []
+        }
+      },
+      "warnings": [],
+      "cannot_conclude": [
+        "names_not_used",
+        "absence_is_not_evidence"
+      ]
+    },
+    {
+      "assessment": {
+        "id": "01900000-0000-7000-8000-000000000422",
+        "business_id": "01900000-0000-7000-8000-000000000310",
+        "status": "unknown",
+        "assessment_confidence": 0.0,
+        "method": "rules",
+        "rules_version": "1.0.0",
+        "inference_run_id": null,
+        "rationale": "Rules 1.0.0: unknown. Ownership evidence counted: 0 of 0 active; denials: 1; market signals: 0; not counted: 0 stale, 0 revoked, 1 contradicted. Confidence 0.00.",
+        "limitations": "Names of the business or of people, photos, the address or neighbourhood and presumed nationality are never used as evidence. Finding no evidence does not mean the business is not Latino-owned.",
+        "assessed_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "details_json": {
+          "cannot_conclude": [
+            "names_not_used",
+            "absence_is_not_evidence"
+          ],
+          "warnings": [
+            {
+              "code": "contradicted",
+              "detail": null
+            }
+          ]
+        }
+      },
+      "warnings": [
+        {
+          "code": "contradicted",
+          "detail": null
+        }
+      ],
+      "cannot_conclude": [
+        "names_not_used",
+        "absence_is_not_evidence"
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "id": "01900000-0000-7000-8000-000000000429",
+      "entity_type": "business",
+      "entity_id": "01900000-0000-7000-8000-000000000310",
+      "decision": "latino_review",
+      "previous_value": "unknown",
+      "new_value": "unknown",
+      "reason": "Synthetic fixture: the directory and the registry disagree; kept unknown.",
+      "actor": "fixture-reviewer",
+      "decided_at": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "rules_version": "1.0.0",
+  "extractor_version": "1.0.0"
+}

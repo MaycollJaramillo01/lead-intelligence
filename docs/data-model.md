@@ -15,6 +15,10 @@ its source, and how the stores are kept safe. Delivered in phase 03; later phase
 - Entity resolution (phase 06) adds `entity_records`, `match_candidates`, `business_merges` and
   `canonical_values` (`0005_entity_resolution.sql`): every candidate becomes a record business, and
   records of the same entity are merged into a root, reversibly. See [resolution.md](resolution.md).
+- Latino evidence (phase 07) fills `evidence_items` and `latino_assessments`, and
+  `0006_latino_evidence.sql` lets a person's review coexist with the automatic calculation, stores
+  warnings and limitations with each assessment and the factors of every piece of evidence it cites.
+  See [latino-evidence.md](latino-evidence.md).
 - Access: [`repository.py`](../services/research-engine/src/research_engine/repository.py) (SQLite) and
   [`datasets.py`](../services/research-engine/src/research_engine/datasets.py) (DuckDB + Parquet).
   Nothing else runs SQL against the model; the UI never does (D-004).
@@ -225,11 +229,16 @@ Human decisions on pairs and canonical values are `review_decisions` (`entity_ty
 
 ### Evidence and assessments
 
-| Table                        | Purpose                                                  | Columns                                                                                                                                                                                                                                                 |
-| ---------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `evidence_items`             | Observed claim; only `status` may change                 | `id`, `business_id`, `evidence_type` (evidence_type), `claim`, `value_json`?, `strength` (evidence_strength), `status` (evidence_status), `confidence`, `extraction_id`, `web_page_id`?, `field_path`?, `snippet`? + `snippet_sha256`?, `observed_at`   |
-| `latino_assessments`         | One evaluation, separate from evidence; newer supersedes | `id`, `business_id`, `status` (latino_status), `assessment_confidence`, `method` (assessment_method), `rules_version`, `inference_run_id`? → ai_inference_runs, `rationale`, `limitations`?, `assessed_at`, `superseded_at`? (one current per business) |
-| `latino_assessment_evidence` | Evidence cited by an assessment                          | `assessment_id` → latino_assessments, `evidence_item_id` → evidence_items, `role` (evidence_role)                                                                                                                                                       |
+| Table                        | Purpose                                                  | Columns                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `evidence_items`             | Observed claim; only `status` may change                 | `id`, `business_id`, `evidence_type` (evidence_type), `claim`, `value_json`?, `strength` (evidence_strength), `status` (evidence_status), `confidence`, `extraction_id`, `web_page_id`?, `field_path`?, `snippet`? + `snippet_sha256`?, `observed_at`                                                                                                                    |
+| `latino_assessments`         | One evaluation, separate from evidence; newer supersedes | `id`, `business_id`, `status` (latino_status), `assessment_confidence`, `method` (assessment_method), `rules_version`, `inference_run_id`? → ai_inference_runs, `rationale`, `limitations`?, `assessed_at`, `superseded_at`?, `details_json`? (warnings, what it cannot conclude, the calculation a review reviewed); one current per business **and method** (phase 07) |
+| `latino_assessment_evidence` | **Immutable** evidence cited by an assessment            | `assessment_id` → latino_assessments, `evidence_item_id` → evidence_items, `role` (evidence_role), `source_reliability`, `freshness`, `score` (0–1 each), `counted`, `organizational` (phase 07)                                                                                                                                                                         |
+
+Phase 07 stores the claim code and its track in `evidence_items.value_json` (`claim`, `track`,
+`observed_value`, details such as `expires_on`) through `latino.payload`, `latino.site` and
+`latino.model` extractions; a person's Latino review is a `manual_review` assessment plus a
+`review_decisions` row (`latino_review` or `latino_review_withdrawn`).
 
 ### Website intelligence
 
@@ -314,6 +323,10 @@ load and the Parquet copy; a test compares the three.
   search match on any record of a cluster returns its root. The row shows the canonical value of each
   field (or the record's own primary observation when resolution never ran), `member_count` and
   `conflict_count`. Observations of an older normaliser version are hidden from details.
+- **Latino evidence in lists (phase 07).** Each row shows the Latino status its business shows (a
+  person's review, else the rules, else `unknown`), its confidence and whether a person reviewed it.
+  Lists filter by that status, a minimum confidence, a kind of source whose evidence the shown
+  assessment counted, and the review state (`reviewed`, `unreviewed`, `outdated`).
 - Measured on 20,000 synthetic businesses (180,000 observation rows): first page 20 ms, page 51
   18 ms, search 29 ms, last-seen order 15 ms, detail 2 ms; ingestion ~800 businesses/s with every
   constraint and the search index active (`test_performance_on_a_synthetic_dataset`).

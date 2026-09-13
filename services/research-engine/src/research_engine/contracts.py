@@ -58,6 +58,11 @@ class MessageType(StrEnum):
     MATCHES_GET = "matches.get"
     MATCHES_ACT = "matches.act"
     BUSINESSES_CHOOSE_VALUE = "businesses.choose_value"
+    LATINO_START = "latino.start"
+    LATINO_CONTROL = "latino.control"
+    LATINO_RUNS = "latino.runs"
+    LATINO_GET = "latino.get"
+    LATINO_REVIEW = "latino.review"
     DEV_SEED_SYNTHETIC = "dev.seed_synthetic"
     # events (worker -> desktop core)
     WORKER_READY = "worker.ready"

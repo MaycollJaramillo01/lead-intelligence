@@ -60,6 +60,10 @@ def businesses(
         project_id=project_id,
         search=search,
         status=None,
+        latino_status=None,
+        latino_min_confidence=None,
+        latino_source_kind=None,
+        latino_review=None,
         sort=BusinessSort.NAME,
         limit=500,
         cursor=None,
@@ -454,7 +458,7 @@ def test_an_interrupted_run_resumes_from_its_checkpoint(
         return calls > 2
 
     assert not engine.run_resolution(conn, created[0], stop_soon)
-    state = store.latest_state(conn, created[0])
+    state = jobs.latest_state(conn, created[0])
     assert state["stage"] == "ingest"
     assert state["cursor"]
     (partial,) = conn.execute("SELECT count(*) FROM entity_records").fetchone()

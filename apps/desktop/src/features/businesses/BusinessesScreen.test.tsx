@@ -1,10 +1,17 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { BusinessDetail, BusinessListItem, BusinessPage } from "@lead/shared-types";
+import type {
+  BusinessDetail,
+  BusinessListItem,
+  BusinessPage,
+  LatinoDetail,
+  LatinoRunPage,
+} from "@lead/shared-types";
 import clusterFixture from "@lead/shared-types/fixtures/business_cluster_detail.json";
 import detailFixture from "@lead/shared-types/fixtures/business_detail.json";
 import pageFixture from "@lead/shared-types/fixtures/business_page.json";
+import latinoRunsFixture from "@lead/shared-types/fixtures/latino_run_page.json";
 import seedFixture from "@lead/shared-types/fixtures/synthetic_seed_result.json";
 import { PageActionsProvider } from "@/components/layout/page-chrome";
 import { BusinessesScreen } from "@/features/businesses/BusinessesScreen";
@@ -17,6 +24,9 @@ const mocks = vi.hoisted(() => ({
   getBusiness: vi.fn<typeof desktop.getBusiness>(),
   seedSyntheticData: vi.fn<typeof desktop.seedSyntheticData>(),
   chooseCanonicalValue: vi.fn<typeof desktop.chooseCanonicalValue>(),
+  getLatino: vi.fn<typeof desktop.getLatino>(),
+  listLatinoRuns: vi.fn<typeof desktop.listLatinoRuns>(),
+  startLatino: vi.fn<typeof desktop.startLatino>(),
 }));
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
@@ -28,6 +38,19 @@ const page = pageFixture as BusinessPage;
 const [first, second] = page.items as [BusinessListItem, BusinessListItem];
 const detail = detailFixture as BusinessDetail;
 const EMPTY: BusinessPage = { items: [], next_cursor: null, total: 0 };
+const NO_RUNS: LatinoRunPage = { items: [], next_cursor: null, total: 0 };
+const NOT_EVALUATED: LatinoDetail = {
+  business_id: "",
+  root_business_id: "",
+  effective: null,
+  automatic: null,
+  review_outdated: false,
+  evidence: [],
+  history: [],
+  decisions: [],
+  rules_version: "1.0.0",
+  extractor_version: "1.0.0",
+};
 
 function renderScreen() {
   const host = document.createElement("div");
@@ -45,6 +68,12 @@ describe("BusinessesScreen", () => {
     usePreferences.setState(preferenceDefaults);
     useUiStore.setState({ inspectorOpen: true, inspectedId: null });
     for (const mock of Object.values(mocks)) mock.mockReset();
+    mocks.listLatinoRuns.mockResolvedValue(NO_RUNS);
+    mocks.getLatino.mockImplementation(async ({ business_id }) => ({
+      ...NOT_EVALUATED,
+      business_id,
+      root_business_id: business_id,
+    }));
   });
 
   it("lists businesses from the store, marks test data and pages with the cursor", async () => {
@@ -65,6 +94,10 @@ describe("BusinessesScreen", () => {
       project_id: null,
       search: null,
       status: null,
+      latino_status: null,
+      latino_min_confidence: null,
+      latino_source_kind: null,
+      latino_review: null,
       sort: "name",
       limit: 100,
       cursor: null,
@@ -93,6 +126,43 @@ describe("BusinessesScreen", () => {
     );
     expect(mocks.listBusinesses).toHaveBeenCalledTimes(2); // debounced: one query, not one per key
     expect(await screen.findByText("No business matches this search")).toBeTruthy();
+  });
+
+  it("filters by Latino evidence in the store and evaluates it on demand", async () => {
+    mocks.listBusinesses.mockResolvedValue(EMPTY);
+    mocks.startLatino.mockResolvedValue(latinoRunsFixture as LatinoRunPage);
+    const user = userEvent.setup();
+    renderScreen();
+    expect(await screen.findByText("No businesses yet")).toBeTruthy();
+
+    fireEvent.change(screen.getByRole("combobox", { name: /Latino evidence/ }), {
+      target: { value: "verified_latino_owned" },
+    });
+    fireEvent.change(screen.getByRole("spinbutton", { name: /Minimum confidence/ }), {
+      target: { value: "75" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: /Counted source/ }), {
+      target: { value: "public_registry" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: /Review/ }), {
+      target: { value: "outdated" },
+    });
+    await waitFor(() =>
+      expect(mocks.listBusinesses).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          latino_status: "verified_latino_owned",
+          latino_min_confidence: 0.75,
+          latino_source_kind: "public_registry",
+          latino_review: "outdated",
+          cursor: null,
+        }),
+      ),
+    );
+    expect(await screen.findByText("No business matches this search")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Evaluate Latino evidence" }));
+    await waitFor(() => expect(mocks.startLatino).toHaveBeenCalledWith({ project_id: null }));
+    expect(mocks.listLatinoRuns.mock.calls.length).toBeGreaterThan(1);
   });
 
   it("explains a failed load and retries on demand", async () => {

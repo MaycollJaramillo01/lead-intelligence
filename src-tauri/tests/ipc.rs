@@ -12,8 +12,9 @@ use lead_intelligence_lib::config::Environment;
 use lead_intelligence_lib::data::{
     BusinessDetail, BusinessPage, CampaignSaved, CandidateDetail, CandidatePage, CanonicalField,
     CrawlRun, CrawlRunPage, CrawlUrlDetail, CrawlUrlPage, CriteriaCheck, DatasetPage, DiscoveryRun,
-    DiscoveryRunPage, ImportPreview, JobStatus, MatchDetail, MatchPage, MatchStatus,
-    ResolutionRunPage, SelectionMethod, SourceCatalog, SourceRunStatus, SyntheticSeedResult,
+    DiscoveryRunPage, ImportPreview, JobStatus, LatinoDetail, LatinoRunPage, LatinoStatus,
+    MatchDetail, MatchPage, MatchStatus, ResolutionRunPage, SelectionMethod, SourceCatalog,
+    SourceRunStatus, SyntheticSeedResult,
 };
 use lead_intelligence_lib::protocol::{
     CommandError, CommandErrorCode, ComponentState, DiagnosticsReport, WorkerState,
@@ -176,6 +177,98 @@ fn data_commands_serve_real_store_queries_through_ipc() {
     .expect("typed detail");
     assert_eq!(detail.business.id, seed.business_id);
     assert!(!detail.names.is_empty() && !detail.evidence.is_empty());
+
+    // Latino evidence: the seed evaluated its situations; filters, detail, review and a new
+    // evaluation all go through IPC and the real worker
+    let verified: BusinessPage = invoke(
+        &dev,
+        "list_businesses",
+        json!({ "query": {
+            "project_id": null, "search": null, "status": null,
+            "latino_status": "verified_latino_owned", "latino_min_confidence": 0.5,
+            "latino_source_kind": "public_registry", "latino_review": null,
+            "sort": "name", "limit": 50, "cursor": null
+        }}),
+    )
+    .expect("filtered businesses")
+    .deserialize()
+    .expect("typed page");
+    assert_eq!(verified.total, 1);
+    let certified = verified.items[0].id.to_string();
+    let latino: LatinoDetail = invoke(
+        &dev,
+        "get_latino",
+        json!({ "query": { "business_id": certified } }),
+    )
+    .expect("latino detail")
+    .deserialize()
+    .expect("typed detail");
+    assert_eq!(
+        latino.effective.expect("assessed").assessment.status,
+        LatinoStatus::VerifiedLatinoOwned
+    );
+    let blank = invoke(
+        &dev,
+        "review_latino",
+        json!({ "request": { "business_id": certified, "status": "unknown", "reason": "  " } }),
+    )
+    .expect_err("a blank reason never reaches the worker");
+    assert_eq!(command_error(blank).code, CommandErrorCode::InvalidInput);
+    let unsupported = invoke(
+        &dev,
+        "review_latino",
+        json!({ "request": {
+            "business_id": certified, "status": "spanish_market_affinity", "reason": "IPC test"
+        }}),
+    )
+    .expect_err("no market evidence behind it");
+    assert_eq!(
+        command_error(unsupported).code,
+        CommandErrorCode::InvalidInput
+    );
+    let reviewed: LatinoDetail = invoke(
+        &dev,
+        "review_latino",
+        json!({ "request": {
+            "business_id": certified, "status": "probable_latino_owned", "reason": "IPC test"
+        }}),
+    )
+    .expect("review")
+    .deserialize()
+    .expect("typed detail");
+    assert_eq!(reviewed.decisions[0].reason, "IPC test");
+    let mut runs: LatinoRunPage = invoke(
+        &dev,
+        "start_latino",
+        json!({ "request": { "project_id": null } }),
+    )
+    .expect("evaluation started")
+    .deserialize()
+    .expect("typed runs");
+    assert_eq!(runs.items.len(), 1);
+    for _ in 0..400 {
+        runs = invoke(
+            &dev,
+            "list_latino_runs",
+            json!({ "query": { "project_id": null, "limit": 10, "cursor": null } }),
+        )
+        .expect("evaluation runs")
+        .deserialize()
+        .expect("typed runs");
+        if runs
+            .items
+            .iter()
+            .all(|run| !matches!(run.status, JobStatus::Queued | JobStatus::Running))
+        {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    assert!(
+        runs.items
+            .iter()
+            .all(|run| run.status == JobStatus::Succeeded)
+    );
 
     let datasets: DatasetPage = invoke(
         &dev,

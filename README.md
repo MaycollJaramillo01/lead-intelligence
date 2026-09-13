@@ -7,15 +7,16 @@ commercial need, ICP fit and an explanation of why each one is worth contacting.
 
 Everything runs on this machine. No cloud service or LLM API is required.
 
-> **Status: Phase 06 — normalisation and entity resolution.** Discovery (phase 04) finds candidate
-> references from interchangeable sources and the Research Center (phase 05) crawls their websites
-> within robots.txt, budgets and a gentle pace. Every candidate now becomes normalised observations
-> that keep the value as acquired, and records of the same business are merged by explainable rules:
-> blocking, weighted features and safety rules that never merge on a shared phone, a franchise
-> branch or a generic name alone. Ambiguous pairs wait in a review queue with the evidence of both
-> records side by side; every merge can be undone, and each field of a business shows its most
-> trusted value while conflicts stay visible. Nothing is scored yet: qualification arrives in later
-> phases. The phase plan lives in [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
+> **Status: Phase 07 — Latino evidence.** Discovery (phase 04) finds candidate references, the
+> Research Center (phase 05) crawls their websites, and entity resolution (phase 06) merges records of
+> the same business by explainable, reversible rules. Each business now carries an auditable Latino
+> evidence assessment that keeps **explicitly evidenced ownership** (declarations, certifications,
+> ownership directories) apart from **Spanish-speaking market affinity**, and never uses names,
+> surnames, photos or places. Every result lists the evidence behind it with its source and fragment,
+> its warnings and what it cannot conclude; contradictions, expired and removed evidence stay visible;
+> a person can review within what the evidence supports, with a reason, and the rules keep their
+> versioned history. Nothing is scored yet: qualification arrives in later phases. The phase plan
+> lives in [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
 
 ## Requirements
 
@@ -67,6 +68,7 @@ docs/                        Architecture, decisions and operations
 - [docs/discovery.md](docs/discovery.md) — discovery engine: sources, criteria, runs, candidates
 - [docs/crawling.md](docs/crawling.md) — web acquisition: policies, SSRF, fallback, limits, metrics
 - [docs/resolution.md](docs/resolution.md) — normalisation, entity resolution, review, canonical values
+- [docs/latino-evidence.md](docs/latino-evidence.md) — ownership vs market affinity: evidence, rules, review, limits
 - [docs/ui-system.md](docs/ui-system.md) — design tokens, navigation map, shortcuts, components
 - [docs/decisions.md](docs/decisions.md) — technical decisions and their trade-offs
 - [docs/operations.md](docs/operations.md) — configuration, logs, troubleshooting
