@@ -227,8 +227,9 @@ class AiService(jobs.BackgroundJobs[AiRun, AiRunPage]):
                     [p.num_ctx for p in profiles if p.model == model.name] or [BENCHMARK_CTX]
                 )
                 if "embedding" not in capabilities:
+                    # Loaded models, this one included, give their VRAM back before a load.
                     free = sample.vram_free_mib
-                    if free is not None and model.name not in loaded:
+                    if free is not None:
                         free += sum((m.size_vram or 0) // vram.MIB for m in loaded.values())
                     estimate = vram.estimate(shape, wanted_ctx, free)
             running = loaded.get(model.name)

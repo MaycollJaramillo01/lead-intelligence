@@ -185,35 +185,52 @@ answers validated at least 80 % of the time, then the fastest. It is shown as a 
 ## 13. Recommended configuration for an RTX 4060 (8 GB)
 
 Measured on the target machine (RTX 4060 8 GB, driver 610.88, CUDA 13, i5-13500, 15.7 GB RAM,
-Ollama 0.32.9). Models chosen with LLM Fit (all four "Perfect" fit on GPU) and downloaded explicitly:
+Ollama 0.32.9) with the GPU free, on 2026-09-13. Models chosen with LLM Fit (all four "Perfect" fit on
+GPU) and downloaded explicitly. The product benchmark ran on all four: every model 100 % on GPU,
+34 to 56 s per model including loading.
 
-| Profile / task                                | Model (Q4_K_M)     | Context | CPU allowed | Estimate at 4 096 (weights + KV + overhead) | Runtime report when loaded alone |
-| --------------------------------------------- | ------------------ | ------- | ----------- | ------------------------------------------- | -------------------------------- |
-| `fast`: classification, language              | `phi4-mini` (3.8B) | 4 096   | yes         | 3 520 MiB (2 377 + 512 + 631)               | 2 945 MiB, 33/33 layers on GPU   |
-| `balanced`: extraction, synthesis             | `qwen3:4b`         | 4 096   | yes         | 3 589 MiB (2 382 + 576 + 631)               | 3 031 MiB, 37/37 layers on GPU   |
-| `quality`: opportunity reasoning              | `qwen3:8b`         | 4 096   | no          | 6 321 MiB (4 984 + 576 + 761)               | not measured alone (see below)   |
-| `visual_review` (off until screenshots exist) | `qwen2.5vl:3b`     | 4 096   | yes         | 3 862 MiB (3 053 + 144 + 665)               | not measured                     |
+| Profile                                       | Model (Q4_K_M) | Context | CPU allowed | Estimate at 4 096 (weights + KV + overhead) | Runtime size when loaded |
+| --------------------------------------------- | -------------- | ------- | ----------- | ------------------------------------------- | ------------------------ |
+| `fast`: classification, language              | `qwen3:4b`     | 4 096   | yes         | 3 589 MiB (2 382 + 576 + 631)               | 3 031 MiB, 37/37 layers  |
+| `balanced`: extraction, synthesis             | `qwen3:4b`     | 4 096   | yes         | 3 589 MiB                                   | 3 031 MiB                |
+| `quality`: opportunity reasoning              | `qwen3:8b`     | 4 096   | no          | 6 321 MiB (4 984 + 576 + 761)               | 5 320 MiB                |
+| `visual_review` (off until screenshots exist) | `qwen2.5vl:3b` | 4 096   | yes         | 3 862 MiB (3 053 + 144 + 665)               | 2 764 MiB                |
 
-- The KV cache formula matched the runtime exactly (576 MiB for qwen3 and 512 MiB for phi4-mini at
-  4 096 tokens, from Ollama's own log). The overhead term overstates by about 550 MiB, which keeps
-  placement on the safe side.
-- `qwen3:8b` needs about 6.3 GB free: it fits an idle 8 GB card (Ollama reported 6.9 GiB free) at
-  4 096 tokens, not at 8 192 (6.9 GB estimated). Keep `quality` without CPU so a busy GPU refuses the
-  task instead of running an 8B model on the CPU.
-- Two small models fit together (phi4-mini and qwen3:4b loaded side by side: 6.2 GB); a small model
-  and `qwen3:8b` do not, and the runner unloads the other one first.
+Benchmark (correct answers out of the cases, p50 latency; corpus `1.0.0`):
+
+| Task (cases)                  | `phi4-mini`    | `qwen3:4b`    | `qwen3:8b`    | `qwen2.5vl:3b` |
+| ----------------------------- | -------------- | ------------- | ------------- | -------------- |
+| `business_classification` (6) | 5 · 1.6 s      | **6** · 2.0 s | 5 · 3.7 s     | 5 · 1.5 s      |
+| `evidence_extraction` (3)     | 2 · 1.9 s      | **3** · 4.1 s | 2 · 2.5 s     | 0 · 3.1 s      |
+| `finding_synthesis` (2)       | 0 (none valid) | 1 · 1.1 s     | **2** · 1.5 s | 0 · 0.8 s      |
+| `language_detection` (2)      | 1 · 1.2 s      | 1 · 1.3 s     | **2** · 1.9 s | 0 · 1.0 s      |
+| `opportunity_reasoning` (2)   | 0 (none valid) | **1** · 1.1 s | 1 · 2.2 s     | 0 (none valid) |
+| Total · valid answers         | 8/15 · 10      | 12/15 · 14    | 12/15 · 15    | 5/15 · 11      |
+| Generation speed              | 77–80 tok/s    | 78 tok/s      | 46 tok/s      | 99–103 tok/s   |
+
+- The benchmark recommends `qwen3:4b` for extraction, classification and reasoning (tied with
+  `qwen3:8b` at 1/2, faster) and `qwen3:8b` for synthesis and language. With the default task
+  settings that means `qwen3:4b` for `fast` and `balanced` and `qwen3:8b` for `quality`; move
+  `finding_synthesis` and `language_detection` to `quality` if their accuracy matters more than
+  about 0.5 s per call plus a model swap (the two do not share 8 GB).
+- `phi4-mini` is not recommended: no valid answer in synthesis or reasoning (the citation and number
+  checks refused them all). `qwen2.5vl:3b` is fast but wrong on text tasks; keep it for
+  `visual_review`.
+- LLM Fit estimated 29 to 40 tok/s; the card gave 46 to 103.
+- The KV cache formula matched the runtime exactly (576 MiB for qwen3, 512 MiB for phi4-mini at
+  4 096 tokens). The whole estimate overstates by 558 to 1 098 MiB, which keeps placement safe.
+- `qwen3:8b` fits an idle 8 GB card at 4 096 tokens, not at 8 192 (6.9 GB estimated). Keep `quality`
+  without CPU so a busy GPU refuses the task instead of running an 8B model on the CPU.
+- Two small models fit together (qwen3:4b and phi4-mini: 7 178 MiB used with the desktop); before
+  `qwen3:8b` the runner unloaded both.
 - A game or another GPU application changes everything: during this phase a game held 5.9 GB of VRAM,
   Ollama placed 0 to 2 layers on the GPU and inference moved to the CPU. The memory limits (512 MiB
   VRAM, 1 024 MiB RAM) keep crawling from competing with that; close GPU-heavy applications before
   analysing or benchmarking.
 - Free RAM on this machine often sits around 1 GB: leave `min_free_ram_mib` at 1 024 or lower it
   knowingly.
-- Live calls with the GPU free (first call includes loading): `qwen3:4b` 44.4 s cold then 0.7 to 4.2 s
-  per task, 138 to 297 tokens; `phi4-mini` 9.8 s cold then 0.6 to 1.9 s. `qwen3:4b` resisted the
-  injected instruction; `phi4-mini` answered `insufficient_evidence` with citations and was refused
-  by the checks.
-- Run **Benchmark** in AI Models with the GPU free to rank these models on this machine; the
-  recommendation it shows is what to assign.
+- The corpus has 15 synthetic cases: it ranks models on this machine, it does not certify them. Rerun
+  **Benchmark** in AI Models after changing models or drivers.
 
 ## 14. Limits
 

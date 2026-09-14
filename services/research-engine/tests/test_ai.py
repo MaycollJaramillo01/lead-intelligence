@@ -459,7 +459,8 @@ def no_gpu(monkeypatch: pytest.MonkeyPatch) -> None:
 def _service(data_dir: Path, provider: Any, **options: Any) -> AiService:
     llm_fit = LlmFitReport(available=False, version=None, models=[], error="not installed",
                            checked_at=utc_now())  # fmt: skip
-    return AiService(data_dir, lambda: repository.connect(data_dir), provider, _monitor(),
+    return AiService(data_dir, lambda: repository.connect(data_dir), provider,
+                     _monitor(vram_free=options.get("vram_free", 7000)),
                      downloads_allowed=options.get("downloads_allowed", True),
                      llm_fit=lambda: llm_fit)  # fmt: skip
 
@@ -586,6 +587,16 @@ async def test_status_reports_models_estimates_availability_and_the_queue(
     assert status.downloads_allowed
     with pytest.raises(store.AiError, match="not installed"):
         await service.configure(_configure("missing-model:7b"))
+    await service.shutdown()
+    # A loaded model is not pushed to the CPU by its own VRAM (measured on the RTX 4060).
+    busy = ScriptedProvider()
+    busy.loaded_models = {TEXT_MODEL: provider_loaded(TEXT_MODEL, 4 * 1024**3)}
+    service = _service(data_dir, busy, vram_free=500)
+    status = await service.status(AiStatusQuery(include_llm_fit=False))
+    loaded = status.models[0]
+    assert loaded.loaded
+    assert loaded.estimate is not None
+    assert loaded.estimate.device is AiDevice.GPU
     await service.shutdown()
 
 
