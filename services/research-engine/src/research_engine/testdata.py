@@ -50,12 +50,17 @@ from research_engine.domain import (
     EvidenceType,
     Extraction,
     GeoScope,
+    IcpDefinition,
+    IcpSaveRequest,
     Job,
     JobCheckpoint,
     JobEvent,
     JobStatus,
     JobTask,
     JsonObject,
+    LeadAction,
+    LeadActionRequest,
+    LeadScoreQuery,
     LeadStage,
     MailDomainResult,
     NameKind,
@@ -63,6 +68,12 @@ from research_engine.domain import (
     Project,
     RawRecord,
     Record,
+    ScoringChangeAction,
+    ScoringChangeRequest,
+    ScoringDefinition,
+    ScoringModelSaveRequest,
+    ScoringStartRequest,
+    ScoringTarget,
     SourceConnector,
     SourceKind,
     SourceQuery,
@@ -404,6 +415,7 @@ def seed_synthetic_workspace(
     seed_latino(conn, SyntheticContext(project_id, connector_id, run.id, now), data_dir)
     seed_website(conn, SyntheticContext(project_id, connector_id, run.id, now), data_dir)
     seed_contacts(conn, SyntheticContext(project_id, connector_id, run.id, now), data_dir)
+    seed_scoring(conn, SyntheticContext(project_id, connector_id, run.id, now))
     snapshot = snapshot_businesses(
         conn,
         data_dir,
@@ -1570,6 +1582,119 @@ def seed_contacts(
     contacts_engine.run_contacts(conn, data_dir, planned[0], lambda: False, synthetic_mail_lookup)
     return ContactFixture(job_id=planned[0], candidates=candidates, sites=dict(CONTACT_SITES),
                           suppression_id=suppression.id if suppression else None)  # fmt: skip
+
+
+# ---- ICP and lead scoring (phase 11) ------------------------------------------------------------
+
+SYNTHETIC_ICP_NAME = "Synthetic ICP: local services with weak websites"
+SYNTHETIC_MODEL_NAME = "Synthetic model: contactability first"
+
+
+@dataclass(frozen=True, slots=True)
+class ScoringFixture:
+    profile_id: str
+    model_id: str
+    #: The run with the default heuristic model, then the run that scored its stored facts again
+    #: with the synthetic model.
+    run_ids: tuple[str, str]
+    job_ids: tuple[str, str]
+    #: The first lead of the first run, with an outcome and a review.
+    business_id: str
+
+
+def synthetic_icp() -> IcpDefinition:
+    """An ICP for local service businesses whose websites convert poorly (test data): a must-have
+    phone or email, preferred states, low or medium digital maturity, New Jersey excluded, and two
+    offers of an invented seller."""
+    from research_engine.scoring import model
+
+    states = ("TX", "FL", "AZ", "IL")
+    data = model.icp_template().model_dump(mode="json") | {
+        "geography": {"importance": "nice_to_have", "weight": 2, "exclude": [], "include": [
+            {"country_code": "US", "region": state, "locality": None, "postal_code": None}
+            for state in states]},
+        "digital_maturity": {"importance": "nice_to_have", "weight": 2,
+                             "wanted": ["low", "medium"]},
+        "channels": {"importance": "must_have", "weight": 3, "any_of": ["phone", "email"],
+                     "require_decision_maker": False},
+        "buying_capacity": {"importance": "nice_to_have", "weight": 1, "min_proxies": 1},
+        "exclusions": {"names": [], "domains": [], "categories": [], "regions": ["NJ"],
+                       "postal_codes": []},
+        "offers": [
+            {"key": "website_rebuild", "name": "Website rebuild",
+             "description": "A fast mobile site with a clear call to action and a quote form "
+             "(synthetic offer).",
+             "solves": ["no_website", "website_unreachable", "weak_conversion_path",
+                        "no_online_booking", "poor_mobile_experience"],
+             "capabilities": ["web design", "forms"], "not_for_categories": []},
+            {"key": "local_seo", "name": "Local SEO setup",
+             "description": "Business details, structured data and analytics (synthetic offer).",
+             "solves": ["weak_local_seo", "weak_technical_seo", "measurement_not_detected"],
+             "capabilities": ["local seo", "analytics"], "not_for_categories": ["grocery"]},
+        ],
+    }  # fmt: skip
+    return IcpDefinition.model_validate(data)
+
+
+def _scored_run(
+    conn: sqlite3.Connection, project_id: str, icp_version: str, model_version: str,
+    facts_from: str | None,
+) -> tuple[str, str]:  # fmt: skip
+    from research_engine.scoring import engine, store
+
+    created, _ = store.plan_run(conn, ScoringStartRequest(
+        project_id=project_id, icp_profile_version_id=icp_version,
+        scoring_model_version_id=model_version, facts_from_run_id=facts_from,
+    ), actor=ACTOR_DEV_SEED)  # fmt: skip
+    engine.run_scoring(conn, created[0], lambda: False)
+    return store.run_of_job(conn, created[0]).id, created[0]
+
+
+def seed_scoring(conn: sqlite3.Connection, ctx: SyntheticContext) -> ScoringFixture:
+    """The synthetic ICP scored over the project by the real engine (test data): a run with the
+    default heuristic model, an outcome and a review of its first lead, and a second run that
+    scores the first run's stored facts with a model that weighs contactability more."""
+    from research_engine.scoring import model, store
+
+    store.ensure_default_model(conn)
+    profile_id = store.save_icp(conn, IcpSaveRequest(
+        profile_id=None, project_id=ctx.project_id, name=SYNTHETIC_ICP_NAME,
+        description="Synthetic test data", definition=synthetic_icp(),
+    ), actor=ACTOR_DEV_SEED)  # fmt: skip
+    icp_version = store.icp_view(conn, profile_id).versions[0].id
+    store.change(conn, ScoringChangeRequest(
+        target=ScoringTarget.ICP_PROFILE, id=profile_id, action=ScoringChangeAction.ACTIVATE,
+        version_id=icp_version, reason="Synthetic test data",
+    ), actor=ACTOR_DEV_SEED)  # fmt: skip
+    (default,) = conn.execute(
+        "SELECT active_version_id FROM scoring_models WHERE key = ?", (model.DEFAULT_MODEL_KEY,)
+    ).fetchone()
+    first = _scored_run(conn, ctx.project_id, icp_version, default, None)
+    alternative = model.default_scoring().model_dump(mode="json") | {"final": [
+        {"component": "ICP_MATCH", "weight": 25}, {"component": "OPPORTUNITY_SCORE", "weight": 35},
+        {"component": "CONTACTABILITY", "weight": 40},
+        {"component": "LATINO_CONFIDENCE", "weight": 0}]}  # fmt: skip
+    model_id = store.save_model(conn, ScoringModelSaveRequest(
+        model_id=None, name=SYNTHETIC_MODEL_NAME, description="Synthetic test data",
+        definition=ScoringDefinition.model_validate(alternative),
+    ), actor=ACTOR_DEV_SEED)  # fmt: skip
+    model_version = store.model_view(conn, model_id).versions[0].id
+    second = _scored_run(conn, ctx.project_id, icp_version, model_version, first[0])
+    lead = store.list_leads(conn, LeadScoreQuery(
+        score_run_id=first[0], tier=None, min_score=None, problem=None, search=None, limit=1,
+        cursor=None,
+    )).items[0]  # fmt: skip
+    for action, stage, reason in (
+        (LeadAction.RECORD_OUTCOME, LeadStage.ATTEMPTED,
+         "Called the published number (synthetic test data)"),
+        (LeadAction.CONFIRM, None, "The evidence matches the ICP (synthetic test data)"),
+    ):  # fmt: skip
+        store.act(conn, LeadActionRequest(
+            score_run_id=first[0], business_id=lead.business_id, action=action, stage=stage,
+            lost_reason=None, reason=reason,
+        ), actor=ACTOR_DEV_SEED)  # fmt: skip
+    return ScoringFixture(profile_id=profile_id, model_id=model_id, run_ids=(first[0], second[0]),
+                          job_ids=(first[1], second[1]), business_id=lead.business_id)  # fmt: skip
 
 
 # ---- local AI (phase 10) -------------------------------------------------------------------------

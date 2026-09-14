@@ -12,7 +12,8 @@ import { useLoaded } from "@/lib/useLoaded";
 const POLL_MS = 2000;
 const LISTED = 25;
 
-type JobKind = "discovery" | "crawl" | "resolution" | "latino" | "website" | "contacts" | "ai";
+type JobKind =
+  "discovery" | "crawl" | "resolution" | "latino" | "website" | "contacts" | "ai" | "scoring";
 
 interface Listed {
   kind: JobKind;
@@ -30,6 +31,7 @@ const MODULE: Record<JobKind, { path: string; name: TranslationKey }> = {
   website: { path: "/research-center", name: "nav.research_center" },
   contacts: { path: "/research-center", name: "nav.research_center" },
   ai: { path: "/ai-models", name: "nav.ai_models" },
+  scoring: { path: "/scoring-models", name: "nav.scoring_models" },
 };
 
 /** Every job the worker knows, newest first, whichever engine runs it. Nothing here is simulated. */
@@ -41,7 +43,7 @@ export function JobsScreen() {
   const fetchJobs = useCallback(async (): Promise<Listed[]> => {
     const query = { project_id: null, campaign_id: null, limit: LISTED, cursor: null };
     const byProject = { project_id: null, limit: LISTED, cursor: null };
-    const [discovery, crawls, resolutions, evaluations, audits, checks, analyses] =
+    const [discovery, crawls, resolutions, evaluations, audits, checks, analyses, scores] =
       await Promise.all([
         desktop.listDiscoveryRuns(query),
         desktop.listCrawlRuns(query),
@@ -50,6 +52,7 @@ export function JobsScreen() {
         desktop.listWebsiteRuns(byProject),
         desktop.listContactRuns(byProject),
         desktop.listAiRuns(byProject),
+        desktop.listScoreRuns(byProject),
       ]);
     const listed: Listed[] = [
       ...discovery.items.map((run) => ({
@@ -180,6 +183,25 @@ export function JobsScreen() {
           errors: run.events.filter((event) => event.level === "error").length,
         },
       })),
+      ...scores.items.map((run) => ({
+        kind: "scoring" as const,
+        requestedAt: run.requested_at,
+        label: `${run.project_name} · ${run.icp_profile_name} v${run.icp_profile_version}`,
+        detail: t("jobs.scoringDetail", {
+          businesses: run.stats.businesses,
+          priority: run.stats.priority,
+          review: run.stats.review,
+          insufficient: run.stats.insufficient_data,
+          excluded: run.stats.excluded,
+        }),
+        summary: {
+          id: run.job_id,
+          state: run.status,
+          done: run.progress_done,
+          total: run.progress_total,
+          errors: run.events.filter((event) => event.level === "error").length,
+        },
+      })),
     ];
     return listed.sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
   }, [t]);
@@ -207,6 +229,7 @@ export function JobsScreen() {
         website: desktop.controlWebsiteAudit,
         contacts: desktop.controlContacts,
         ai: desktop.controlAi,
+        scoring: desktop.controlScoring,
       }[job.kind];
       await control(request);
       await reload();

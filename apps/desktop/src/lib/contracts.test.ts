@@ -10,8 +10,11 @@ import type {
   DatasetListItem,
   DatasetPage,
   DatasetSnapshot,
+  FinalInput,
   LatinoDetail,
   LatinoEvidence,
+  LeadScorecardDetail,
+  OpportunityInput,
   Provenance,
   WebsiteAuditDetail,
   WebsiteFindingView,
@@ -22,6 +25,7 @@ import contactFixture from "@lead/shared-types/fixtures/contact_detail.json";
 import pageFixture from "@lead/shared-types/fixtures/business_page.json";
 import datasetFixture from "@lead/shared-types/fixtures/dataset_page.json";
 import latinoFixture from "@lead/shared-types/fixtures/latino_detail.json";
+import scorecardFixture from "@lead/shared-types/fixtures/lead_scorecard_detail.json";
 import websiteFixture from "@lead/shared-types/fixtures/website_audit_detail.json";
 
 /*
@@ -289,6 +293,40 @@ describe("data contract fixtures match the generated TypeScript types", () => {
     expect(cited.length).toBeGreaterThan(0);
     for (const id of cited) expect(given.has(id.replaceAll('"', ""))).toBe(true);
     expect(detail.outputs.every((output) => output.raw_output.length > 0)).toBe(true);
+  });
+
+  it("a scorecard adds up to its total and counts no feature without evidence", () => {
+    const { scorecard } = scorecardFixture as LeadScorecardDetail;
+    const final = new Set<string>([
+      "ICP_MATCH",
+      "LATINO_CONFIDENCE",
+      "OPPORTUNITY_SCORE",
+      "CONTACTABILITY",
+    ] satisfies FinalInput[]);
+    const opportunityInputs = new Set<string>([
+      "DIGITAL_GAP",
+      "BUSINESS_HEALTH",
+      "BUYING_CAPACITY",
+      "COMMERCIAL_INTENT",
+    ] satisfies OpportunityInput[]);
+    const contributions = (inputs: ReadonlySet<string>) =>
+      scorecard.components
+        .filter((view) => inputs.has(view.component))
+        .reduce((sum, view) => sum + (view.contribution ?? 0), 0);
+    const opportunity =
+      scorecard.components.find((view) => view.component === "OPPORTUNITY_SCORE")?.value ?? null;
+    if (scorecard.total_score === null || opportunity === null) {
+      throw new Error("the fixture lead is scored");
+    }
+    // each contribution is rounded to four decimals, so their sum may drift by a few of those
+    expect(Math.abs(contributions(final) - scorecard.total_score)).toBeLessThanOrEqual(0.01);
+    expect(Math.abs(contributions(opportunityInputs) - opportunity)).toBeLessThanOrEqual(0.01);
+    const known = scorecard.features.filter((feature) => feature.state === "known");
+    expect(known.length).toBeGreaterThan(0);
+    for (const feature of known) expect(feature.evidence.length).toBeGreaterThan(0);
+    for (const feature of scorecard.features.filter((item) => item.state !== "known")) {
+      expect([feature.value, feature.points]).toEqual([null, null]);
+    }
   });
 
   it("timestamps use the single contract format", () => {

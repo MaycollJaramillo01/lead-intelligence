@@ -85,6 +85,7 @@ from research_engine.domain import (
     AiTaskType,
     BusinessListQuery,
     BusinessSort,
+    CalibrationQuery,
     CampaignListQuery,
     CampaignSaved,
     CandidateListQuery,
@@ -110,6 +111,7 @@ from research_engine.domain import (
     DecisionMakerReviewRequest,
     DiscoveryRunListQuery,
     DiscoveryStartRequest,
+    IcpSaveRequest,
     ImportPreviewRequest,
     InferenceStatus,
     LatinoReviewFilter,
@@ -117,6 +119,10 @@ from research_engine.domain import (
     LatinoRunListQuery,
     LatinoStartRequest,
     LatinoStatus,
+    LeadAction,
+    LeadActionRequest,
+    LeadScoreQuery,
+    LeadStage,
     LlmFitModel,
     LlmFitReport,
     MatchAction,
@@ -126,6 +132,17 @@ from research_engine.domain import (
     ProblemSeverity,
     ResolutionRunListQuery,
     ResolutionStartRequest,
+    ScorecardQuery,
+    ScoreCompareQuery,
+    ScoreRunListQuery,
+    ScoringCatalogQuery,
+    ScoringChangeAction,
+    ScoringChangeRequest,
+    ScoringDefinition,
+    ScoringModelSaveRequest,
+    ScoringSimulationRequest,
+    ScoringStartRequest,
+    ScoringTarget,
     SourceCatalog,
     SourceEstimate,
     SourceHealth,
@@ -146,6 +163,9 @@ from research_engine.domain import (
 from research_engine.latino import engine as latino_engine
 from research_engine.latino import store as latino_store
 from research_engine.resolution import store as resolution_store
+from research_engine.scoring import engine as scoring_engine
+from research_engine.scoring import model as scoring_model
+from research_engine.scoring import store as scoring_store
 from research_engine.storage import check_sqlite
 from research_engine.testdata import (
     CONTACT_SITES,
@@ -162,9 +182,11 @@ from research_engine.testdata import (
     seed_discovery,
     seed_latino,
     seed_resolution,
+    seed_scoring,
     seed_website,
     synthetic_answer,
     synthetic_connector,
+    synthetic_icp,
     synthetic_project,
     synthetic_run,
 )
@@ -454,6 +476,9 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
             ai = build_ai_fixtures(
                 conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids), data_dir
             )
+            scoring = build_scoring_fixtures(
+                conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids)
+            )
         finally:
             conn.close()
     return {
@@ -477,7 +502,77 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
         **website,
         **contacts,
         **ai,
+        **scoring,
     }
+
+
+def build_scoring_fixtures(conn: Any, context: SyntheticContext) -> dict[str, dict[str, Any]]:
+    """ICP and lead scoring shapes from the real engine over the synthetic project, with fixture
+    ids and a fixed clock: the synthetic ICP and model, two runs over the same facts, an outcome
+    and a review of the first lead, read back through the real queries."""
+    project_id = context.project_id
+    with ExitStack() as stack:
+        for module in (scoring_store, jobs, repository):
+            stack.enter_context(patch.object(module, "new_id", context.ids))
+        for clocked in (scoring_store, scoring_engine, jobs, repository):
+            stack.enter_context(patch.object(clocked, "utc_now", lambda: _T0))
+        seeded = seed_scoring(conn, context)
+        first, second = seeded.run_ids
+        catalog_query = ScoringCatalogQuery(project_id=project_id)
+        catalog = scoring_store.catalog(conn, catalog_query)
+        profile = next(p for p in catalog.icp_profiles if p.profile.id == seeded.profile_id)
+        model_view = next(m for m in catalog.models if m.model.id == seeded.model_id)
+        simulation = ScoringSimulationRequest(
+            project_id=None, facts_from_run_id=first, icp=synthetic_icp(),
+            scoring=scoring_model.default_scoring(), top=5,
+        )  # fmt: skip
+        runs = ScoreRunListQuery(project_id=project_id, limit=25, cursor=None)
+        leads = LeadScoreQuery(score_run_id=first, tier=None, min_score=None, problem=None,
+                               search=None, limit=10, cursor=None)  # fmt: skip
+        scorecard = ScorecardQuery(business_id=seeded.business_id, score_run_id=first)
+        comparison = ScoreCompareQuery(left_run_id=first, right_run_id=second, top_k=10)
+        calibration = CalibrationQuery(score_run_id=first)
+        return {
+            "scoring_catalog_query.json": _dump(catalog_query),
+            "scoring_catalog.json": _dump(catalog),
+            "icp_save_request.json": _dump(IcpSaveRequest(
+                profile_id=seeded.profile_id, project_id=None, name=profile.profile.name,
+                description=profile.profile.description, definition=synthetic_icp(),
+            )),
+            "icp_profile_view.json": _dump(profile),
+            "scoring_model_save_request.json": _dump(ScoringModelSaveRequest(
+                model_id=seeded.model_id, name=model_view.model.name,
+                description=model_view.model.description,
+                definition=ScoringDefinition.model_validate(model_view.versions[0].definition_json),
+            )),
+            "scoring_model_view.json": _dump(model_view),
+            "scoring_change_request.json": _dump(ScoringChangeRequest(
+                target=ScoringTarget.SCORING_MODEL, id=seeded.model_id,
+                action=ScoringChangeAction.ACTIVATE, version_id=model_view.versions[0].id,
+                reason="Synthetic fixture",
+            )),
+            "scoring_simulation_request.json": _dump(simulation),
+            "scoring_simulation.json": _dump(scoring_store.simulate(conn, simulation, _T0)),
+            "scoring_start_request.json": _dump(ScoringStartRequest(
+                project_id=project_id, icp_profile_version_id=profile.versions[0].id,
+                scoring_model_version_id=model_view.versions[0].id, facts_from_run_id=first,
+            )),
+            "score_run_list_query.json": _dump(runs),
+            "score_run_page.json": _dump(scoring_store.list_runs(conn, runs)),
+            "lead_score_query.json": _dump(leads),
+            "lead_score_page.json": _dump(scoring_store.list_leads(conn, leads)),
+            "scorecard_query.json": _dump(scorecard),
+            "lead_scorecard_detail.json": _dump(scoring_store.get_scorecard(conn, scorecard)),
+            "score_compare_query.json": _dump(comparison),
+            "score_comparison.json": _dump(scoring_store.compare(conn, comparison)),
+            "calibration_query.json": _dump(calibration),
+            "calibration_report.json": _dump(scoring_store.calibration(conn, calibration)),
+            "lead_action_request.json": _dump(LeadActionRequest(
+                score_run_id=first, business_id=seeded.business_id,
+                action=LeadAction.RECORD_OUTCOME, stage=LeadStage.CONNECTED, lost_reason=None,
+                reason="Synthetic fixture",
+            )),
+        }  # fmt: skip
 
 
 def build_ai_fixtures(

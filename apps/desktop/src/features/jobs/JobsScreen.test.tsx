@@ -9,6 +9,7 @@ import type {
   DiscoveryRunPage,
   LatinoRunPage,
   ResolutionRunPage,
+  ScoreRunPage,
   WebsiteRunPage,
 } from "@lead/shared-types";
 import aiFixture from "@lead/shared-types/fixtures/ai_run_page.json";
@@ -17,6 +18,7 @@ import crawlFixture from "@lead/shared-types/fixtures/crawl_run_page.json";
 import discoveryFixture from "@lead/shared-types/fixtures/discovery_run_page.json";
 import latinoFixture from "@lead/shared-types/fixtures/latino_run_page.json";
 import resolutionFixture from "@lead/shared-types/fixtures/resolution_run_page.json";
+import scoreFixture from "@lead/shared-types/fixtures/score_run_page.json";
 import websiteFixture from "@lead/shared-types/fixtures/website_run_page.json";
 import { JobsScreen } from "@/features/jobs/JobsScreen";
 import type { desktop } from "@/lib/ipc";
@@ -37,12 +39,15 @@ const mocks = vi.hoisted(() => ({
   controlContacts: vi.fn<typeof desktop.controlContacts>(),
   listAiRuns: vi.fn<typeof desktop.listAiRuns>(),
   controlAi: vi.fn<typeof desktop.controlAi>(),
+  listScoreRuns: vi.fn<typeof desktop.listScoreRuns>(),
+  controlScoring: vi.fn<typeof desktop.controlScoring>(),
 }));
 const NO_RESOLUTION: ResolutionRunPage = { items: [], next_cursor: null, total: 0 };
 const NO_EVALUATION: LatinoRunPage = { items: [], next_cursor: null, total: 0 };
 const NO_AUDIT: WebsiteRunPage = { items: [], next_cursor: null, total: 0 };
 const NO_CHECK: ContactRunPage = { items: [], next_cursor: null, total: 0 };
 const NO_AI: AiRunPage = { items: [], next_cursor: null, total: 0 };
+const NO_SCORE: ScoreRunPage = { items: [], next_cursor: null, total: 0 };
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
   desktop: mocks,
@@ -50,6 +55,7 @@ vi.mock("@/lib/ipc", async (importOriginal) => ({
 
 const crawls = crawlFixture as CrawlRunPage;
 const discovery = discoveryFixture as DiscoveryRunPage;
+const scores = scoreFixture as ScoreRunPage;
 
 function renderJobs() {
   render(
@@ -70,9 +76,10 @@ describe("JobsScreen", () => {
     mocks.listWebsiteRuns.mockResolvedValue(websiteFixture as WebsiteRunPage);
     mocks.listContactRuns.mockResolvedValue(contactFixture as ContactRunPage);
     mocks.listAiRuns.mockResolvedValue(aiFixture as AiRunPage);
+    mocks.listScoreRuns.mockResolvedValue(scores);
   });
 
-  it("lists discovery, crawl, resolution, evaluation, audit and contact runs together, from real queries", async () => {
+  it("lists the runs of every engine together, from real queries", async () => {
     renderJobs();
     expect(await screen.findByText(/^Contact check · Synthetic test workspace/)).toBeTruthy();
     expect(screen.getByText(/^Local AI · Synthetic test workspace/)).toBeTruthy();
@@ -89,12 +96,21 @@ describe("JobsScreen", () => {
     expect(screen.getByText("2 pages · 5 requests · 1 rendered in a browser")).toBeTruthy();
     expect(screen.getByText(/pairs compared/)).toBeTruthy();
     expect(screen.getByText(/with ownership evidence · 1 market affinity/)).toBeTruthy();
+    expect(
+      screen.getAllByText(
+        /^Lead scoring · Synthetic test workspace · Synthetic ICP: local services with weak websites v1/,
+      ).length,
+    ).toBe(2);
+    expect(
+      screen.getByText("20 businesses · 0 priority · 6 review · 10 insufficient data · 0 excluded"),
+    ).toBeTruthy();
     expect(mocks.listCrawlRuns).toHaveBeenCalledWith({
       project_id: null,
       campaign_id: null,
       limit: 25,
       cursor: null,
     });
+    expect(mocks.listScoreRuns).toHaveBeenCalledWith({ project_id: null, limit: 25, cursor: null });
   });
 
   it("cancels a running crawl through the crawl engine", async () => {
@@ -108,6 +124,7 @@ describe("JobsScreen", () => {
     mocks.listWebsiteRuns.mockResolvedValue(NO_AUDIT);
     mocks.listContactRuns.mockResolvedValue(NO_CHECK);
     mocks.listAiRuns.mockResolvedValue(NO_AI);
+    mocks.listScoreRuns.mockResolvedValue(NO_SCORE);
     mocks.controlCrawl.mockResolvedValue({ ...run, status: "cancelled" });
     renderJobs();
     await user.click(await screen.findByRole("button", { name: "Cancel job" }));
@@ -115,6 +132,29 @@ describe("JobsScreen", () => {
       expect(mocks.controlCrawl).toHaveBeenCalledWith({ job_id: run.job_id, action: "cancel" }),
     );
     expect(mocks.controlDiscovery).not.toHaveBeenCalled();
+  });
+
+  it("cancels a running score run through the scoring engine", async () => {
+    const user = userEvent.setup();
+    const [run] = scores.items;
+    if (!run) throw new Error("fixture has a score run");
+    mocks.listScoreRuns.mockResolvedValue({
+      ...scores,
+      items: [{ ...run, status: "running", finished_at: null }],
+    });
+    mocks.listDiscoveryRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
+    mocks.listCrawlRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
+    mocks.listResolutionRuns.mockResolvedValue(NO_RESOLUTION);
+    mocks.listLatinoRuns.mockResolvedValue(NO_EVALUATION);
+    mocks.listWebsiteRuns.mockResolvedValue(NO_AUDIT);
+    mocks.listContactRuns.mockResolvedValue(NO_CHECK);
+    mocks.listAiRuns.mockResolvedValue(NO_AI);
+    renderJobs();
+    await user.click(await screen.findByRole("button", { name: "Cancel job" }));
+    await waitFor(() =>
+      expect(mocks.controlScoring).toHaveBeenCalledWith({ job_id: run.job_id, action: "cancel" }),
+    );
+    expect(mocks.controlAi).not.toHaveBeenCalled();
   });
 
   it("says so when nothing has run", async () => {
@@ -125,6 +165,7 @@ describe("JobsScreen", () => {
     mocks.listWebsiteRuns.mockResolvedValue(NO_AUDIT);
     mocks.listContactRuns.mockResolvedValue(NO_CHECK);
     mocks.listAiRuns.mockResolvedValue(NO_AI);
+    mocks.listScoreRuns.mockResolvedValue(NO_SCORE);
     renderJobs();
     expect(await screen.findByText("No jobs have run")).toBeTruthy();
   });

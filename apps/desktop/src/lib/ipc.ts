@@ -80,6 +80,28 @@ import {
   type ResolutionRunListQuery,
   type ResolutionRunPage,
   type ResolutionStartRequest,
+  type CalibrationQuery,
+  type CalibrationReport,
+  type IcpProfileView,
+  type IcpSaveRequest,
+  type LeadActionRequest,
+  type LeadScorecardDetail,
+  type LeadScorePage,
+  type LeadScoreQuery,
+  type ScorecardQuery,
+  type ScoreCompareQuery,
+  type ScoreComparison,
+  type ScoreRunItem,
+  type ScoreRunListQuery,
+  type ScoreRunPage,
+  type ScoringCatalog,
+  type ScoringCatalogQuery,
+  type ScoringChangeRequest,
+  type ScoringModelSaveRequest,
+  type ScoringModelView,
+  type ScoringSimulation,
+  type ScoringSimulationRequest,
+  type ScoringStartRequest,
   type SourceCatalog,
   type SourceCatalogQuery,
   type SuppressionChangeRequest,
@@ -233,6 +255,28 @@ export const desktop = {
     call<AiInferenceDetail>("review_ai_inference", { request }),
   runAiBenchmark: (request: AiBenchmarkRequest) => call<AiStatus>("run_ai_benchmark", { request }),
   changeAiModel: (request: AiModelChangeRequest) => call<AiStatus>("change_ai_model", { request }),
+  getScoringCatalog: (query: ScoringCatalogQuery) =>
+    call<ScoringCatalog>("get_scoring_catalog", { query }),
+  saveIcpProfile: (request: IcpSaveRequest) =>
+    call<IcpProfileView>("save_icp_profile", { request }),
+  saveScoringModel: (request: ScoringModelSaveRequest) =>
+    call<ScoringModelView>("save_scoring_model", { request }),
+  changeScoring: (request: ScoringChangeRequest) =>
+    call<ScoringCatalog>("change_scoring", { request }),
+  simulateScoring: (request: ScoringSimulationRequest) =>
+    call<ScoringSimulation>("simulate_scoring", { request }),
+  startScoring: (request: ScoringStartRequest) => call<ScoreRunPage>("start_scoring", { request }),
+  controlScoring: (request: DiscoveryControlRequest) =>
+    call<ScoreRunItem>("control_scoring", { request }),
+  listScoreRuns: (query: ScoreRunListQuery) => call<ScoreRunPage>("list_score_runs", { query }),
+  listLeadScores: (query: LeadScoreQuery) => call<LeadScorePage>("list_lead_scores", { query }),
+  getLeadScorecard: (query: ScorecardQuery) =>
+    call<LeadScorecardDetail>("get_lead_scorecard", { query }),
+  compareScoreRuns: (query: ScoreCompareQuery) =>
+    call<ScoreComparison>("compare_score_runs", { query }),
+  getCalibration: (query: CalibrationQuery) =>
+    call<CalibrationReport>("get_calibration", { query }),
+  actOnLead: (request: LeadActionRequest) => call<LeadScorecardDetail>("act_on_lead", { request }),
   /** Development builds only; the desktop core refuses it in release builds. */
   seedSyntheticData: () => call<SyntheticSeedResult>("seed_synthetic_data"),
   onWorkerStatus: async (handler: (status: WorkerStatus) => void): Promise<UnlistenFn> => {

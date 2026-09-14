@@ -1,0 +1,288 @@
+{
+  "project_id": null,
+  "facts_from_run_id": "01900000-0000-7000-8000-000000001162",
+  "icp": {
+    "schema_version": 1,
+    "geography": {
+      "importance": "nice_to_have",
+      "weight": 2,
+      "include": [
+        {
+          "country_code": "US",
+          "region": "TX",
+          "locality": null,
+          "postal_code": null
+        },
+        {
+          "country_code": "US",
+          "region": "FL",
+          "locality": null,
+          "postal_code": null
+        },
+        {
+          "country_code": "US",
+          "region": "AZ",
+          "locality": null,
+          "postal_code": null
+        },
+        {
+          "country_code": "US",
+          "region": "IL",
+          "locality": null,
+          "postal_code": null
+        }
+      ],
+      "exclude": []
+    },
+    "categories": {
+      "importance": "ignore",
+      "weight": 1,
+      "terms": [],
+      "excluded_terms": []
+    },
+    "size": {
+      "importance": "ignore",
+      "weight": 1,
+      "min_locations": 1
+    },
+    "freshness": {
+      "importance": "ignore",
+      "weight": 1,
+      "max_days_since_seen": 365
+    },
+    "reputation": {
+      "importance": "ignore",
+      "weight": 1,
+      "min_rating": null,
+      "min_reviews": null
+    },
+    "digital_maturity": {
+      "importance": "nice_to_have",
+      "weight": 2,
+      "wanted": [
+        "low",
+        "medium"
+      ]
+    },
+    "problems": {
+      "importance": "ignore",
+      "weight": 1,
+      "wanted": []
+    },
+    "channels": {
+      "importance": "must_have",
+      "weight": 3,
+      "any_of": [
+        "phone",
+        "email"
+      ],
+      "require_decision_maker": false
+    },
+    "buying_capacity": {
+      "importance": "nice_to_have",
+      "weight": 1,
+      "min_proxies": 1
+    },
+    "latino": "none",
+    "exclusions": {
+      "names": [],
+      "domains": [],
+      "categories": [],
+      "regions": [
+        "NJ"
+      ],
+      "postal_codes": []
+    },
+    "offers": [
+      {
+        "key": "website_rebuild",
+        "name": "Website rebuild",
+        "description": "A fast mobile site with a clear call to action and a quote form (synthetic offer).",
+        "solves": [
+          "no_website",
+          "website_unreachable",
+          "weak_conversion_path",
+          "no_online_booking",
+          "poor_mobile_experience"
+        ],
+        "capabilities": [
+          "web design",
+          "forms"
+        ],
+        "not_for_categories": []
+      },
+      {
+        "key": "local_seo",
+        "name": "Local SEO setup",
+        "description": "Business details, structured data and analytics (synthetic offer).",
+        "solves": [
+          "weak_local_seo",
+          "weak_technical_seo",
+          "measurement_not_detected"
+        ],
+        "capabilities": [
+          "local seo",
+          "analytics"
+        ],
+        "not_for_categories": [
+          "grocery"
+        ]
+      }
+    ]
+  },
+  "scoring": {
+    "schema_version": 1,
+    "features": [
+      {
+        "feature": "gap.no_website",
+        "weight": 3
+      },
+      {
+        "feature": "gap.website_unreachable",
+        "weight": 3
+      },
+      {
+        "feature": "gap.conversion_path",
+        "weight": 3
+      },
+      {
+        "feature": "gap.online_booking",
+        "weight": 1
+      },
+      {
+        "feature": "gap.local_seo",
+        "weight": 2
+      },
+      {
+        "feature": "gap.technical_seo",
+        "weight": 1
+      },
+      {
+        "feature": "gap.mobile",
+        "weight": 2
+      },
+      {
+        "feature": "gap.measurement",
+        "weight": 1
+      },
+      {
+        "feature": "health.recently_seen",
+        "weight": 2
+      },
+      {
+        "feature": "health.site_answers",
+        "weight": 2
+      },
+      {
+        "feature": "health.site_maintained",
+        "weight": 1
+      },
+      {
+        "feature": "health.trust_signals",
+        "weight": 1
+      },
+      {
+        "feature": "health.multiple_sources",
+        "weight": 1
+      },
+      {
+        "feature": "capacity.multiple_locations",
+        "weight": 2
+      },
+      {
+        "feature": "capacity.paid_tools",
+        "weight": 1
+      },
+      {
+        "feature": "capacity.team_published",
+        "weight": 2
+      },
+      {
+        "feature": "capacity.site_depth",
+        "weight": 1
+      },
+      {
+        "feature": "intent.advertising_active",
+        "weight": 2
+      },
+      {
+        "feature": "intent.site_changed",
+        "weight": 1
+      },
+      {
+        "feature": "intent.reputation_without_conversion",
+        "weight": 2
+      },
+      {
+        "feature": "data.coverage",
+        "weight": 3
+      },
+      {
+        "feature": "data.freshness",
+        "weight": 2
+      },
+      {
+        "feature": "data.agreement",
+        "weight": 1
+      },
+      {
+        "feature": "data.audit_coverage",
+        "weight": 1
+      }
+    ],
+    "opportunity": [
+      {
+        "component": "DIGITAL_GAP",
+        "weight": 45
+      },
+      {
+        "component": "BUSINESS_HEALTH",
+        "weight": 20
+      },
+      {
+        "component": "BUYING_CAPACITY",
+        "weight": 20
+      },
+      {
+        "component": "COMMERCIAL_INTENT",
+        "weight": 15
+      }
+    ],
+    "final": [
+      {
+        "component": "ICP_MATCH",
+        "weight": 35
+      },
+      {
+        "component": "OPPORTUNITY_SCORE",
+        "weight": 40
+      },
+      {
+        "component": "CONTACTABILITY",
+        "weight": 25
+      },
+      {
+        "component": "LATINO_CONFIDENCE",
+        "weight": 0
+      }
+    ],
+    "not_applicable": [
+      {
+        "feature": "gap.online_booking",
+        "categories": [
+          "roofing",
+          "construction",
+          "general contractor",
+          "wholesale",
+          "manufacturing"
+        ]
+      }
+    ],
+    "min_known_weight": 0.6,
+    "priority_threshold": 70,
+    "review_threshold": 50,
+    "weak_subscore_below": 60,
+    "require_observable_problem": true
+  },
+  "top": 5
+}

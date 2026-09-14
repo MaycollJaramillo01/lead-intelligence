@@ -1,0 +1,883 @@
+{
+  "icp_profiles": [
+    {
+      "profile": {
+        "id": "01900000-0000-7000-8000-000000001157",
+        "project_id": "01900000-0000-7000-8000-000000000001",
+        "name": "Synthetic ICP: local services with weak websites",
+        "description": "Synthetic test data",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "deleted_at": null,
+        "deleted_reason": null,
+        "active_version_id": "01900000-0000-7000-8000-000000001159",
+        "archived_at": null
+      },
+      "versions": [
+        {
+          "id": "01900000-0000-7000-8000-000000001159",
+          "icp_profile_id": "01900000-0000-7000-8000-000000001157",
+          "version": 1,
+          "definition_json": {
+            "buying_capacity": {
+              "importance": "nice_to_have",
+              "min_proxies": 1,
+              "weight": 1
+            },
+            "categories": {
+              "excluded_terms": [],
+              "importance": "ignore",
+              "terms": [],
+              "weight": 1
+            },
+            "channels": {
+              "any_of": [
+                "phone",
+                "email"
+              ],
+              "importance": "must_have",
+              "require_decision_maker": false,
+              "weight": 3
+            },
+            "digital_maturity": {
+              "importance": "nice_to_have",
+              "wanted": [
+                "low",
+                "medium"
+              ],
+              "weight": 2
+            },
+            "exclusions": {
+              "categories": [],
+              "domains": [],
+              "names": [],
+              "postal_codes": [],
+              "regions": [
+                "NJ"
+              ]
+            },
+            "freshness": {
+              "importance": "ignore",
+              "max_days_since_seen": 365,
+              "weight": 1
+            },
+            "geography": {
+              "exclude": [],
+              "importance": "nice_to_have",
+              "include": [
+                {
+                  "country_code": "US",
+                  "locality": null,
+                  "postal_code": null,
+                  "region": "TX"
+                },
+                {
+                  "country_code": "US",
+                  "locality": null,
+                  "postal_code": null,
+                  "region": "FL"
+                },
+                {
+                  "country_code": "US",
+                  "locality": null,
+                  "postal_code": null,
+                  "region": "AZ"
+                },
+                {
+                  "country_code": "US",
+                  "locality": null,
+                  "postal_code": null,
+                  "region": "IL"
+                }
+              ],
+              "weight": 2
+            },
+            "latino": "none",
+            "offers": [
+              {
+                "capabilities": [
+                  "web design",
+                  "forms"
+                ],
+                "description": "A fast mobile site with a clear call to action and a quote form (synthetic offer).",
+                "key": "website_rebuild",
+                "name": "Website rebuild",
+                "not_for_categories": [],
+                "solves": [
+                  "no_website",
+                  "website_unreachable",
+                  "weak_conversion_path",
+                  "no_online_booking",
+                  "poor_mobile_experience"
+                ]
+              },
+              {
+                "capabilities": [
+                  "local seo",
+                  "analytics"
+                ],
+                "description": "Business details, structured data and analytics (synthetic offer).",
+                "key": "local_seo",
+                "name": "Local SEO setup",
+                "not_for_categories": [
+                  "grocery"
+                ],
+                "solves": [
+                  "weak_local_seo",
+                  "weak_technical_seo",
+                  "measurement_not_detected"
+                ]
+              }
+            ],
+            "problems": {
+              "importance": "ignore",
+              "wanted": [],
+              "weight": 1
+            },
+            "reputation": {
+              "importance": "ignore",
+              "min_rating": null,
+              "min_reviews": null,
+              "weight": 1
+            },
+            "schema_version": 1,
+            "size": {
+              "importance": "ignore",
+              "min_locations": 1,
+              "weight": 1
+            }
+          },
+          "schema_version": 1,
+          "created_by": "dev-seed",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "problems": [],
+      "is_synthetic": true
+    }
+  ],
+  "models": [
+    {
+      "model": {
+        "id": "01900000-0000-7000-8000-000000001154",
+        "key": "lead_intelligence.heuristic",
+        "name": "Lead Intelligence heuristic",
+        "description": "Heuristic weights declared in phase 11, not fitted to outcomes.",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "deleted_at": null,
+        "deleted_reason": null,
+        "active_version_id": "01900000-0000-7000-8000-000000001155",
+        "archived_at": null
+      },
+      "versions": [
+        {
+          "id": "01900000-0000-7000-8000-000000001155",
+          "scoring_model_id": "01900000-0000-7000-8000-000000001154",
+          "version": 1,
+          "definition_json": {
+            "features": [
+              {
+                "feature": "gap.no_website",
+                "weight": 3
+              },
+              {
+                "feature": "gap.website_unreachable",
+                "weight": 3
+              },
+              {
+                "feature": "gap.conversion_path",
+                "weight": 3
+              },
+              {
+                "feature": "gap.online_booking",
+                "weight": 1
+              },
+              {
+                "feature": "gap.local_seo",
+                "weight": 2
+              },
+              {
+                "feature": "gap.technical_seo",
+                "weight": 1
+              },
+              {
+                "feature": "gap.mobile",
+                "weight": 2
+              },
+              {
+                "feature": "gap.measurement",
+                "weight": 1
+              },
+              {
+                "feature": "health.recently_seen",
+                "weight": 2
+              },
+              {
+                "feature": "health.site_answers",
+                "weight": 2
+              },
+              {
+                "feature": "health.site_maintained",
+                "weight": 1
+              },
+              {
+                "feature": "health.trust_signals",
+                "weight": 1
+              },
+              {
+                "feature": "health.multiple_sources",
+                "weight": 1
+              },
+              {
+                "feature": "capacity.multiple_locations",
+                "weight": 2
+              },
+              {
+                "feature": "capacity.paid_tools",
+                "weight": 1
+              },
+              {
+                "feature": "capacity.team_published",
+                "weight": 2
+              },
+              {
+                "feature": "capacity.site_depth",
+                "weight": 1
+              },
+              {
+                "feature": "intent.advertising_active",
+                "weight": 2
+              },
+              {
+                "feature": "intent.site_changed",
+                "weight": 1
+              },
+              {
+                "feature": "intent.reputation_without_conversion",
+                "weight": 2
+              },
+              {
+                "feature": "data.coverage",
+                "weight": 3
+              },
+              {
+                "feature": "data.freshness",
+                "weight": 2
+              },
+              {
+                "feature": "data.agreement",
+                "weight": 1
+              },
+              {
+                "feature": "data.audit_coverage",
+                "weight": 1
+              }
+            ],
+            "final": [
+              {
+                "component": "ICP_MATCH",
+                "weight": 35
+              },
+              {
+                "component": "OPPORTUNITY_SCORE",
+                "weight": 40
+              },
+              {
+                "component": "CONTACTABILITY",
+                "weight": 25
+              },
+              {
+                "component": "LATINO_CONFIDENCE",
+                "weight": 0
+              }
+            ],
+            "min_known_weight": 0.6,
+            "not_applicable": [
+              {
+                "categories": [
+                  "roofing",
+                  "construction",
+                  "general contractor",
+                  "wholesale",
+                  "manufacturing"
+                ],
+                "feature": "gap.online_booking"
+              }
+            ],
+            "opportunity": [
+              {
+                "component": "DIGITAL_GAP",
+                "weight": 45
+              },
+              {
+                "component": "BUSINESS_HEALTH",
+                "weight": 20
+              },
+              {
+                "component": "BUYING_CAPACITY",
+                "weight": 20
+              },
+              {
+                "component": "COMMERCIAL_INTENT",
+                "weight": 15
+              }
+            ],
+            "priority_threshold": 70,
+            "require_observable_problem": true,
+            "review_threshold": 50,
+            "schema_version": 1,
+            "weak_subscore_below": 60
+          },
+          "schema_version": 1,
+          "is_heuristic": true,
+          "created_by": "lead_scoring",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "problems": []
+    },
+    {
+      "model": {
+        "id": "01900000-0000-7000-8000-000000001394",
+        "key": "custom.synthetic_model_contactability_first",
+        "name": "Synthetic model: contactability first",
+        "description": "Synthetic test data",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "deleted_at": null,
+        "deleted_reason": null,
+        "active_version_id": null,
+        "archived_at": null
+      },
+      "versions": [
+        {
+          "id": "01900000-0000-7000-8000-000000001396",
+          "scoring_model_id": "01900000-0000-7000-8000-000000001394",
+          "version": 1,
+          "definition_json": {
+            "features": [
+              {
+                "feature": "gap.no_website",
+                "weight": 3
+              },
+              {
+                "feature": "gap.website_unreachable",
+                "weight": 3
+              },
+              {
+                "feature": "gap.conversion_path",
+                "weight": 3
+              },
+              {
+                "feature": "gap.online_booking",
+                "weight": 1
+              },
+              {
+                "feature": "gap.local_seo",
+                "weight": 2
+              },
+              {
+                "feature": "gap.technical_seo",
+                "weight": 1
+              },
+              {
+                "feature": "gap.mobile",
+                "weight": 2
+              },
+              {
+                "feature": "gap.measurement",
+                "weight": 1
+              },
+              {
+                "feature": "health.recently_seen",
+                "weight": 2
+              },
+              {
+                "feature": "health.site_answers",
+                "weight": 2
+              },
+              {
+                "feature": "health.site_maintained",
+                "weight": 1
+              },
+              {
+                "feature": "health.trust_signals",
+                "weight": 1
+              },
+              {
+                "feature": "health.multiple_sources",
+                "weight": 1
+              },
+              {
+                "feature": "capacity.multiple_locations",
+                "weight": 2
+              },
+              {
+                "feature": "capacity.paid_tools",
+                "weight": 1
+              },
+              {
+                "feature": "capacity.team_published",
+                "weight": 2
+              },
+              {
+                "feature": "capacity.site_depth",
+                "weight": 1
+              },
+              {
+                "feature": "intent.advertising_active",
+                "weight": 2
+              },
+              {
+                "feature": "intent.site_changed",
+                "weight": 1
+              },
+              {
+                "feature": "intent.reputation_without_conversion",
+                "weight": 2
+              },
+              {
+                "feature": "data.coverage",
+                "weight": 3
+              },
+              {
+                "feature": "data.freshness",
+                "weight": 2
+              },
+              {
+                "feature": "data.agreement",
+                "weight": 1
+              },
+              {
+                "feature": "data.audit_coverage",
+                "weight": 1
+              }
+            ],
+            "final": [
+              {
+                "component": "ICP_MATCH",
+                "weight": 25
+              },
+              {
+                "component": "OPPORTUNITY_SCORE",
+                "weight": 35
+              },
+              {
+                "component": "CONTACTABILITY",
+                "weight": 40
+              },
+              {
+                "component": "LATINO_CONFIDENCE",
+                "weight": 0
+              }
+            ],
+            "min_known_weight": 0.6,
+            "not_applicable": [
+              {
+                "categories": [
+                  "roofing",
+                  "construction",
+                  "general contractor",
+                  "wholesale",
+                  "manufacturing"
+                ],
+                "feature": "gap.online_booking"
+              }
+            ],
+            "opportunity": [
+              {
+                "component": "DIGITAL_GAP",
+                "weight": 45
+              },
+              {
+                "component": "BUSINESS_HEALTH",
+                "weight": 20
+              },
+              {
+                "component": "BUYING_CAPACITY",
+                "weight": 20
+              },
+              {
+                "component": "COMMERCIAL_INTENT",
+                "weight": 15
+              }
+            ],
+            "priority_threshold": 70,
+            "require_observable_problem": true,
+            "review_threshold": 50,
+            "schema_version": 1,
+            "weak_subscore_below": 60
+          },
+          "schema_version": 1,
+          "is_heuristic": true,
+          "created_by": "dev-seed",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "problems": []
+    }
+  ],
+  "features": [
+    {
+      "feature": "gap.no_website",
+      "component": "DIGITAL_GAP",
+      "problem": "no_website",
+      "description": "No source lists a website for the business."
+    },
+    {
+      "feature": "gap.website_unreachable",
+      "component": "DIGITAL_GAP",
+      "problem": "website_unreachable",
+      "description": "The crawl could not analyze the site, or its pages failed (technical.page_errors)."
+    },
+    {
+      "feature": "gap.conversion_path",
+      "component": "DIGITAL_GAP",
+      "problem": "weak_conversion_path",
+      "description": "No main call to action or lead form (conversion.primary_cta, conversion.lead_form)."
+    },
+    {
+      "feature": "gap.online_booking",
+      "component": "DIGITAL_GAP",
+      "problem": "no_online_booking",
+      "description": "No booking tool, booking or quote action (conversion.booking_or_quote)."
+    },
+    {
+      "feature": "gap.local_seo",
+      "component": "DIGITAL_GAP",
+      "problem": "weak_local_seo",
+      "description": "The local SEO subscore is below the model's weak threshold."
+    },
+    {
+      "feature": "gap.technical_seo",
+      "component": "DIGITAL_GAP",
+      "problem": "weak_technical_seo",
+      "description": "The SEO subscore is below the model's weak threshold."
+    },
+    {
+      "feature": "gap.mobile",
+      "component": "DIGITAL_GAP",
+      "problem": "poor_mobile_experience",
+      "description": "No usable mobile viewport (mobile.viewport)."
+    },
+    {
+      "feature": "gap.measurement",
+      "component": "DIGITAL_GAP",
+      "problem": "measurement_not_detected",
+      "description": "Analytics not detected (measurement.analytics); not detected is not absent."
+    },
+    {
+      "feature": "health.recently_seen",
+      "component": "BUSINESS_HEALTH",
+      "problem": null,
+      "description": "A source listed the business recently (180 days: 1, a year: 0.5)."
+    },
+    {
+      "feature": "health.site_answers",
+      "component": "BUSINESS_HEALTH",
+      "problem": null,
+      "description": "The site's pages answered (technical.page_errors)."
+    },
+    {
+      "feature": "health.site_maintained",
+      "component": "BUSINESS_HEALTH",
+      "problem": null,
+      "description": "The site shows a current copyright year (content.freshness)."
+    },
+    {
+      "feature": "health.trust_signals",
+      "component": "BUSINESS_HEALTH",
+      "problem": null,
+      "description": "Testimonials, licences, reviews or similar shown (conversion.trust_signals)."
+    },
+    {
+      "feature": "health.multiple_sources",
+      "component": "BUSINESS_HEALTH",
+      "problem": null,
+      "description": "More than one acquired record lists the business."
+    },
+    {
+      "feature": "capacity.multiple_locations",
+      "component": "BUYING_CAPACITY",
+      "problem": null,
+      "description": "Two or more distinct locations observed (a size proxy)."
+    },
+    {
+      "feature": "capacity.paid_tools",
+      "component": "BUYING_CAPACITY",
+      "problem": null,
+      "description": "A booking, ecommerce or call tracking tool detected (a spending proxy)."
+    },
+    {
+      "feature": "capacity.team_published",
+      "component": "BUYING_CAPACITY",
+      "problem": null,
+      "description": "Decision makers published (two or more: 1, one: 0.5)."
+    },
+    {
+      "feature": "capacity.site_depth",
+      "component": "BUYING_CAPACITY",
+      "problem": null,
+      "description": "Pages analyzed on the site (five or more: 1, two: 0.5)."
+    },
+    {
+      "feature": "intent.advertising_active",
+      "component": "COMMERCIAL_INTENT",
+      "problem": null,
+      "description": "An advertising pixel or call tracking detected (measurement.advertising)."
+    },
+    {
+      "feature": "intent.site_changed",
+      "component": "COMMERCIAL_INTENT",
+      "problem": null,
+      "description": "The site changed since its previous audit, audited within 90 days."
+    },
+    {
+      "feature": "intent.reputation_without_conversion",
+      "component": "COMMERCIAL_INTENT",
+      "problem": null,
+      "description": "Trust signals pass while the conversion subscore is weak."
+    },
+    {
+      "feature": "data.coverage",
+      "component": "DATA_CONFIDENCE",
+      "problem": null,
+      "description": "Share of weighted opportunity features that are known."
+    },
+    {
+      "feature": "data.freshness",
+      "component": "DATA_CONFIDENCE",
+      "problem": null,
+      "description": "Age of the newest data (30 days: 1, 90: 0.7, 180: 0.4, older: 0.1)."
+    },
+    {
+      "feature": "data.agreement",
+      "component": "DATA_CONFIDENCE",
+      "problem": null,
+      "description": "Fields whose records disagree (each one removes 0.25)."
+    },
+    {
+      "feature": "data.audit_coverage",
+      "component": "DATA_CONFIDENCE",
+      "problem": null,
+      "description": "Share of the site's expected pages the audit analyzed."
+    }
+  ],
+  "engine_version": "1.0.0",
+  "icp_template": {
+    "schema_version": 1,
+    "geography": {
+      "importance": "ignore",
+      "weight": 1,
+      "include": [],
+      "exclude": []
+    },
+    "categories": {
+      "importance": "ignore",
+      "weight": 1,
+      "terms": [],
+      "excluded_terms": []
+    },
+    "size": {
+      "importance": "ignore",
+      "weight": 1,
+      "min_locations": 1
+    },
+    "freshness": {
+      "importance": "ignore",
+      "weight": 1,
+      "max_days_since_seen": 365
+    },
+    "reputation": {
+      "importance": "ignore",
+      "weight": 1,
+      "min_rating": null,
+      "min_reviews": null
+    },
+    "digital_maturity": {
+      "importance": "ignore",
+      "weight": 1,
+      "wanted": []
+    },
+    "problems": {
+      "importance": "ignore",
+      "weight": 1,
+      "wanted": []
+    },
+    "channels": {
+      "importance": "ignore",
+      "weight": 1,
+      "any_of": [],
+      "require_decision_maker": false
+    },
+    "buying_capacity": {
+      "importance": "ignore",
+      "weight": 1,
+      "min_proxies": 1
+    },
+    "latino": "none",
+    "exclusions": {
+      "names": [],
+      "domains": [],
+      "categories": [],
+      "regions": [],
+      "postal_codes": []
+    },
+    "offers": []
+  },
+  "scoring_template": {
+    "schema_version": 1,
+    "features": [
+      {
+        "feature": "gap.no_website",
+        "weight": 3
+      },
+      {
+        "feature": "gap.website_unreachable",
+        "weight": 3
+      },
+      {
+        "feature": "gap.conversion_path",
+        "weight": 3
+      },
+      {
+        "feature": "gap.online_booking",
+        "weight": 1
+      },
+      {
+        "feature": "gap.local_seo",
+        "weight": 2
+      },
+      {
+        "feature": "gap.technical_seo",
+        "weight": 1
+      },
+      {
+        "feature": "gap.mobile",
+        "weight": 2
+      },
+      {
+        "feature": "gap.measurement",
+        "weight": 1
+      },
+      {
+        "feature": "health.recently_seen",
+        "weight": 2
+      },
+      {
+        "feature": "health.site_answers",
+        "weight": 2
+      },
+      {
+        "feature": "health.site_maintained",
+        "weight": 1
+      },
+      {
+        "feature": "health.trust_signals",
+        "weight": 1
+      },
+      {
+        "feature": "health.multiple_sources",
+        "weight": 1
+      },
+      {
+        "feature": "capacity.multiple_locations",
+        "weight": 2
+      },
+      {
+        "feature": "capacity.paid_tools",
+        "weight": 1
+      },
+      {
+        "feature": "capacity.team_published",
+        "weight": 2
+      },
+      {
+        "feature": "capacity.site_depth",
+        "weight": 1
+      },
+      {
+        "feature": "intent.advertising_active",
+        "weight": 2
+      },
+      {
+        "feature": "intent.site_changed",
+        "weight": 1
+      },
+      {
+        "feature": "intent.reputation_without_conversion",
+        "weight": 2
+      },
+      {
+        "feature": "data.coverage",
+        "weight": 3
+      },
+      {
+        "feature": "data.freshness",
+        "weight": 2
+      },
+      {
+        "feature": "data.agreement",
+        "weight": 1
+      },
+      {
+        "feature": "data.audit_coverage",
+        "weight": 1
+      }
+    ],
+    "opportunity": [
+      {
+        "component": "DIGITAL_GAP",
+        "weight": 45
+      },
+      {
+        "component": "BUSINESS_HEALTH",
+        "weight": 20
+      },
+      {
+        "component": "BUYING_CAPACITY",
+        "weight": 20
+      },
+      {
+        "component": "COMMERCIAL_INTENT",
+        "weight": 15
+      }
+    ],
+    "final": [
+      {
+        "component": "ICP_MATCH",
+        "weight": 35
+      },
+      {
+        "component": "OPPORTUNITY_SCORE",
+        "weight": 40
+      },
+      {
+        "component": "CONTACTABILITY",
+        "weight": 25
+      },
+      {
+        "component": "LATINO_CONFIDENCE",
+        "weight": 0
+      }
+    ],
+    "not_applicable": [
+      {
+        "feature": "gap.online_booking",
+        "categories": [
+          "roofing",
+          "construction",
+          "general contractor",
+          "wholesale",
+          "manufacturing"
+        ]
+      }
+    ],
+    "min_known_weight": 0.6,
+    "priority_threshold": 70,
+    "review_threshold": 50,
+    "weak_subscore_below": 60,
+    "require_observable_problem": true
+  }
+}

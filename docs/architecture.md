@@ -70,7 +70,10 @@ contracts:check` (part of `pnpm check` and `pnpm build`) fails when generated fi
   `contacts.get`, `contacts.act`, `decision_makers.list`, `decision_makers.review`,
   `suppressions.list`, `suppressions.change`, `suppressions.import`, `suppressions.export`), the
   local AI set (`ai.status`, `ai.configure`, `ai.start`, `ai.control`, `ai.runs`, `ai.inferences`,
-  `ai.inference`, `ai.review`, `ai.benchmark`, `ai.model_change`) and, in development builds only,
+  `ai.inference`, `ai.review`, `ai.benchmark`, `ai.model_change`), the lead scoring set
+  (`scoring.catalog`, `scoring.save_icp`, `scoring.save_model`, `scoring.change`, `scoring.simulate`,
+  `scoring.start`, `scoring.control`, `scoring.runs`, `scoring.leads`, `scoring.scorecard`,
+  `scoring.compare`, `scoring.calibration`, `scoring.act`) and, in development builds only,
   `dev.seed_synthetic`. The answer echoes `request_id` with type `<request>.result` and carries
   either `payload` or `error`, never both.
 - Events (worker → core): `worker.ready` (handshake, carries a health payload) and
@@ -258,6 +261,34 @@ Crawler ─ before each URL, while the AI queue works under memory pressure: wai
 
 Tasks, checks, prompts, VRAM, the queue, security, the benchmark and the recommended
 configuration for an RTX 4060 are in [local-ai.md](local-ai.md).
+
+## Data flow: lead scoring
+
+```text
+IcpBuilderScreen ─ desktop.getScoringCatalog({project_id}) → get_scoring_catalog → scoring.catalog
+  → worker: profiles and models with every version and the problems of the newest one, the feature
+    catalog and templates; the default heuristic model is created on first read    (research-engine)
+  ─ desktop.saveIcpProfile · desktop.changeScoring({target, id, action, version_id, reason})
+  ─ desktop.simulateScoring({project_id | facts_from_run_id, icp, scoring, top}) → scoring.simulate
+  → worker: facts read now (≤ 5 000 businesses) or stored by a run → model.score in memory → tiers,
+    distribution, gates with failing examples, top leads; nothing written
+ScoringModelsScreen ─ desktop.saveScoringModel ─ desktop.startScoring({project_id,
+  icp_profile_version_id, scoring_model_version_id, facts_from_run_id}) → start_scoring
+  → worker: one lead_scoring job; on a thread, per 200 canonical businesses: facts from the store
+    or from the stored run → model.score → business_scores and component_scores, checkpoint
+  ⟳ desktop.listScoreRuns while a run moves ─ compareScoreRuns ─ getCalibration
+LeadExplorerScreen ─ desktop.listLeadScores({score_run_id, tier, min_score, problem, search, cursor})
+  → ranked rows of the newest finished run (ROW_NUMBER over the whole run); validate() checks the
+  rank order and the filters
+ScorecardPanel (BusinessInspector) ─ desktop.getLeadScorecard({business_id, score_run_id}) → the
+  scorecard, earlier scores, outcomes, reviews, AI wording only when it cites the scorecard's own
+  findings; validate() refuses contributions that do not add up and claims without evidence
+  ─ desktop.actOnLead({action, stage, lost_reason, reason}) → a review, or an outcome that moves
+  lead_stage along its state machine
+JobsScreen ─ listScoreRuns; cancel goes to control_scoring
+```
+
+Features, gates, formulas, versions, calibration and limits are in [scoring.md](scoring.md).
 
 Worker errors keep their meaning across the boundary: `not_found` → `CommandError.not_found`,
 `not_allowed` → `not_allowed`, `invalid_payload` → `invalid_input`; anything else is `worker_error`

@@ -1,0 +1,1091 @@
+{
+  "score_run": {
+    "job_id": "01900000-0000-7000-8000-000000001163",
+    "score_run_id": "01900000-0000-7000-8000-000000001162",
+    "project_id": "01900000-0000-7000-8000-000000000001",
+    "project_name": "Synthetic test workspace",
+    "status": "succeeded",
+    "stage": "done",
+    "progress_done": 20,
+    "progress_total": 20,
+    "scoring_model_id": "01900000-0000-7000-8000-000000001154",
+    "scoring_model_key": "lead_intelligence.heuristic",
+    "scoring_model_name": "Lead Intelligence heuristic",
+    "scoring_model_version": 1,
+    "is_heuristic": true,
+    "icp_profile_id": "01900000-0000-7000-8000-000000001157",
+    "icp_profile_name": "Synthetic ICP: local services with weak websites",
+    "icp_profile_version": 1,
+    "engine_version": "1.0.0",
+    "facts_from_run_id": null,
+    "stats": {
+      "businesses": 20,
+      "priority": 0,
+      "review": 6,
+      "low": 4,
+      "insufficient_data": 10,
+      "excluded": 0
+    },
+    "distribution": [
+      {
+        "low": 0,
+        "businesses": 0
+      },
+      {
+        "low": 10,
+        "businesses": 0
+      },
+      {
+        "low": 20,
+        "businesses": 0
+      },
+      {
+        "low": 30,
+        "businesses": 1
+      },
+      {
+        "low": 40,
+        "businesses": 3
+      },
+      {
+        "low": 50,
+        "businesses": 0
+      },
+      {
+        "low": 60,
+        "businesses": 6
+      },
+      {
+        "low": 70,
+        "businesses": 0
+      },
+      {
+        "low": 80,
+        "businesses": 0
+      },
+      {
+        "low": 90,
+        "businesses": 0
+      }
+    ],
+    "requested_at": "2026-01-01T00:00:00.000Z",
+    "started_at": "2026-01-01T00:00:00.000Z",
+    "finished_at": "2026-01-01T00:00:00.000Z",
+    "events": [
+      {
+        "level": "info",
+        "event": "run_succeeded",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "businesses": 20,
+          "excluded": 0,
+          "insufficient_data": 10,
+          "low": 4,
+          "priority": 0,
+          "review": 6
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "level": "info",
+        "event": "stage_started",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "businesses": 20,
+          "facts": "store"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "level": "info",
+        "event": "run_queued",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "project_id": "01900000-0000-7000-8000-000000000001",
+          "score_run_id": "01900000-0000-7000-8000-000000001162"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      }
+    ],
+    "is_synthetic": true
+  },
+  "business_id": "01900000-0000-7000-8000-000000000090",
+  "display_name": "Synthetic Bakery 0001",
+  "lead_stage": "attempted",
+  "rank": 1,
+  "scorecard": {
+    "business_id": "01900000-0000-7000-8000-000000000090",
+    "tier": "review",
+    "total_score": 63.6471,
+    "confidence": 0.6444,
+    "known_weight": 1.0,
+    "versions": {
+      "engine_version": "1.0.0",
+      "facts_version": "1.0.0",
+      "scoring_model_key": "lead_intelligence.heuristic",
+      "scoring_model_version": 1,
+      "is_heuristic": true,
+      "icp_profile_name": "Synthetic ICP: local services with weak websites",
+      "icp_profile_version": 1
+    },
+    "components": [
+      {
+        "component": "ICP_MATCH",
+        "value": 71.4286,
+        "weight": 35,
+        "contribution": 25.0,
+        "coverage": 0.875,
+        "formula": "100 * Σ(criterion * weight) / Σ weight over decided criteria that are not ignored (pass 1, fail 0); undecided criteria are left out"
+      },
+      {
+        "component": "LATINO_CONFIDENCE",
+        "value": null,
+        "weight": 0,
+        "contribution": null,
+        "coverage": 0.0,
+        "formula": "100 * confidence of the Latino assessment the business shows, when its status is not unknown; campaigns filter by the Latino requirement"
+      },
+      {
+        "component": "BUSINESS_HEALTH",
+        "value": 40.0,
+        "weight": 20,
+        "contribution": 9.4118,
+        "coverage": 0.7143,
+        "formula": "100 * Σ(value * weight) / Σ weight over known features with a weight; unknown and not applicable features are left out and lower the coverage"
+      },
+      {
+        "component": "DIGITAL_GAP",
+        "value": 75.0,
+        "weight": 45,
+        "contribution": 39.7059,
+        "coverage": 0.25,
+        "formula": "100 * Σ(value * weight) / Σ weight over known features with a weight; unknown and not applicable features are left out and lower the coverage"
+      },
+      {
+        "component": "BUYING_CAPACITY",
+        "value": 0.0,
+        "weight": 20,
+        "contribution": 0.0,
+        "coverage": 0.8333,
+        "formula": "100 * Σ(value * weight) / Σ weight over known features with a weight; unknown and not applicable features are left out and lower the coverage"
+      },
+      {
+        "component": "CONTACTABILITY",
+        "value": 76.0,
+        "weight": 25,
+        "contribution": 19.0,
+        "coverage": 1.0,
+        "formula": "score = round(100 x sum(weight x value) / sum(weight)) over availability 25, validation 30, role 15, freshness 15, source 15; only published or imported channels that are not invalid, suppressed or in the fictional range count; hypotheses never count; a suppressed business has no score"
+      },
+      {
+        "component": "COMMERCIAL_INTENT",
+        "value": null,
+        "weight": 15,
+        "contribution": null,
+        "coverage": 0.0,
+        "formula": "100 * Σ(value * weight) / Σ weight over known features with a weight; unknown and not applicable features are left out and lower the coverage"
+      },
+      {
+        "component": "DATA_CONFIDENCE",
+        "value": 64.44,
+        "weight": 0,
+        "contribution": null,
+        "coverage": 1.0,
+        "formula": "100 * Σ(value * weight) / Σ weight over known features with a weight; unknown and not applicable features are left out and lower the coverage"
+      },
+      {
+        "component": "OPPORTUNITY_SCORE",
+        "value": 49.1176,
+        "weight": 40,
+        "contribution": 19.6471,
+        "coverage": 0.85,
+        "formula": "OPPORTUNITY_SCORE = (DIGITAL_GAP * 45 + BUSINESS_HEALTH * 20 + BUYING_CAPACITY * 20 + COMMERCIAL_INTENT * 15) / Σ weight of the known inputs"
+      },
+      {
+        "component": "FINAL_LEAD_SCORE",
+        "value": 63.6471,
+        "weight": 0,
+        "contribution": null,
+        "coverage": 1.0,
+        "formula": "FINAL_LEAD_SCORE = (ICP_MATCH * 35 + OPPORTUNITY_SCORE * 40 + CONTACTABILITY * 25) / Σ weight of the known inputs; gates are decided first, and the tier follows the model's thresholds"
+      }
+    ],
+    "features": [
+      {
+        "feature": "gap.no_website",
+        "component": "DIGITAL_GAP",
+        "problem": "no_website",
+        "state": "not_applicable",
+        "value": null,
+        "weight": 3,
+        "points": null,
+        "impact": null,
+        "detail": "A website is known for this business",
+        "reason": "website_known",
+        "evidence": []
+      },
+      {
+        "feature": "gap.website_unreachable",
+        "component": "DIGITAL_GAP",
+        "problem": "website_unreachable",
+        "state": "known",
+        "value": 1.0,
+        "weight": 3,
+        "points": 75.0,
+        "impact": 15.8824,
+        "detail": "The crawl could not analyze any page of the site",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "website_audit",
+            "ref": "01900000-0000-7000-8000-000000000465",
+            "label": "synthetic-bakery-0001.example",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "gap.conversion_path",
+        "component": "DIGITAL_GAP",
+        "problem": "weak_conversion_path",
+        "state": "unknown",
+        "value": null,
+        "weight": 3,
+        "points": null,
+        "impact": null,
+        "detail": "Calls to action and forms could not be evaluated",
+        "reason": "finding_unknown",
+        "evidence": []
+      },
+      {
+        "feature": "gap.online_booking",
+        "component": "DIGITAL_GAP",
+        "problem": "no_online_booking",
+        "state": "unknown",
+        "value": null,
+        "weight": 1,
+        "points": null,
+        "impact": null,
+        "detail": "conversion.booking_or_quote could not be evaluated",
+        "reason": "finding_unknown",
+        "evidence": []
+      },
+      {
+        "feature": "gap.local_seo",
+        "component": "DIGITAL_GAP",
+        "problem": "weak_local_seo",
+        "state": "unknown",
+        "value": null,
+        "weight": 2,
+        "points": null,
+        "impact": null,
+        "detail": "No local SEO rule could be evaluated",
+        "reason": "subscore_unknown",
+        "evidence": []
+      },
+      {
+        "feature": "gap.technical_seo",
+        "component": "DIGITAL_GAP",
+        "problem": "weak_technical_seo",
+        "state": "known",
+        "value": 0.0,
+        "weight": 1,
+        "points": 0.0,
+        "impact": 0.0,
+        "detail": "Seo subscore 75/100",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "website_finding",
+            "ref": "01900000-0000-7000-8000-000000000481",
+            "label": "seo.sitemap: warning",
+            "url": "https://synthetic-bakery-0001.example/sitemap.xml"
+          },
+          {
+            "kind": "website_audit",
+            "ref": "01900000-0000-7000-8000-000000000465",
+            "label": "synthetic-bakery-0001.example",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "gap.mobile",
+        "component": "DIGITAL_GAP",
+        "problem": "poor_mobile_experience",
+        "state": "unknown",
+        "value": null,
+        "weight": 2,
+        "points": null,
+        "impact": null,
+        "detail": "mobile.viewport could not be evaluated",
+        "reason": "finding_unknown",
+        "evidence": []
+      },
+      {
+        "feature": "gap.measurement",
+        "component": "DIGITAL_GAP",
+        "problem": "measurement_not_detected",
+        "state": "unknown",
+        "value": null,
+        "weight": 1,
+        "points": null,
+        "impact": null,
+        "detail": "measurement.analytics could not be evaluated",
+        "reason": "finding_unknown",
+        "evidence": []
+      },
+      {
+        "feature": "health.recently_seen",
+        "component": "BUSINESS_HEALTH",
+        "problem": null,
+        "state": "known",
+        "value": 1.0,
+        "weight": 2,
+        "points": 40.0,
+        "impact": 3.7647,
+        "detail": "Last listed by a source 0 days before these facts were read",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "business",
+            "ref": "01900000-0000-7000-8000-000000000090",
+            "label": "Synthetic Bakery 0001",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "health.site_answers",
+        "component": "BUSINESS_HEALTH",
+        "problem": null,
+        "state": "known",
+        "value": 0.0,
+        "weight": 2,
+        "points": 0.0,
+        "impact": 0.0,
+        "detail": "No page of the site could be analyzed",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "website_audit",
+            "ref": "01900000-0000-7000-8000-000000000465",
+            "label": "synthetic-bakery-0001.example",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "health.site_maintained",
+        "component": "BUSINESS_HEALTH",
+        "problem": null,
+        "state": "unknown",
+        "value": null,
+        "weight": 1,
+        "points": null,
+        "impact": null,
+        "detail": "content.freshness could not be evaluated",
+        "reason": "finding_unknown",
+        "evidence": []
+      },
+      {
+        "feature": "health.trust_signals",
+        "component": "BUSINESS_HEALTH",
+        "problem": null,
+        "state": "unknown",
+        "value": null,
+        "weight": 1,
+        "points": null,
+        "impact": null,
+        "detail": "conversion.trust_signals could not be evaluated",
+        "reason": "finding_unknown",
+        "evidence": []
+      },
+      {
+        "feature": "health.multiple_sources",
+        "component": "BUSINESS_HEALTH",
+        "problem": null,
+        "state": "known",
+        "value": 0.0,
+        "weight": 1,
+        "points": 0.0,
+        "impact": 0.0,
+        "detail": "Listed by 1 acquired record(s)",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "business",
+            "ref": "01900000-0000-7000-8000-000000000090",
+            "label": "Synthetic Bakery 0001",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "capacity.multiple_locations",
+        "component": "BUYING_CAPACITY",
+        "problem": null,
+        "state": "known",
+        "value": 0.0,
+        "weight": 2,
+        "points": 0.0,
+        "impact": 0.0,
+        "detail": "1 distinct location(s)",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "business",
+            "ref": "01900000-0000-7000-8000-000000000090",
+            "label": "Synthetic Bakery 0001",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "capacity.paid_tools",
+        "component": "BUYING_CAPACITY",
+        "problem": null,
+        "state": "unknown",
+        "value": null,
+        "weight": 1,
+        "points": null,
+        "impact": null,
+        "detail": "No booking, ecommerce or call tracking tool detected",
+        "reason": "not_detected",
+        "evidence": []
+      },
+      {
+        "feature": "capacity.team_published",
+        "component": "BUYING_CAPACITY",
+        "problem": null,
+        "state": "known",
+        "value": 0.0,
+        "weight": 2,
+        "points": 0.0,
+        "impact": 0.0,
+        "detail": "0 published decision maker(s)",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "website_audit",
+            "ref": "01900000-0000-7000-8000-000000000465",
+            "label": "synthetic-bakery-0001.example",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "capacity.site_depth",
+        "component": "BUYING_CAPACITY",
+        "problem": null,
+        "state": "known",
+        "value": 0.0,
+        "weight": 1,
+        "points": 0.0,
+        "impact": 0.0,
+        "detail": "0 page(s) analyzed",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "website_audit",
+            "ref": "01900000-0000-7000-8000-000000000465",
+            "label": "synthetic-bakery-0001.example",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "intent.advertising_active",
+        "component": "COMMERCIAL_INTENT",
+        "problem": null,
+        "state": "unknown",
+        "value": null,
+        "weight": 2,
+        "points": null,
+        "impact": null,
+        "detail": "No advertising pixel detected (which does not mean none)",
+        "reason": "not_detected",
+        "evidence": []
+      },
+      {
+        "feature": "intent.site_changed",
+        "component": "COMMERCIAL_INTENT",
+        "problem": null,
+        "state": "unknown",
+        "value": null,
+        "weight": 1,
+        "points": null,
+        "impact": null,
+        "detail": "Only one audit of the site: nothing to compare",
+        "reason": "single_audit",
+        "evidence": []
+      },
+      {
+        "feature": "intent.reputation_without_conversion",
+        "component": "COMMERCIAL_INTENT",
+        "problem": null,
+        "state": "unknown",
+        "value": null,
+        "weight": 2,
+        "points": null,
+        "impact": null,
+        "detail": "Trust signals or the conversion subscore are unknown",
+        "reason": "finding_unknown",
+        "evidence": []
+      },
+      {
+        "feature": "data.coverage",
+        "component": "DATA_CONFIDENCE",
+        "problem": null,
+        "state": "known",
+        "value": 0.4516,
+        "weight": 3,
+        "points": 19.3543,
+        "impact": null,
+        "detail": "45% of the weighted opportunity features are known",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "business",
+            "ref": "01900000-0000-7000-8000-000000000090",
+            "label": "Synthetic Bakery 0001",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "data.freshness",
+        "component": "DATA_CONFIDENCE",
+        "problem": null,
+        "state": "known",
+        "value": 1.0,
+        "weight": 2,
+        "points": 28.5714,
+        "impact": null,
+        "detail": "Newest data is 0 days old",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "website_audit",
+            "ref": "01900000-0000-7000-8000-000000000465",
+            "label": "synthetic-bakery-0001.example",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "data.agreement",
+        "component": "DATA_CONFIDENCE",
+        "problem": null,
+        "state": "known",
+        "value": 1.0,
+        "weight": 1,
+        "points": 14.2857,
+        "impact": null,
+        "detail": "0 field(s) whose records disagree",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "business",
+            "ref": "01900000-0000-7000-8000-000000000090",
+            "label": "Synthetic Bakery 0001",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "data.audit_coverage",
+        "component": "DATA_CONFIDENCE",
+        "problem": null,
+        "state": "known",
+        "value": 0.156,
+        "weight": 1,
+        "points": 2.2286,
+        "impact": null,
+        "detail": "Audit coverage 16%",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "website_audit",
+            "ref": "01900000-0000-7000-8000-000000000465",
+            "label": "synthetic-bakery-0001.example",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "contact.availability",
+        "component": "CONTACTABILITY",
+        "problem": null,
+        "state": "known",
+        "value": 0.35,
+        "weight": 25,
+        "points": 8.75,
+        "impact": 2.1875,
+        "detail": "availability: email",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "contact_channel",
+            "ref": "email:hello@synthetic-bakery-0001.example",
+            "label": "email: likely_valid",
+            "url": null
+          },
+          {
+            "kind": "contact_channel",
+            "ref": "phone:+15125550101",
+            "label": "phone: structurally_valid",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "contact.validation",
+        "component": "CONTACTABILITY",
+        "problem": null,
+        "state": "known",
+        "value": 1.0,
+        "weight": 30,
+        "points": 30.0,
+        "impact": 7.5,
+        "detail": "validation: likely_valid",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "contact_channel",
+            "ref": "email:hello@synthetic-bakery-0001.example",
+            "label": "email: likely_valid",
+            "url": null
+          },
+          {
+            "kind": "contact_channel",
+            "ref": "phone:+15125550101",
+            "label": "phone: structurally_valid",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "contact.role",
+        "component": "CONTACTABILITY",
+        "problem": null,
+        "state": "known",
+        "value": 0.5,
+        "weight": 15,
+        "points": 7.5,
+        "impact": 1.875,
+        "detail": "role: role_address",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "contact_channel",
+            "ref": "email:hello@synthetic-bakery-0001.example",
+            "label": "email: likely_valid",
+            "url": null
+          },
+          {
+            "kind": "contact_channel",
+            "ref": "phone:+15125550101",
+            "label": "phone: structurally_valid",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "contact.freshness",
+        "component": "CONTACTABILITY",
+        "problem": null,
+        "state": "known",
+        "value": 1.0,
+        "weight": 15,
+        "points": 15.0,
+        "impact": 3.75,
+        "detail": "freshness: fresh",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "contact_channel",
+            "ref": "email:hello@synthetic-bakery-0001.example",
+            "label": "email: likely_valid",
+            "url": null
+          },
+          {
+            "kind": "contact_channel",
+            "ref": "phone:+15125550101",
+            "label": "phone: structurally_valid",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "contact.source",
+        "component": "CONTACTABILITY",
+        "problem": null,
+        "state": "known",
+        "value": 1.0,
+        "weight": 15,
+        "points": 15.0,
+        "impact": 3.75,
+        "detail": "source: business_website",
+        "reason": null,
+        "evidence": [
+          {
+            "kind": "contact_channel",
+            "ref": "email:hello@synthetic-bakery-0001.example",
+            "label": "email: likely_valid",
+            "url": null
+          },
+          {
+            "kind": "contact_channel",
+            "ref": "phone:+15125550101",
+            "label": "phone: structurally_valid",
+            "url": null
+          }
+        ]
+      }
+    ],
+    "gates": [
+      {
+        "gate": "gate.do_not_contact",
+        "outcome": "pass",
+        "detail": "Not on the do-not-contact list",
+        "evidence": [
+          {
+            "kind": "business",
+            "ref": "01900000-0000-7000-8000-000000000090",
+            "label": "Synthetic Bakery 0001",
+            "url": null
+          }
+        ]
+      },
+      {
+        "gate": "gate.business_closed",
+        "outcome": "pass",
+        "detail": "Business status: candidate",
+        "evidence": [
+          {
+            "kind": "business",
+            "ref": "01900000-0000-7000-8000-000000000090",
+            "label": "Synthetic Bakery 0001",
+            "url": null
+          }
+        ]
+      },
+      {
+        "gate": "gate.exclusions",
+        "outcome": "pass",
+        "detail": "No exclusion applies",
+        "evidence": [
+          {
+            "kind": "business",
+            "ref": "01900000-0000-7000-8000-000000000090",
+            "label": "Synthetic Bakery 0001",
+            "url": null
+          }
+        ]
+      },
+      {
+        "gate": "gate.observable_problem",
+        "outcome": "pass",
+        "detail": "1 problem(s) an offer can solve",
+        "evidence": [
+          {
+            "kind": "website_audit",
+            "ref": "01900000-0000-7000-8000-000000000465",
+            "label": "synthetic-bakery-0001.example",
+            "url": null
+          }
+        ]
+      },
+      {
+        "gate": "criterion.channels",
+        "outcome": "pass",
+        "detail": "2 usable channel(s)",
+        "evidence": [
+          {
+            "kind": "contact_channel",
+            "ref": "email:hello@synthetic-bakery-0001.example",
+            "label": "email: likely_valid",
+            "url": null
+          },
+          {
+            "kind": "contact_channel",
+            "ref": "phone:+15125550101",
+            "label": "phone: structurally_valid",
+            "url": null
+          }
+        ]
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "criterion.geography",
+        "importance": "nice_to_have",
+        "outcome": "pass",
+        "weight": 2,
+        "detail": "In the target geography (Austin, TX)",
+        "evidence": [
+          {
+            "kind": "business",
+            "ref": "01900000-0000-7000-8000-000000000090",
+            "label": "Synthetic Bakery 0001",
+            "url": null
+          }
+        ]
+      },
+      {
+        "criterion": "criterion.digital_maturity",
+        "importance": "nice_to_have",
+        "outcome": "fail",
+        "weight": 2,
+        "detail": "Mean website subscore 81/100: high",
+        "evidence": [
+          {
+            "kind": "website_audit",
+            "ref": "01900000-0000-7000-8000-000000000465",
+            "label": "synthetic-bakery-0001.example",
+            "url": null
+          }
+        ]
+      },
+      {
+        "criterion": "criterion.channels",
+        "importance": "must_have",
+        "outcome": "pass",
+        "weight": 3,
+        "detail": "2 usable channel(s)",
+        "evidence": [
+          {
+            "kind": "contact_channel",
+            "ref": "email:hello@synthetic-bakery-0001.example",
+            "label": "email: likely_valid",
+            "url": null
+          },
+          {
+            "kind": "contact_channel",
+            "ref": "phone:+15125550101",
+            "label": "phone: structurally_valid",
+            "url": null
+          }
+        ]
+      },
+      {
+        "criterion": "criterion.buying_capacity",
+        "importance": "nice_to_have",
+        "outcome": "unknown",
+        "weight": 1,
+        "detail": "0 capacity proxies observed, 1 unknown",
+        "evidence": []
+      }
+    ],
+    "reasons": [
+      {
+        "feature": "gap.website_unreachable",
+        "text": "The crawl could not analyze any page of the site",
+        "impact": 15.8824,
+        "evidence": [
+          {
+            "kind": "website_audit",
+            "ref": "01900000-0000-7000-8000-000000000465",
+            "label": "synthetic-bakery-0001.example",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "criterion.channels",
+        "text": "2 usable channel(s)",
+        "impact": 15.0,
+        "evidence": [
+          {
+            "kind": "contact_channel",
+            "ref": "email:hello@synthetic-bakery-0001.example",
+            "label": "email: likely_valid",
+            "url": null
+          },
+          {
+            "kind": "contact_channel",
+            "ref": "phone:+15125550101",
+            "label": "phone: structurally_valid",
+            "url": null
+          }
+        ]
+      },
+      {
+        "feature": "criterion.geography",
+        "text": "In the target geography (Austin, TX)",
+        "impact": 10.0,
+        "evidence": [
+          {
+            "kind": "business",
+            "ref": "01900000-0000-7000-8000-000000000090",
+            "label": "Synthetic Bakery 0001",
+            "url": null
+          }
+        ]
+      }
+    ],
+    "contact_now": [],
+    "impacts": [
+      {
+        "problem": "website_unreachable",
+        "text": "Visitors who reach the site probably leave before they can make contact.",
+        "is_inference": true
+      }
+    ],
+    "risks": [],
+    "missing": [
+      {
+        "feature": "criterion.buying_capacity",
+        "component": "ICP_MATCH",
+        "detail": "0 capacity proxies observed, 1 unknown",
+        "weight_share": 0.0437
+      },
+      {
+        "feature": "gap.conversion_path",
+        "component": "DIGITAL_GAP",
+        "detail": "Calls to action and forms could not be evaluated",
+        "weight_share": 0.0338
+      },
+      {
+        "feature": "intent.advertising_active",
+        "component": "COMMERCIAL_INTENT",
+        "detail": "No advertising pixel detected (which does not mean none)",
+        "weight_share": 0.024
+      },
+      {
+        "feature": "intent.reputation_without_conversion",
+        "component": "COMMERCIAL_INTENT",
+        "detail": "Trust signals or the conversion subscore are unknown",
+        "weight_share": 0.024
+      },
+      {
+        "feature": "gap.local_seo",
+        "component": "DIGITAL_GAP",
+        "detail": "No local SEO rule could be evaluated",
+        "weight_share": 0.0225
+      },
+      {
+        "feature": "gap.mobile",
+        "component": "DIGITAL_GAP",
+        "detail": "mobile.viewport could not be evaluated",
+        "weight_share": 0.0225
+      },
+      {
+        "feature": "capacity.paid_tools",
+        "component": "BUYING_CAPACITY",
+        "detail": "No booking, ecommerce or call tracking tool detected",
+        "weight_share": 0.0133
+      },
+      {
+        "feature": "intent.site_changed",
+        "component": "COMMERCIAL_INTENT",
+        "detail": "Only one audit of the site: nothing to compare",
+        "weight_share": 0.012
+      },
+      {
+        "feature": "health.site_maintained",
+        "component": "BUSINESS_HEALTH",
+        "detail": "content.freshness could not be evaluated",
+        "weight_share": 0.0114
+      },
+      {
+        "feature": "health.trust_signals",
+        "component": "BUSINESS_HEALTH",
+        "detail": "conversion.trust_signals could not be evaluated",
+        "weight_share": 0.0114
+      },
+      {
+        "feature": "gap.measurement",
+        "component": "DIGITAL_GAP",
+        "detail": "measurement.analytics could not be evaluated",
+        "weight_share": 0.0113
+      },
+      {
+        "feature": "gap.online_booking",
+        "component": "DIGITAL_GAP",
+        "detail": "conversion.booking_or_quote could not be evaluated",
+        "weight_share": 0.0113
+      }
+    ],
+    "offer": {
+      "offer_key": "website_rebuild",
+      "offer_name": "Website rebuild",
+      "problems": [
+        "website_unreachable"
+      ],
+      "why": "It addresses what the evidence shows: the website could not be loaded reliably.",
+      "evidence": [
+        {
+          "kind": "website_audit",
+          "ref": "01900000-0000-7000-8000-000000000465",
+          "label": "synthetic-bakery-0001.example",
+          "url": null
+        }
+      ]
+    },
+    "message": {
+      "subject": "Website rebuild for Synthetic Bakery 0001",
+      "body": "Hello Synthetic Bakery 0001 team,\n\nWhile reviewing synthetic-bakery-0001.example we noticed that:\n- the website could not be loaded reliably\n\nWe help businesses like yours with Website rebuild: A fast mobile site with a clear call to action and a quote form (synthetic offer).\n\nWould a short call to go over what we found be useful?\n\n(Draft for review: adapt it before sending. Lead Intelligence never sends messages.)",
+      "language": "en",
+      "is_draft": true
+    }
+  },
+  "history": [
+    {
+      "score_run_id": "01900000-0000-7000-8000-000000001398",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "scoring_model_key": "custom.synthetic_model_contactability_first",
+      "scoring_model_version": 1,
+      "icp_profile_name": "Synthetic ICP: local services with weak websites",
+      "icp_profile_version": 1,
+      "tier": "review",
+      "total_score": 65.4483,
+      "confidence": 0.6444
+    },
+    {
+      "score_run_id": "01900000-0000-7000-8000-000000001162",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "scoring_model_key": "lead_intelligence.heuristic",
+      "scoring_model_version": 1,
+      "icp_profile_name": "Synthetic ICP: local services with weak websites",
+      "icp_profile_version": 1,
+      "tier": "review",
+      "total_score": 63.6471,
+      "confidence": 0.6444
+    }
+  ],
+  "outcomes": [
+    {
+      "id": "01900000-0000-7000-8000-000000001631",
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "score_run_id": "01900000-0000-7000-8000-000000001162",
+      "stage": "attempted",
+      "previous_stage": "not_contacted",
+      "lost_reason": null,
+      "reason": "Called the published number (synthetic test data)",
+      "actor": "dev-seed",
+      "occurred_at": "2026-01-01T00:00:00.000Z",
+      "created_at": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "01900000-0000-7000-8000-000000001632",
+      "entity_type": "business",
+      "entity_id": "01900000-0000-7000-8000-000000000090",
+      "decision": "lead_score_confirmed",
+      "previous_value": null,
+      "new_value": "01900000-0000-7000-8000-000000001162",
+      "reason": "The evidence matches the ICP (synthetic test data)",
+      "actor": "dev-seed",
+      "decided_at": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "ai_reasons": [],
+  "ai_dropped": 0,
+  "is_synthetic": true
+}

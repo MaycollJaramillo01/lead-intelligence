@@ -1,0 +1,232 @@
+{
+  "items": [
+    {
+      "job_id": "01900000-0000-7000-8000-000000001399",
+      "score_run_id": "01900000-0000-7000-8000-000000001398",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "project_name": "Synthetic test workspace",
+      "status": "succeeded",
+      "stage": "done",
+      "progress_done": 20,
+      "progress_total": 20,
+      "scoring_model_id": "01900000-0000-7000-8000-000000001394",
+      "scoring_model_key": "custom.synthetic_model_contactability_first",
+      "scoring_model_name": "Synthetic model: contactability first",
+      "scoring_model_version": 1,
+      "is_heuristic": true,
+      "icp_profile_id": "01900000-0000-7000-8000-000000001157",
+      "icp_profile_name": "Synthetic ICP: local services with weak websites",
+      "icp_profile_version": 1,
+      "engine_version": "1.0.0",
+      "facts_from_run_id": "01900000-0000-7000-8000-000000001162",
+      "stats": {
+        "businesses": 20,
+        "priority": 0,
+        "review": 2,
+        "low": 8,
+        "insufficient_data": 10,
+        "excluded": 0
+      },
+      "distribution": [
+        {
+          "low": 0,
+          "businesses": 0
+        },
+        {
+          "low": 10,
+          "businesses": 0
+        },
+        {
+          "low": 20,
+          "businesses": 0
+        },
+        {
+          "low": 30,
+          "businesses": 4
+        },
+        {
+          "low": 40,
+          "businesses": 4
+        },
+        {
+          "low": 50,
+          "businesses": 0
+        },
+        {
+          "low": 60,
+          "businesses": 2
+        },
+        {
+          "low": 70,
+          "businesses": 0
+        },
+        {
+          "low": 80,
+          "businesses": 0
+        },
+        {
+          "low": 90,
+          "businesses": 0
+        }
+      ],
+      "requested_at": "2026-01-01T00:00:00.000Z",
+      "started_at": "2026-01-01T00:00:00.000Z",
+      "finished_at": "2026-01-01T00:00:00.000Z",
+      "events": [
+        {
+          "level": "info",
+          "event": "run_succeeded",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "businesses": 20,
+            "excluded": 0,
+            "insufficient_data": 10,
+            "low": 8,
+            "priority": 0,
+            "review": 2
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "stage_started",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "businesses": 20,
+            "facts": "stored"
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "run_queued",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "project_id": "01900000-0000-7000-8000-000000000001",
+            "score_run_id": "01900000-0000-7000-8000-000000001398"
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "is_synthetic": true
+    },
+    {
+      "job_id": "01900000-0000-7000-8000-000000001163",
+      "score_run_id": "01900000-0000-7000-8000-000000001162",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "project_name": "Synthetic test workspace",
+      "status": "succeeded",
+      "stage": "done",
+      "progress_done": 20,
+      "progress_total": 20,
+      "scoring_model_id": "01900000-0000-7000-8000-000000001154",
+      "scoring_model_key": "lead_intelligence.heuristic",
+      "scoring_model_name": "Lead Intelligence heuristic",
+      "scoring_model_version": 1,
+      "is_heuristic": true,
+      "icp_profile_id": "01900000-0000-7000-8000-000000001157",
+      "icp_profile_name": "Synthetic ICP: local services with weak websites",
+      "icp_profile_version": 1,
+      "engine_version": "1.0.0",
+      "facts_from_run_id": null,
+      "stats": {
+        "businesses": 20,
+        "priority": 0,
+        "review": 6,
+        "low": 4,
+        "insufficient_data": 10,
+        "excluded": 0
+      },
+      "distribution": [
+        {
+          "low": 0,
+          "businesses": 0
+        },
+        {
+          "low": 10,
+          "businesses": 0
+        },
+        {
+          "low": 20,
+          "businesses": 0
+        },
+        {
+          "low": 30,
+          "businesses": 1
+        },
+        {
+          "low": 40,
+          "businesses": 3
+        },
+        {
+          "low": 50,
+          "businesses": 0
+        },
+        {
+          "low": 60,
+          "businesses": 6
+        },
+        {
+          "low": 70,
+          "businesses": 0
+        },
+        {
+          "low": 80,
+          "businesses": 0
+        },
+        {
+          "low": 90,
+          "businesses": 0
+        }
+      ],
+      "requested_at": "2026-01-01T00:00:00.000Z",
+      "started_at": "2026-01-01T00:00:00.000Z",
+      "finished_at": "2026-01-01T00:00:00.000Z",
+      "events": [
+        {
+          "level": "info",
+          "event": "run_succeeded",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "businesses": 20,
+            "excluded": 0,
+            "insufficient_data": 10,
+            "low": 4,
+            "priority": 0,
+            "review": 6
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "stage_started",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "businesses": 20,
+            "facts": "store"
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "level": "info",
+          "event": "run_queued",
+          "error_code": null,
+          "retryable": null,
+          "detail_json": {
+            "project_id": "01900000-0000-7000-8000-000000000001",
+            "score_run_id": "01900000-0000-7000-8000-000000001162"
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "is_synthetic": true
+    }
+  ],
+  "next_cursor": null,
+  "total": 2
+}

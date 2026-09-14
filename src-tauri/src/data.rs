@@ -5110,6 +5110,1685 @@ impl AiModelChangeRequest {
     }
 }
 
+// ---- ICP and lead scoring (phase 11) ------------------------------------------------------------
+// Mirrors the scoring section of `domain.py`. The core refuses a scorecard whose contributions do
+// not add up to its total, a tier its gates contradict, a known point without evidence, a model's
+// wording that cites evidence the scorecard does not rest on, ranks out of order or outside their
+// filters, and requests that break their own rules (a review with a stage, a lost lead without a
+// reason, a draft activated without saying which version).
+
+const MAX_AREAS: usize = 25;
+const MAX_OFFERS: usize = 20;
+const MAX_TERM_LIST: usize = 50;
+const MAX_TERM_CHARS: usize = 120;
+const MAX_WEIGHT: u32 = 10;
+const MAX_FORMULA_WEIGHT: u32 = 100;
+const MAX_SIMULATION_TOP: u32 = 100;
+const MAX_TOP_K: u32 = 500;
+const MAX_DESCRIPTION_CHARS: usize = 2000;
+const SCORE_COMPONENTS: usize = 10;
+const SCORE_BINS: usize = 10;
+const MAX_REASONS: usize = 3;
+/// Contributions are rounded to four decimals each; their sum may drift by a few of those.
+const SUM_TOLERANCE: f64 = 0.01;
+
+contract_enum!(LeadTier {
+    Priority,
+    Review,
+    Low,
+    InsufficientData,
+    Excluded
+});
+contract_enum!(ProblemType {
+    NoWebsite,
+    WebsiteUnreachable,
+    WeakConversionPath,
+    NoOnlineBooking,
+    WeakLocalSeo,
+    WeakTechnicalSeo,
+    PoorMobileExperience,
+    MeasurementNotDetected
+});
+contract_enum!(CriterionImportance {
+    MustHave,
+    NiceToHave,
+    Ignore
+});
+contract_enum!(LatinoRequirement {
+    None,
+    MarketAffinity,
+    VerifiedLatinoOwned
+});
+contract_enum!(DigitalMaturity { Low, Medium, High });
+contract_enum!(GateOutcome {
+    Pass,
+    Fail,
+    Unknown
+});
+contract_enum!(FeatureState {
+    Known,
+    Unknown,
+    NotApplicable
+});
+contract_enum!(ScoreEvidenceKind {
+    Business,
+    WebsiteAudit,
+    WebsiteFinding,
+    WebsiteTechnology,
+    ContactChannel,
+    DecisionMaker,
+    LatinoAssessment
+});
+contract_enum!(ScoringTarget {
+    IcpProfile,
+    ScoringModel
+});
+contract_enum!(ScoringChangeAction {
+    Activate,
+    Archive,
+    Restore
+});
+contract_enum!(LeadAction {
+    Confirm,
+    Dismiss,
+    Reset,
+    RecordOutcome
+});
+contract_enum!(OpportunityProblem {
+    WeakConversionPath,
+    NoOnlineBooking,
+    PoorMobileExperience,
+    WeakLocalSeo,
+    SlowOrBrokenSite,
+    MissingTrustSignals,
+    MissingMeasurement,
+    LowContactability,
+    Other
+});
+
+/// Component names travel in capitals (`ICP_MATCH`), as the scorecard shows them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ScoreComponent {
+    IcpMatch,
+    LatinoConfidence,
+    BusinessHealth,
+    DigitalGap,
+    BuyingCapacity,
+    Contactability,
+    CommercialIntent,
+    DataConfidence,
+    OpportunityScore,
+    FinalLeadScore,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum OpportunityInput {
+    DigitalGap,
+    BusinessHealth,
+    BuyingCapacity,
+    CommercialIntent,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum FinalInput {
+    IcpMatch,
+    OpportunityScore,
+    Contactability,
+    LatinoConfidence,
+}
+
+impl ScoreComponent {
+    fn feeds_final(self) -> bool {
+        matches!(
+            self,
+            Self::IcpMatch | Self::OpportunityScore | Self::Contactability | Self::LatinoConfidence
+        )
+    }
+
+    fn feeds_opportunity(self) -> bool {
+        matches!(
+            self,
+            Self::DigitalGap | Self::BusinessHealth | Self::BuyingCapacity | Self::CommercialIntent
+        )
+    }
+}
+
+impl LeadTier {
+    fn is_scored(self) -> bool {
+        matches!(self, Self::Priority | Self::Review | Self::Low)
+    }
+}
+
+fn check_points(name: &str, value: Option<f64>) -> Result<(), String> {
+    match value {
+        Some(points) if !(0.0..=100.0).contains(&points) => {
+            Err(format!("{name} must be between 0 and 100, got {points}"))
+        }
+        _ => Ok(()),
+    }
+}
+
+fn check_terms(name: &str, terms: &[String]) -> Result<(), String> {
+    if terms.len() > MAX_TERM_LIST {
+        return Err(format!("{name} holds at most {MAX_TERM_LIST} terms"));
+    }
+    if terms
+        .iter()
+        .any(|term| term.trim().is_empty() || term.chars().count() > MAX_TERM_CHARS)
+    {
+        return Err(format!(
+            "every term of {name} has 1 to {MAX_TERM_CHARS} characters"
+        ));
+    }
+    Ok(())
+}
+
+fn check_label(name: &str, text: &str, max: usize) -> Result<(), String> {
+    if text.trim().is_empty() || text.chars().count() > max {
+        return Err(format!("{name} must have 1 to {max} characters"));
+    }
+    Ok(())
+}
+
+fn check_text_reason(reason: &str) -> Result<(), String> {
+    if reason.trim().is_empty() {
+        return Err("a reason is required".into());
+    }
+    check_reason(&Some(reason.to_owned()))
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Area {
+    pub country_code: String,
+    pub region: Option<String>,
+    pub locality: Option<String>,
+    pub postal_code: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GeographyCriterion {
+    pub importance: CriterionImportance,
+    pub weight: u32,
+    pub include: Vec<Area>,
+    pub exclude: Vec<Area>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CategoryCriterion {
+    pub importance: CriterionImportance,
+    pub weight: u32,
+    pub terms: Vec<String>,
+    pub excluded_terms: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SizeCriterion {
+    pub importance: CriterionImportance,
+    pub weight: u32,
+    pub min_locations: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FreshnessCriterion {
+    pub importance: CriterionImportance,
+    pub weight: u32,
+    pub max_days_since_seen: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ReputationCriterion {
+    pub importance: CriterionImportance,
+    pub weight: u32,
+    pub min_rating: Option<f64>,
+    pub min_reviews: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MaturityCriterion {
+    pub importance: CriterionImportance,
+    pub weight: u32,
+    pub wanted: Vec<DigitalMaturity>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProblemCriterion {
+    pub importance: CriterionImportance,
+    pub weight: u32,
+    pub wanted: Vec<ProblemType>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChannelCriterion {
+    pub importance: CriterionImportance,
+    pub weight: u32,
+    pub any_of: Vec<ContactType>,
+    pub require_decision_maker: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CapacityCriterion {
+    pub importance: CriterionImportance,
+    pub weight: u32,
+    pub min_proxies: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct IcpExclusions {
+    pub names: Vec<String>,
+    pub domains: Vec<String>,
+    pub categories: Vec<String>,
+    pub regions: Vec<String>,
+    pub postal_codes: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Offer {
+    pub key: String,
+    pub name: String,
+    pub description: String,
+    pub solves: Vec<ProblemType>,
+    pub capabilities: Vec<String>,
+    pub not_for_categories: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct IcpDefinition {
+    pub schema_version: u32,
+    pub geography: GeographyCriterion,
+    pub categories: CategoryCriterion,
+    pub size: SizeCriterion,
+    pub freshness: FreshnessCriterion,
+    pub reputation: ReputationCriterion,
+    pub digital_maturity: MaturityCriterion,
+    pub problems: ProblemCriterion,
+    pub channels: ChannelCriterion,
+    pub buying_capacity: CapacityCriterion,
+    pub latino: LatinoRequirement,
+    pub exclusions: IcpExclusions,
+    pub offers: Vec<Offer>,
+}
+
+impl IcpDefinition {
+    /// Bounds and shapes. What keeps a version from running (no offer, an empty must-have) is a
+    /// problem the worker reports, never a refusal to save a draft.
+    pub fn validate(&self) -> Result<(), String> {
+        if self.schema_version != 1 {
+            return Err(format!(
+                "ICP schema version {} is not supported",
+                self.schema_version
+            ));
+        }
+        let weights = [
+            self.geography.weight,
+            self.categories.weight,
+            self.size.weight,
+            self.freshness.weight,
+            self.reputation.weight,
+            self.digital_maturity.weight,
+            self.problems.weight,
+            self.channels.weight,
+            self.buying_capacity.weight,
+        ];
+        if weights.iter().any(|weight| *weight > MAX_WEIGHT) {
+            return Err(format!("a criterion weight is at most {MAX_WEIGHT}"));
+        }
+        if self.geography.include.len() > MAX_AREAS || self.geography.exclude.len() > MAX_AREAS {
+            return Err(format!("a geography lists at most {MAX_AREAS} areas"));
+        }
+        within("min_locations", self.size.min_locations, 1, 1000)?;
+        within(
+            "max_days_since_seen",
+            self.freshness.max_days_since_seen,
+            1,
+            3650,
+        )?;
+        within("min_proxies", self.buying_capacity.min_proxies, 1, 4)?;
+        if let Some(rating) = self.reputation.min_rating {
+            within("min_rating", rating, 0.0, 5.0)?;
+        }
+        check_terms("categories", &self.categories.terms)?;
+        check_terms("excluded categories", &self.categories.excluded_terms)?;
+        let exclusions = &self.exclusions;
+        for (name, list) in [
+            ("excluded names", &exclusions.names),
+            ("excluded domains", &exclusions.domains),
+            ("excluded categories", &exclusions.categories),
+            ("excluded regions", &exclusions.regions),
+            ("excluded postal codes", &exclusions.postal_codes),
+        ] {
+            check_terms(name, list)?;
+        }
+        if self.offers.len() > MAX_OFFERS {
+            return Err(format!("a profile declares at most {MAX_OFFERS} offers"));
+        }
+        let mut keys = HashSet::new();
+        for offer in &self.offers {
+            check_label("an offer name", &offer.name, MAX_LABEL_CHARS)?;
+            if !keys.insert(offer.key.as_str()) {
+                return Err(format!("offer key {:?} appears twice", offer.key));
+            }
+            check_terms("offer capabilities", &offer.capabilities)?;
+            check_terms("offer categories", &offer.not_for_categories)?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FeatureWeight {
+    pub feature: String,
+    pub weight: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OpportunityWeight {
+    pub component: OpportunityInput,
+    pub weight: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FinalWeight {
+    pub component: FinalInput,
+    pub weight: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NotApplicableRule {
+    pub feature: String,
+    pub categories: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoringDefinition {
+    pub schema_version: u32,
+    pub features: Vec<FeatureWeight>,
+    pub opportunity: Vec<OpportunityWeight>,
+    pub r#final: Vec<FinalWeight>,
+    pub not_applicable: Vec<NotApplicableRule>,
+    pub min_known_weight: Confidence,
+    pub priority_threshold: u8,
+    pub review_threshold: u8,
+    pub weak_subscore_below: u8,
+    pub require_observable_problem: bool,
+}
+
+impl ScoringDefinition {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.schema_version != 1 {
+            return Err(format!(
+                "scoring schema version {} is not supported",
+                self.schema_version
+            ));
+        }
+        if self.features.iter().any(|w| w.weight > MAX_WEIGHT) {
+            return Err(format!("a feature weight is at most {MAX_WEIGHT}"));
+        }
+        let mut features = HashSet::new();
+        if let Some(twice) = self
+            .features
+            .iter()
+            .find(|w| !features.insert(w.feature.as_str()))
+        {
+            return Err(format!("feature {:?} is weighed twice", twice.feature));
+        }
+        let opportunity: Vec<OpportunityInput> =
+            self.opportunity.iter().map(|w| w.component).collect();
+        check_unique(&opportunity, "opportunity input")?;
+        let inputs: Vec<FinalInput> = self.r#final.iter().map(|w| w.component).collect();
+        check_unique(&inputs, "final input")?;
+        let formula = self.opportunity.iter().map(|w| w.weight);
+        if formula
+            .chain(self.r#final.iter().map(|w| w.weight))
+            .any(|weight| weight > MAX_FORMULA_WEIGHT)
+        {
+            return Err(format!("a formula weight is at most {MAX_FORMULA_WEIGHT}"));
+        }
+        for threshold in [
+            self.priority_threshold,
+            self.review_threshold,
+            self.weak_subscore_below,
+        ] {
+            within("a threshold", threshold, 0, 100)?;
+        }
+        self.not_applicable
+            .iter()
+            .try_for_each(|rule| check_terms("not applicable categories", &rule.categories))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoreEvidence {
+    pub kind: ScoreEvidenceKind,
+    #[serde(rename = "ref")]
+    pub reference: String,
+    pub label: String,
+    pub url: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoreFeature {
+    pub feature: String,
+    pub component: ScoreComponent,
+    pub problem: Option<ProblemType>,
+    pub state: FeatureState,
+    pub value: Option<Confidence>,
+    pub weight: u64,
+    pub points: Option<f64>,
+    pub impact: Option<f64>,
+    pub detail: String,
+    pub reason: Option<String>,
+    pub evidence: Vec<ScoreEvidence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoreComponentView {
+    pub component: ScoreComponent,
+    pub value: Option<f64>,
+    pub weight: u64,
+    pub contribution: Option<f64>,
+    pub coverage: Confidence,
+    pub formula: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GateView {
+    pub gate: String,
+    pub outcome: GateOutcome,
+    pub detail: String,
+    pub evidence: Vec<ScoreEvidence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CriterionView {
+    pub criterion: String,
+    pub importance: CriterionImportance,
+    pub outcome: GateOutcome,
+    pub weight: u64,
+    pub detail: String,
+    pub evidence: Vec<ScoreEvidence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoreReason {
+    pub feature: String,
+    pub text: String,
+    pub impact: f64,
+    pub evidence: Vec<ScoreEvidence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoreRisk {
+    pub code: String,
+    pub detail: String,
+    pub evidence: Vec<ScoreEvidence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MissingData {
+    pub feature: String,
+    pub component: ScoreComponent,
+    pub detail: String,
+    pub weight_share: Confidence,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InferredImpact {
+    pub problem: ProblemType,
+    pub text: String,
+    pub is_inference: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OfferRecommendation {
+    pub offer_key: String,
+    pub offer_name: String,
+    pub problems: Vec<ProblemType>,
+    pub why: String,
+    pub evidence: Vec<ScoreEvidence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MessageDraft {
+    pub subject: String,
+    pub body: String,
+    pub language: String,
+    pub is_draft: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoreVersions {
+    pub engine_version: String,
+    pub facts_version: String,
+    pub scoring_model_key: String,
+    pub scoring_model_version: u32,
+    pub is_heuristic: bool,
+    pub icp_profile_name: String,
+    pub icp_profile_version: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LeadScorecard {
+    pub business_id: Id,
+    pub tier: LeadTier,
+    pub total_score: Option<f64>,
+    pub confidence: Confidence,
+    pub known_weight: Confidence,
+    pub versions: ScoreVersions,
+    pub components: Vec<ScoreComponentView>,
+    pub features: Vec<ScoreFeature>,
+    pub gates: Vec<GateView>,
+    pub criteria: Vec<CriterionView>,
+    pub reasons: Vec<ScoreReason>,
+    pub contact_now: Vec<ScoreReason>,
+    pub impacts: Vec<InferredImpact>,
+    pub risks: Vec<ScoreRisk>,
+    pub missing: Vec<MissingData>,
+    pub offer: Option<OfferRecommendation>,
+    pub message: Option<MessageDraft>,
+}
+
+fn component_sum(components: &[ScoreComponentView], feeds: fn(ScoreComponent) -> bool) -> f64 {
+    components
+        .iter()
+        .filter(|view| feeds(view.component))
+        .filter_map(|view| view.contribution)
+        .sum()
+}
+
+impl LeadScorecard {
+    /// A tier its gates explain, one view per component, contributions that add up to their
+    /// formulas, and no known point, reason or offer without evidence.
+    pub fn validate(&self) -> Result<(), String> {
+        check_points("the total", self.total_score)?;
+        if self.tier.is_scored() && self.total_score.is_none() {
+            return Err("a scored lead has a total".into());
+        }
+        if self.tier == LeadTier::Excluded && self.total_score.is_some() {
+            return Err("an excluded lead has no total".into());
+        }
+        let failed = self.gates.iter().any(|g| g.outcome == GateOutcome::Fail);
+        let undecided = self.gates.iter().any(|g| g.outcome == GateOutcome::Unknown);
+        if failed != (self.tier == LeadTier::Excluded) || (self.tier.is_scored() && undecided) {
+            return Err(format!(
+                "the {:?} tier and the gates of {} disagree",
+                self.tier, self.business_id
+            ));
+        }
+        if let Some(gate) = self
+            .gates
+            .iter()
+            .find(|g| g.outcome != GateOutcome::Unknown && g.evidence.is_empty())
+        {
+            return Err(format!("gate {} is decided without evidence", gate.gate));
+        }
+        let components: Vec<ScoreComponent> =
+            self.components.iter().map(|view| view.component).collect();
+        check_unique(&components, "component")?;
+        if components.len() != SCORE_COMPONENTS {
+            return Err("a scorecard shows every component once".into());
+        }
+        for view in &self.components {
+            check_points("a component", view.value)?;
+        }
+        if let Some(total) = self.total_score
+            && (component_sum(&self.components, ScoreComponent::feeds_final) - total).abs()
+                > SUM_TOLERANCE
+        {
+            return Err(format!(
+                "the contributions of {} do not add up to its total",
+                self.business_id
+            ));
+        }
+        let opportunity = self
+            .components
+            .iter()
+            .find(|view| view.component == ScoreComponent::OpportunityScore)
+            .and_then(|view| view.value);
+        if let Some(value) = opportunity
+            && (component_sum(&self.components, ScoreComponent::feeds_opportunity) - value).abs()
+                > SUM_TOLERANCE
+        {
+            return Err("the opportunity inputs do not add up to OPPORTUNITY_SCORE".into());
+        }
+        for feature in &self.features {
+            let known = feature.state == FeatureState::Known;
+            if known && feature.evidence.is_empty() {
+                return Err(format!(
+                    "feature {} counts without evidence",
+                    feature.feature
+                ));
+            }
+            if !known && (feature.value.is_some() || feature.points.is_some()) {
+                return Err(format!(
+                    "feature {} has a value it does not know",
+                    feature.feature
+                ));
+            }
+        }
+        if self.reasons.len() > MAX_REASONS {
+            return Err(format!("a scorecard gives at most {MAX_REASONS} reasons"));
+        }
+        if let Some(reason) = self
+            .reasons
+            .iter()
+            .chain(&self.contact_now)
+            .find(|reason| reason.evidence.is_empty())
+        {
+            return Err(format!("reason {} rests on no evidence", reason.feature));
+        }
+        if self.offer.as_ref().is_some_and(|o| o.evidence.is_empty()) {
+            return Err("an offer is recommended without evidence".into());
+        }
+        if self.impacts.iter().any(|impact| !impact.is_inference) {
+            return Err("an impact is always labelled an inference".into());
+        }
+        match &self.message {
+            Some(_) if self.tier == LeadTier::Excluded => {
+                Err("an excluded lead gets no message".into())
+            }
+            Some(message) if !message.is_draft || message.language != "en" => {
+                Err("a message is only ever a draft".into())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    fn finding_refs(&self) -> HashSet<&str> {
+        self.features
+            .iter()
+            .flat_map(|feature| &feature.evidence)
+            .filter(|evidence| evidence.kind == ScoreEvidenceKind::WebsiteFinding)
+            .map(|evidence| evidence.reference.as_str())
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoringCatalogQuery {
+    pub project_id: Option<Id>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct IcpProfile {
+    pub id: Id,
+    pub project_id: Id,
+    pub name: String,
+    pub description: Option<String>,
+    pub created_at: UtcTimestamp,
+    pub updated_at: UtcTimestamp,
+    pub deleted_at: Option<UtcTimestamp>,
+    pub deleted_reason: Option<String>,
+    pub active_version_id: Option<Id>,
+    pub archived_at: Option<UtcTimestamp>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct IcpProfileVersion {
+    pub id: Id,
+    pub icp_profile_id: Id,
+    pub version: u32,
+    pub definition_json: Map<String, Value>,
+    pub schema_version: u32,
+    pub created_by: String,
+    pub created_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoringModel {
+    pub id: Id,
+    pub key: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub created_at: UtcTimestamp,
+    pub updated_at: UtcTimestamp,
+    pub deleted_at: Option<UtcTimestamp>,
+    pub deleted_reason: Option<String>,
+    pub active_version_id: Option<Id>,
+    pub archived_at: Option<UtcTimestamp>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoringModelVersion {
+    pub id: Id,
+    pub scoring_model_id: Id,
+    pub version: u32,
+    pub definition_json: Map<String, Value>,
+    pub schema_version: u32,
+    pub is_heuristic: bool,
+    pub created_by: String,
+    pub created_at: UtcTimestamp,
+}
+
+/// Versions newest first, numbered without gaps from the newest down, and an active version that
+/// is one of them.
+fn check_versions(
+    numbers: &[u32],
+    ids: &[&Id],
+    active: Option<&Id>,
+    what: &str,
+) -> Result<(), String> {
+    let expected: Vec<u32> = (1..=numbers.len() as u32).rev().collect();
+    if numbers != expected.as_slice() {
+        return Err(format!("the versions of {what} are out of order"));
+    }
+    if active.is_some_and(|id| !ids.contains(&id)) {
+        return Err(format!(
+            "the active version of {what} is not one of its own"
+        ));
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct IcpProfileView {
+    pub profile: IcpProfile,
+    pub versions: Vec<IcpProfileVersion>,
+    pub problems: Vec<CriteriaProblem>,
+    pub is_synthetic: bool,
+}
+
+impl IcpProfileView {
+    pub fn validate(&self) -> Result<(), String> {
+        let numbers: Vec<u32> = self.versions.iter().map(|v| v.version).collect();
+        let ids: Vec<&Id> = self.versions.iter().map(|v| &v.id).collect();
+        check_versions(
+            &numbers,
+            &ids,
+            self.profile.active_version_id.as_ref(),
+            &self.profile.name,
+        )?;
+        for version in &self.versions {
+            if version.icp_profile_id != self.profile.id {
+                return Err(format!("version {} belongs to another profile", version.id));
+            }
+            serde_json::from_value::<IcpDefinition>(Value::Object(version.definition_json.clone()))
+                .map_err(|e| format!("version {} is not an ICP definition: {e}", version.id))?
+                .validate()?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoringModelView {
+    pub model: ScoringModel,
+    pub versions: Vec<ScoringModelVersion>,
+    pub problems: Vec<CriteriaProblem>,
+}
+
+impl ScoringModelView {
+    pub fn validate(&self) -> Result<(), String> {
+        let numbers: Vec<u32> = self.versions.iter().map(|v| v.version).collect();
+        let ids: Vec<&Id> = self.versions.iter().map(|v| &v.id).collect();
+        check_versions(
+            &numbers,
+            &ids,
+            self.model.active_version_id.as_ref(),
+            &self.model.name,
+        )?;
+        for version in &self.versions {
+            if version.scoring_model_id != self.model.id {
+                return Err(format!("version {} belongs to another model", version.id));
+            }
+            serde_json::from_value::<ScoringDefinition>(Value::Object(
+                version.definition_json.clone(),
+            ))
+            .map_err(|e| format!("version {} is not a scoring definition: {e}", version.id))?
+            .validate()?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FeatureInfo {
+    pub feature: String,
+    pub component: ScoreComponent,
+    pub problem: Option<ProblemType>,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoringCatalog {
+    pub icp_profiles: Vec<IcpProfileView>,
+    pub models: Vec<ScoringModelView>,
+    pub features: Vec<FeatureInfo>,
+    pub engine_version: String,
+    pub icp_template: IcpDefinition,
+    pub scoring_template: ScoringDefinition,
+}
+
+impl ScoringCatalog {
+    /// Every view consistent, and a template that weighs exactly the features the engine has.
+    pub fn validate(&self) -> Result<(), String> {
+        self.icp_profiles
+            .iter()
+            .try_for_each(IcpProfileView::validate)?;
+        self.models
+            .iter()
+            .try_for_each(ScoringModelView::validate)?;
+        self.icp_template.validate()?;
+        self.scoring_template.validate()?;
+        let offered: HashSet<&str> = self.features.iter().map(|f| f.feature.as_str()).collect();
+        let weighed: HashSet<&str> = self
+            .scoring_template
+            .features
+            .iter()
+            .map(|w| w.feature.as_str())
+            .collect();
+        if offered != weighed || offered.len() != self.features.len() {
+            return Err("the template does not weigh the engine's features".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct IcpSaveRequest {
+    pub profile_id: Option<Id>,
+    pub project_id: Option<Id>,
+    pub name: String,
+    pub description: Option<String>,
+    pub definition: IcpDefinition,
+}
+
+impl IcpSaveRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        check_label("a profile name", &self.name, MAX_LABEL_CHARS)?;
+        if self
+            .description
+            .as_ref()
+            .is_some_and(|d| d.chars().count() > MAX_DESCRIPTION_CHARS)
+        {
+            return Err(format!(
+                "a description has at most {MAX_DESCRIPTION_CHARS} characters"
+            ));
+        }
+        self.definition.validate()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoringModelSaveRequest {
+    pub model_id: Option<Id>,
+    pub name: String,
+    pub description: Option<String>,
+    pub definition: ScoringDefinition,
+}
+
+impl ScoringModelSaveRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        check_label("a model name", &self.name, MAX_LABEL_CHARS)?;
+        if self
+            .description
+            .as_ref()
+            .is_some_and(|d| d.chars().count() > MAX_DESCRIPTION_CHARS)
+        {
+            return Err(format!(
+                "a description has at most {MAX_DESCRIPTION_CHARS} characters"
+            ));
+        }
+        self.definition.validate()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoringChangeRequest {
+    pub target: ScoringTarget,
+    pub id: Id,
+    pub action: ScoringChangeAction,
+    pub version_id: Option<Id>,
+    pub reason: String,
+}
+
+impl ScoringChangeRequest {
+    /// Activation names its version; archiving and restoring do not; every change says why.
+    pub fn validate(&self) -> Result<(), String> {
+        check_text_reason(&self.reason)?;
+        if (self.action == ScoringChangeAction::Activate) != self.version_id.is_some() {
+            return Err("only an activation names a version, and it always does".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoringSimulationRequest {
+    pub project_id: Option<Id>,
+    pub facts_from_run_id: Option<Id>,
+    pub icp: IcpDefinition,
+    pub scoring: ScoringDefinition,
+    pub top: u32,
+}
+
+impl ScoringSimulationRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.project_id.is_none() && self.facts_from_run_id.is_none() {
+            return Err("simulate over a project or over a run's stored facts".into());
+        }
+        within("top", self.top, 1, MAX_SIMULATION_TOP)?;
+        self.icp.validate()?;
+        self.scoring.validate()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GateExample {
+    pub business_id: Id,
+    pub display_name: String,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GatePreview {
+    pub gate: String,
+    pub passed: u64,
+    pub failed: u64,
+    pub unknown: u64,
+    pub examples: Vec<GateExample>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TierCounts {
+    pub priority: u64,
+    pub review: u64,
+    pub low: u64,
+    pub insufficient_data: u64,
+    pub excluded: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoreBin {
+    pub low: u8,
+    pub businesses: u64,
+}
+
+/// Ten bins of ten points each, in order, holding exactly the scored businesses.
+fn check_bins(bins: &[ScoreBin], scored: u64) -> Result<(), String> {
+    let lows: Vec<u8> = bins.iter().map(|bin| bin.low).collect();
+    let expected: Vec<u8> = (0..SCORE_BINS as u8).map(|i| i * 10).collect();
+    if lows != expected {
+        return Err("a distribution has ten bins of ten points".into());
+    }
+    if bins.iter().map(|bin| bin.businesses).sum::<u64>() != scored {
+        return Err("the distribution does not count the scored businesses".into());
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ComponentValue {
+    pub component: ScoreComponent,
+    pub value: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LeadScoreItem {
+    pub business_id: Id,
+    pub project_id: Id,
+    pub display_name: String,
+    pub locality: Option<String>,
+    pub region: Option<String>,
+    pub primary_category: Option<String>,
+    pub lead_stage: LeadStage,
+    pub latino_status: LatinoStatus,
+    pub rank: u64,
+    pub tier: LeadTier,
+    pub total_score: Option<f64>,
+    pub confidence: Confidence,
+    pub components: Vec<ComponentValue>,
+    pub top_reason: Option<String>,
+    pub offer_key: Option<String>,
+    pub problems: Vec<ProblemType>,
+    pub is_synthetic: bool,
+}
+
+impl LeadScoreItem {
+    pub fn validate(&self) -> Result<(), String> {
+        check_points("a total", self.total_score)?;
+        if self.rank == 0 {
+            return Err("ranks start at 1".into());
+        }
+        if (self.tier.is_scored() && self.total_score.is_none())
+            || (self.tier == LeadTier::Excluded && self.total_score.is_some())
+        {
+            return Err(format!(
+                "lead {} has a tier its total contradicts",
+                self.business_id
+            ));
+        }
+        self.components
+            .iter()
+            .try_for_each(|c| check_points("a component", c.value))
+    }
+}
+
+/// Positions that only grow along a list, each lead valid.
+fn check_ranked(items: &[LeadScoreItem]) -> Result<(), String> {
+    for pair in items.windows(2) {
+        if pair[1].rank <= pair[0].rank {
+            return Err("leads are listed in rank order".into());
+        }
+    }
+    items.iter().try_for_each(LeadScoreItem::validate)
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoringSimulation {
+    pub businesses: u64,
+    pub tiers: TierCounts,
+    pub distribution: Vec<ScoreBin>,
+    pub gates: Vec<GatePreview>,
+    pub top: Vec<LeadScoreItem>,
+    pub facts_from_run_id: Option<Id>,
+    pub collected_at: UtcTimestamp,
+    pub problems: Vec<CriteriaProblem>,
+}
+
+impl ScoringSimulation {
+    /// Tiers and gates that count every business once, the top it was asked for from rank 1.
+    pub fn validate(&self, request: &ScoringSimulationRequest) -> Result<(), String> {
+        let tiers = &self.tiers;
+        let scored = tiers.priority + tiers.review + tiers.low;
+        if scored + tiers.insufficient_data + tiers.excluded != self.businesses {
+            return Err("the tiers do not count every simulated business".into());
+        }
+        check_bins(&self.distribution, scored)?;
+        for gate in &self.gates {
+            if gate.passed + gate.failed + gate.unknown != self.businesses
+                || gate.examples.len() as u64 > gate.failed
+            {
+                return Err(format!("gate {} does not count every business", gate.gate));
+            }
+        }
+        if self.top.len() > request.top as usize
+            || self.facts_from_run_id != request.facts_from_run_id
+        {
+            return Err("the simulation is not the one asked for".into());
+        }
+        if self.top.first().is_some_and(|item| item.rank != 1) {
+            return Err("a simulation's top starts at rank 1".into());
+        }
+        check_ranked(&self.top)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoringStartRequest {
+    pub project_id: Id,
+    pub icp_profile_version_id: Id,
+    pub scoring_model_version_id: Id,
+    pub facts_from_run_id: Option<Id>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoreRunStats {
+    pub businesses: u64,
+    pub priority: u64,
+    pub review: u64,
+    pub low: u64,
+    pub insufficient_data: u64,
+    pub excluded: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoreRunItem {
+    pub job_id: Id,
+    pub score_run_id: Id,
+    pub project_id: Id,
+    pub project_name: String,
+    pub status: JobStatus,
+    pub stage: String,
+    pub progress_done: u64,
+    pub progress_total: Option<u64>,
+    pub scoring_model_id: Id,
+    pub scoring_model_key: String,
+    pub scoring_model_name: String,
+    pub scoring_model_version: u32,
+    pub is_heuristic: bool,
+    pub icp_profile_id: Id,
+    pub icp_profile_name: String,
+    pub icp_profile_version: u32,
+    pub engine_version: String,
+    pub facts_from_run_id: Option<Id>,
+    pub stats: ScoreRunStats,
+    pub distribution: Vec<ScoreBin>,
+    pub requested_at: UtcTimestamp,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+    pub events: Vec<RunEvent>,
+    pub is_synthetic: bool,
+}
+
+impl ScoreRunItem {
+    /// Progress within its total, tiers that add up and a distribution of the scored leads.
+    pub fn validate(&self) -> Result<(), String> {
+        if let Some(total) = self.progress_total
+            && self.progress_done > total
+        {
+            return Err("progress cannot exceed its total".into());
+        }
+        let stats = &self.stats;
+        let scored = stats.priority + stats.review + stats.low;
+        if scored + stats.insufficient_data + stats.excluded != stats.businesses {
+            return Err(format!(
+                "score run {} miscounts its tiers",
+                self.score_run_id
+            ));
+        }
+        if self.facts_from_run_id.as_ref() == Some(&self.score_run_id) {
+            return Err("a run cannot score its own facts again".into());
+        }
+        check_bins(&self.distribution, scored)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoreRunListQuery {
+    pub project_id: Option<Id>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl ScoreRunListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoreRunPage {
+    pub items: Vec<ScoreRunItem>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl ScoreRunPage {
+    pub fn validate(&self, query: &ScoreRunListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        if let Some(project) = &query.project_id
+            && let Some(other) = self.items.iter().find(|run| &run.project_id != project)
+        {
+            return Err(format!("run {} belongs to another project", other.job_id));
+        }
+        self.items.iter().try_for_each(ScoreRunItem::validate)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LeadScoreQuery {
+    pub score_run_id: Option<Id>,
+    pub tier: Option<LeadTier>,
+    pub min_score: Option<f64>,
+    pub problem: Option<ProblemType>,
+    pub search: Option<String>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl LeadScoreQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)?;
+        check_points("min_score", self.min_score)?;
+        if self
+            .search
+            .as_ref()
+            .is_some_and(|s| s.chars().count() > MAX_SEARCH_CHARS)
+        {
+            return Err(format!(
+                "search must be at most {MAX_SEARCH_CHARS} characters"
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LeadScorePage {
+    pub score_run: Option<ScoreRunItem>,
+    pub items: Vec<LeadScoreItem>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl LeadScorePage {
+    /// The run asked for, ranks in order, and every lead inside the filters.
+    pub fn validate(&self, query: &LeadScoreQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        let Some(run) = &self.score_run else {
+            if self.items.is_empty() && self.total == 0 {
+                return Ok(());
+            }
+            return Err("leads without the run that scored them".into());
+        };
+        run.validate()?;
+        if query
+            .score_run_id
+            .as_ref()
+            .is_some_and(|id| id != &run.score_run_id)
+        {
+            return Err("these leads belong to another run".into());
+        }
+        for item in &self.items {
+            let outside = item.project_id != run.project_id
+                || query.tier.is_some_and(|tier| item.tier != tier)
+                || query
+                    .min_score
+                    .is_some_and(|min| item.total_score.is_none_or(|total| total < min))
+                || query
+                    .problem
+                    .is_some_and(|problem| !item.problems.contains(&problem));
+            if outside {
+                return Err(format!(
+                    "lead {} does not match the filters",
+                    item.business_id
+                ));
+            }
+        }
+        check_ranked(&self.items)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScorecardQuery {
+    pub business_id: Id,
+    pub score_run_id: Option<Id>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LeadScoreHistoryItem {
+    pub score_run_id: Id,
+    pub created_at: UtcTimestamp,
+    pub scoring_model_key: String,
+    pub scoring_model_version: u32,
+    pub icp_profile_name: String,
+    pub icp_profile_version: u32,
+    pub tier: LeadTier,
+    pub total_score: Option<f64>,
+    pub confidence: Confidence,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LeadOutcome {
+    pub id: Id,
+    pub business_id: Id,
+    pub score_run_id: Option<Id>,
+    pub stage: LeadStage,
+    pub previous_stage: LeadStage,
+    pub lost_reason: Option<String>,
+    pub reason: String,
+    pub actor: String,
+    pub occurred_at: UtcTimestamp,
+    pub created_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AiDraftedReason {
+    pub inference_run_id: Id,
+    pub model: String,
+    pub problem: OpportunityProblem,
+    pub explanation: String,
+    pub evidence: Vec<ScoreEvidence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LeadScorecardDetail {
+    pub score_run: ScoreRunItem,
+    pub business_id: Id,
+    pub display_name: String,
+    pub lead_stage: LeadStage,
+    pub rank: u64,
+    pub scorecard: LeadScorecard,
+    pub history: Vec<LeadScoreHistoryItem>,
+    pub outcomes: Vec<LeadOutcome>,
+    pub decisions: Vec<ReviewDecision>,
+    pub ai_reasons: Vec<AiDraftedReason>,
+    pub ai_dropped: u64,
+    pub is_synthetic: bool,
+}
+
+impl LeadScorecardDetail {
+    /// The run asked for, a consistent scorecard of this business, outcomes of this business, and
+    /// no model wording that cites a finding the scorecard does not rest on.
+    pub fn validate(&self, query: &ScorecardQuery) -> Result<(), String> {
+        if query
+            .score_run_id
+            .as_ref()
+            .is_some_and(|id| id != &self.score_run.score_run_id)
+        {
+            return Err("the scorecard comes from another run".into());
+        }
+        self.score_run.validate()?;
+        self.scorecard.validate()?;
+        if self.scorecard.business_id != self.business_id || self.rank == 0 {
+            return Err(format!(
+                "the scorecard does not describe business {}",
+                self.business_id
+            ));
+        }
+        for outcome in &self.outcomes {
+            if outcome.business_id != self.business_id
+                || (outcome.stage == LeadStage::Lost) != outcome.lost_reason.is_some()
+            {
+                return Err(format!("outcome {} is out of place", outcome.id));
+            }
+        }
+        let findings = self.scorecard.finding_refs();
+        for reason in &self.ai_reasons {
+            if reason.evidence.is_empty()
+                || reason.evidence.iter().any(|evidence| {
+                    evidence.kind != ScoreEvidenceKind::WebsiteFinding
+                        || !findings.contains(evidence.reference.as_str())
+                })
+            {
+                return Err(format!(
+                    "inference {} cites evidence this scorecard does not rest on",
+                    reason.inference_run_id
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoreCompareQuery {
+    pub left_run_id: Id,
+    pub right_run_id: Id,
+    pub top_k: u32,
+}
+
+impl ScoreCompareQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.left_run_id == self.right_run_id {
+            return Err("compare two different runs".into());
+        }
+        within("top_k", self.top_k, 1, MAX_TOP_K)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RankChange {
+    pub business_id: Id,
+    pub display_name: String,
+    pub left_rank: Option<u64>,
+    pub right_rank: Option<u64>,
+    pub left_tier: Option<LeadTier>,
+    pub right_tier: Option<LeadTier>,
+    pub left_total: Option<f64>,
+    pub right_total: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScoreComparison {
+    pub left: ScoreRunItem,
+    pub right: ScoreRunItem,
+    pub same_facts: bool,
+    pub top_k: u32,
+    pub entered: u64,
+    pub left_out: u64,
+    pub mean_abs_rank_change: Option<f64>,
+    pub changes: Vec<RankChange>,
+}
+
+impl ScoreComparison {
+    /// The two runs asked for, and counts of who entered or left the top K that its rows show.
+    pub fn validate(&self, query: &ScoreCompareQuery) -> Result<(), String> {
+        if self.left.score_run_id != query.left_run_id
+            || self.right.score_run_id != query.right_run_id
+            || self.top_k != query.top_k
+        {
+            return Err("the comparison is not the one asked for".into());
+        }
+        self.left.validate()?;
+        self.right.validate()?;
+        let k = u64::from(self.top_k);
+        let inside = |rank: Option<u64>| rank.is_some_and(|r| r <= k);
+        let entered = self
+            .changes
+            .iter()
+            .filter(|c| inside(c.right_rank) && !inside(c.left_rank))
+            .count() as u64;
+        let left_out = self
+            .changes
+            .iter()
+            .filter(|c| inside(c.left_rank) && !inside(c.right_rank))
+            .count() as u64;
+        if entered != self.entered || left_out != self.left_out {
+            return Err("the comparison miscounts its top".into());
+        }
+        if let Some(change) = self
+            .changes
+            .iter()
+            .find(|c| !inside(c.left_rank) && !inside(c.right_rank))
+        {
+            return Err(format!("business {} is in neither top", change.business_id));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CalibrationQuery {
+    pub score_run_id: Id,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PrecisionAtK {
+    pub k: u32,
+    pub labeled: u64,
+    pub positives: u64,
+    pub precision: Option<Confidence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DecileLift {
+    pub decile: u8,
+    pub businesses: u64,
+    pub labeled: u64,
+    pub positives: u64,
+    pub rate: Option<Confidence>,
+    pub lift: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CalibrationBand {
+    pub low: u8,
+    pub high: u8,
+    pub businesses: u64,
+    pub labeled: u64,
+    pub mean_score: Option<f64>,
+    pub observed_rate: Option<Confidence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TierCohort {
+    pub tier: LeadTier,
+    pub businesses: u64,
+    pub labeled: u64,
+    pub positives: u64,
+    pub conversion: Option<Confidence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CalibrationReport {
+    pub score_run: ScoreRunItem,
+    pub positive_stages: Vec<LeadStage>,
+    pub negative_stages: Vec<LeadStage>,
+    pub businesses: u64,
+    pub labeled: u64,
+    pub positives: u64,
+    pub leakage_excluded: u64,
+    pub precision_at_k: Vec<PrecisionAtK>,
+    pub lift_by_decile: Vec<DecileLift>,
+    pub calibration: Vec<CalibrationBand>,
+    pub cohorts: Vec<TierCohort>,
+    pub coverage: Confidence,
+    pub labeled_share: Confidence,
+    pub weights_are_heuristic: bool,
+    pub warnings: Vec<String>,
+}
+
+impl CalibrationReport {
+    /// Counts that nest (positives within labels within businesses), deciles and cohorts that
+    /// cover every business once, and heuristic weights always said out loud.
+    pub fn validate(&self, query: &CalibrationQuery) -> Result<(), String> {
+        if self.score_run.score_run_id != query.score_run_id {
+            return Err("the report describes another run".into());
+        }
+        self.score_run.validate()?;
+        if self.positives > self.labeled || self.labeled > self.businesses {
+            return Err("a report cannot label more than it scored".into());
+        }
+        if self
+            .positive_stages
+            .iter()
+            .any(|stage| self.negative_stages.contains(stage))
+        {
+            return Err("a stage cannot be both positive and negative".into());
+        }
+        if self
+            .precision_at_k
+            .iter()
+            .any(|p| p.positives > p.labeled || p.labeled > u64::from(p.k))
+        {
+            return Err("precision counts more than its top".into());
+        }
+        let deciles: Vec<u8> = self.lift_by_decile.iter().map(|d| d.decile).collect();
+        if deciles != (1..=10).collect::<Vec<u8>>()
+            || self
+                .lift_by_decile
+                .iter()
+                .map(|d| d.businesses)
+                .sum::<u64>()
+                != self.businesses
+            || self.lift_by_decile.iter().map(|d| d.labeled).sum::<u64>() != self.labeled
+        {
+            return Err("the deciles do not cover the run".into());
+        }
+        if self.cohorts.iter().map(|c| c.businesses).sum::<u64>() != self.businesses {
+            return Err("the cohorts do not cover the run".into());
+        }
+        if self.weights_are_heuristic && !self.warnings.iter().any(|w| w == "heuristic_weights") {
+            return Err("heuristic weights are always flagged".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LeadActionRequest {
+    pub score_run_id: Id,
+    pub business_id: Id,
+    pub action: LeadAction,
+    pub stage: Option<LeadStage>,
+    pub lost_reason: Option<String>,
+    pub reason: String,
+}
+
+impl LeadActionRequest {
+    /// A review names no stage; an outcome always does; only a lost lead says why it was lost.
+    pub fn validate(&self) -> Result<(), String> {
+        check_text_reason(&self.reason)?;
+        if (self.action == LeadAction::RecordOutcome) != self.stage.is_some() {
+            return Err("an outcome names the stage the lead reached, a review does not".into());
+        }
+        if (self.stage == Some(LeadStage::Lost)) != self.lost_reason.is_some() {
+            return Err("a lost lead needs a lost reason, and only a lost lead has one".into());
+        }
+        if let Some(lost) = &self.lost_reason {
+            check_label("a lost reason", lost, 500)?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

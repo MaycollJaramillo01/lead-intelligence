@@ -48,6 +48,8 @@ from research_engine.domain import (
     BusinessDetailQuery,
     BusinessListQuery,
     BusinessPage,
+    CalibrationQuery,
+    CalibrationReport,
     CampaignListQuery,
     CampaignPage,
     CampaignSaved,
@@ -88,6 +90,8 @@ from research_engine.domain import (
     DiscoveryRunListQuery,
     DiscoveryRunPage,
     DiscoveryStartRequest,
+    IcpProfileView,
+    IcpSaveRequest,
     ImportPreview,
     ImportPreviewRequest,
     LatinoDetail,
@@ -97,6 +101,10 @@ from research_engine.domain import (
     LatinoRunListQuery,
     LatinoRunPage,
     LatinoStartRequest,
+    LeadActionRequest,
+    LeadScorecardDetail,
+    LeadScorePage,
+    LeadScoreQuery,
     MatchActionRequest,
     MatchDetail,
     MatchDetailQuery,
@@ -106,6 +114,20 @@ from research_engine.domain import (
     ResolutionRunListQuery,
     ResolutionRunPage,
     ResolutionStartRequest,
+    ScorecardQuery,
+    ScoreCompareQuery,
+    ScoreComparison,
+    ScoreRunItem,
+    ScoreRunListQuery,
+    ScoreRunPage,
+    ScoringCatalog,
+    ScoringCatalogQuery,
+    ScoringChangeRequest,
+    ScoringModelSaveRequest,
+    ScoringModelView,
+    ScoringSimulation,
+    ScoringSimulationRequest,
+    ScoringStartRequest,
     SourceCatalog,
     SourceCatalogQuery,
     SourceInfo,
@@ -133,6 +155,8 @@ from research_engine.latino.engine import LatinoService
 from research_engine.ollama import probe_ollama
 from research_engine.resolution import store as resolution
 from research_engine.resolution.engine import ResolutionService
+from research_engine.scoring import store as scoring
+from research_engine.scoring.engine import ScoringService
 from research_engine.settings import Settings
 from research_engine.storage import check_duckdb, check_sqlite
 from research_engine.testdata import seed_synthetic_workspace
@@ -166,6 +190,8 @@ class Context:
     contacts: ContactService
     #: Owns the GPU queue, the AI jobs, benchmarks and model downloads; see ai/engine.py.
     ai: AiService
+    #: Owns the running score jobs; see scoring/engine.py.
+    scoring: ScoringService
 
 
 @dataclass(frozen=True, slots=True)
@@ -537,6 +563,75 @@ async def _ai_model_change(ctx: Context, request: AiModelChangeRequest) -> AiSta
     return await ctx.ai.change_model(request)
 
 
+# ---- ICP and lead scoring (phase 11) ------------------------------------------------------------
+
+
+async def _scoring_catalog(ctx: Context, query: ScoringCatalogQuery) -> ScoringCatalog:
+    return await _with_store(ctx, lambda conn: scoring.catalog(conn, query))
+
+
+async def _scoring_save_icp(ctx: Context, request: IcpSaveRequest) -> IcpProfileView:
+    return await _with_store(
+        ctx, lambda conn: scoring.icp_view(conn, scoring.save_icp(conn, request, actor=ACTOR_UI))
+    )
+
+
+async def _scoring_save_model(ctx: Context, request: ScoringModelSaveRequest) -> ScoringModelView:
+    return await _with_store(
+        ctx,
+        lambda conn: scoring.model_view(conn, scoring.save_model(conn, request, actor=ACTOR_UI)),
+    )
+
+
+async def _scoring_change(ctx: Context, request: ScoringChangeRequest) -> ScoringCatalog:
+    def change(conn: sqlite3.Connection) -> ScoringCatalog:
+        scoring.change(conn, request, actor=ACTOR_UI)
+        return scoring.catalog(conn, ScoringCatalogQuery(project_id=None))
+
+    return await _with_store(ctx, change)
+
+
+async def _scoring_simulate(ctx: Context, request: ScoringSimulationRequest) -> ScoringSimulation:
+    return await _with_store(ctx, lambda conn: scoring.simulate(conn, request, utc_now()))
+
+
+async def _scoring_start(ctx: Context, request: ScoringStartRequest) -> ScoreRunPage:
+    return await ctx.scoring.start(request)
+
+
+async def _scoring_control(ctx: Context, request: DiscoveryControlRequest) -> ScoreRunItem:
+    return await ctx.scoring.control(request)
+
+
+async def _scoring_runs(ctx: Context, query: ScoreRunListQuery) -> ScoreRunPage:
+    return await _with_store(ctx, lambda conn: scoring.list_runs(conn, query))
+
+
+async def _scoring_leads(ctx: Context, query: LeadScoreQuery) -> LeadScorePage:
+    return await _with_store(ctx, lambda conn: scoring.list_leads(conn, query))
+
+
+async def _scoring_scorecard(ctx: Context, query: ScorecardQuery) -> LeadScorecardDetail:
+    return await _with_store(ctx, lambda conn: scoring.get_scorecard(conn, query))
+
+
+async def _scoring_compare(ctx: Context, query: ScoreCompareQuery) -> ScoreComparison:
+    return await _with_store(ctx, lambda conn: scoring.compare(conn, query))
+
+
+async def _scoring_calibration(ctx: Context, query: CalibrationQuery) -> CalibrationReport:
+    return await _with_store(ctx, lambda conn: scoring.calibration(conn, query))
+
+
+async def _scoring_act(ctx: Context, request: LeadActionRequest) -> LeadScorecardDetail:
+    def act(conn: sqlite3.Connection) -> LeadScorecardDetail:
+        scoring.act(conn, request, actor=ACTOR_UI)
+        query = ScorecardQuery(business_id=request.business_id, score_run_id=request.score_run_id)
+        return scoring.get_scorecard(conn, query)
+
+    return await _with_store(ctx, act)
+
+
 ROUTES: dict[str, Route] = {
     MessageType.HEALTH: Route(EmptyPayload, _health, timeout_s=2.0),
     MessageType.DIAGNOSTICS: Route(EmptyPayload, _diagnostics, timeout_s=20.0),
@@ -625,5 +720,24 @@ ROUTES: dict[str, Route] = {
     MessageType.AI_REVIEW: Route(AiReviewRequest, _ai_review, timeout_s=15.0),
     MessageType.AI_BENCHMARK: Route(AiBenchmarkRequest, _ai_benchmark, timeout_s=90.0),
     MessageType.AI_MODEL_CHANGE: Route(AiModelChangeRequest, _ai_model_change, timeout_s=90.0),
+    MessageType.SCORING_CATALOG: Route(ScoringCatalogQuery, _scoring_catalog, timeout_s=15.0),
+    MessageType.SCORING_SAVE_ICP: Route(IcpSaveRequest, _scoring_save_icp, timeout_s=15.0),
+    MessageType.SCORING_SAVE_MODEL: Route(
+        ScoringModelSaveRequest, _scoring_save_model, timeout_s=15.0
+    ),
+    MessageType.SCORING_CHANGE: Route(ScoringChangeRequest, _scoring_change, timeout_s=15.0),
+    # a simulation over a project reads the facts of every business at once
+    MessageType.SCORING_SIMULATE: Route(
+        ScoringSimulationRequest, _scoring_simulate, timeout_s=60.0
+    ),
+    MessageType.SCORING_START: Route(ScoringStartRequest, _scoring_start, timeout_s=30.0),
+    MessageType.SCORING_CONTROL: Route(DiscoveryControlRequest, _scoring_control, timeout_s=30.0),
+    MessageType.SCORING_RUNS: Route(ScoreRunListQuery, _scoring_runs, timeout_s=15.0),
+    # the rank is computed over the whole run
+    MessageType.SCORING_LEADS: Route(LeadScoreQuery, _scoring_leads, timeout_s=30.0),
+    MessageType.SCORING_SCORECARD: Route(ScorecardQuery, _scoring_scorecard, timeout_s=10.0),
+    MessageType.SCORING_COMPARE: Route(ScoreCompareQuery, _scoring_compare, timeout_s=30.0),
+    MessageType.SCORING_CALIBRATION: Route(CalibrationQuery, _scoring_calibration, timeout_s=30.0),
+    MessageType.SCORING_ACT: Route(LeadActionRequest, _scoring_act, timeout_s=15.0),
     MessageType.DEV_SEED_SYNTHETIC: Route(EmptyPayload, _dev_seed_synthetic, timeout_s=60.0),
 }

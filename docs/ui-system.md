@@ -47,8 +47,8 @@ Six sections, sixteen modules. Status is what the module actually is today.
 | Research     | Businesses      | `/businesses`      | available |
 | Research     | Lead Explorer   | `/lead-explorer`   | available |
 | Research     | Research Center | `/research-center` | phase 5   |
-| Intelligence | ICP Builder     | `/icp-builder`     | phase 11  |
-| Intelligence | Scoring Models  | `/scoring-models`  | phase 11  |
+| Intelligence | ICP Builder     | `/icp-builder`     | available |
+| Intelligence | Scoring Models  | `/scoring-models`  | available |
 | Intelligence | AI Models       | `/ai-models`       | available |
 | Operations   | Jobs            | `/jobs`            | available |
 | Operations   | Datasets        | `/datasets`        | available |
@@ -123,13 +123,15 @@ field so a change in one screen does not re-render the others.
 
 ## Screens today
 
-| Screen                 | What it shows                                                                                                 |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Overview               | Live subsystem states, the screens that work, and the pipeline status                                         |
-| Businesses             | Real store query: server search, keyset paging, inspector with every value's provenance; empty until phase 04 |
-| Lead Explorer          | Real table + filters + inspector, empty until scoring (phase 11)                                              |
-| Datasets               | Datasets with their latest snapshot (version, rows, capture time)                                             |
-| Jobs                   | Empty list; job components are ready for the orchestrator (phase 13)                                          |
-| System                 | Full diagnostics from phase 01, with refresh and worker restart                                               |
-| Settings               | Theme, density, language, workspace paths, stored preferences                                                 |
-| The other nine modules | Title, purpose, "not configured" and the phase that delivers them                                             |
+| Screen         | What it shows                                                                                                  |
+| -------------- | -------------------------------------------------------------------------------------------------------------- |
+| Overview       | Live subsystem states, the screens that work, and the pipeline status                                          |
+| Businesses     | Real store query: server search, keyset paging, inspector with every value's provenance; empty until phase 04  |
+| Lead Explorer  | Ranked leads of the newest finished score run, filtered in the store; inspector with the lead score (phase 11) |
+| ICP Builder    | Versioned profiles: criteria, Latino requirement, exclusions, offers, preview on real data (phase 11)          |
+| Scoring Models | Formula in plain text, weights and versions; runs, comparison and calibration (phase 11)                       |
+| Datasets       | Datasets with their latest snapshot (version, rows, capture time)                                              |
+| Jobs           | The runs of every engine with progress and cancel                                                              |
+| System         | Full diagnostics from phase 01, with refresh and worker restart                                                |
+| Settings       | Theme, density, language, workspace paths, stored preferences                                                  |
+| Exports, Logs  | Title, purpose, "not configured" and the phase that delivers them                                              |

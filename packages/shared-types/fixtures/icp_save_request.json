@@ -1,0 +1,135 @@
+{
+  "profile_id": "01900000-0000-7000-8000-000000001157",
+  "project_id": null,
+  "name": "Synthetic ICP: local services with weak websites",
+  "description": "Synthetic test data",
+  "definition": {
+    "schema_version": 1,
+    "geography": {
+      "importance": "nice_to_have",
+      "weight": 2,
+      "include": [
+        {
+          "country_code": "US",
+          "region": "TX",
+          "locality": null,
+          "postal_code": null
+        },
+        {
+          "country_code": "US",
+          "region": "FL",
+          "locality": null,
+          "postal_code": null
+        },
+        {
+          "country_code": "US",
+          "region": "AZ",
+          "locality": null,
+          "postal_code": null
+        },
+        {
+          "country_code": "US",
+          "region": "IL",
+          "locality": null,
+          "postal_code": null
+        }
+      ],
+      "exclude": []
+    },
+    "categories": {
+      "importance": "ignore",
+      "weight": 1,
+      "terms": [],
+      "excluded_terms": []
+    },
+    "size": {
+      "importance": "ignore",
+      "weight": 1,
+      "min_locations": 1
+    },
+    "freshness": {
+      "importance": "ignore",
+      "weight": 1,
+      "max_days_since_seen": 365
+    },
+    "reputation": {
+      "importance": "ignore",
+      "weight": 1,
+      "min_rating": null,
+      "min_reviews": null
+    },
+    "digital_maturity": {
+      "importance": "nice_to_have",
+      "weight": 2,
+      "wanted": [
+        "low",
+        "medium"
+      ]
+    },
+    "problems": {
+      "importance": "ignore",
+      "weight": 1,
+      "wanted": []
+    },
+    "channels": {
+      "importance": "must_have",
+      "weight": 3,
+      "any_of": [
+        "phone",
+        "email"
+      ],
+      "require_decision_maker": false
+    },
+    "buying_capacity": {
+      "importance": "nice_to_have",
+      "weight": 1,
+      "min_proxies": 1
+    },
+    "latino": "none",
+    "exclusions": {
+      "names": [],
+      "domains": [],
+      "categories": [],
+      "regions": [
+        "NJ"
+      ],
+      "postal_codes": []
+    },
+    "offers": [
+      {
+        "key": "website_rebuild",
+        "name": "Website rebuild",
+        "description": "A fast mobile site with a clear call to action and a quote form (synthetic offer).",
+        "solves": [
+          "no_website",
+          "website_unreachable",
+          "weak_conversion_path",
+          "no_online_booking",
+          "poor_mobile_experience"
+        ],
+        "capabilities": [
+          "web design",
+          "forms"
+        ],
+        "not_for_categories": []
+      },
+      {
+        "key": "local_seo",
+        "name": "Local SEO setup",
+        "description": "Business details, structured data and analytics (synthetic offer).",
+        "solves": [
+          "weak_local_seo",
+          "weak_technical_seo",
+          "measurement_not_detected"
+        ],
+        "capabilities": [
+          "local seo",
+          "analytics"
+        ],
+        "not_for_categories": [
+          "grocery"
+        ]
+      }
+    ]
+  }
+}

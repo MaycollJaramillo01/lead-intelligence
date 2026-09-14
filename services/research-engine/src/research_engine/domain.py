@@ -404,11 +404,16 @@ class EvidenceRole(StrEnum):
     CONTEXT = "context"
 
 
-class ExplanationKind(StrEnum):
-    REASON = "reason"
-    GATE = "gate"
-    PENALTY = "penalty"
-    MISSING_DATA = "missing_data"
+class LeadTier(StrEnum):
+    """Where a business lands in one score run (phase 11). `priority`, `review` and `low` are scored
+    by the thresholds of the scoring model; `insufficient_data`: a gate could not be decided or too
+    much of the formula is unknown; `excluded`: a gate failed, and there is no total."""
+
+    PRIORITY = "priority"
+    REVIEW = "review"
+    LOW = "low"
+    INSUFFICIENT_DATA = "insufficient_data"
+    EXCLUDED = "excluded"
 
 
 class EventLevel(StrEnum):
@@ -562,7 +567,7 @@ ENUMS: dict[str, type[StrEnum]] = {
         ConversionElementKind,
         AssessmentMethod,
         EvidenceRole,
-        ExplanationKind,
+        LeadTier,
         EventLevel,
         ExportFormat,
         CrawlUrlStatus,
@@ -700,6 +705,9 @@ class Project(Record):
 
 
 class IcpProfile(Record):
+    """A named ideal-customer profile (phase 11): which version is active and whether it is
+    archived. Its definitions are `icp_profile_versions`."""
+
     TABLE = "icp_profiles"
     ENTITY = EntityType.ICP_PROFILE
     id: Id
@@ -710,10 +718,12 @@ class IcpProfile(Record):
     updated_at: UtcTimestamp
     deleted_at: UtcTimestamp | None
     deleted_reason: str | None
+    active_version_id: Id | None
+    archived_at: UtcTimestamp | None
 
 
 class IcpProfileVersion(Record):
-    """Immutable definition of an ICP profile at one version."""
+    """Immutable, permanent definition of an ICP profile at one version (`IcpDefinition`)."""
 
     TABLE = "icp_profile_versions"
     id: Id
@@ -1398,6 +1408,8 @@ class AiBenchmarkResult(Record):
 
 
 class ScoringModel(Record):
+    """A named scoring formula (phase 11): which version is active and whether it is archived."""
+
     TABLE = "scoring_models"
     ENTITY = EntityType.SCORING_MODEL
     id: Id
@@ -1408,38 +1420,56 @@ class ScoringModel(Record):
     updated_at: UtcTimestamp
     deleted_at: UtcTimestamp | None
     deleted_reason: str | None
+    active_version_id: Id | None
+    archived_at: UtcTimestamp | None
 
 
 class ScoringModelVersion(Record):
+    """Immutable, permanent definition of a scoring model at one version (`ScoringDefinition`).
+    `is_heuristic`: its weights are a declared judgement, not fitted to outcomes."""
+
     TABLE = "scoring_model_versions"
     id: Id
     scoring_model_id: Id
     version: Annotated[int, Field(ge=1)]
     definition_json: JsonObject
+    schema_version: Annotated[int, Field(ge=1)]
     is_heuristic: bool
+    created_by: Label
     created_at: UtcTimestamp
 
 
 class ScoreRun(Record):
+    """One ICP version and one scoring version applied to a project's businesses, or to the facts
+    another run stored (`facts_from_run_id`). Only `finished_at` is written after the insert."""
+
     TABLE = "score_runs"
     ENTITY = EntityType.SCORE_RUN
     id: Id
-    scoring_model_version_id: Id
-    icp_profile_version_id: Id | None
-    dataset_snapshot_id: Id | None
+    project_id: Id
     job_id: Id | None
+    scoring_model_version_id: Id
+    icp_profile_version_id: Id
+    facts_from_run_id: Id | None
+    engine_version: Label
     started_at: UtcTimestamp
     finished_at: UtcTimestamp | None
     created_at: UtcTimestamp
 
 
 class BusinessScore(Record):
+    """Immutable, permanent result for one business in one run: the facts read and the scorecard."""
+
     TABLE = "business_scores"
     id: Id
     score_run_id: Id
     business_id: Id
+    tier: LeadTier
     total_score: Annotated[float, Field(ge=0, le=100)] | None
-    confidence: Confidence | None
+    confidence: Confidence
+    facts_collected_at: UtcTimestamp
+    facts_json: JsonObject
+    scorecard_json: JsonObject
     created_at: UtcTimestamp
 
 
@@ -1451,18 +1481,24 @@ class ComponentScore(Record):
     value: Annotated[float, Field(ge=0, le=100)] | None
     weight: Annotated[float, Field(ge=0)]
     contribution: float | None
-    confidence: Confidence | None
+    coverage: Confidence
 
 
-class ScoreExplanation(Record):
-    TABLE = "score_explanations"
+class LeadOutcome(Record):
+    """Immutable, permanent record of what happened when a lead was worked (phase 11): the feedback
+    loop that calibration reads. A `lost` outcome says why."""
+
+    TABLE = "lead_outcomes"
     id: Id
-    business_score_id: Id
-    component: str | None
-    kind: ExplanationKind
-    message: Annotated[str, Field(min_length=1)]
-    evidence_item_id: Id | None
-    sort_order: Annotated[int, Field(ge=0)]
+    business_id: Id
+    score_run_id: Id | None
+    stage: LeadStage
+    previous_stage: LeadStage
+    lost_reason: Annotated[str, Field(min_length=1, max_length=500)] | None
+    reason: Annotated[str, Field(min_length=1, max_length=2000)]
+    actor: Label
+    occurred_at: UtcTimestamp
+    created_at: UtcTimestamp
 
 
 class Job(Record):
@@ -1788,7 +1824,7 @@ RECORDS: tuple[type[Record], ...] = (
     ScoreRun,
     BusinessScore,
     ComponentScore,
-    ScoreExplanation,
+    LeadOutcome,
     Job,
     JobTask,
     TaskAttempt,
@@ -4227,6 +4263,918 @@ class AiModelChangeRequest(Contract):
     confirmation: ModelName
 
 
+# ---- ICP, opportunity and lead scoring (phase 11) ----------------------------------------------
+# Which businesses deserve research and contact, why, with which offer and how sure. ICP profiles
+# and scoring models are versioned declarative definitions; a score run applies one of each to the
+# facts of every canonical business. Gates run before weights, unknown is never zero, every point
+# carries its evidence, and nothing here contacts a business or lets a model change a number.
+
+ICP_SCHEMA_VERSION = 1
+SCORING_SCHEMA_VERSION = 1
+MAX_AREAS = 25
+MAX_OFFERS = 20
+Weight = Annotated[int, Field(ge=0, le=10)]
+FormulaWeight = Annotated[int, Field(ge=0, le=100)]
+Points = Annotated[float, Field(ge=0, le=100)]
+ScoreText = Annotated[str, Field(min_length=1, max_length=300)]
+
+
+class ScoreComponent(StrEnum):
+    """The independent components of a scorecard, 0 to 100 each (a null value is unknown)."""
+
+    ICP_MATCH = "ICP_MATCH"
+    LATINO_CONFIDENCE = "LATINO_CONFIDENCE"
+    BUSINESS_HEALTH = "BUSINESS_HEALTH"
+    DIGITAL_GAP = "DIGITAL_GAP"
+    BUYING_CAPACITY = "BUYING_CAPACITY"
+    CONTACTABILITY = "CONTACTABILITY"
+    COMMERCIAL_INTENT = "COMMERCIAL_INTENT"
+    DATA_CONFIDENCE = "DATA_CONFIDENCE"
+    OPPORTUNITY_SCORE = "OPPORTUNITY_SCORE"
+    FINAL_LEAD_SCORE = "FINAL_LEAD_SCORE"
+
+
+class OpportunityInput(StrEnum):
+    """What OPPORTUNITY_SCORE may weigh. Latino evidence is not one of them, by design."""
+
+    DIGITAL_GAP = "DIGITAL_GAP"
+    BUSINESS_HEALTH = "BUSINESS_HEALTH"
+    BUYING_CAPACITY = "BUYING_CAPACITY"
+    COMMERCIAL_INTENT = "COMMERCIAL_INTENT"
+
+
+class FinalInput(StrEnum):
+    ICP_MATCH = "ICP_MATCH"
+    OPPORTUNITY_SCORE = "OPPORTUNITY_SCORE"
+    CONTACTABILITY = "CONTACTABILITY"
+    LATINO_CONFIDENCE = "LATINO_CONFIDENCE"
+
+
+class ProblemType(StrEnum):
+    """Observable problems the opportunity engine detects from stored facts."""
+
+    NO_WEBSITE = "no_website"
+    WEBSITE_UNREACHABLE = "website_unreachable"
+    WEAK_CONVERSION_PATH = "weak_conversion_path"
+    NO_ONLINE_BOOKING = "no_online_booking"
+    WEAK_LOCAL_SEO = "weak_local_seo"
+    WEAK_TECHNICAL_SEO = "weak_technical_seo"
+    POOR_MOBILE_EXPERIENCE = "poor_mobile_experience"
+    #: Not detected is not absent: tags inside a tag manager or consent tool are invisible.
+    MEASUREMENT_NOT_DETECTED = "measurement_not_detected"
+
+
+class CriterionImportance(StrEnum):
+    """must_have: a gate before any weight; nice_to_have: counts in ICP_MATCH; ignore: not read."""
+
+    MUST_HAVE = "must_have"
+    NICE_TO_HAVE = "nice_to_have"
+    IGNORE = "ignore"
+
+
+class LatinoRequirement(StrEnum):
+    """What a campaign asks of Latino evidence: nothing, market affinity or better, or a verified
+    Latino-owned business. It filters; it never measures quality or buying capacity."""
+
+    NONE = "none"
+    MARKET_AFFINITY = "market_affinity"
+    VERIFIED_LATINO_OWNED = "verified_latino_owned"
+
+
+class DigitalMaturity(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class GateOutcome(StrEnum):
+    PASS = "pass"  # noqa: S105 - a gate outcome, not a password
+    FAIL = "fail"
+    UNKNOWN = "unknown"
+
+
+class FeatureState(StrEnum):
+    """known: evaluated from evidence; unknown: the facts cannot show it (never a zero);
+    not_applicable: does not apply to this business (never a penalty)."""
+
+    KNOWN = "known"
+    UNKNOWN = "unknown"
+    NOT_APPLICABLE = "not_applicable"
+
+
+class ScoreEvidenceKind(StrEnum):
+    BUSINESS = "business"
+    WEBSITE_AUDIT = "website_audit"
+    WEBSITE_FINDING = "website_finding"
+    WEBSITE_TECHNOLOGY = "website_technology"
+    CONTACT_CHANNEL = "contact_channel"
+    DECISION_MAKER = "decision_maker"
+    LATINO_ASSESSMENT = "latino_assessment"
+
+
+class Area(Contract):
+    """A place an ICP includes or excludes. A part left empty matches any value."""
+
+    country_code: CountryCode
+    region: RegionCode | None
+    locality: Term | None
+    postal_code: PostalCode | None
+
+
+class GeographyCriterion(Contract):
+    importance: CriterionImportance
+    weight: Weight
+    include: Annotated[list[Area], Field(max_length=MAX_AREAS)]
+    exclude: Annotated[list[Area], Field(max_length=MAX_AREAS)]
+
+
+class CategoryCriterion(Contract):
+    """Terms matched as whole words against the category and service labels sources observed."""
+
+    importance: CriterionImportance
+    weight: Weight
+    terms: Terms
+    excluded_terms: Terms
+
+
+class SizeCriterion(Contract):
+    """Size by its only observable proxy: distinct locations. Employees and revenue are not seen."""
+
+    importance: CriterionImportance
+    weight: Weight
+    min_locations: Annotated[int, Field(ge=1, le=1000)]
+
+
+class FreshnessCriterion(Contract):
+    """A source listed the business within this many days."""
+
+    importance: CriterionImportance
+    weight: Weight
+    max_days_since_seen: Annotated[int, Field(ge=1, le=3650)]
+
+
+class ReputationCriterion(Contract):
+    """Rating and reviews with their source. No connected source provides them yet: this criterion
+    is always unknown, never a failure."""
+
+    importance: CriterionImportance
+    weight: Weight
+    min_rating: Annotated[float, Field(ge=0, le=5)] | None
+    min_reviews: Annotated[int, Field(ge=0)] | None
+
+
+class MaturityCriterion(Contract):
+    """Digital maturity from the website subscores: low below 50, medium below 80, high otherwise;
+    a business without a website is low."""
+
+    importance: CriterionImportance
+    weight: Weight
+    wanted: list[DigitalMaturity]
+
+
+class ProblemCriterion(Contract):
+    importance: CriterionImportance
+    weight: Weight
+    wanted: list[ProblemType]
+
+
+class ChannelCriterion(Contract):
+    """At least one usable published channel of these types, and a published decision maker when
+    asked for."""
+
+    importance: CriterionImportance
+    weight: Weight
+    any_of: list[ContactType]
+    require_decision_maker: bool
+
+
+class CapacityCriterion(Contract):
+    """Buying capacity through explicit proxies only (locations, paid tools, a published team, site
+    depth), never a financial claim."""
+
+    importance: CriterionImportance
+    weight: Weight
+    min_proxies: Annotated[int, Field(ge=1, le=4)]
+
+
+class IcpExclusions(Contract):
+    """Hard exclusions, checked before anything is weighed."""
+
+    names: Terms
+    domains: Annotated[list[DomainName], Field(max_length=MAX_TERMS)]
+    categories: Terms
+    regions: Annotated[list[RegionCode], Field(max_length=MAX_TERMS)]
+    postal_codes: Annotated[list[PostalCode], Field(max_length=MAX_TERMS)]
+
+
+class Offer(Contract):
+    """Something the seller can actually deliver, and the problems it solves."""
+
+    key: Code
+    name: Label
+    description: Annotated[str, Field(max_length=600)]
+    solves: list[ProblemType]
+    capabilities: Terms
+    #: Categories where this offer does not apply (matched like `CategoryCriterion.terms`).
+    not_for_categories: Terms
+
+
+class IcpDefinition(Contract):
+    """One version of an ICP profile, stored verbatim in `icp_profile_versions.definition_json`."""
+
+    schema_version: Literal[1]
+    geography: GeographyCriterion
+    categories: CategoryCriterion
+    size: SizeCriterion
+    freshness: FreshnessCriterion
+    reputation: ReputationCriterion
+    digital_maturity: MaturityCriterion
+    problems: ProblemCriterion
+    channels: ChannelCriterion
+    buying_capacity: CapacityCriterion
+    latino: LatinoRequirement
+    exclusions: IcpExclusions
+    offers: Annotated[list[Offer], _between(0, MAX_OFFERS)]
+
+
+class FeatureWeight(Contract):
+    feature: Code
+    weight: Weight
+
+
+class OpportunityWeight(Contract):
+    component: OpportunityInput
+    weight: FormulaWeight
+
+
+class FinalWeight(Contract):
+    component: FinalInput
+    weight: FormulaWeight
+
+
+class NotApplicableRule(Contract):
+    """A feature that does not apply to businesses in these categories (booking for roofers...)."""
+
+    feature: Code
+    categories: Terms
+
+
+class ScoringDefinition(Contract):
+    """One version of a scoring model, stored verbatim in `scoring_model_versions.definition_json`.
+    Weights are relative within each formula; a weight of 0 leaves a feature or input out."""
+
+    schema_version: Literal[1]
+    features: list[FeatureWeight]
+    opportunity: list[OpportunityWeight]
+    final: list[FinalWeight]
+    not_applicable: list[NotApplicableRule]
+    #: Share of the final formula's weight that must be known, else `insufficient_data`.
+    min_known_weight: Confidence
+    priority_threshold: Score
+    review_threshold: Score
+    #: A website subscore below this is a weak area.
+    weak_subscore_below: Score
+    #: Without an observable problem an offer can solve there is no opportunity: gate it.
+    require_observable_problem: bool
+
+
+# ---- facts: what the engine read, independent of any ICP or model --------------------------------
+
+
+class FactLocation(Contract):
+    country_code: str | None
+    region: str | None
+    locality: str | None
+    postal_code: str | None
+
+
+class FactFinding(Contract):
+    id: Id
+    rule_id: Code
+    category: WebsiteCategory
+    result: WebsiteFindingResult
+    severity: WebsiteFindingSeverity
+    confidence: Confidence
+    observed_value: Annotated[str, Field(max_length=300)] | None
+    url: Annotated[str, Field(max_length=2048)] | None
+
+
+class FactSubscore(Contract):
+    category: WebsiteCategory
+    score: Score | None
+
+
+class FactTechnology(Contract):
+    id: Id
+    key: Code
+    name: Label
+    category: Code
+
+
+class FactAudit(Contract):
+    """The latest website audit of the business's crawled site."""
+
+    id: Id
+    site: Label
+    status: WebsiteAuditStatus
+    coverage: Confidence
+    pages_analyzed: NonNegative
+    created_at: UtcTimestamp
+    subscores: list[FactSubscore]
+    #: The findings features read, plus every failure and warning.
+    findings: list[FactFinding]
+    technologies: list[FactTechnology]
+    previous_audit_id: Id | None
+    #: Subscores and rule results that changed since the previous audit.
+    changes: NonNegative
+
+
+class FactChannel(Contract):
+    key: ChannelKey
+    contact_type: ContactType
+    validation_status: ValidationStatus
+    level: ContactLevel
+    decision_maker_id: Id | None
+
+
+class FactPerson(Contract):
+    id: Id
+    relationship: DecisionMakerRelationship
+    review_status: DecisionMakerReview
+    role: Annotated[str, Field(max_length=300)] | None
+
+
+class FactLatino(Contract):
+    assessment_id: Id
+    status: LatinoStatus
+    confidence: Confidence
+    method: AssessmentMethod
+    #: Evidence the assessment cites as contradicting.
+    contradictions: NonNegative
+
+
+class BusinessFacts(Contract):
+    """Everything a score read about one canonical business, stored with the score, so the same
+    facts can be scored again with other versions (`facts_from_run_id`)."""
+
+    facts_version: Label
+    business_id: Id
+    project_id: Id
+    display_name: str
+    status: BusinessStatus
+    is_synthetic: bool
+    first_seen_at: UtcTimestamp
+    last_seen_at: UtcTimestamp
+    collected_at: UtcTimestamp
+    #: Distinct acquired records behind its names.
+    source_count: NonNegative
+    #: Fields whose records disagree.
+    conflict_count: NonNegative
+    names: list[str]
+    locations: list[FactLocation]
+    categories: list[str]
+    domains: list[str]
+    audit: FactAudit | None
+    #: Published or imported channels; hypotheses are never facts.
+    channels: list[FactChannel]
+    contactability: Contactability
+    people: list[FactPerson]
+    business_suppressed: bool
+    latino: FactLatino | None
+
+
+# ---- scorecards ----------------------------------------------------------------------------------
+
+
+class ScoreEvidence(Contract):
+    """What a point rests on: the stored row it came from, and where to see it."""
+
+    kind: ScoreEvidenceKind
+    ref: Annotated[str, Field(min_length=1, max_length=400)]
+    label: Label
+    url: Annotated[str, Field(max_length=2048)] | None
+
+
+class ScoreFeature(Contract):
+    """One evaluated feature. `points`: what it adds to its component; `impact`: to the total."""
+
+    feature: Code
+    component: ScoreComponent
+    problem: ProblemType | None
+    state: FeatureState
+    value: Confidence | None
+    weight: NonNegative
+    points: float | None
+    impact: float | None
+    detail: ScoreText
+    #: Why it is unknown or not applicable.
+    reason: Code | None
+    evidence: list[ScoreEvidence]
+
+
+class ScoreComponentView(Contract):
+    """`weight` and `contribution`: in the formula that uses this component (0 and null for
+    DATA_CONFIDENCE and FINAL_LEAD_SCORE); `coverage`: share of its own weight that was known."""
+
+    component: ScoreComponent
+    value: Points | None
+    weight: NonNegative
+    contribution: float | None
+    coverage: Confidence
+    formula: Annotated[str, Field(min_length=1, max_length=2000)]
+
+
+class GateView(Contract):
+    gate: Code
+    outcome: GateOutcome
+    detail: ScoreText
+    evidence: list[ScoreEvidence]
+
+
+class CriterionView(Contract):
+    criterion: Code
+    importance: CriterionImportance
+    outcome: GateOutcome
+    weight: NonNegative
+    detail: ScoreText
+    evidence: list[ScoreEvidence]
+
+
+class ScoreReason(Contract):
+    feature: Code
+    text: ScoreText
+    impact: float
+    evidence: list[ScoreEvidence]
+
+
+class ScoreRisk(Contract):
+    """A contradiction, a caveat or a reason to double-check before acting."""
+
+    code: Code
+    detail: ScoreText
+    evidence: list[ScoreEvidence]
+
+
+class MissingData(Contract):
+    """An unknown feature and the share of the final formula it could have moved."""
+
+    feature: Code
+    component: ScoreComponent
+    detail: ScoreText
+    weight_share: Confidence
+
+
+class InferredImpact(Contract):
+    """The probable commercial impact of a problem: an inference, labelled as one."""
+
+    problem: ProblemType
+    text: ScoreText
+    is_inference: Literal[True]
+
+
+class OfferRecommendation(Contract):
+    offer_key: Code
+    offer_name: Label
+    problems: list[ProblemType]
+    why: Annotated[str, Field(min_length=1, max_length=600)]
+    evidence: list[ScoreEvidence]
+
+
+class MessageDraft(Contract):
+    """A commercial message to adapt by hand. It is never sent."""
+
+    subject: Annotated[str, Field(min_length=1, max_length=200)]
+    body: Annotated[str, Field(min_length=1, max_length=2000)]
+    language: Literal["en"]
+    is_draft: Literal[True]
+
+
+class ScoreVersions(Contract):
+    engine_version: Label
+    facts_version: Label
+    scoring_model_key: Code
+    scoring_model_version: Annotated[int, Field(ge=1)]
+    is_heuristic: bool
+    icp_profile_name: Label
+    icp_profile_version: Annotated[int, Field(ge=1)]
+
+
+class LeadScorecard(Contract):
+    """The explanation of one lead in one run, stored with its score (`business_scores`)."""
+
+    business_id: Id
+    tier: LeadTier
+    total_score: Points | None
+    confidence: Confidence
+    #: Share of the final formula's weight that was known.
+    known_weight: Confidence
+    versions: ScoreVersions
+    components: list[ScoreComponentView]
+    features: list[ScoreFeature]
+    gates: list[GateView]
+    criteria: list[CriterionView]
+    #: The top three positive reasons.
+    reasons: list[ScoreReason]
+    #: Reasons to contact now.
+    contact_now: list[ScoreReason]
+    impacts: list[InferredImpact]
+    risks: list[ScoreRisk]
+    missing: list[MissingData]
+    offer: OfferRecommendation | None
+    message: MessageDraft | None
+
+
+# ---- scoring IPC ---------------------------------------------------------------------------------
+
+
+class ScoringCatalogQuery(Contract):
+    project_id: Id | None
+
+
+class IcpProfileView(Contract):
+    """A profile with every version, newest first, and what validation says about the newest."""
+
+    profile: IcpProfile
+    versions: list[IcpProfileVersion]
+    problems: list[CriteriaProblem]
+    is_synthetic: bool
+
+
+class ScoringModelView(Contract):
+    model: ScoringModel
+    versions: list[ScoringModelVersion]
+    problems: list[CriteriaProblem]
+
+
+class FeatureInfo(Contract):
+    feature: Code
+    component: ScoreComponent
+    problem: ProblemType | None
+    description: Annotated[str, Field(min_length=1, max_length=600)]
+
+
+class ScoringCatalog(Contract):
+    """Profiles and models to build with, the features a model can weigh and blank templates."""
+
+    icp_profiles: list[IcpProfileView]
+    models: list[ScoringModelView]
+    features: list[FeatureInfo]
+    engine_version: Label
+    icp_template: IcpDefinition
+    scoring_template: ScoringDefinition
+
+
+class IcpSaveRequest(Contract):
+    """A new profile when `profile_id` is null (clone = a new profile from another's definition),
+    otherwise a new version of it; an identical definition reuses the latest version."""
+
+    profile_id: Id | None
+    project_id: Id | None
+    name: Label
+    description: Annotated[str, Field(max_length=2000)] | None
+    definition: IcpDefinition
+
+
+class ScoringModelSaveRequest(Contract):
+    model_id: Id | None
+    name: Label
+    description: Annotated[str, Field(max_length=2000)] | None
+    definition: ScoringDefinition
+
+
+class ScoringTarget(StrEnum):
+    ICP_PROFILE = "icp_profile"
+    SCORING_MODEL = "scoring_model"
+
+
+class ScoringChangeAction(StrEnum):
+    ACTIVATE = "activate"
+    ARCHIVE = "archive"
+    RESTORE = "restore"
+
+
+class ScoringChangeRequest(Contract):
+    """Activates a version (`version_id`), archives or restores a profile or a model."""
+
+    target: ScoringTarget
+    id: Id
+    action: ScoringChangeAction
+    version_id: Id | None
+    reason: ReviewReason
+
+
+class ScoringSimulationRequest(Contract):
+    """Scores drafts in memory, over a project's facts read now or a run's stored facts. Writes
+    nothing."""
+
+    project_id: Id | None
+    facts_from_run_id: Id | None
+    icp: IcpDefinition
+    scoring: ScoringDefinition
+    top: Annotated[int, Field(ge=1, le=100)]
+
+
+class GateExample(Contract):
+    business_id: Id
+    display_name: str
+    detail: ScoreText
+
+
+class GatePreview(Contract):
+    """How many businesses a gate lets through, stops or cannot decide, with examples of why."""
+
+    gate: Code
+    passed: NonNegative
+    failed: NonNegative
+    unknown: NonNegative
+    examples: list[GateExample]
+
+
+class TierCounts(Contract):
+    priority: NonNegative
+    review: NonNegative
+    low: NonNegative
+    insufficient_data: NonNegative
+    excluded: NonNegative
+
+
+class ScoreBin(Contract):
+    """Scored businesses whose total is in [low, low + 10) (the last bin includes 100)."""
+
+    low: Annotated[int, Field(ge=0, le=90)]
+    businesses: NonNegative
+
+
+class ComponentValue(Contract):
+    component: ScoreComponent
+    value: Points | None
+
+
+class LeadScoreItem(Contract):
+    business_id: Id
+    project_id: Id
+    display_name: str
+    locality: str | None
+    region: str | None
+    primary_category: str | None
+    lead_stage: LeadStage
+    latino_status: LatinoStatus
+    #: Position in the run: tier, then total, then confidence, then business id (docs/scoring.md).
+    rank: Annotated[int, Field(ge=1)]
+    tier: LeadTier
+    total_score: Points | None
+    confidence: Confidence
+    components: list[ComponentValue]
+    top_reason: ScoreText | None
+    offer_key: Code | None
+    problems: list[ProblemType]
+    is_synthetic: bool
+
+
+class ScoringSimulation(Contract):
+    businesses: NonNegative
+    tiers: TierCounts
+    distribution: list[ScoreBin]
+    gates: list[GatePreview]
+    top: list[LeadScoreItem]
+    facts_from_run_id: Id | None
+    collected_at: UtcTimestamp
+    problems: list[CriteriaProblem]
+
+
+class ScoringStartRequest(Contract):
+    project_id: Id
+    icp_profile_version_id: Id
+    scoring_model_version_id: Id
+    facts_from_run_id: Id | None
+
+
+class ScoreRunStats(Contract):
+    businesses: NonNegative
+    priority: NonNegative
+    review: NonNegative
+    low: NonNegative
+    insufficient_data: NonNegative
+    excluded: NonNegative
+
+
+class ScoreRunItem(Contract):
+    job_id: Id
+    score_run_id: Id
+    project_id: Id
+    project_name: Label
+    status: JobStatus
+    stage: Code
+    progress_done: NonNegative
+    progress_total: NonNegative | None
+    scoring_model_id: Id
+    scoring_model_key: Code
+    scoring_model_name: Label
+    scoring_model_version: Annotated[int, Field(ge=1)]
+    is_heuristic: bool
+    icp_profile_id: Id
+    icp_profile_name: Label
+    icp_profile_version: Annotated[int, Field(ge=1)]
+    engine_version: Label
+    facts_from_run_id: Id | None
+    stats: ScoreRunStats
+    distribution: list[ScoreBin]
+    requested_at: UtcTimestamp
+    started_at: UtcTimestamp | None
+    finished_at: UtcTimestamp | None
+    events: list[RunEvent]
+    is_synthetic: bool
+
+
+class ScoreRunListQuery(Contract):
+    project_id: Id | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class ScoreRunPage(Contract):
+    items: list[ScoreRunItem]
+    next_cursor: Cursor | None
+    total: NonNegative
+
+
+class LeadScoreQuery(Contract):
+    """The ranked leads of a run; `score_run_id` null reads the newest finished run."""
+
+    score_run_id: Id | None
+    tier: LeadTier | None
+    min_score: Points | None
+    problem: ProblemType | None
+    search: Annotated[str, Field(max_length=200)] | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class LeadScorePage(Contract):
+    score_run: ScoreRunItem | None
+    items: list[LeadScoreItem]
+    next_cursor: Cursor | None
+    total: NonNegative
+
+
+class ScorecardQuery(Contract):
+    """`score_run_id` null reads the newest finished run that scored the business."""
+
+    business_id: Id
+    score_run_id: Id | None
+
+
+class LeadScoreHistoryItem(Contract):
+    score_run_id: Id
+    created_at: UtcTimestamp
+    scoring_model_key: Code
+    scoring_model_version: Annotated[int, Field(ge=1)]
+    icp_profile_name: Label
+    icp_profile_version: Annotated[int, Field(ge=1)]
+    tier: LeadTier
+    total_score: Points | None
+    confidence: Confidence
+
+
+class AiDraftedReason(Contract):
+    """A local model's wording of a problem, kept only when every finding it cites is evidence of
+    this scorecard. It never changes a number."""
+
+    inference_run_id: Id
+    model: Label
+    problem: OpportunityProblem
+    explanation: ScoreText
+    evidence: list[ScoreEvidence]
+
+
+class LeadScorecardDetail(Contract):
+    score_run: ScoreRunItem
+    business_id: Id
+    display_name: str
+    lead_stage: LeadStage
+    rank: Annotated[int, Field(ge=1)]
+    scorecard: LeadScorecard
+    #: Every run that scored this business, newest first.
+    history: list[LeadScoreHistoryItem]
+    outcomes: list[LeadOutcome]
+    decisions: list[ReviewDecision]
+    ai_reasons: list[AiDraftedReason]
+    #: Model points dropped because they cited something this scorecard does not rest on.
+    ai_dropped: NonNegative
+    is_synthetic: bool
+
+
+class ScoreCompareQuery(Contract):
+    left_run_id: Id
+    right_run_id: Id
+    top_k: Annotated[int, Field(ge=1, le=500)]
+
+
+class RankChange(Contract):
+    business_id: Id
+    display_name: str
+    left_rank: Annotated[int, Field(ge=1)] | None
+    right_rank: Annotated[int, Field(ge=1)] | None
+    left_tier: LeadTier | None
+    right_tier: LeadTier | None
+    left_total: Points | None
+    right_total: Points | None
+
+
+class ScoreComparison(Contract):
+    """Two runs side by side: who entered or left the top K and how ranks moved."""
+
+    left: ScoreRunItem
+    right: ScoreRunItem
+    #: The right run scored the left run's stored facts (or the other way round).
+    same_facts: bool
+    top_k: Annotated[int, Field(ge=1, le=500)]
+    entered: NonNegative
+    left_out: NonNegative
+    mean_abs_rank_change: Annotated[float, Field(ge=0)] | None
+    changes: list[RankChange]
+
+
+class CalibrationQuery(Contract):
+    score_run_id: Id
+
+
+class PrecisionAtK(Contract):
+    k: Annotated[int, Field(ge=1)]
+    labeled: NonNegative
+    positives: NonNegative
+    precision: Confidence | None
+
+
+class DecileLift(Contract):
+    decile: Annotated[int, Field(ge=1, le=10)]
+    businesses: NonNegative
+    labeled: NonNegative
+    positives: NonNegative
+    rate: Confidence | None
+    lift: Annotated[float, Field(ge=0)] | None
+
+
+class CalibrationBand(Contract):
+    low: Annotated[int, Field(ge=0, le=80)]
+    high: Annotated[int, Field(ge=20, le=100)]
+    businesses: NonNegative
+    labeled: NonNegative
+    mean_score: Points | None
+    observed_rate: Confidence | None
+
+
+class TierCohort(Contract):
+    tier: LeadTier
+    businesses: NonNegative
+    labeled: NonNegative
+    positives: NonNegative
+    conversion: Confidence | None
+
+
+class CalibrationReport(Contract):
+    """Offline metrics of one run against the outcomes recorded after its facts were read. Nothing
+    is trained; with few labels every number is a warning, not a verdict."""
+
+    score_run: ScoreRunItem
+    positive_stages: list[LeadStage]
+    negative_stages: list[LeadStage]
+    businesses: NonNegative
+    labeled: NonNegative
+    positives: NonNegative
+    #: Outcomes recorded before the facts were read: left out to avoid leakage.
+    leakage_excluded: NonNegative
+    precision_at_k: list[PrecisionAtK]
+    lift_by_decile: list[DecileLift]
+    calibration: list[CalibrationBand]
+    cohorts: list[TierCohort]
+    #: Share of businesses the run could score (not excluded, not insufficient data).
+    coverage: Confidence
+    labeled_share: Confidence
+    weights_are_heuristic: bool
+    warnings: list[Code]
+
+
+class LeadAction(StrEnum):
+    """confirm or dismiss a score after reviewing it, reset that review, or record an outcome."""
+
+    CONFIRM = "confirm"
+    DISMISS = "dismiss"
+    RESET = "reset"
+    RECORD_OUTCOME = "record_outcome"
+
+
+class LeadActionRequest(Contract):
+    score_run_id: Id
+    business_id: Id
+    action: LeadAction
+    #: Required to record an outcome, refused otherwise.
+    stage: LeadStage | None
+    #: Required when the outcome is `lost`.
+    lost_reason: Annotated[str, Field(min_length=1, max_length=500)] | None
+    reason: ReviewReason
+
+
 DATA_MODELS: tuple[type[Contract], ...] = (
     *RECORDS,
     Provenance,
@@ -4332,4 +5280,29 @@ DATA_MODELS: tuple[type[Contract], ...] = (
     AiInferenceDetail,
     AiReviewRequest,
     AiModelChangeRequest,
+    IcpDefinition,
+    ScoringDefinition,
+    BusinessFacts,
+    LeadScorecard,
+    ScoringCatalogQuery,
+    ScoringCatalog,
+    IcpSaveRequest,
+    IcpProfileView,
+    ScoringModelSaveRequest,
+    ScoringModelView,
+    ScoringChangeRequest,
+    ScoringSimulationRequest,
+    ScoringSimulation,
+    ScoringStartRequest,
+    ScoreRunListQuery,
+    ScoreRunPage,
+    LeadScoreQuery,
+    LeadScorePage,
+    ScorecardQuery,
+    LeadScorecardDetail,
+    ScoreCompareQuery,
+    ScoreComparison,
+    CalibrationQuery,
+    CalibrationReport,
+    LeadActionRequest,
 )

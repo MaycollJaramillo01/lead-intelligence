@@ -1,0 +1,739 @@
+{
+  "score_run": {
+    "job_id": "01900000-0000-7000-8000-000000001163",
+    "score_run_id": "01900000-0000-7000-8000-000000001162",
+    "project_id": "01900000-0000-7000-8000-000000000001",
+    "project_name": "Synthetic test workspace",
+    "status": "succeeded",
+    "stage": "done",
+    "progress_done": 20,
+    "progress_total": 20,
+    "scoring_model_id": "01900000-0000-7000-8000-000000001154",
+    "scoring_model_key": "lead_intelligence.heuristic",
+    "scoring_model_name": "Lead Intelligence heuristic",
+    "scoring_model_version": 1,
+    "is_heuristic": true,
+    "icp_profile_id": "01900000-0000-7000-8000-000000001157",
+    "icp_profile_name": "Synthetic ICP: local services with weak websites",
+    "icp_profile_version": 1,
+    "engine_version": "1.0.0",
+    "facts_from_run_id": null,
+    "stats": {
+      "businesses": 20,
+      "priority": 0,
+      "review": 6,
+      "low": 4,
+      "insufficient_data": 10,
+      "excluded": 0
+    },
+    "distribution": [
+      {
+        "low": 0,
+        "businesses": 0
+      },
+      {
+        "low": 10,
+        "businesses": 0
+      },
+      {
+        "low": 20,
+        "businesses": 0
+      },
+      {
+        "low": 30,
+        "businesses": 1
+      },
+      {
+        "low": 40,
+        "businesses": 3
+      },
+      {
+        "low": 50,
+        "businesses": 0
+      },
+      {
+        "low": 60,
+        "businesses": 6
+      },
+      {
+        "low": 70,
+        "businesses": 0
+      },
+      {
+        "low": 80,
+        "businesses": 0
+      },
+      {
+        "low": 90,
+        "businesses": 0
+      }
+    ],
+    "requested_at": "2026-01-01T00:00:00.000Z",
+    "started_at": "2026-01-01T00:00:00.000Z",
+    "finished_at": "2026-01-01T00:00:00.000Z",
+    "events": [
+      {
+        "level": "info",
+        "event": "run_succeeded",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "businesses": 20,
+          "excluded": 0,
+          "insufficient_data": 10,
+          "low": 4,
+          "priority": 0,
+          "review": 6
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "level": "info",
+        "event": "stage_started",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "businesses": 20,
+          "facts": "store"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "level": "info",
+        "event": "run_queued",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "project_id": "01900000-0000-7000-8000-000000000001",
+          "score_run_id": "01900000-0000-7000-8000-000000001162"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      }
+    ],
+    "is_synthetic": true
+  },
+  "items": [
+    {
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Bakery 0001",
+      "locality": "Austin",
+      "region": "TX",
+      "primary_category": "Bakery",
+      "lead_stage": "attempted",
+      "latino_status": "unknown",
+      "rank": 1,
+      "tier": "review",
+      "total_score": 63.6471,
+      "confidence": 0.6444,
+      "components": [
+        {
+          "component": "ICP_MATCH",
+          "value": 71.4286
+        },
+        {
+          "component": "LATINO_CONFIDENCE",
+          "value": null
+        },
+        {
+          "component": "BUSINESS_HEALTH",
+          "value": 40.0
+        },
+        {
+          "component": "DIGITAL_GAP",
+          "value": 75.0
+        },
+        {
+          "component": "BUYING_CAPACITY",
+          "value": 0.0
+        },
+        {
+          "component": "CONTACTABILITY",
+          "value": 76.0
+        },
+        {
+          "component": "COMMERCIAL_INTENT",
+          "value": null
+        },
+        {
+          "component": "DATA_CONFIDENCE",
+          "value": 64.44
+        },
+        {
+          "component": "OPPORTUNITY_SCORE",
+          "value": 49.1176
+        },
+        {
+          "component": "FINAL_LEAD_SCORE",
+          "value": 63.6471
+        }
+      ],
+      "top_reason": "The crawl could not analyze any page of the site",
+      "offer_key": "website_rebuild",
+      "problems": [
+        "website_unreachable"
+      ],
+      "is_synthetic": true
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000110",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Bakery 0001",
+      "locality": "Austin",
+      "region": "TX",
+      "primary_category": "Bakery",
+      "lead_stage": "not_contacted",
+      "latino_status": "unknown",
+      "rank": 2,
+      "tier": "review",
+      "total_score": 63.6471,
+      "confidence": 0.6444,
+      "components": [
+        {
+          "component": "ICP_MATCH",
+          "value": 71.4286
+        },
+        {
+          "component": "LATINO_CONFIDENCE",
+          "value": null
+        },
+        {
+          "component": "BUSINESS_HEALTH",
+          "value": 40.0
+        },
+        {
+          "component": "DIGITAL_GAP",
+          "value": 75.0
+        },
+        {
+          "component": "BUYING_CAPACITY",
+          "value": 0.0
+        },
+        {
+          "component": "CONTACTABILITY",
+          "value": 76.0
+        },
+        {
+          "component": "COMMERCIAL_INTENT",
+          "value": null
+        },
+        {
+          "component": "DATA_CONFIDENCE",
+          "value": 64.44
+        },
+        {
+          "component": "OPPORTUNITY_SCORE",
+          "value": 49.1176
+        },
+        {
+          "component": "FINAL_LEAD_SCORE",
+          "value": 63.6471
+        }
+      ],
+      "top_reason": "The crawl could not analyze any page of the site",
+      "offer_key": "website_rebuild",
+      "problems": [
+        "website_unreachable"
+      ],
+      "is_synthetic": true
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000152",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Cleaning Services",
+      "locality": "Houston",
+      "region": "TX",
+      "primary_category": null,
+      "lead_stage": "not_contacted",
+      "latino_status": "unknown",
+      "rank": 3,
+      "tier": "review",
+      "total_score": 62.451,
+      "confidence": 0.8077,
+      "components": [
+        {
+          "component": "ICP_MATCH",
+          "value": 100.0
+        },
+        {
+          "component": "LATINO_CONFIDENCE",
+          "value": null
+        },
+        {
+          "component": "BUSINESS_HEALTH",
+          "value": 66.6667
+        },
+        {
+          "component": "DIGITAL_GAP",
+          "value": 100.0
+        },
+        {
+          "component": "BUYING_CAPACITY",
+          "value": 0.0
+        },
+        {
+          "component": "CONTACTABILITY",
+          "value": 0.0
+        },
+        {
+          "component": "COMMERCIAL_INTENT",
+          "value": null
+        },
+        {
+          "component": "DATA_CONFIDENCE",
+          "value": 80.77
+        },
+        {
+          "component": "OPPORTUNITY_SCORE",
+          "value": 68.6275
+        },
+        {
+          "component": "FINAL_LEAD_SCORE",
+          "value": 62.451
+        }
+      ],
+      "top_reason": "No source lists a website for this business",
+      "offer_key": "website_rebuild",
+      "problems": [
+        "no_website"
+      ],
+      "is_synthetic": true
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000158",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Cleaning Services",
+      "locality": "Tampa",
+      "region": "FL",
+      "primary_category": null,
+      "lead_stage": "not_contacted",
+      "latino_status": "unknown",
+      "rank": 4,
+      "tier": "review",
+      "total_score": 62.451,
+      "confidence": 0.8077,
+      "components": [
+        {
+          "component": "ICP_MATCH",
+          "value": 100.0
+        },
+        {
+          "component": "LATINO_CONFIDENCE",
+          "value": null
+        },
+        {
+          "component": "BUSINESS_HEALTH",
+          "value": 66.6667
+        },
+        {
+          "component": "DIGITAL_GAP",
+          "value": 100.0
+        },
+        {
+          "component": "BUYING_CAPACITY",
+          "value": 0.0
+        },
+        {
+          "component": "CONTACTABILITY",
+          "value": 0.0
+        },
+        {
+          "component": "COMMERCIAL_INTENT",
+          "value": null
+        },
+        {
+          "component": "DATA_CONFIDENCE",
+          "value": 80.77
+        },
+        {
+          "component": "OPPORTUNITY_SCORE",
+          "value": 68.6275
+        },
+        {
+          "component": "FINAL_LEAD_SCORE",
+          "value": 62.451
+        }
+      ],
+      "top_reason": "No source lists a website for this business",
+      "offer_key": "website_rebuild",
+      "problems": [
+        "no_website"
+      ],
+      "is_synthetic": true
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000267",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Auto Repair 0501",
+      "locality": "Austin",
+      "region": "TX",
+      "primary_category": null,
+      "lead_stage": "not_contacted",
+      "latino_status": "verified_latino_owned",
+      "rank": 5,
+      "tier": "review",
+      "total_score": 62.451,
+      "confidence": 0.8077,
+      "components": [
+        {
+          "component": "ICP_MATCH",
+          "value": 100.0
+        },
+        {
+          "component": "LATINO_CONFIDENCE",
+          "value": 85.5
+        },
+        {
+          "component": "BUSINESS_HEALTH",
+          "value": 66.6667
+        },
+        {
+          "component": "DIGITAL_GAP",
+          "value": 100.0
+        },
+        {
+          "component": "BUYING_CAPACITY",
+          "value": 0.0
+        },
+        {
+          "component": "CONTACTABILITY",
+          "value": 0.0
+        },
+        {
+          "component": "COMMERCIAL_INTENT",
+          "value": null
+        },
+        {
+          "component": "DATA_CONFIDENCE",
+          "value": 80.77
+        },
+        {
+          "component": "OPPORTUNITY_SCORE",
+          "value": 68.6275
+        },
+        {
+          "component": "FINAL_LEAD_SCORE",
+          "value": 62.451
+        }
+      ],
+      "top_reason": "No source lists a website for this business",
+      "offer_key": "website_rebuild",
+      "problems": [
+        "no_website"
+      ],
+      "is_synthetic": true
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000273",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Bakery 0502",
+      "locality": "Phoenix",
+      "region": "AZ",
+      "primary_category": null,
+      "lead_stage": "not_contacted",
+      "latino_status": "probable_latino_owned",
+      "rank": 6,
+      "tier": "review",
+      "total_score": 62.451,
+      "confidence": 0.8077,
+      "components": [
+        {
+          "component": "ICP_MATCH",
+          "value": 100.0
+        },
+        {
+          "component": "LATINO_CONFIDENCE",
+          "value": 48.0
+        },
+        {
+          "component": "BUSINESS_HEALTH",
+          "value": 66.6667
+        },
+        {
+          "component": "DIGITAL_GAP",
+          "value": 100.0
+        },
+        {
+          "component": "BUYING_CAPACITY",
+          "value": 0.0
+        },
+        {
+          "component": "CONTACTABILITY",
+          "value": 0.0
+        },
+        {
+          "component": "COMMERCIAL_INTENT",
+          "value": null
+        },
+        {
+          "component": "DATA_CONFIDENCE",
+          "value": 80.77
+        },
+        {
+          "component": "OPPORTUNITY_SCORE",
+          "value": 68.6275
+        },
+        {
+          "component": "FINAL_LEAD_SCORE",
+          "value": 62.451
+        }
+      ],
+      "top_reason": "No source lists a website for this business",
+      "offer_key": "website_rebuild",
+      "problems": [
+        "no_website"
+      ],
+      "is_synthetic": true
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000279",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Dental Clinic 0503",
+      "locality": "Miami",
+      "region": "FL",
+      "primary_category": null,
+      "lead_stage": "not_contacted",
+      "latino_status": "high_confidence_latino_owned",
+      "rank": 7,
+      "tier": "low",
+      "total_score": 49.9412,
+      "confidence": 0.6253,
+      "components": [
+        {
+          "component": "ICP_MATCH",
+          "value": 71.4286
+        },
+        {
+          "component": "LATINO_CONFIDENCE",
+          "value": 72.0
+        },
+        {
+          "component": "BUSINESS_HEALTH",
+          "value": 40.0
+        },
+        {
+          "component": "DIGITAL_GAP",
+          "value": 100.0
+        },
+        {
+          "component": "BUYING_CAPACITY",
+          "value": 0.0
+        },
+        {
+          "component": "CONTACTABILITY",
+          "value": 0.0
+        },
+        {
+          "component": "COMMERCIAL_INTENT",
+          "value": null
+        },
+        {
+          "component": "DATA_CONFIDENCE",
+          "value": 62.5314
+        },
+        {
+          "component": "OPPORTUNITY_SCORE",
+          "value": 62.3529
+        },
+        {
+          "component": "FINAL_LEAD_SCORE",
+          "value": 49.9412
+        }
+      ],
+      "top_reason": "The crawl could not analyze any page of the site",
+      "offer_key": "website_rebuild",
+      "problems": [
+        "website_unreachable"
+      ],
+      "is_synthetic": true
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000287",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Landscaping 0504",
+      "locality": "Chicago",
+      "region": "IL",
+      "primary_category": null,
+      "lead_stage": "not_contacted",
+      "latino_status": "spanish_market_affinity",
+      "rank": 8,
+      "tier": "low",
+      "total_score": 49.9412,
+      "confidence": 0.6253,
+      "components": [
+        {
+          "component": "ICP_MATCH",
+          "value": 71.4286
+        },
+        {
+          "component": "LATINO_CONFIDENCE",
+          "value": 48.0
+        },
+        {
+          "component": "BUSINESS_HEALTH",
+          "value": 40.0
+        },
+        {
+          "component": "DIGITAL_GAP",
+          "value": 100.0
+        },
+        {
+          "component": "BUYING_CAPACITY",
+          "value": 0.0
+        },
+        {
+          "component": "CONTACTABILITY",
+          "value": 0.0
+        },
+        {
+          "component": "COMMERCIAL_INTENT",
+          "value": null
+        },
+        {
+          "component": "DATA_CONFIDENCE",
+          "value": 62.5314
+        },
+        {
+          "component": "OPPORTUNITY_SCORE",
+          "value": 62.3529
+        },
+        {
+          "component": "FINAL_LEAD_SCORE",
+          "value": 49.9412
+        }
+      ],
+      "top_reason": "The crawl could not analyze any page of the site",
+      "offer_key": "website_rebuild",
+      "problems": [
+        "website_unreachable"
+      ],
+      "is_synthetic": true
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000295",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Tax Preparation 0505",
+      "locality": "Austin",
+      "region": "TX",
+      "primary_category": null,
+      "lead_stage": "not_contacted",
+      "latino_status": "probable_latino_owned",
+      "rank": 9,
+      "tier": "low",
+      "total_score": 49.9412,
+      "confidence": 0.6253,
+      "components": [
+        {
+          "component": "ICP_MATCH",
+          "value": 71.4286
+        },
+        {
+          "component": "LATINO_CONFIDENCE",
+          "value": 72.0
+        },
+        {
+          "component": "BUSINESS_HEALTH",
+          "value": 40.0
+        },
+        {
+          "component": "DIGITAL_GAP",
+          "value": 100.0
+        },
+        {
+          "component": "BUYING_CAPACITY",
+          "value": 0.0
+        },
+        {
+          "component": "CONTACTABILITY",
+          "value": 0.0
+        },
+        {
+          "component": "COMMERCIAL_INTENT",
+          "value": null
+        },
+        {
+          "component": "DATA_CONFIDENCE",
+          "value": 62.5314
+        },
+        {
+          "component": "OPPORTUNITY_SCORE",
+          "value": 62.3529
+        },
+        {
+          "component": "FINAL_LEAD_SCORE",
+          "value": 49.9412
+        }
+      ],
+      "top_reason": "The crawl could not analyze any page of the site",
+      "offer_key": "website_rebuild",
+      "problems": [
+        "website_unreachable"
+      ],
+      "is_synthetic": true
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000303",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "display_name": "Synthetic Tax Preparation 0505",
+      "locality": "Denver",
+      "region": "CO",
+      "primary_category": null,
+      "lead_stage": "not_contacted",
+      "latino_status": "probable_latino_owned",
+      "rank": 10,
+      "tier": "low",
+      "total_score": 39.9412,
+      "confidence": 0.6253,
+      "components": [
+        {
+          "component": "ICP_MATCH",
+          "value": 42.8571
+        },
+        {
+          "component": "LATINO_CONFIDENCE",
+          "value": 72.0
+        },
+        {
+          "component": "BUSINESS_HEALTH",
+          "value": 40.0
+        },
+        {
+          "component": "DIGITAL_GAP",
+          "value": 100.0
+        },
+        {
+          "component": "BUYING_CAPACITY",
+          "value": 0.0
+        },
+        {
+          "component": "CONTACTABILITY",
+          "value": 0.0
+        },
+        {
+          "component": "COMMERCIAL_INTENT",
+          "value": null
+        },
+        {
+          "component": "DATA_CONFIDENCE",
+          "value": 62.5314
+        },
+        {
+          "component": "OPPORTUNITY_SCORE",
+          "value": 62.3529
+        },
+        {
+          "component": "FINAL_LEAD_SCORE",
+          "value": 39.9412
+        }
+      ],
+      "top_reason": "The crawl could not analyze any page of the site",
+      "offer_key": "website_rebuild",
+      "problems": [
+        "website_unreachable"
+      ],
+      "is_synthetic": true
+    }
+  ],
+  "next_cursor": "WyJsZWFkcy4wMTkwMDAwMC0wMDAwLTcwMDAtODAwMC0wMDAwMDAwMDExNjIiLCIwMDAwMDAwMTAiLCIwMTkwMDAwMC0wMDAwLTcwMDAtODAwMC0wMDAwMDAwMDAzMDMiXQ",
+  "total": 20
+}

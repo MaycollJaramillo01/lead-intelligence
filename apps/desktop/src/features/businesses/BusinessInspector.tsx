@@ -14,6 +14,7 @@ import { BUSINESS_STATUS_KEYS } from "@/features/businesses/columns";
 import { AiPanel } from "@/features/ai/AiPanel";
 import { ContactPanel } from "@/features/contacts/ContactPanel";
 import { LatinoPanel } from "@/features/latino/LatinoPanel";
+import { ScorecardPanel } from "@/features/scoring/ScorecardPanel";
 import { formatDateTime, useLanguage, useT } from "@/lib/i18n";
 import { desktop, toIpcError, type IpcError } from "@/lib/ipc";
 import { cn } from "@/lib/utils";
@@ -309,6 +310,7 @@ export function BusinessInspector({ businessId }: { businessId: string }) {
         fieldOf={(label) => (label.kind === "category" ? "category" : null)}
         {...choice}
       />
+      <ScorecardPanel key={`score-${business.id}`} businessId={business.id} />
       <ContactPanel key={`contacts-${business.id}`} businessId={business.id} />
       <LatinoPanel key={business.id} businessId={business.id} />
       <AiPanel key={`ai-${business.id}`} businessId={business.id} />

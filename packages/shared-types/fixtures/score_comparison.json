@@ -1,0 +1,335 @@
+{
+  "left": {
+    "job_id": "01900000-0000-7000-8000-000000001163",
+    "score_run_id": "01900000-0000-7000-8000-000000001162",
+    "project_id": "01900000-0000-7000-8000-000000000001",
+    "project_name": "Synthetic test workspace",
+    "status": "succeeded",
+    "stage": "done",
+    "progress_done": 20,
+    "progress_total": 20,
+    "scoring_model_id": "01900000-0000-7000-8000-000000001154",
+    "scoring_model_key": "lead_intelligence.heuristic",
+    "scoring_model_name": "Lead Intelligence heuristic",
+    "scoring_model_version": 1,
+    "is_heuristic": true,
+    "icp_profile_id": "01900000-0000-7000-8000-000000001157",
+    "icp_profile_name": "Synthetic ICP: local services with weak websites",
+    "icp_profile_version": 1,
+    "engine_version": "1.0.0",
+    "facts_from_run_id": null,
+    "stats": {
+      "businesses": 20,
+      "priority": 0,
+      "review": 6,
+      "low": 4,
+      "insufficient_data": 10,
+      "excluded": 0
+    },
+    "distribution": [
+      {
+        "low": 0,
+        "businesses": 0
+      },
+      {
+        "low": 10,
+        "businesses": 0
+      },
+      {
+        "low": 20,
+        "businesses": 0
+      },
+      {
+        "low": 30,
+        "businesses": 1
+      },
+      {
+        "low": 40,
+        "businesses": 3
+      },
+      {
+        "low": 50,
+        "businesses": 0
+      },
+      {
+        "low": 60,
+        "businesses": 6
+      },
+      {
+        "low": 70,
+        "businesses": 0
+      },
+      {
+        "low": 80,
+        "businesses": 0
+      },
+      {
+        "low": 90,
+        "businesses": 0
+      }
+    ],
+    "requested_at": "2026-01-01T00:00:00.000Z",
+    "started_at": "2026-01-01T00:00:00.000Z",
+    "finished_at": "2026-01-01T00:00:00.000Z",
+    "events": [
+      {
+        "level": "info",
+        "event": "run_succeeded",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "businesses": 20,
+          "excluded": 0,
+          "insufficient_data": 10,
+          "low": 4,
+          "priority": 0,
+          "review": 6
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "level": "info",
+        "event": "stage_started",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "businesses": 20,
+          "facts": "store"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "level": "info",
+        "event": "run_queued",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "project_id": "01900000-0000-7000-8000-000000000001",
+          "score_run_id": "01900000-0000-7000-8000-000000001162"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      }
+    ],
+    "is_synthetic": true
+  },
+  "right": {
+    "job_id": "01900000-0000-7000-8000-000000001399",
+    "score_run_id": "01900000-0000-7000-8000-000000001398",
+    "project_id": "01900000-0000-7000-8000-000000000001",
+    "project_name": "Synthetic test workspace",
+    "status": "succeeded",
+    "stage": "done",
+    "progress_done": 20,
+    "progress_total": 20,
+    "scoring_model_id": "01900000-0000-7000-8000-000000001394",
+    "scoring_model_key": "custom.synthetic_model_contactability_first",
+    "scoring_model_name": "Synthetic model: contactability first",
+    "scoring_model_version": 1,
+    "is_heuristic": true,
+    "icp_profile_id": "01900000-0000-7000-8000-000000001157",
+    "icp_profile_name": "Synthetic ICP: local services with weak websites",
+    "icp_profile_version": 1,
+    "engine_version": "1.0.0",
+    "facts_from_run_id": "01900000-0000-7000-8000-000000001162",
+    "stats": {
+      "businesses": 20,
+      "priority": 0,
+      "review": 2,
+      "low": 8,
+      "insufficient_data": 10,
+      "excluded": 0
+    },
+    "distribution": [
+      {
+        "low": 0,
+        "businesses": 0
+      },
+      {
+        "low": 10,
+        "businesses": 0
+      },
+      {
+        "low": 20,
+        "businesses": 0
+      },
+      {
+        "low": 30,
+        "businesses": 4
+      },
+      {
+        "low": 40,
+        "businesses": 4
+      },
+      {
+        "low": 50,
+        "businesses": 0
+      },
+      {
+        "low": 60,
+        "businesses": 2
+      },
+      {
+        "low": 70,
+        "businesses": 0
+      },
+      {
+        "low": 80,
+        "businesses": 0
+      },
+      {
+        "low": 90,
+        "businesses": 0
+      }
+    ],
+    "requested_at": "2026-01-01T00:00:00.000Z",
+    "started_at": "2026-01-01T00:00:00.000Z",
+    "finished_at": "2026-01-01T00:00:00.000Z",
+    "events": [
+      {
+        "level": "info",
+        "event": "run_succeeded",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "businesses": 20,
+          "excluded": 0,
+          "insufficient_data": 10,
+          "low": 8,
+          "priority": 0,
+          "review": 2
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "level": "info",
+        "event": "stage_started",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "businesses": 20,
+          "facts": "stored"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "level": "info",
+        "event": "run_queued",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "project_id": "01900000-0000-7000-8000-000000000001",
+          "score_run_id": "01900000-0000-7000-8000-000000001398"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      }
+    ],
+    "is_synthetic": true
+  },
+  "same_facts": true,
+  "top_k": 10,
+  "entered": 0,
+  "left_out": 0,
+  "mean_abs_rank_change": 0.3,
+  "changes": [
+    {
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "display_name": "Synthetic Bakery 0001",
+      "left_rank": 1,
+      "right_rank": 1,
+      "left_tier": "review",
+      "right_tier": "review",
+      "left_total": 63.6471,
+      "right_total": 65.4483
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000110",
+      "display_name": "Synthetic Bakery 0001",
+      "left_rank": 2,
+      "right_rank": 2,
+      "left_tier": "review",
+      "right_tier": "review",
+      "left_total": 63.6471,
+      "right_total": 65.4483
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000152",
+      "display_name": "Synthetic Cleaning Services",
+      "left_rank": 3,
+      "right_rank": 3,
+      "left_tier": "review",
+      "right_tier": "low",
+      "left_total": 62.451,
+      "right_total": 49.0196
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000158",
+      "display_name": "Synthetic Cleaning Services",
+      "left_rank": 4,
+      "right_rank": 4,
+      "left_tier": "review",
+      "right_tier": "low",
+      "left_total": 62.451,
+      "right_total": 49.0196
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000267",
+      "display_name": "Synthetic Auto Repair 0501",
+      "left_rank": 5,
+      "right_rank": 5,
+      "left_tier": "review",
+      "right_tier": "low",
+      "left_total": 62.451,
+      "right_total": 49.0196
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000273",
+      "display_name": "Synthetic Bakery 0502",
+      "left_rank": 6,
+      "right_rank": 6,
+      "left_tier": "review",
+      "right_tier": "low",
+      "left_total": 62.451,
+      "right_total": 49.0196
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000279",
+      "display_name": "Synthetic Dental Clinic 0503",
+      "left_rank": 7,
+      "right_rank": 7,
+      "left_tier": "low",
+      "right_tier": "low",
+      "left_total": 49.9412,
+      "right_total": 39.6807
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000287",
+      "display_name": "Synthetic Landscaping 0504",
+      "left_rank": 8,
+      "right_rank": 8,
+      "left_tier": "low",
+      "right_tier": "low",
+      "left_total": 49.9412,
+      "right_total": 39.6807
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000295",
+      "display_name": "Synthetic Tax Preparation 0505",
+      "left_rank": 9,
+      "right_rank": 9,
+      "left_tier": "low",
+      "right_tier": "low",
+      "left_total": 49.9412,
+      "right_total": 39.6807
+    },
+    {
+      "business_id": "01900000-0000-7000-8000-000000000303",
+      "display_name": "Synthetic Tax Preparation 0505",
+      "left_rank": 10,
+      "right_rank": 10,
+      "left_tier": "low",
+      "right_tier": "low",
+      "left_total": 39.9412,
+      "right_total": 32.5378
+    }
+  ]
+}

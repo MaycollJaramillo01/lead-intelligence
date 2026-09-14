@@ -87,6 +87,19 @@ pub fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Build
         commands::review_ai_inference,
         commands::run_ai_benchmark,
         commands::change_ai_model,
+        commands::get_scoring_catalog,
+        commands::save_icp_profile,
+        commands::save_scoring_model,
+        commands::change_scoring,
+        commands::simulate_scoring,
+        commands::start_scoring,
+        commands::control_scoring,
+        commands::list_score_runs,
+        commands::list_lead_scores,
+        commands::get_lead_scorecard,
+        commands::compare_score_runs,
+        commands::get_calibration,
+        commands::act_on_lead,
         commands::seed_synthetic_data
     ])
 }

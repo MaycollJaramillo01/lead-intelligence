@@ -481,6 +481,44 @@
       "title": "AiDevice",
       "type": "string"
     },
+    "AiDraftedReason": {
+      "additionalProperties": false,
+      "description": "A local model's wording of a problem, kept only when every finding it cites is evidence of\nthis scorecard. It never changes a number.",
+      "properties": {
+        "inference_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "model": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "problem": {
+          "$ref": "#/$defs/OpportunityProblem"
+        },
+        "explanation": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/ScoreEvidence"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "inference_run_id",
+        "model",
+        "problem",
+        "explanation",
+        "evidence"
+      ],
+      "title": "AiDraftedReason",
+      "type": "object"
+    },
     "AiInferenceDetail": {
       "additionalProperties": false,
       "description": "A model's answer as evidence-backed output: the run, every raw answer next to what it\nvalidated to, the exact inputs it cited and the people's decisions. Not a fact.",
@@ -2098,6 +2136,58 @@
       "title": "AppEnvironment",
       "type": "string"
     },
+    "Area": {
+      "additionalProperties": false,
+      "description": "A place an ICP includes or excludes. A part left empty matches any value.",
+      "properties": {
+        "country_code": {
+          "pattern": "^[A-Z]{2}$",
+          "type": "string"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{2}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "locality": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "postal_code": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9 -]{1,11}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "country_code",
+        "region",
+        "locality",
+        "postal_code"
+      ],
+      "title": "Area",
+      "type": "object"
+    },
     "AssessmentMethod": {
       "enum": [
         "rules",
@@ -2444,6 +2534,141 @@
         "business_id"
       ],
       "title": "BusinessDetailQuery",
+      "type": "object"
+    },
+    "BusinessFacts": {
+      "additionalProperties": false,
+      "description": "Everything a score read about one canonical business, stored with the score, so the same\nfacts can be scored again with other versions (`facts_from_run_id`).",
+      "properties": {
+        "facts_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/BusinessStatus"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        },
+        "first_seen_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "last_seen_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "collected_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "source_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "conflict_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "names": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "locations": {
+          "items": {
+            "$ref": "#/$defs/FactLocation"
+          },
+          "type": "array"
+        },
+        "categories": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "domains": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "audit": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FactAudit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "channels": {
+          "items": {
+            "$ref": "#/$defs/FactChannel"
+          },
+          "type": "array"
+        },
+        "contactability": {
+          "$ref": "#/$defs/Contactability"
+        },
+        "people": {
+          "items": {
+            "$ref": "#/$defs/FactPerson"
+          },
+          "type": "array"
+        },
+        "business_suppressed": {
+          "type": "boolean"
+        },
+        "latino": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FactLatino"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "facts_version",
+        "business_id",
+        "project_id",
+        "display_name",
+        "status",
+        "is_synthetic",
+        "first_seen_at",
+        "last_seen_at",
+        "collected_at",
+        "source_count",
+        "conflict_count",
+        "names",
+        "locations",
+        "categories",
+        "domains",
+        "audit",
+        "channels",
+        "contactability",
+        "people",
+        "business_suppressed",
+        "latino"
+      ],
+      "title": "BusinessFacts",
       "type": "object"
     },
     "BusinessListItem": {
@@ -3060,6 +3285,7 @@
     },
     "BusinessScore": {
       "additionalProperties": false,
+      "description": "Immutable, permanent result for one business in one run: the facts read and the scorecard.",
       "properties": {
         "id": {
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
@@ -3072,6 +3298,9 @@
         "business_id": {
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
           "type": "string"
+        },
+        "tier": {
+          "$ref": "#/$defs/LeadTier"
         },
         "total_score": {
           "anyOf": [
@@ -3086,16 +3315,25 @@
           ]
         },
         "confidence": {
-          "anyOf": [
-            {
-              "maximum": 1,
-              "minimum": 0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "facts_collected_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "facts_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "scorecard_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
         },
         "created_at": {
           "format": "date-time",
@@ -3106,8 +3344,12 @@
         "id",
         "score_run_id",
         "business_id",
+        "tier",
         "total_score",
         "confidence",
+        "facts_collected_at",
+        "facts_json",
+        "scorecard_json",
         "created_at"
       ],
       "title": "BusinessScore",
@@ -3130,6 +3372,178 @@
       ],
       "title": "BusinessStatus",
       "type": "string"
+    },
+    "CalibrationBand": {
+      "additionalProperties": false,
+      "properties": {
+        "low": {
+          "maximum": 80,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "high": {
+          "maximum": 100,
+          "minimum": 20,
+          "type": "integer"
+        },
+        "businesses": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "labeled": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mean_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observed_rate": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "low",
+        "high",
+        "businesses",
+        "labeled",
+        "mean_score",
+        "observed_rate"
+      ],
+      "title": "CalibrationBand",
+      "type": "object"
+    },
+    "CalibrationQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "score_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "score_run_id"
+      ],
+      "title": "CalibrationQuery",
+      "type": "object"
+    },
+    "CalibrationReport": {
+      "additionalProperties": false,
+      "description": "Offline metrics of one run against the outcomes recorded after its facts were read. Nothing\nis trained; with few labels every number is a warning, not a verdict.",
+      "properties": {
+        "score_run": {
+          "$ref": "#/$defs/ScoreRunItem"
+        },
+        "positive_stages": {
+          "items": {
+            "$ref": "#/$defs/LeadStage"
+          },
+          "type": "array"
+        },
+        "negative_stages": {
+          "items": {
+            "$ref": "#/$defs/LeadStage"
+          },
+          "type": "array"
+        },
+        "businesses": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "labeled": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "positives": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "leakage_excluded": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "precision_at_k": {
+          "items": {
+            "$ref": "#/$defs/PrecisionAtK"
+          },
+          "type": "array"
+        },
+        "lift_by_decile": {
+          "items": {
+            "$ref": "#/$defs/DecileLift"
+          },
+          "type": "array"
+        },
+        "calibration": {
+          "items": {
+            "$ref": "#/$defs/CalibrationBand"
+          },
+          "type": "array"
+        },
+        "cohorts": {
+          "items": {
+            "$ref": "#/$defs/TierCohort"
+          },
+          "type": "array"
+        },
+        "coverage": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "labeled_share": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "weights_are_heuristic": {
+          "type": "boolean"
+        },
+        "warnings": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "score_run",
+        "positive_stages",
+        "negative_stages",
+        "businesses",
+        "labeled",
+        "positives",
+        "leakage_excluded",
+        "precision_at_k",
+        "lift_by_decile",
+        "calibration",
+        "cohorts",
+        "coverage",
+        "labeled_share",
+        "weights_are_heuristic",
+        "warnings"
+      ],
+      "title": "CalibrationReport",
+      "type": "object"
     },
     "Campaign": {
       "additionalProperties": false,
@@ -3986,6 +4400,103 @@
       "title": "Capability",
       "type": "string"
     },
+    "CapacityCriterion": {
+      "additionalProperties": false,
+      "description": "Buying capacity through explicit proxies only (locations, paid tools, a published team, site\ndepth), never a financial claim.",
+      "properties": {
+        "importance": {
+          "$ref": "#/$defs/CriterionImportance"
+        },
+        "weight": {
+          "maximum": 10,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "min_proxies": {
+          "maximum": 4,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "importance",
+        "weight",
+        "min_proxies"
+      ],
+      "title": "CapacityCriterion",
+      "type": "object"
+    },
+    "CategoryCriterion": {
+      "additionalProperties": false,
+      "description": "Terms matched as whole words against the category and service labels sources observed.",
+      "properties": {
+        "importance": {
+          "$ref": "#/$defs/CriterionImportance"
+        },
+        "weight": {
+          "maximum": 10,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "terms": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "excluded_terms": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        }
+      },
+      "required": [
+        "importance",
+        "weight",
+        "terms",
+        "excluded_terms"
+      ],
+      "title": "CategoryCriterion",
+      "type": "object"
+    },
+    "ChannelCriterion": {
+      "additionalProperties": false,
+      "description": "At least one usable published channel of these types, and a published decision maker when\nasked for.",
+      "properties": {
+        "importance": {
+          "$ref": "#/$defs/CriterionImportance"
+        },
+        "weight": {
+          "maximum": 10,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "any_of": {
+          "items": {
+            "$ref": "#/$defs/ContactType"
+          },
+          "type": "array"
+        },
+        "require_decision_maker": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "importance",
+        "weight",
+        "any_of",
+        "require_decision_maker"
+      ],
+      "title": "ChannelCriterion",
+      "type": "object"
+    },
     "ClassificationKind": {
       "enum": [
         "category",
@@ -4273,17 +4784,10 @@
             }
           ]
         },
-        "confidence": {
-          "anyOf": [
-            {
-              "maximum": 1,
-              "minimum": 0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ]
+        "coverage": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
         }
       },
       "required": [
@@ -4293,7 +4797,7 @@
         "value",
         "weight",
         "contribution",
-        "confidence"
+        "coverage"
       ],
       "title": "ComponentScore",
       "type": "object"
@@ -4307,6 +4811,32 @@
       ],
       "title": "ComponentState",
       "type": "string"
+    },
+    "ComponentValue": {
+      "additionalProperties": false,
+      "properties": {
+        "component": {
+          "$ref": "#/$defs/ScoreComponent"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "component",
+        "value"
+      ],
+      "title": "ComponentValue",
+      "type": "object"
     },
     "ConfigField": {
       "additionalProperties": false,
@@ -7397,6 +7927,57 @@
       "title": "CriteriaProblem",
       "type": "object"
     },
+    "CriterionImportance": {
+      "description": "must_have: a gate before any weight; nice_to_have: counts in ICP_MATCH; ignore: not read.",
+      "enum": [
+        "must_have",
+        "nice_to_have",
+        "ignore"
+      ],
+      "title": "CriterionImportance",
+      "type": "string"
+    },
+    "CriterionView": {
+      "additionalProperties": false,
+      "properties": {
+        "criterion": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "importance": {
+          "$ref": "#/$defs/CriterionImportance"
+        },
+        "outcome": {
+          "$ref": "#/$defs/GateOutcome"
+        },
+        "weight": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "detail": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/ScoreEvidence"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "criterion",
+        "importance",
+        "outcome",
+        "weight",
+        "detail",
+        "evidence"
+      ],
+      "title": "CriterionView",
+      "type": "object"
+    },
     "DatabaseStatus": {
       "additionalProperties": false,
       "properties": {
@@ -7780,6 +8361,61 @@
         "created_at"
       ],
       "title": "DatasetSnapshotSource",
+      "type": "object"
+    },
+    "DecileLift": {
+      "additionalProperties": false,
+      "properties": {
+        "decile": {
+          "maximum": 10,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "businesses": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "labeled": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "positives": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rate": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lift": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "decile",
+        "businesses",
+        "labeled",
+        "positives",
+        "rate",
+        "lift"
+      ],
+      "title": "DecileLift",
       "type": "object"
     },
     "DecisionMaker": {
@@ -8205,6 +8841,15 @@
       ],
       "title": "DiagnosticsResult",
       "type": "object"
+    },
+    "DigitalMaturity": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "title": "DigitalMaturity",
+      "type": "string"
     },
     "DiscoveryCandidate": {
       "additionalProperties": false,
@@ -9336,16 +9981,6 @@
       "title": "Exclusions",
       "type": "object"
     },
-    "ExplanationKind": {
-      "enum": [
-        "reason",
-        "gate",
-        "penalty",
-        "missing_data"
-      ],
-      "title": "ExplanationKind",
-      "type": "string"
-    },
     "Export": {
       "additionalProperties": false,
       "properties": {
@@ -9543,6 +10178,431 @@
       "title": "Extraction",
       "type": "object"
     },
+    "FactAudit": {
+      "additionalProperties": false,
+      "description": "The latest website audit of the business's crawled site.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "site": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/WebsiteAuditStatus"
+        },
+        "coverage": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "pages_analyzed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "subscores": {
+          "items": {
+            "$ref": "#/$defs/FactSubscore"
+          },
+          "type": "array"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/FactFinding"
+          },
+          "type": "array"
+        },
+        "technologies": {
+          "items": {
+            "$ref": "#/$defs/FactTechnology"
+          },
+          "type": "array"
+        },
+        "previous_audit_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "changes": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "site",
+        "status",
+        "coverage",
+        "pages_analyzed",
+        "created_at",
+        "subscores",
+        "findings",
+        "technologies",
+        "previous_audit_id",
+        "changes"
+      ],
+      "title": "FactAudit",
+      "type": "object"
+    },
+    "FactChannel": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "maxLength": 400,
+          "minLength": 1,
+          "type": "string"
+        },
+        "contact_type": {
+          "$ref": "#/$defs/ContactType"
+        },
+        "validation_status": {
+          "$ref": "#/$defs/ValidationStatus"
+        },
+        "level": {
+          "$ref": "#/$defs/ContactLevel"
+        },
+        "decision_maker_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "key",
+        "contact_type",
+        "validation_status",
+        "level",
+        "decision_maker_id"
+      ],
+      "title": "FactChannel",
+      "type": "object"
+    },
+    "FactFinding": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "rule_id": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/WebsiteCategory"
+        },
+        "result": {
+          "$ref": "#/$defs/WebsiteFindingResult"
+        },
+        "severity": {
+          "$ref": "#/$defs/WebsiteFindingSeverity"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "observed_value": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "url": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "rule_id",
+        "category",
+        "result",
+        "severity",
+        "confidence",
+        "observed_value",
+        "url"
+      ],
+      "title": "FactFinding",
+      "type": "object"
+    },
+    "FactLatino": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/LatinoStatus"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "method": {
+          "$ref": "#/$defs/AssessmentMethod"
+        },
+        "contradictions": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "assessment_id",
+        "status",
+        "confidence",
+        "method",
+        "contradictions"
+      ],
+      "title": "FactLatino",
+      "type": "object"
+    },
+    "FactLocation": {
+      "additionalProperties": false,
+      "properties": {
+        "country_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "locality": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "postal_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "country_code",
+        "region",
+        "locality",
+        "postal_code"
+      ],
+      "title": "FactLocation",
+      "type": "object"
+    },
+    "FactPerson": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "relationship": {
+          "$ref": "#/$defs/DecisionMakerRelationship"
+        },
+        "review_status": {
+          "$ref": "#/$defs/DecisionMakerReview"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "relationship",
+        "review_status",
+        "role"
+      ],
+      "title": "FactPerson",
+      "type": "object"
+    },
+    "FactSubscore": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/WebsiteCategory"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "category",
+        "score"
+      ],
+      "title": "FactSubscore",
+      "type": "object"
+    },
+    "FactTechnology": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "category": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "key",
+        "name",
+        "category"
+      ],
+      "title": "FactTechnology",
+      "type": "object"
+    },
+    "FeatureInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "feature": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "component": {
+          "$ref": "#/$defs/ScoreComponent"
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProblemType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "maxLength": 600,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "feature",
+        "component",
+        "problem",
+        "description"
+      ],
+      "title": "FeatureInfo",
+      "type": "object"
+    },
+    "FeatureState": {
+      "description": "known: evaluated from evidence; unknown: the facts cannot show it (never a zero);\nnot_applicable: does not apply to this business (never a penalty).",
+      "enum": [
+        "known",
+        "unknown",
+        "not_applicable"
+      ],
+      "title": "FeatureState",
+      "type": "string"
+    },
+    "FeatureWeight": {
+      "additionalProperties": false,
+      "properties": {
+        "feature": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "weight": {
+          "maximum": 10,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "feature",
+        "weight"
+      ],
+      "title": "FeatureWeight",
+      "type": "object"
+    },
     "FieldAgreement": {
       "enum": [
         "match",
@@ -9597,6 +10657,164 @@
         "similarity"
       ],
       "title": "FieldComparison",
+      "type": "object"
+    },
+    "FinalInput": {
+      "enum": [
+        "ICP_MATCH",
+        "OPPORTUNITY_SCORE",
+        "CONTACTABILITY",
+        "LATINO_CONFIDENCE"
+      ],
+      "title": "FinalInput",
+      "type": "string"
+    },
+    "FinalWeight": {
+      "additionalProperties": false,
+      "properties": {
+        "component": {
+          "$ref": "#/$defs/FinalInput"
+        },
+        "weight": {
+          "maximum": 100,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "component",
+        "weight"
+      ],
+      "title": "FinalWeight",
+      "type": "object"
+    },
+    "FreshnessCriterion": {
+      "additionalProperties": false,
+      "description": "A source listed the business within this many days.",
+      "properties": {
+        "importance": {
+          "$ref": "#/$defs/CriterionImportance"
+        },
+        "weight": {
+          "maximum": 10,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_days_since_seen": {
+          "maximum": 3650,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "importance",
+        "weight",
+        "max_days_since_seen"
+      ],
+      "title": "FreshnessCriterion",
+      "type": "object"
+    },
+    "GateExample": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "detail": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_id",
+        "display_name",
+        "detail"
+      ],
+      "title": "GateExample",
+      "type": "object"
+    },
+    "GateOutcome": {
+      "enum": [
+        "pass",
+        "fail",
+        "unknown"
+      ],
+      "title": "GateOutcome",
+      "type": "string"
+    },
+    "GatePreview": {
+      "additionalProperties": false,
+      "description": "How many businesses a gate lets through, stops or cannot decide, with examples of why.",
+      "properties": {
+        "gate": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "passed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unknown": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "examples": {
+          "items": {
+            "$ref": "#/$defs/GateExample"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "gate",
+        "passed",
+        "failed",
+        "unknown",
+        "examples"
+      ],
+      "title": "GatePreview",
+      "type": "object"
+    },
+    "GateView": {
+      "additionalProperties": false,
+      "properties": {
+        "gate": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "outcome": {
+          "$ref": "#/$defs/GateOutcome"
+        },
+        "detail": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/ScoreEvidence"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "gate",
+        "outcome",
+        "detail",
+        "evidence"
+      ],
+      "title": "GateView",
       "type": "object"
     },
     "GeoScope": {
@@ -9675,6 +10893,41 @@
         "radius_km"
       ],
       "title": "GeoScope",
+      "type": "object"
+    },
+    "GeographyCriterion": {
+      "additionalProperties": false,
+      "properties": {
+        "importance": {
+          "$ref": "#/$defs/CriterionImportance"
+        },
+        "weight": {
+          "maximum": 10,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "include": {
+          "items": {
+            "$ref": "#/$defs/Area"
+          },
+          "maxItems": 25,
+          "type": "array"
+        },
+        "exclude": {
+          "items": {
+            "$ref": "#/$defs/Area"
+          },
+          "maxItems": 25,
+          "type": "array"
+        }
+      },
+      "required": [
+        "importance",
+        "weight",
+        "include",
+        "exclude"
+      ],
+      "title": "GeographyCriterion",
       "type": "object"
     },
     "GpuDevice": {
@@ -9829,8 +11082,132 @@
       "title": "HealthResult",
       "type": "object"
     },
+    "IcpDefinition": {
+      "additionalProperties": false,
+      "description": "One version of an ICP profile, stored verbatim in `icp_profile_versions.definition_json`.",
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "geography": {
+          "$ref": "#/$defs/GeographyCriterion"
+        },
+        "categories": {
+          "$ref": "#/$defs/CategoryCriterion"
+        },
+        "size": {
+          "$ref": "#/$defs/SizeCriterion"
+        },
+        "freshness": {
+          "$ref": "#/$defs/FreshnessCriterion"
+        },
+        "reputation": {
+          "$ref": "#/$defs/ReputationCriterion"
+        },
+        "digital_maturity": {
+          "$ref": "#/$defs/MaturityCriterion"
+        },
+        "problems": {
+          "$ref": "#/$defs/ProblemCriterion"
+        },
+        "channels": {
+          "$ref": "#/$defs/ChannelCriterion"
+        },
+        "buying_capacity": {
+          "$ref": "#/$defs/CapacityCriterion"
+        },
+        "latino": {
+          "$ref": "#/$defs/LatinoRequirement"
+        },
+        "exclusions": {
+          "$ref": "#/$defs/IcpExclusions"
+        },
+        "offers": {
+          "items": {
+            "$ref": "#/$defs/Offer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "geography",
+        "categories",
+        "size",
+        "freshness",
+        "reputation",
+        "digital_maturity",
+        "problems",
+        "channels",
+        "buying_capacity",
+        "latino",
+        "exclusions",
+        "offers"
+      ],
+      "title": "IcpDefinition",
+      "type": "object"
+    },
+    "IcpExclusions": {
+      "additionalProperties": false,
+      "description": "Hard exclusions, checked before anything is weighed.",
+      "properties": {
+        "names": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "domains": {
+          "items": {
+            "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9-]+)+$",
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "categories": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "regions": {
+          "items": {
+            "pattern": "^[A-Z]{2}$",
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "postal_codes": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9 -]{1,11}$",
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        }
+      },
+      "required": [
+        "names",
+        "domains",
+        "categories",
+        "regions",
+        "postal_codes"
+      ],
+      "title": "IcpExclusions",
+      "type": "object"
+    },
     "IcpProfile": {
       "additionalProperties": false,
+      "description": "A named ideal-customer profile (phase 11): which version is active and whether it is\narchived. Its definitions are `icp_profile_versions`.",
       "properties": {
         "id": {
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
@@ -9883,6 +11260,28 @@
               "type": "null"
             }
           ]
+        },
+        "active_version_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "archived_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -9893,14 +11292,16 @@
         "created_at",
         "updated_at",
         "deleted_at",
-        "deleted_reason"
+        "deleted_reason",
+        "active_version_id",
+        "archived_at"
       ],
       "title": "IcpProfile",
       "type": "object"
     },
     "IcpProfileVersion": {
       "additionalProperties": false,
-      "description": "Immutable definition of an ICP profile at one version.",
+      "description": "Immutable, permanent definition of an ICP profile at one version (`IcpDefinition`).",
       "properties": {
         "id": {
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
@@ -9944,6 +11345,94 @@
         "created_at"
       ],
       "title": "IcpProfileVersion",
+      "type": "object"
+    },
+    "IcpProfileView": {
+      "additionalProperties": false,
+      "description": "A profile with every version, newest first, and what validation says about the newest.",
+      "properties": {
+        "profile": {
+          "$ref": "#/$defs/IcpProfile"
+        },
+        "versions": {
+          "items": {
+            "$ref": "#/$defs/IcpProfileVersion"
+          },
+          "type": "array"
+        },
+        "problems": {
+          "items": {
+            "$ref": "#/$defs/CriteriaProblem"
+          },
+          "type": "array"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "profile",
+        "versions",
+        "problems",
+        "is_synthetic"
+      ],
+      "title": "IcpProfileView",
+      "type": "object"
+    },
+    "IcpSaveRequest": {
+      "additionalProperties": false,
+      "description": "A new profile when `profile_id` is null (clone = a new profile from another's definition),\notherwise a new version of it; an identical definition reuses the latest version.",
+      "properties": {
+        "profile_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "definition": {
+          "$ref": "#/$defs/IcpDefinition"
+        }
+      },
+      "required": [
+        "profile_id",
+        "project_id",
+        "name",
+        "description",
+        "definition"
+      ],
+      "title": "IcpSaveRequest",
       "type": "object"
     },
     "ImportFormat": {
@@ -10443,6 +11932,31 @@
       ],
       "title": "InferenceStatus",
       "type": "string"
+    },
+    "InferredImpact": {
+      "additionalProperties": false,
+      "description": "The probable commercial impact of a problem: an inference, labelled as one.",
+      "properties": {
+        "problem": {
+          "$ref": "#/$defs/ProblemType"
+        },
+        "text": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "is_inference": {
+          "const": true,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "problem",
+        "text",
+        "is_inference"
+      ],
+      "title": "InferredImpact",
+      "type": "object"
     },
     "Job": {
       "additionalProperties": false,
@@ -11166,6 +12680,16 @@
       "title": "LatinoNote",
       "type": "object"
     },
+    "LatinoRequirement": {
+      "description": "What a campaign asks of Latino evidence: nothing, market affinity or better, or a verified\nLatino-owned business. It filters; it never measures quality or buying capacity.",
+      "enum": [
+        "none",
+        "market_affinity",
+        "verified_latino_owned"
+      ],
+      "title": "LatinoRequirement",
+      "type": "string"
+    },
     "LatinoReviewFilter": {
       "description": "Businesses by the state of a person's review of their Latino evidence (phase 07).",
       "enum": [
@@ -11525,6 +13049,685 @@
       "title": "LatinoTrack",
       "type": "string"
     },
+    "LeadAction": {
+      "description": "confirm or dismiss a score after reviewing it, reset that review, or record an outcome.",
+      "enum": [
+        "confirm",
+        "dismiss",
+        "reset",
+        "record_outcome"
+      ],
+      "title": "LeadAction",
+      "type": "string"
+    },
+    "LeadActionRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "score_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/LeadAction"
+        },
+        "stage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LeadStage"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lost_reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "score_run_id",
+        "business_id",
+        "action",
+        "stage",
+        "lost_reason",
+        "reason"
+      ],
+      "title": "LeadActionRequest",
+      "type": "object"
+    },
+    "LeadOutcome": {
+      "additionalProperties": false,
+      "description": "Immutable, permanent record of what happened when a lead was worked (phase 11): the feedback\nloop that calibration reads. A `lost` outcome says why.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "score_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stage": {
+          "$ref": "#/$defs/LeadStage"
+        },
+        "previous_stage": {
+          "$ref": "#/$defs/LeadStage"
+        },
+        "lost_reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "actor": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "business_id",
+        "score_run_id",
+        "stage",
+        "previous_stage",
+        "lost_reason",
+        "reason",
+        "actor",
+        "occurred_at",
+        "created_at"
+      ],
+      "title": "LeadOutcome",
+      "type": "object"
+    },
+    "LeadScoreHistoryItem": {
+      "additionalProperties": false,
+      "properties": {
+        "score_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "scoring_model_key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "scoring_model_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "icp_profile_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "icp_profile_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "tier": {
+          "$ref": "#/$defs/LeadTier"
+        },
+        "total_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "score_run_id",
+        "created_at",
+        "scoring_model_key",
+        "scoring_model_version",
+        "icp_profile_name",
+        "icp_profile_version",
+        "tier",
+        "total_score",
+        "confidence"
+      ],
+      "title": "LeadScoreHistoryItem",
+      "type": "object"
+    },
+    "LeadScoreItem": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "locality": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lead_stage": {
+          "$ref": "#/$defs/LeadStage"
+        },
+        "latino_status": {
+          "$ref": "#/$defs/LatinoStatus"
+        },
+        "rank": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "tier": {
+          "$ref": "#/$defs/LeadTier"
+        },
+        "total_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "components": {
+          "items": {
+            "$ref": "#/$defs/ComponentValue"
+          },
+          "type": "array"
+        },
+        "top_reason": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "offer_key": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "problems": {
+          "items": {
+            "$ref": "#/$defs/ProblemType"
+          },
+          "type": "array"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "business_id",
+        "project_id",
+        "display_name",
+        "locality",
+        "region",
+        "primary_category",
+        "lead_stage",
+        "latino_status",
+        "rank",
+        "tier",
+        "total_score",
+        "confidence",
+        "components",
+        "top_reason",
+        "offer_key",
+        "problems",
+        "is_synthetic"
+      ],
+      "title": "LeadScoreItem",
+      "type": "object"
+    },
+    "LeadScorePage": {
+      "additionalProperties": false,
+      "properties": {
+        "score_run": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScoreRunItem"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/LeadScoreItem"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "score_run",
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "LeadScorePage",
+      "type": "object"
+    },
+    "LeadScoreQuery": {
+      "additionalProperties": false,
+      "description": "The ranked leads of a run; `score_run_id` null reads the newest finished run.",
+      "properties": {
+        "score_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tier": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LeadTier"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "min_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProblemType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "search": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "score_run_id",
+        "tier",
+        "min_score",
+        "problem",
+        "search",
+        "limit",
+        "cursor"
+      ],
+      "title": "LeadScoreQuery",
+      "type": "object"
+    },
+    "LeadScorecard": {
+      "additionalProperties": false,
+      "description": "The explanation of one lead in one run, stored with its score (`business_scores`).",
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "tier": {
+          "$ref": "#/$defs/LeadTier"
+        },
+        "total_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "known_weight": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "versions": {
+          "$ref": "#/$defs/ScoreVersions"
+        },
+        "components": {
+          "items": {
+            "$ref": "#/$defs/ScoreComponentView"
+          },
+          "type": "array"
+        },
+        "features": {
+          "items": {
+            "$ref": "#/$defs/ScoreFeature"
+          },
+          "type": "array"
+        },
+        "gates": {
+          "items": {
+            "$ref": "#/$defs/GateView"
+          },
+          "type": "array"
+        },
+        "criteria": {
+          "items": {
+            "$ref": "#/$defs/CriterionView"
+          },
+          "type": "array"
+        },
+        "reasons": {
+          "items": {
+            "$ref": "#/$defs/ScoreReason"
+          },
+          "type": "array"
+        },
+        "contact_now": {
+          "items": {
+            "$ref": "#/$defs/ScoreReason"
+          },
+          "type": "array"
+        },
+        "impacts": {
+          "items": {
+            "$ref": "#/$defs/InferredImpact"
+          },
+          "type": "array"
+        },
+        "risks": {
+          "items": {
+            "$ref": "#/$defs/ScoreRisk"
+          },
+          "type": "array"
+        },
+        "missing": {
+          "items": {
+            "$ref": "#/$defs/MissingData"
+          },
+          "type": "array"
+        },
+        "offer": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OfferRecommendation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MessageDraft"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "business_id",
+        "tier",
+        "total_score",
+        "confidence",
+        "known_weight",
+        "versions",
+        "components",
+        "features",
+        "gates",
+        "criteria",
+        "reasons",
+        "contact_now",
+        "impacts",
+        "risks",
+        "missing",
+        "offer",
+        "message"
+      ],
+      "title": "LeadScorecard",
+      "type": "object"
+    },
+    "LeadScorecardDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "score_run": {
+          "$ref": "#/$defs/ScoreRunItem"
+        },
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "lead_stage": {
+          "$ref": "#/$defs/LeadStage"
+        },
+        "rank": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "scorecard": {
+          "$ref": "#/$defs/LeadScorecard"
+        },
+        "history": {
+          "items": {
+            "$ref": "#/$defs/LeadScoreHistoryItem"
+          },
+          "type": "array"
+        },
+        "outcomes": {
+          "items": {
+            "$ref": "#/$defs/LeadOutcome"
+          },
+          "type": "array"
+        },
+        "decisions": {
+          "items": {
+            "$ref": "#/$defs/ReviewDecision"
+          },
+          "type": "array"
+        },
+        "ai_reasons": {
+          "items": {
+            "$ref": "#/$defs/AiDraftedReason"
+          },
+          "type": "array"
+        },
+        "ai_dropped": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "score_run",
+        "business_id",
+        "display_name",
+        "lead_stage",
+        "rank",
+        "scorecard",
+        "history",
+        "outcomes",
+        "decisions",
+        "ai_reasons",
+        "ai_dropped",
+        "is_synthetic"
+      ],
+      "title": "LeadScorecardDetail",
+      "type": "object"
+    },
     "LeadStage": {
       "enum": [
         "not_contacted",
@@ -11539,6 +13742,18 @@
         "not_interested"
       ],
       "title": "LeadStage",
+      "type": "string"
+    },
+    "LeadTier": {
+      "description": "Where a business lands in one score run (phase 11). `priority`, `review` and `low` are scored\nby the thresholds of the scoring model; `insufficient_data`: a gate could not be decided or too\nmuch of the formula is unknown; `excluded`: a gate failed, and there is no total.",
+      "enum": [
+        "priority",
+        "review",
+        "low",
+        "insufficient_data",
+        "excluded"
+      ],
+      "title": "LeadTier",
       "type": "string"
     },
     "LlmFitModel": {
@@ -12301,6 +14516,97 @@
       "title": "MatchStatus",
       "type": "string"
     },
+    "MaturityCriterion": {
+      "additionalProperties": false,
+      "description": "Digital maturity from the website subscores: low below 50, medium below 80, high otherwise;\na business without a website is low.",
+      "properties": {
+        "importance": {
+          "$ref": "#/$defs/CriterionImportance"
+        },
+        "weight": {
+          "maximum": 10,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "wanted": {
+          "items": {
+            "$ref": "#/$defs/DigitalMaturity"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "importance",
+        "weight",
+        "wanted"
+      ],
+      "title": "MaturityCriterion",
+      "type": "object"
+    },
+    "MessageDraft": {
+      "additionalProperties": false,
+      "description": "A commercial message to adapt by hand. It is never sent.",
+      "properties": {
+        "subject": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "body": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "language": {
+          "const": "en",
+          "type": "string"
+        },
+        "is_draft": {
+          "const": true,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "subject",
+        "body",
+        "language",
+        "is_draft"
+      ],
+      "title": "MessageDraft",
+      "type": "object"
+    },
+    "MissingData": {
+      "additionalProperties": false,
+      "description": "An unknown feature and the share of the final formula it could have moved.",
+      "properties": {
+        "feature": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "component": {
+          "$ref": "#/$defs/ScoreComponent"
+        },
+        "detail": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "weight_share": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "feature",
+        "component",
+        "detail",
+        "weight_share"
+      ],
+      "title": "MissingData",
+      "type": "object"
+    },
     "NameKind": {
       "enum": [
         "legal",
@@ -12310,6 +14616,32 @@
       ],
       "title": "NameKind",
       "type": "string"
+    },
+    "NotApplicableRule": {
+      "additionalProperties": false,
+      "description": "A feature that does not apply to businesses in these categories (booking for roofers...).",
+      "properties": {
+        "feature": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "categories": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        }
+      },
+      "required": [
+        "feature",
+        "categories"
+      ],
+      "title": "NotApplicableRule",
+      "type": "object"
     },
     "Note": {
       "additionalProperties": false,
@@ -12486,6 +14818,101 @@
       "title": "ObservedWebsite",
       "type": "object"
     },
+    "Offer": {
+      "additionalProperties": false,
+      "description": "Something the seller can actually deliver, and the problems it solves.",
+      "properties": {
+        "key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 600,
+          "type": "string"
+        },
+        "solves": {
+          "items": {
+            "$ref": "#/$defs/ProblemType"
+          },
+          "type": "array"
+        },
+        "capabilities": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "not_for_categories": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "description",
+        "solves",
+        "capabilities",
+        "not_for_categories"
+      ],
+      "title": "Offer",
+      "type": "object"
+    },
+    "OfferRecommendation": {
+      "additionalProperties": false,
+      "properties": {
+        "offer_key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "offer_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "problems": {
+          "items": {
+            "$ref": "#/$defs/ProblemType"
+          },
+          "type": "array"
+        },
+        "why": {
+          "maxLength": 600,
+          "minLength": 1,
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/ScoreEvidence"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "offer_key",
+        "offer_name",
+        "problems",
+        "why",
+        "evidence"
+      ],
+      "title": "OfferRecommendation",
+      "type": "object"
+    },
     "OllamaModel": {
       "additionalProperties": false,
       "properties": {
@@ -12621,6 +15048,51 @@
       "title": "OllamaStatus",
       "type": "object"
     },
+    "OpportunityInput": {
+      "description": "What OPPORTUNITY_SCORE may weigh. Latino evidence is not one of them, by design.",
+      "enum": [
+        "DIGITAL_GAP",
+        "BUSINESS_HEALTH",
+        "BUYING_CAPACITY",
+        "COMMERCIAL_INTENT"
+      ],
+      "title": "OpportunityInput",
+      "type": "string"
+    },
+    "OpportunityProblem": {
+      "enum": [
+        "weak_conversion_path",
+        "no_online_booking",
+        "poor_mobile_experience",
+        "weak_local_seo",
+        "slow_or_broken_site",
+        "missing_trust_signals",
+        "missing_measurement",
+        "low_contactability",
+        "other"
+      ],
+      "title": "OpportunityProblem",
+      "type": "string"
+    },
+    "OpportunityWeight": {
+      "additionalProperties": false,
+      "properties": {
+        "component": {
+          "$ref": "#/$defs/OpportunityInput"
+        },
+        "weight": {
+          "maximum": 100,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "component",
+        "weight"
+      ],
+      "title": "OpportunityWeight",
+      "type": "object"
+    },
     "PageKind": {
       "enum": [
         "home",
@@ -12632,12 +15104,90 @@
       "title": "PageKind",
       "type": "string"
     },
+    "PrecisionAtK": {
+      "additionalProperties": false,
+      "properties": {
+        "k": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "labeled": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "positives": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "precision": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "k",
+        "labeled",
+        "positives",
+        "precision"
+      ],
+      "title": "PrecisionAtK",
+      "type": "object"
+    },
+    "ProblemCriterion": {
+      "additionalProperties": false,
+      "properties": {
+        "importance": {
+          "$ref": "#/$defs/CriterionImportance"
+        },
+        "weight": {
+          "maximum": 10,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "wanted": {
+          "items": {
+            "$ref": "#/$defs/ProblemType"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "importance",
+        "weight",
+        "wanted"
+      ],
+      "title": "ProblemCriterion",
+      "type": "object"
+    },
     "ProblemSeverity": {
       "enum": [
         "error",
         "warning"
       ],
       "title": "ProblemSeverity",
+      "type": "string"
+    },
+    "ProblemType": {
+      "description": "Observable problems the opportunity engine detects from stored facts.",
+      "enum": [
+        "no_website",
+        "website_unreachable",
+        "weak_conversion_path",
+        "no_online_booking",
+        "weak_local_seo",
+        "weak_technical_seo",
+        "poor_mobile_experience",
+        "measurement_not_detected"
+      ],
+      "title": "ProblemType",
       "type": "string"
     },
     "Project": {
@@ -12810,6 +15360,96 @@
       "title": "Provenance",
       "type": "object"
     },
+    "RankChange": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "left_rank": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "right_rank": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "left_tier": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LeadTier"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "right_tier": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LeadTier"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "left_total": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "right_total": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "business_id",
+        "display_name",
+        "left_rank",
+        "right_rank",
+        "left_tier",
+        "right_tier",
+        "left_total",
+        "right_total"
+      ],
+      "title": "RankChange",
+      "type": "object"
+    },
     "RawRecord": {
       "additionalProperties": false,
       "description": "Immutable payload exactly as acquired. Either `source_url` or `external_id` identifies it.",
@@ -12903,6 +15543,51 @@
       ],
       "title": "ReasonDirection",
       "type": "string"
+    },
+    "ReputationCriterion": {
+      "additionalProperties": false,
+      "description": "Rating and reviews with their source. No connected source provides them yet: this criterion\nis always unknown, never a failure.",
+      "properties": {
+        "importance": {
+          "$ref": "#/$defs/CriterionImportance"
+        },
+        "weight": {
+          "maximum": 10,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "min_rating": {
+          "anyOf": [
+            {
+              "maximum": 5,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "min_reviews": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "importance",
+        "weight",
+        "min_rating",
+        "min_reviews"
+      ],
+      "title": "ReputationCriterion",
+      "type": "object"
     },
     "ResolutionRun": {
       "additionalProperties": false,
@@ -13325,94 +16010,405 @@
       "title": "RunEvent",
       "type": "object"
     },
-    "ScoreExplanation": {
+    "ScoreBin": {
       "additionalProperties": false,
+      "description": "Scored businesses whose total is in [low, low + 10) (the last bin includes 100).",
       "properties": {
-        "id": {
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-          "type": "string"
+        "low": {
+          "maximum": 90,
+          "minimum": 0,
+          "type": "integer"
         },
-        "business_score_id": {
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-          "type": "string"
-        },
-        "component": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "kind": {
-          "$ref": "#/$defs/ExplanationKind"
-        },
-        "message": {
-          "minLength": 1,
-          "type": "string"
-        },
-        "evidence_item_id": {
-          "anyOf": [
-            {
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "sort_order": {
+        "businesses": {
           "minimum": 0,
           "type": "integer"
         }
       },
       "required": [
-        "id",
-        "business_score_id",
-        "component",
-        "kind",
-        "message",
-        "evidence_item_id",
-        "sort_order"
+        "low",
+        "businesses"
       ],
-      "title": "ScoreExplanation",
+      "title": "ScoreBin",
+      "type": "object"
+    },
+    "ScoreCompareQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "left_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "right_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "top_k": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "left_run_id",
+        "right_run_id",
+        "top_k"
+      ],
+      "title": "ScoreCompareQuery",
+      "type": "object"
+    },
+    "ScoreComparison": {
+      "additionalProperties": false,
+      "description": "Two runs side by side: who entered or left the top K and how ranks moved.",
+      "properties": {
+        "left": {
+          "$ref": "#/$defs/ScoreRunItem"
+        },
+        "right": {
+          "$ref": "#/$defs/ScoreRunItem"
+        },
+        "same_facts": {
+          "type": "boolean"
+        },
+        "top_k": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "entered": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "left_out": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mean_abs_rank_change": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "changes": {
+          "items": {
+            "$ref": "#/$defs/RankChange"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "left",
+        "right",
+        "same_facts",
+        "top_k",
+        "entered",
+        "left_out",
+        "mean_abs_rank_change",
+        "changes"
+      ],
+      "title": "ScoreComparison",
+      "type": "object"
+    },
+    "ScoreComponent": {
+      "description": "The independent components of a scorecard, 0 to 100 each (a null value is unknown).",
+      "enum": [
+        "ICP_MATCH",
+        "LATINO_CONFIDENCE",
+        "BUSINESS_HEALTH",
+        "DIGITAL_GAP",
+        "BUYING_CAPACITY",
+        "CONTACTABILITY",
+        "COMMERCIAL_INTENT",
+        "DATA_CONFIDENCE",
+        "OPPORTUNITY_SCORE",
+        "FINAL_LEAD_SCORE"
+      ],
+      "title": "ScoreComponent",
+      "type": "string"
+    },
+    "ScoreComponentView": {
+      "additionalProperties": false,
+      "description": "`weight` and `contribution`: in the formula that uses this component (0 and null for\nDATA_CONFIDENCE and FINAL_LEAD_SCORE); `coverage`: share of its own weight that was known.",
+      "properties": {
+        "component": {
+          "$ref": "#/$defs/ScoreComponent"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "weight": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "contribution": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "coverage": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "formula": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "component",
+        "value",
+        "weight",
+        "contribution",
+        "coverage",
+        "formula"
+      ],
+      "title": "ScoreComponentView",
+      "type": "object"
+    },
+    "ScoreEvidence": {
+      "additionalProperties": false,
+      "description": "What a point rests on: the stored row it came from, and where to see it.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ScoreEvidenceKind"
+        },
+        "ref": {
+          "maxLength": 400,
+          "minLength": 1,
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "ref",
+        "label",
+        "url"
+      ],
+      "title": "ScoreEvidence",
+      "type": "object"
+    },
+    "ScoreEvidenceKind": {
+      "enum": [
+        "business",
+        "website_audit",
+        "website_finding",
+        "website_technology",
+        "contact_channel",
+        "decision_maker",
+        "latino_assessment"
+      ],
+      "title": "ScoreEvidenceKind",
+      "type": "string"
+    },
+    "ScoreFeature": {
+      "additionalProperties": false,
+      "description": "One evaluated feature. `points`: what it adds to its component; `impact`: to the total.",
+      "properties": {
+        "feature": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "component": {
+          "$ref": "#/$defs/ScoreComponent"
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProblemType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/FeatureState"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "weight": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "points": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "impact": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "detail": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/ScoreEvidence"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "feature",
+        "component",
+        "problem",
+        "state",
+        "value",
+        "weight",
+        "points",
+        "impact",
+        "detail",
+        "reason",
+        "evidence"
+      ],
+      "title": "ScoreFeature",
+      "type": "object"
+    },
+    "ScoreReason": {
+      "additionalProperties": false,
+      "properties": {
+        "feature": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "impact": {
+          "type": "number"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/ScoreEvidence"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "feature",
+        "text",
+        "impact",
+        "evidence"
+      ],
+      "title": "ScoreReason",
+      "type": "object"
+    },
+    "ScoreRisk": {
+      "additionalProperties": false,
+      "description": "A contradiction, a caveat or a reason to double-check before acting.",
+      "properties": {
+        "code": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "detail": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/ScoreEvidence"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "code",
+        "detail",
+        "evidence"
+      ],
+      "title": "ScoreRisk",
       "type": "object"
     },
     "ScoreRun": {
       "additionalProperties": false,
+      "description": "One ICP version and one scoring version applied to a project's businesses, or to the facts\nanother run stored (`facts_from_run_id`). Only `finished_at` is written after the insert.",
       "properties": {
         "id": {
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
           "type": "string"
         },
-        "scoring_model_version_id": {
+        "project_id": {
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
           "type": "string"
-        },
-        "icp_profile_version_id": {
-          "anyOf": [
-            {
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "dataset_snapshot_id": {
-          "anyOf": [
-            {
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
         },
         "job_id": {
           "anyOf": [
@@ -13424,6 +16420,30 @@
               "type": "null"
             }
           ]
+        },
+        "scoring_model_version_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "icp_profile_version_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "facts_from_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "engine_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
         },
         "started_at": {
           "format": "date-time",
@@ -13447,10 +16467,12 @@
       },
       "required": [
         "id",
+        "project_id",
+        "job_id",
         "scoring_model_version_id",
         "icp_profile_version_id",
-        "dataset_snapshot_id",
-        "job_id",
+        "facts_from_run_id",
+        "engine_version",
         "started_at",
         "finished_at",
         "created_at"
@@ -13458,8 +16480,553 @@
       "title": "ScoreRun",
       "type": "object"
     },
+    "ScoreRunItem": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "score_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "stage": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "progress_done": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "progress_total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scoring_model_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "scoring_model_key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "scoring_model_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scoring_model_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "is_heuristic": {
+          "type": "boolean"
+        },
+        "icp_profile_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "icp_profile_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "icp_profile_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "engine_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "facts_from_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stats": {
+          "$ref": "#/$defs/ScoreRunStats"
+        },
+        "distribution": {
+          "items": {
+            "$ref": "#/$defs/ScoreBin"
+          },
+          "type": "array"
+        },
+        "requested_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/RunEvent"
+          },
+          "type": "array"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job_id",
+        "score_run_id",
+        "project_id",
+        "project_name",
+        "status",
+        "stage",
+        "progress_done",
+        "progress_total",
+        "scoring_model_id",
+        "scoring_model_key",
+        "scoring_model_name",
+        "scoring_model_version",
+        "is_heuristic",
+        "icp_profile_id",
+        "icp_profile_name",
+        "icp_profile_version",
+        "engine_version",
+        "facts_from_run_id",
+        "stats",
+        "distribution",
+        "requested_at",
+        "started_at",
+        "finished_at",
+        "events",
+        "is_synthetic"
+      ],
+      "title": "ScoreRunItem",
+      "type": "object"
+    },
+    "ScoreRunListQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "limit",
+        "cursor"
+      ],
+      "title": "ScoreRunListQuery",
+      "type": "object"
+    },
+    "ScoreRunPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ScoreRunItem"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "ScoreRunPage",
+      "type": "object"
+    },
+    "ScoreRunStats": {
+      "additionalProperties": false,
+      "properties": {
+        "businesses": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "priority": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "review": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "low": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "insufficient_data": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "excluded": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "businesses",
+        "priority",
+        "review",
+        "low",
+        "insufficient_data",
+        "excluded"
+      ],
+      "title": "ScoreRunStats",
+      "type": "object"
+    },
+    "ScoreVersions": {
+      "additionalProperties": false,
+      "properties": {
+        "engine_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "facts_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scoring_model_key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "scoring_model_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "is_heuristic": {
+          "type": "boolean"
+        },
+        "icp_profile_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "icp_profile_version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "engine_version",
+        "facts_version",
+        "scoring_model_key",
+        "scoring_model_version",
+        "is_heuristic",
+        "icp_profile_name",
+        "icp_profile_version"
+      ],
+      "title": "ScoreVersions",
+      "type": "object"
+    },
+    "ScorecardQuery": {
+      "additionalProperties": false,
+      "description": "`score_run_id` null reads the newest finished run that scored the business.",
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "score_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "business_id",
+        "score_run_id"
+      ],
+      "title": "ScorecardQuery",
+      "type": "object"
+    },
+    "ScoringCatalog": {
+      "additionalProperties": false,
+      "description": "Profiles and models to build with, the features a model can weigh and blank templates.",
+      "properties": {
+        "icp_profiles": {
+          "items": {
+            "$ref": "#/$defs/IcpProfileView"
+          },
+          "type": "array"
+        },
+        "models": {
+          "items": {
+            "$ref": "#/$defs/ScoringModelView"
+          },
+          "type": "array"
+        },
+        "features": {
+          "items": {
+            "$ref": "#/$defs/FeatureInfo"
+          },
+          "type": "array"
+        },
+        "engine_version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "icp_template": {
+          "$ref": "#/$defs/IcpDefinition"
+        },
+        "scoring_template": {
+          "$ref": "#/$defs/ScoringDefinition"
+        }
+      },
+      "required": [
+        "icp_profiles",
+        "models",
+        "features",
+        "engine_version",
+        "icp_template",
+        "scoring_template"
+      ],
+      "title": "ScoringCatalog",
+      "type": "object"
+    },
+    "ScoringCatalogQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id"
+      ],
+      "title": "ScoringCatalogQuery",
+      "type": "object"
+    },
+    "ScoringChangeAction": {
+      "enum": [
+        "activate",
+        "archive",
+        "restore"
+      ],
+      "title": "ScoringChangeAction",
+      "type": "string"
+    },
+    "ScoringChangeRequest": {
+      "additionalProperties": false,
+      "description": "Activates a version (`version_id`), archives or restores a profile or a model.",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/ScoringTarget"
+        },
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/ScoringChangeAction"
+        },
+        "version_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "target",
+        "id",
+        "action",
+        "version_id",
+        "reason"
+      ],
+      "title": "ScoringChangeRequest",
+      "type": "object"
+    },
+    "ScoringDefinition": {
+      "additionalProperties": false,
+      "description": "One version of a scoring model, stored verbatim in `scoring_model_versions.definition_json`.\nWeights are relative within each formula; a weight of 0 leaves a feature or input out.",
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "features": {
+          "items": {
+            "$ref": "#/$defs/FeatureWeight"
+          },
+          "type": "array"
+        },
+        "opportunity": {
+          "items": {
+            "$ref": "#/$defs/OpportunityWeight"
+          },
+          "type": "array"
+        },
+        "final": {
+          "items": {
+            "$ref": "#/$defs/FinalWeight"
+          },
+          "type": "array"
+        },
+        "not_applicable": {
+          "items": {
+            "$ref": "#/$defs/NotApplicableRule"
+          },
+          "type": "array"
+        },
+        "min_known_weight": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "priority_threshold": {
+          "maximum": 100,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "review_threshold": {
+          "maximum": 100,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "weak_subscore_below": {
+          "maximum": 100,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "require_observable_problem": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "schema_version",
+        "features",
+        "opportunity",
+        "final",
+        "not_applicable",
+        "min_known_weight",
+        "priority_threshold",
+        "review_threshold",
+        "weak_subscore_below",
+        "require_observable_problem"
+      ],
+      "title": "ScoringDefinition",
+      "type": "object"
+    },
     "ScoringModel": {
       "additionalProperties": false,
+      "description": "A named scoring formula (phase 11): which version is active and whether it is archived.",
       "properties": {
         "id": {
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
@@ -13513,6 +17080,28 @@
               "type": "null"
             }
           ]
+        },
+        "active_version_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "archived_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -13523,13 +17112,59 @@
         "created_at",
         "updated_at",
         "deleted_at",
-        "deleted_reason"
+        "deleted_reason",
+        "active_version_id",
+        "archived_at"
       ],
       "title": "ScoringModel",
       "type": "object"
     },
+    "ScoringModelSaveRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "model_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "definition": {
+          "$ref": "#/$defs/ScoringDefinition"
+        }
+      },
+      "required": [
+        "model_id",
+        "name",
+        "description",
+        "definition"
+      ],
+      "title": "ScoringModelSaveRequest",
+      "type": "object"
+    },
     "ScoringModelVersion": {
       "additionalProperties": false,
+      "description": "Immutable, permanent definition of a scoring model at one version (`ScoringDefinition`).\n`is_heuristic`: its weights are a declared judgement, not fitted to outcomes.",
       "properties": {
         "id": {
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
@@ -13549,8 +17184,17 @@
           },
           "type": "object"
         },
+        "schema_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
         "is_heuristic": {
           "type": "boolean"
+        },
+        "created_by": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
         },
         "created_at": {
           "format": "date-time",
@@ -13562,11 +17206,195 @@
         "scoring_model_id",
         "version",
         "definition_json",
+        "schema_version",
         "is_heuristic",
+        "created_by",
         "created_at"
       ],
       "title": "ScoringModelVersion",
       "type": "object"
+    },
+    "ScoringModelView": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "$ref": "#/$defs/ScoringModel"
+        },
+        "versions": {
+          "items": {
+            "$ref": "#/$defs/ScoringModelVersion"
+          },
+          "type": "array"
+        },
+        "problems": {
+          "items": {
+            "$ref": "#/$defs/CriteriaProblem"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "model",
+        "versions",
+        "problems"
+      ],
+      "title": "ScoringModelView",
+      "type": "object"
+    },
+    "ScoringSimulation": {
+      "additionalProperties": false,
+      "properties": {
+        "businesses": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tiers": {
+          "$ref": "#/$defs/TierCounts"
+        },
+        "distribution": {
+          "items": {
+            "$ref": "#/$defs/ScoreBin"
+          },
+          "type": "array"
+        },
+        "gates": {
+          "items": {
+            "$ref": "#/$defs/GatePreview"
+          },
+          "type": "array"
+        },
+        "top": {
+          "items": {
+            "$ref": "#/$defs/LeadScoreItem"
+          },
+          "type": "array"
+        },
+        "facts_from_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "collected_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "problems": {
+          "items": {
+            "$ref": "#/$defs/CriteriaProblem"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "businesses",
+        "tiers",
+        "distribution",
+        "gates",
+        "top",
+        "facts_from_run_id",
+        "collected_at",
+        "problems"
+      ],
+      "title": "ScoringSimulation",
+      "type": "object"
+    },
+    "ScoringSimulationRequest": {
+      "additionalProperties": false,
+      "description": "Scores drafts in memory, over a project's facts read now or a run's stored facts. Writes\nnothing.",
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "facts_from_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "icp": {
+          "$ref": "#/$defs/IcpDefinition"
+        },
+        "scoring": {
+          "$ref": "#/$defs/ScoringDefinition"
+        },
+        "top": {
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "project_id",
+        "facts_from_run_id",
+        "icp",
+        "scoring",
+        "top"
+      ],
+      "title": "ScoringSimulationRequest",
+      "type": "object"
+    },
+    "ScoringStartRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "icp_profile_version_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "scoring_model_version_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "facts_from_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "icp_profile_version_id",
+        "scoring_model_version_id",
+        "facts_from_run_id"
+      ],
+      "title": "ScoringStartRequest",
+      "type": "object"
+    },
+    "ScoringTarget": {
+      "enum": [
+        "icp_profile",
+        "scoring_model"
+      ],
+      "title": "ScoringTarget",
+      "type": "string"
     },
     "SelectionMethod": {
       "enum": [
@@ -13670,6 +17498,32 @@
         "accepted"
       ],
       "title": "ShutdownResult",
+      "type": "object"
+    },
+    "SizeCriterion": {
+      "additionalProperties": false,
+      "description": "Size by its only observable proxy: distinct locations. Employees and revenue are not seen.",
+      "properties": {
+        "importance": {
+          "$ref": "#/$defs/CriterionImportance"
+        },
+        "weight": {
+          "maximum": 10,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "min_locations": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "importance",
+        "weight",
+        "min_locations"
+      ],
+      "title": "SizeCriterion",
       "type": "object"
     },
     "SizeProxy": {
@@ -14835,6 +18689,81 @@
         "retryable"
       ],
       "title": "TaskAttempt",
+      "type": "object"
+    },
+    "TierCohort": {
+      "additionalProperties": false,
+      "properties": {
+        "tier": {
+          "$ref": "#/$defs/LeadTier"
+        },
+        "businesses": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "labeled": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "positives": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "conversion": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "tier",
+        "businesses",
+        "labeled",
+        "positives",
+        "conversion"
+      ],
+      "title": "TierCohort",
+      "type": "object"
+    },
+    "TierCounts": {
+      "additionalProperties": false,
+      "properties": {
+        "priority": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "review": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "low": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "insufficient_data": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "excluded": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "priority",
+        "review",
+        "low",
+        "insufficient_data",
+        "excluded"
+      ],
+      "title": "TierCounts",
       "type": "object"
     },
     "UiErrorReport": {

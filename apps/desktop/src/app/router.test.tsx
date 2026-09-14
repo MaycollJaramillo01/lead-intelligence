@@ -30,6 +30,8 @@ const mocks = vi.hoisted(() => ({
   listWebsiteRuns: vi.fn<typeof desktop.listWebsiteRuns>(),
   listContactRuns: vi.fn<typeof desktop.listContactRuns>(),
   listAiRuns: vi.fn<typeof desktop.listAiRuns>(),
+  listScoreRuns: vi.fn<typeof desktop.listScoreRuns>(),
+  listLeadScores: vi.fn<typeof desktop.listLeadScores>(),
 }));
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
@@ -67,6 +69,13 @@ describe("application shell", () => {
     mocks.listWebsiteRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
     mocks.listContactRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
     mocks.listAiRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
+    mocks.listScoreRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
+    mocks.listLeadScores.mockResolvedValue({
+      score_run: null,
+      items: [],
+      next_cursor: null,
+      total: 0,
+    });
   });
 
   it("shows every module in the sidebar, grouped in sections", () => {
@@ -105,9 +114,9 @@ describe("application shell", () => {
   });
 
   it("says clearly when a module is not configured yet", async () => {
-    renderApp("/icp-builder");
+    renderApp("/exports");
     expect(await screen.findByText("This module is not configured yet")).toBeTruthy();
-    expect(screen.getByText("Planned for phase 11")).toBeTruthy();
+    expect(screen.getByText("Planned for phase 13")).toBeTruthy();
     expect(screen.getAllByText("Not configured").length).toBeGreaterThan(0);
   });
 
@@ -132,7 +141,7 @@ describe("application shell", () => {
     const user = userEvent.setup();
     renderApp();
     await user.keyboard("{Alt>}3{/Alt}");
-    expect(await screen.findByText("No qualified leads yet")).toBeTruthy();
+    expect(await screen.findByText("No scored leads yet")).toBeTruthy();
   });
 
   it("toggles theme and sidebar from the keyboard and stores the choice", async () => {

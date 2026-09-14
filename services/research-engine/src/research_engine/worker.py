@@ -51,6 +51,8 @@ from research_engine.repository import (
 )
 from research_engine.resolution.engine import ResolutionService
 from research_engine.resolution.store import ResolutionError
+from research_engine.scoring.engine import ScoringService
+from research_engine.scoring.model import ScoringError
 from research_engine.settings import Settings
 from research_engine.storage import check_duckdb, check_sqlite
 from research_engine.website.engine import WebsiteService
@@ -128,6 +130,7 @@ class Worker:
             monitor,
             downloads_allowed=not settings.discovery_offline,
         )
+        self._scoring = ScoringService(lambda: connect(settings.data_dir))
         self._ctx = Context(
             settings,
             datetime.now(UTC),
@@ -139,6 +142,7 @@ class Worker:
             self._website,
             self._contacts,
             self._ai,
+            self._scoring,
         )
 
     async def run(self) -> None:
@@ -160,7 +164,8 @@ class Worker:
                 | LatinoService
                 | WebsiteService
                 | ContactService
-                | AiService,
+                | AiService
+                | ScoringService,
             ],
             ...,
         ] = (
@@ -171,6 +176,7 @@ class Worker:
             ("website", self._website),
             ("contacts", self._contacts),
             ("ai", self._ai),
+            ("scoring", self._scoring),
         )
         for name, engine in engines:
             try:
@@ -213,6 +219,7 @@ class Worker:
             await self._website.shutdown()
             await self._ai.shutdown()
             await self._contacts.shutdown()
+            await self._scoring.shutdown()
             await self._drain()
         logger.info("worker stopped")
 
@@ -338,6 +345,7 @@ class Worker:
             WebsiteError,
             ContactError,
             AiError,
+            ScoringError,
         ) as exc:
             raise WorkerError(ErrorCode.INVALID_PAYLOAD, str(exc)) from exc
         except ProviderError as exc:

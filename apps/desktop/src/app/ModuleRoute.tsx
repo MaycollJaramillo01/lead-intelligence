@@ -11,6 +11,8 @@ import { LeadExplorerScreen } from "@/features/businesses/LeadExplorerScreen";
 import { DatasetsScreen } from "@/features/datasets/DatasetsScreen";
 import { JobsScreen } from "@/features/jobs/JobsScreen";
 import { OverviewScreen } from "@/features/overview/OverviewScreen";
+import { IcpBuilderScreen } from "@/features/scoring/IcpBuilderScreen";
+import { ScoringModelsScreen } from "@/features/scoring/ScoringModelsScreen";
 import { ResearchCenterScreen } from "@/features/research/ResearchCenterScreen";
 import { ModuleNotConfigured } from "@/features/placeholder/ModuleNotConfigured";
 import { SettingsScreen } from "@/features/settings/SettingsScreen";
@@ -24,6 +26,8 @@ const SCREENS: Record<string, ComponentType> = {
   businesses: BusinessesScreen,
   "lead-explorer": LeadExplorerScreen,
   "research-center": ResearchCenterScreen,
+  "icp-builder": IcpBuilderScreen,
+  "scoring-models": ScoringModelsScreen,
   "ai-models": AiModelsScreen,
   jobs: JobsScreen,
   datasets: DatasetsScreen,

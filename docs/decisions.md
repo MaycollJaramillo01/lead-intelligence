@@ -839,3 +839,106 @@ runtime, GPU, live resources and queue, installed models with estimates, profile
 reason each is unavailable, benchmarks with recommendations, the LLM Fit opinion, downloads and
 deletions with typed confirmation, and the inference history with raw and validated answers and
 reviews. The business inspector gains a Local AI panel; AI runs appear in Jobs.
+
+## D-070 · Separate components, gates before weights, unknown left out instead of zero (phase 11)
+
+**Context.** The prompt asks for independent components, hard gates before weights, `unknown` that
+is never a failure, no penalty where a signal does not apply, and coverage that lowers certainty
+rather than the opportunity.
+
+**Decision.** 24 features in five base components, each known (a value that rests on evidence),
+unknown or not applicable. Base components, ICP_MATCH, OPPORTUNITY_SCORE and FINAL_LEAD_SCORE are
+weighted means over their known inputs only, renormalized, with contributions that add up to the
+value. Gates come first: do not contact, closed, exclusions, the Latino requirement, an observable
+problem an offer solves, and must-have criteria. A failure excludes the business without a total; an
+undecided gate, or less than `min_known_weight` of the final weight known, gives `insufficient_data`.
+Confidence is data confidence × the known share. A feature stops applying through the model's
+category rules (booking for roofers) and through the offers: a problem no offer solves is not
+weighed. LATINO_CONFIDENCE is its own component, not an input of OPPORTUNITY_SCORE, weighted 0 by
+default; campaigns filter with the Latino gate (`verified_latino_owned` or `market_affinity`).
+
+**Why.** Renormalizing keeps an unknown from reading as a failure, while the known share, the tier
+and the confidence keep a thin score from passing for a certain one.
+
+**Trade-off.** Two equal totals can rest on very different evidence; coverage and confidence are
+shown next to every total and break ties.
+
+## D-071 · Declarative, versioned definitions over a pure engine; the facts are stored with every score (phase 11)
+
+**Decision.** `IcpDefinition` and `ScoringDefinition` are contracts stored verbatim in immutable,
+permanent versions (an unchanged definition makes no version); a profile or model has an active
+version and an archive mark, changed only with an audited reason, and a definition with errors is
+never activated or run. `model.score(facts, icp, scoring, versions)` reads no store, clock, network
+or model, so the same inputs give the same scorecard. `BusinessFacts` (`FACTS_VERSION`) is read once
+per business and stored with its scorecard in `business_scores`; a run can score the stored facts of
+a finished run again (`facts_from_run_id`), which compares two versions on identical facts. Runs,
+scores, components and outcomes are never rewritten or deleted (triggers). Migration 0010 rebuilds
+the reserved scoring tables: `score_explanations` and `explanation_kind` are dropped (reasons, gates,
+risks and their evidence live in the scorecard), `score_runs.dataset_snapshot_id` is dropped (each
+score keeps its facts), `lead_tier` and `lead_outcomes` are added.
+
+**Trade-off.** About 30 KB of facts and scorecard per business per run. History grows with every run;
+scoring is cheap enough (20 businesses in 0.06 s) that nothing is cached instead.
+
+## D-072 · One ranking with a documented tie-break, identical in Python and SQL (phase 11)
+
+**Decision.** Tier (priority, review, low, insufficient data, excluded), total descending with a
+missing total after, confidence descending, business id. `model.rank_key` and `store.RANK_ORDER`
+(`ROW_NUMBER()` over the whole run) express the same order, and a test proves it. A rank is the
+place in the whole run: filters and keyset pages never renumber it, and the core refuses a page out
+of rank order or outside its filters.
+
+## D-073 · Heuristic weights declared as such; offline calibration with a leakage guard; no training (phase 11)
+
+**Context.** No outcome exists yet, and the prompt forbids training predictive models without volume
+and labels.
+
+**Decision.** Every model version is stored with `is_heuristic = true`, and the Scoring Models
+screen, the scorecard and the calibration report say so. Outcomes (the ten stages, `lost` with its
+reason) move `lead_stage` along its state machine and stay in `lead_outcomes`. Calibration of a run
+labels each business with its latest outcome that happened after its facts were read; earlier ones
+are counted as leakage and never used. The metrics are:
+
+- precision@K for 10, 25, 50 and 100;
+- lift by decile;
+- calibration bands;
+- conversion by tier;
+- coverage.
+
+Warnings appear below 30 labels. Nothing fits a weight.
+
+**Why.** A model fitted on a handful of labels would turn noise into apparent certainty, which the
+prompt names as the thing not to do.
+
+## D-074 · A model may word a reason, never score one (phase 11)
+
+**Decision.** The scorecard detail shows a local model's `opportunity_reasoning` problems (phase 10)
+only when every reference cited is a website finding the scorecard's features rest on; the rest are
+dropped and counted, and the core refuses an AI reason citing anything else. No model output changes
+a number, a tier or the evidence. Reasons, inferred impacts (marked as inference), the offer and the
+message draft are deterministic templates over the observed problems; the draft is in English, marked
+as a draft, and nothing sends it.
+
+## D-075 · Scoring is a job; ICP Builder, Scoring Models, Lead Explorer and the scorecard panel (phase 11)
+
+**Decision.** The engine:
+
+- runs as `jobs.kind = lead_scoring` on `jobs.BackgroundJobs`, with one open run per project;
+- works in batches of 200 with a checkpoint after each and skips a business already scored;
+- serves 13 IPC messages (`scoring.*`), mirrored in Rust with validation;
+- simulates in memory over at most 5 000 businesses read now, or over a run's stored facts, and
+  writes nothing.
+
+The interface:
+
+- **ICP Builder:** criteria, Latino requirement, exclusions, offers, preview on real data, versions
+  and archive.
+- **Scoring Models:**
+  - _Models:_ the formula as text, weights, thresholds, category rules and versions (save, save as
+    new, compare field by field, activate, archive and restore with a reason).
+  - _Runs:_ start, control, distribution and comparison.
+  - _Calibration:_ the offline metrics of a run.
+- **Lead Explorer:** the ranked leads of the newest finished run, filtered in the store.
+- **Business inspector:** a lead score panel with review and outcomes.
+
+Scoring runs appear in Jobs.

@@ -10,22 +10,27 @@ use lead_intelligence_lib::data::{
     AiBenchmarkRequest, AiConfigureRequest, AiInferenceDetail, AiInferenceListQuery,
     AiInferencePage, AiInferenceQuery, AiModelChangeRequest, AiReviewRequest, AiReviewStatus,
     AiRunListQuery, AiRunPage, AiStartRequest, AiStatus, AiStatusQuery, AssessmentMethod,
-    BusinessDetail, BusinessListQuery, BusinessPage, CampaignListQuery, CampaignPage,
-    CampaignSaved, CandidateDetail, CandidateListQuery, CandidatePage, CanonicalChoiceRequest,
-    ContactActionRequest, ContactDetail, ContactListQuery, ContactOrigin, ContactPage,
-    ContactRunListQuery, ContactRunPage, ContactStartRequest, CrawlRunListQuery, CrawlRunPage,
-    CrawlStartRequest, CrawlUrlDetail, CrawlUrlListQuery, CrawlUrlPage, CrawlUrlStatus,
-    CriteriaCheck, DatasetListQuery, DatasetPage, DecisionMakerListQuery, DecisionMakerPage,
-    DecisionMakerReview, DecisionMakerReviewRequest, DiscoveryRunListQuery, DiscoveryRunPage,
-    DiscoveryStartRequest, EvidenceStatus, Id, ImportPreview, LatinoDetail, LatinoReviewFilter,
-    LatinoReviewRequest, LatinoRunListQuery, LatinoRunPage, LatinoStartRequest, LatinoStatus,
-    MatchActionRequest, MatchDetail, MatchListQuery, MatchPage, MatchStatus,
-    ResolutionRunListQuery, ResolutionRunPage, ResolutionStartRequest, SourceCatalog, SourceHealth,
-    SuppressionChangeRequest, SuppressionExport, SuppressionExportRequest,
-    SuppressionImportRequest, SuppressionImportResult, SuppressionListQuery, SuppressionPage,
-    SyntheticSeedResult, ValidationStatus, WebsiteAuditDetail, WebsiteAuditListQuery,
-    WebsiteAuditPage, WebsiteAuditQuery, WebsiteAuditStatus, WebsiteFindingResult,
-    WebsiteRunListQuery, WebsiteRunPage, WebsiteStartRequest,
+    BusinessDetail, BusinessListQuery, BusinessPage, CalibrationQuery, CalibrationReport,
+    CampaignListQuery, CampaignPage, CampaignSaved, CandidateDetail, CandidateListQuery,
+    CandidatePage, CanonicalChoiceRequest, ContactActionRequest, ContactDetail, ContactListQuery,
+    ContactOrigin, ContactPage, ContactRunListQuery, ContactRunPage, ContactStartRequest,
+    CrawlRunListQuery, CrawlRunPage, CrawlStartRequest, CrawlUrlDetail, CrawlUrlListQuery,
+    CrawlUrlPage, CrawlUrlStatus, CriteriaCheck, DatasetListQuery, DatasetPage,
+    DecisionMakerListQuery, DecisionMakerPage, DecisionMakerReview, DecisionMakerReviewRequest,
+    DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest, EvidenceStatus, IcpProfileView,
+    IcpSaveRequest, Id, ImportPreview, LatinoDetail, LatinoReviewFilter, LatinoReviewRequest,
+    LatinoRunListQuery, LatinoRunPage, LatinoStartRequest, LatinoStatus, LeadActionRequest,
+    LeadScorePage, LeadScoreQuery, LeadScorecardDetail, LeadTier, MatchActionRequest, MatchDetail,
+    MatchListQuery, MatchPage, MatchStatus, ResolutionRunListQuery, ResolutionRunPage,
+    ResolutionStartRequest, ScoreCompareQuery, ScoreComparison, ScoreRunListQuery, ScoreRunPage,
+    ScorecardQuery, ScoringCatalog, ScoringCatalogQuery, ScoringChangeRequest,
+    ScoringModelSaveRequest, ScoringModelView, ScoringSimulation, ScoringSimulationRequest,
+    ScoringStartRequest, SourceCatalog, SourceHealth, SuppressionChangeRequest, SuppressionExport,
+    SuppressionExportRequest, SuppressionImportRequest, SuppressionImportResult,
+    SuppressionListQuery, SuppressionPage, SyntheticSeedResult, ValidationStatus,
+    WebsiteAuditDetail, WebsiteAuditListQuery, WebsiteAuditPage, WebsiteAuditQuery,
+    WebsiteAuditStatus, WebsiteFindingResult, WebsiteRunListQuery, WebsiteRunPage,
+    WebsiteStartRequest,
 };
 use lead_intelligence_lib::protocol::{
     DATA_CONTRACT_VERSION, DiagnosticsReport, DiagnosticsResult, Envelope, HealthResult,
@@ -899,6 +904,188 @@ fn ai_payloads_that_claim_too_much_are_rejected() {
 }
 
 #[test]
+fn scoring_fixtures_round_trip_and_pass_validation() {
+    round_trip::<ScoringCatalogQuery>("scoring_catalog_query.json");
+    let catalog: ScoringCatalog = round_trip("scoring_catalog.json");
+    catalog.validate().expect("fixture catalogue is consistent");
+    assert!(
+        catalog
+            .models
+            .iter()
+            .any(|m| m.model.key == "lead_intelligence.heuristic")
+    );
+    let save: IcpSaveRequest = round_trip("icp_save_request.json");
+    save.validate().expect("fixture ICP is valid");
+    let profile: IcpProfileView = round_trip("icp_profile_view.json");
+    profile.validate().expect("fixture profile is consistent");
+    let model_save: ScoringModelSaveRequest = round_trip("scoring_model_save_request.json");
+    model_save.validate().expect("fixture model is valid");
+    let model: ScoringModelView = round_trip("scoring_model_view.json");
+    model.validate().expect("fixture model view is consistent");
+    let change: ScoringChangeRequest = round_trip("scoring_change_request.json");
+    change.validate().expect("fixture change names its version");
+    let simulation_request: ScoringSimulationRequest =
+        round_trip("scoring_simulation_request.json");
+    simulation_request
+        .validate()
+        .expect("fixture simulation request is valid");
+    let simulation: ScoringSimulation = round_trip("scoring_simulation.json");
+    simulation
+        .validate(&simulation_request)
+        .expect("fixture simulation counts every business");
+    let start: ScoringStartRequest = round_trip("scoring_start_request.json");
+    assert!(start.facts_from_run_id.is_some());
+    let runs_query: ScoreRunListQuery = round_trip("score_run_list_query.json");
+    runs_query.validate().expect("fixture query is valid");
+    let runs: ScoreRunPage = round_trip("score_run_page.json");
+    runs.validate(&runs_query)
+        .expect("fixture runs match their query");
+    assert_eq!(runs.items.len(), 2);
+    let leads_query: LeadScoreQuery = round_trip("lead_score_query.json");
+    leads_query.validate().expect("fixture query is valid");
+    let leads: LeadScorePage = round_trip("lead_score_page.json");
+    leads
+        .validate(&leads_query)
+        .expect("fixture leads are ranked and filtered");
+    let scorecard_query: ScorecardQuery = round_trip("scorecard_query.json");
+    let detail: LeadScorecardDetail = round_trip("lead_scorecard_detail.json");
+    detail
+        .validate(&scorecard_query)
+        .expect("fixture scorecard is consistent");
+    assert!(!detail.outcomes.is_empty() && !detail.decisions.is_empty());
+    let compare_query: ScoreCompareQuery = round_trip("score_compare_query.json");
+    compare_query.validate().expect("fixture query is valid");
+    let comparison: ScoreComparison = round_trip("score_comparison.json");
+    comparison
+        .validate(&compare_query)
+        .expect("fixture comparison counts its top");
+    assert!(comparison.same_facts);
+    let calibration_query: CalibrationQuery = round_trip("calibration_query.json");
+    let report: CalibrationReport = round_trip("calibration_report.json");
+    report
+        .validate(&calibration_query)
+        .expect("fixture report nests its counts");
+    assert!(report.weights_are_heuristic);
+    let action: LeadActionRequest = round_trip("lead_action_request.json");
+    action.validate().expect("fixture outcome is valid");
+}
+
+#[test]
+fn scoring_payloads_that_claim_too_much_are_rejected() {
+    let original: Value =
+        serde_json::from_str(&fixture_text("lead_scorecard_detail.json")).expect("JSON");
+    let query: ScorecardQuery =
+        serde_json::from_str(&fixture_text("scorecard_query.json")).expect("query");
+    let rejected = |change: &dyn Fn(&mut Value)| {
+        let mut changed = original.clone();
+        change(&mut changed);
+        let detail: LeadScorecardDetail =
+            serde_json::from_value(changed).expect("still well formed");
+        detail.validate(&query).is_err()
+    };
+    assert!(
+        original["scorecard"]["total_score"].is_number(),
+        "the fixture lead is scored"
+    );
+    assert!(
+        rejected(&|detail| detail["scorecard"]["total_score"] = json!(99.5)),
+        "contributions that do not add up to the total"
+    );
+    assert!(
+        rejected(&|detail| detail["scorecard"]["tier"] = "excluded".into()),
+        "an excluded lead with a total and no failed gate"
+    );
+    let known = original["scorecard"]["features"]
+        .as_array()
+        .expect("features")
+        .iter()
+        .position(|feature| feature["state"] == "known")
+        .expect("a known feature");
+    assert!(
+        rejected(&|detail| detail["scorecard"]["features"][known]["evidence"] = json!([])),
+        "a point without evidence"
+    );
+    assert!(
+        rejected(&|detail| {
+            detail["ai_reasons"] = json!([{
+                "inference_run_id": "01900000-0000-7000-8000-999999999999",
+                "model": "synthetic-text:1b", "problem": "other", "explanation": "invented",
+                "evidence": [{
+                    "kind": "website_finding", "ref": "01900000-0000-7000-8000-999999999998",
+                    "label": "invented", "url": null
+                }]
+            }])
+        }),
+        "model wording citing evidence the scorecard does not rest on"
+    );
+
+    let page: Value = serde_json::from_str(&fixture_text("lead_score_page.json")).expect("JSON");
+    let leads_query: LeadScoreQuery =
+        serde_json::from_str(&fixture_text("lead_score_query.json")).expect("query");
+    let mut swapped = page.clone();
+    swapped["items"].as_array_mut().expect("items").swap(0, 1);
+    let swapped: LeadScorePage = serde_json::from_value(swapped).expect("well formed");
+    assert!(
+        swapped.validate(&leads_query).is_err(),
+        "ranks out of order"
+    );
+    let mut excluded_only = leads_query.clone();
+    excluded_only.tier = Some(LeadTier::Excluded);
+    let page: LeadScorePage = serde_json::from_value(page).expect("well formed");
+    assert!(
+        page.validate(&excluded_only).is_err(),
+        "leads outside the tier asked for"
+    );
+
+    let action: Value =
+        serde_json::from_str(&fixture_text("lead_action_request.json")).expect("JSON");
+    for (field, value) in [
+        ("stage", Value::Null),
+        ("lost_reason", json!("no budget")),
+        ("reason", json!("  ")),
+        ("action", json!("confirm")),
+    ] {
+        let mut changed = action.clone();
+        changed[field] = value;
+        let request: LeadActionRequest = serde_json::from_value(changed).expect("well formed");
+        assert!(request.validate().is_err(), "{field}");
+    }
+    let icp: Value = serde_json::from_str(&fixture_text("icp_save_request.json")).expect("JSON");
+    let mut heavy = icp.clone();
+    heavy["definition"]["geography"]["weight"] = 11.into();
+    assert!(
+        serde_json::from_value::<IcpSaveRequest>(heavy)
+            .expect("well formed")
+            .validate()
+            .is_err(),
+        "a weight above 10"
+    );
+    let mut twice = icp;
+    let offer = twice["definition"]["offers"][0].clone();
+    twice["definition"]["offers"]
+        .as_array_mut()
+        .expect("offers")
+        .push(offer);
+    assert!(
+        serde_json::from_value::<IcpSaveRequest>(twice)
+            .expect("well formed")
+            .validate()
+            .is_err(),
+        "an offer key twice"
+    );
+    let mut unnamed: Value =
+        serde_json::from_str(&fixture_text("scoring_change_request.json")).expect("JSON");
+    unnamed["version_id"] = Value::Null;
+    assert!(
+        serde_json::from_value::<ScoringChangeRequest>(unnamed)
+            .expect("well formed")
+            .validate()
+            .is_err(),
+        "an activation that does not name its version"
+    );
+}
+
+#[test]
 fn every_fixture_is_covered() {
     let dir = common::repo_root().join("packages/shared-types/fixtures");
     let mut names: Vec<String> = fs::read_dir(dir)
@@ -933,6 +1120,8 @@ fn every_fixture_is_covered() {
             "business_detail.json",
             "business_list_query.json",
             "business_page.json",
+            "calibration_query.json",
+            "calibration_report.json",
             "campaign_list_query.json",
             "campaign_page.json",
             "campaign_saved.json",
@@ -968,6 +1157,8 @@ fn every_fixture_is_covered() {
             "envelope.request.health.json",
             "envelope.result.diagnostics.json",
             "envelope.result.error.json",
+            "icp_profile_view.json",
+            "icp_save_request.json",
             "import_preview.json",
             "latino_business_list_query.json",
             "latino_business_page.json",
@@ -976,6 +1167,10 @@ fn every_fixture_is_covered() {
             "latino_run_list_query.json",
             "latino_run_page.json",
             "latino_start_request.json",
+            "lead_action_request.json",
+            "lead_score_page.json",
+            "lead_score_query.json",
+            "lead_scorecard_detail.json",
             "match_action_request.json",
             "match_detail.json",
             "match_list_query.json",
@@ -983,6 +1178,19 @@ fn every_fixture_is_covered() {
             "resolution_run_list_query.json",
             "resolution_run_page.json",
             "resolution_start_request.json",
+            "score_compare_query.json",
+            "score_comparison.json",
+            "score_run_list_query.json",
+            "score_run_page.json",
+            "scorecard_query.json",
+            "scoring_catalog.json",
+            "scoring_catalog_query.json",
+            "scoring_change_request.json",
+            "scoring_model_save_request.json",
+            "scoring_model_view.json",
+            "scoring_simulation.json",
+            "scoring_simulation_request.json",
+            "scoring_start_request.json",
             "source_catalog.json",
             "suppression_change_request.json",
             "suppression_export.json",

@@ -10,13 +10,15 @@ use chrono::Utc;
 use lead_intelligence_lib::commands::{AppState, CoreInfo};
 use lead_intelligence_lib::config::Environment;
 use lead_intelligence_lib::data::{
-    AiInferencePage, AiRunPage, AiStatus, BusinessDetail, BusinessPage, CampaignSaved,
-    CandidateDetail, CandidatePage, CanonicalField, ContactDetail, ContactOrigin, ContactPage,
-    ContactRunPage, ContactSuppression, CrawlRun, CrawlRunPage, CrawlUrlDetail, CrawlUrlPage,
-    CriteriaCheck, DatasetPage, DecisionMakerPage, DiscoveryRun, DiscoveryRunPage, ImportPreview,
-    JobStatus, LatinoDetail, LatinoRunPage, LatinoStatus, MatchDetail, MatchPage, MatchStatus,
-    ResolutionRunPage, SelectionMethod, SourceCatalog, SourceRunStatus, SuppressionExport,
-    SyntheticSeedResult, WebsiteAuditDetail, WebsiteAuditPage, WebsiteRunPage,
+    AiInferencePage, AiRunPage, AiStatus, BusinessDetail, BusinessPage, CalibrationReport,
+    CampaignSaved, CandidateDetail, CandidatePage, CanonicalField, ContactDetail, ContactOrigin,
+    ContactPage, ContactRunPage, ContactSuppression, CrawlRun, CrawlRunPage, CrawlUrlDetail,
+    CrawlUrlPage, CriteriaCheck, DatasetPage, DecisionMakerPage, DiscoveryRun, DiscoveryRunPage,
+    ImportPreview, JobStatus, LatinoDetail, LatinoRunPage, LatinoStatus, LeadScorePage,
+    LeadScorecardDetail, MatchDetail, MatchPage, MatchStatus, ResolutionRunPage, ScoreComparison,
+    ScoreRunPage, ScoringCatalog, ScoringSimulation, SelectionMethod, SourceCatalog,
+    SourceRunStatus, SuppressionExport, SyntheticSeedResult, WebsiteAuditDetail, WebsiteAuditPage,
+    WebsiteRunPage,
 };
 use lead_intelligence_lib::protocol::{
     CommandError, CommandErrorCode, ComponentState, DiagnosticsReport, WorkerState,
@@ -538,6 +540,141 @@ fn data_commands_serve_real_store_queries_through_ipc() {
     .deserialize()
     .expect("typed history");
     assert_eq!(history.total, 0);
+
+    // lead scoring: the seed scored its project twice; the catalogue, a ranked page, a scorecard, a
+    // review without and with a reason, a simulation over stored facts, a new run, a comparison and
+    // the calibration all go through IPC and the real worker
+    let catalog: ScoringCatalog = invoke(
+        &dev,
+        "get_scoring_catalog",
+        json!({ "query": { "project_id": null } }),
+    )
+    .expect("scoring catalogue")
+    .deserialize()
+    .expect("typed catalogue");
+    let profile = catalog
+        .icp_profiles
+        .iter()
+        .find(|view| view.profile.project_id == seed.project_id)
+        .expect("the synthetic ICP");
+    let icp_version = profile
+        .versions
+        .iter()
+        .find(|version| Some(&version.id) == profile.profile.active_version_id.as_ref())
+        .expect("an active ICP version");
+    let heuristic = catalog
+        .models
+        .iter()
+        .find(|view| view.model.key == "lead_intelligence.heuristic")
+        .expect("the default model");
+    let leads: LeadScorePage = invoke(
+        &dev,
+        "list_lead_scores",
+        json!({ "query": {
+            "score_run_id": null, "tier": null, "min_score": null, "problem": null,
+            "search": null, "limit": 5, "cursor": null
+        }}),
+    )
+    .expect("ranked leads")
+    .deserialize()
+    .expect("typed leads");
+    let scored_run = leads.score_run.clone().expect("the newest finished run");
+    let lead = &leads.items[0];
+    let scorecard: LeadScorecardDetail = invoke(
+        &dev,
+        "get_lead_scorecard",
+        json!({ "query": { "business_id": lead.business_id, "score_run_id": scored_run.score_run_id } }),
+    )
+    .expect("scorecard")
+    .deserialize()
+    .expect("typed scorecard");
+    assert_eq!(scorecard.rank, lead.rank);
+    let review = |reason: &str| {
+        invoke(
+            &dev,
+            "act_on_lead",
+            json!({ "request": {
+                "score_run_id": scored_run.score_run_id, "business_id": lead.business_id,
+                "action": "confirm", "stage": null, "lost_reason": null, "reason": reason
+            }}),
+        )
+    };
+    let unexplained = review(" ").expect_err("a review needs a reason");
+    assert_eq!(
+        command_error(unexplained).code,
+        CommandErrorCode::InvalidInput
+    );
+    let reviewed: LeadScorecardDetail = review("IPC test")
+        .expect("reviewed")
+        .deserialize()
+        .expect("typed scorecard");
+    assert!(reviewed.decisions.iter().any(|d| d.reason == "IPC test"));
+    let simulation: ScoringSimulation = invoke(
+        &dev,
+        "simulate_scoring",
+        json!({ "request": {
+            "project_id": null, "facts_from_run_id": scored_run.score_run_id,
+            "icp": icp_version.definition_json, "scoring": heuristic.versions[0].definition_json,
+            "top": 3
+        }}),
+    )
+    .expect("simulation")
+    .deserialize()
+    .expect("typed simulation");
+    assert_eq!(simulation.businesses, scored_run.stats.businesses);
+    let mut score_runs: ScoreRunPage = invoke(
+        &dev,
+        "start_scoring",
+        json!({ "request": {
+            "project_id": seed.project_id, "icp_profile_version_id": icp_version.id,
+            "scoring_model_version_id": heuristic.versions[0].id,
+            "facts_from_run_id": scored_run.score_run_id
+        }}),
+    )
+    .expect("score run started")
+    .deserialize()
+    .expect("typed runs");
+    for _ in 0..400 {
+        score_runs = invoke(
+            &dev,
+            "list_score_runs",
+            json!({ "query": { "project_id": null, "limit": 10, "cursor": null } }),
+        )
+        .expect("score runs")
+        .deserialize()
+        .expect("typed runs");
+        if score_runs
+            .items
+            .iter()
+            .all(|run| !matches!(run.status, JobStatus::Queued | JobStatus::Running))
+        {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    let rescored = &score_runs.items[0];
+    assert_eq!(rescored.status, JobStatus::Succeeded);
+    let comparison: ScoreComparison = invoke(
+        &dev,
+        "compare_score_runs",
+        json!({ "query": {
+            "left_run_id": scored_run.score_run_id, "right_run_id": rescored.score_run_id,
+            "top_k": 10
+        }}),
+    )
+    .expect("comparison")
+    .deserialize()
+    .expect("typed comparison");
+    assert!(comparison.same_facts);
+    let report: CalibrationReport = invoke(
+        &dev,
+        "get_calibration",
+        json!({ "query": { "score_run_id": scored_run.score_run_id } }),
+    )
+    .expect("calibration")
+    .deserialize()
+    .expect("typed report");
+    assert!(report.weights_are_heuristic && report.labeled <= report.businesses);
 
     let datasets: DatasetPage = invoke(
         &dev,

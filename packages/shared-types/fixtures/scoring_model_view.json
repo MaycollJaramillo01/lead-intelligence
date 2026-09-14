@@ -1,0 +1,180 @@
+{
+  "model": {
+    "id": "01900000-0000-7000-8000-000000001394",
+    "key": "custom.synthetic_model_contactability_first",
+    "name": "Synthetic model: contactability first",
+    "description": "Synthetic test data",
+    "created_at": "2026-01-01T00:00:00.000Z",
+    "updated_at": "2026-01-01T00:00:00.000Z",
+    "deleted_at": null,
+    "deleted_reason": null,
+    "active_version_id": null,
+    "archived_at": null
+  },
+  "versions": [
+    {
+      "id": "01900000-0000-7000-8000-000000001396",
+      "scoring_model_id": "01900000-0000-7000-8000-000000001394",
+      "version": 1,
+      "definition_json": {
+        "features": [
+          {
+            "feature": "gap.no_website",
+            "weight": 3
+          },
+          {
+            "feature": "gap.website_unreachable",
+            "weight": 3
+          },
+          {
+            "feature": "gap.conversion_path",
+            "weight": 3
+          },
+          {
+            "feature": "gap.online_booking",
+            "weight": 1
+          },
+          {
+            "feature": "gap.local_seo",
+            "weight": 2
+          },
+          {
+            "feature": "gap.technical_seo",
+            "weight": 1
+          },
+          {
+            "feature": "gap.mobile",
+            "weight": 2
+          },
+          {
+            "feature": "gap.measurement",
+            "weight": 1
+          },
+          {
+            "feature": "health.recently_seen",
+            "weight": 2
+          },
+          {
+            "feature": "health.site_answers",
+            "weight": 2
+          },
+          {
+            "feature": "health.site_maintained",
+            "weight": 1
+          },
+          {
+            "feature": "health.trust_signals",
+            "weight": 1
+          },
+          {
+            "feature": "health.multiple_sources",
+            "weight": 1
+          },
+          {
+            "feature": "capacity.multiple_locations",
+            "weight": 2
+          },
+          {
+            "feature": "capacity.paid_tools",
+            "weight": 1
+          },
+          {
+            "feature": "capacity.team_published",
+            "weight": 2
+          },
+          {
+            "feature": "capacity.site_depth",
+            "weight": 1
+          },
+          {
+            "feature": "intent.advertising_active",
+            "weight": 2
+          },
+          {
+            "feature": "intent.site_changed",
+            "weight": 1
+          },
+          {
+            "feature": "intent.reputation_without_conversion",
+            "weight": 2
+          },
+          {
+            "feature": "data.coverage",
+            "weight": 3
+          },
+          {
+            "feature": "data.freshness",
+            "weight": 2
+          },
+          {
+            "feature": "data.agreement",
+            "weight": 1
+          },
+          {
+            "feature": "data.audit_coverage",
+            "weight": 1
+          }
+        ],
+        "final": [
+          {
+            "component": "ICP_MATCH",
+            "weight": 25
+          },
+          {
+            "component": "OPPORTUNITY_SCORE",
+            "weight": 35
+          },
+          {
+            "component": "CONTACTABILITY",
+            "weight": 40
+          },
+          {
+            "component": "LATINO_CONFIDENCE",
+            "weight": 0
+          }
+        ],
+        "min_known_weight": 0.6,
+        "not_applicable": [
+          {
+            "categories": [
+              "roofing",
+              "construction",
+              "general contractor",
+              "wholesale",
+              "manufacturing"
+            ],
+            "feature": "gap.online_booking"
+          }
+        ],
+        "opportunity": [
+          {
+            "component": "DIGITAL_GAP",
+            "weight": 45
+          },
+          {
+            "component": "BUSINESS_HEALTH",
+            "weight": 20
+          },
+          {
+            "component": "BUYING_CAPACITY",
+            "weight": 20
+          },
+          {
+            "component": "COMMERCIAL_INTENT",
+            "weight": 15
+          }
+        ],
+        "priority_threshold": 70,
+        "require_observable_problem": true,
+        "review_threshold": 50,
+        "schema_version": 1,
+        "weak_subscore_below": 60
+      },
+      "schema_version": 1,
+      "is_heuristic": true,
+      "created_by": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "problems": []
+}

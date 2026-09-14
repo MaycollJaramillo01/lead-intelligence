@@ -30,6 +30,10 @@ its source, and how the stores are kept safe. Delivered in phase 03; later phase
   `decision_makers` rebuilt with its relationship and review status, `contact_suppressions` (the
   local do-not-contact list, permanent history) and `mail_domain_checks` (cached DNS answers). See
   [contact-intelligence.md](contact-intelligence.md).
+- Lead scoring (phase 11) rebuilds the reserved scoring tables in `0010_lead_scoring.sql`: ICP profile
+  and scoring model versions become permanent, with an active version and an archive mark; each
+  score stores the facts it read and its whole scorecard; `lead_outcomes` records what happened when
+  a lead was worked. See [scoring.md](scoring.md).
 - Access: [`repository.py`](../services/research-engine/src/research_engine/repository.py) (SQLite) and
   [`datasets.py`](../services/research-engine/src/research_engine/datasets.py) (DuckDB + Parquet).
   Nothing else runs SQL against the model; the UI never does (D-004).
@@ -84,8 +88,10 @@ flowchart LR
     evidence_items --> latino_assessments
     source_runs -. crawl read .-> website_audits --> website_findings
     businesses -. minimal input .-> ai_inference_runs --> ai_inference_outputs
+    icp_profile_versions -. ICP version .-> score_runs
     scoring_models --> scoring_model_versions --> score_runs --> business_scores --> component_scores
-    business_scores --> score_explanations
+    score_runs -. facts_from_run_id .-> score_runs
+    businesses --> lead_outcomes
   end
   subgraph ops[Operations]
     jobs --> job_tasks --> task_attempts
@@ -152,8 +158,10 @@ erDiagram
    person's review (phase 10). An
    assessment (`latino_assessments`) cites evidence through `latino_assessment_evidence` and records
    its method and rules version; it never overwrites evidence.
-6. **Scores** reference the exact `scoring_model_version`, store each component with weight and
-   contribution, and keep explanations (`score_explanations`).
+6. **Scores** reference the exact ICP and scoring model versions and the engine version, and store
+   the facts the engine read next to the complete scorecard (gates, reasons, risks, missing data and
+   offer, each with its evidence) and each component's value, weight, contribution and coverage
+   (phase 11).
 
 `repository.trace_lineage(conn, extraction_id)` walks a value back to its raw record, page, run and
 connector; the business detail sent to the UI carries the same chain as a `Provenance` block per
@@ -180,12 +188,13 @@ Other enumerations: `evidence_type`, `evidence_strength`, `latino_status`, `cont
 `website_finding_severity`, `website_finding_result`, `source_kind`, `acquisition_method`,
 `entity_type`, `audit_action`, `name_kind`, `service_area_kind`, `classification_kind`, `page_kind`,
 `contact_origin`, `conversion_element_kind`, `assessment_method`, `evidence_role`,
-`explanation_kind`, `event_level`, `export_format`, `crawl_target` (phase 05, when `source_kind`
+`event_level`, `export_format`, `crawl_target` (phase 05, when `source_kind`
 also gained `business_website`), `match_outcome`, `match_risk`, `canonical_field` and
 `selection_method` (phase 06, when `entity_type` gained `match_candidate`), `website_category` and
 `website_audit_status` (phase 08), `suppression_kind`, `decision_maker_review`,
 `decision_maker_relationship` and `mail_domain_result` (phase 09, when `entity_type` gained
-`contact_suppression`). Values are listed in
+`contact_suppression`), and `lead_tier` (phase 11, when `explanation_kind` was dropped). Values are
+listed in
 `domain.py`; adding one is a forward migration that inserts a row.
 
 ## 6. Data dictionary
@@ -196,12 +205,12 @@ soft-deletable ones have `deleted_at?` + `deleted_reason?`.
 
 ### Workspace
 
-| Table                  | Purpose                                                      | Columns                                                                                                                                           |
-| ---------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `projects`             | Local workspace; `is_synthetic` flags test data only         | `id`, `name`, `description`?, `is_synthetic`                                                                                                      |
-| `icp_profiles`         | Named ideal-customer profile                                 | `id`, `project_id` → projects, `name`, `description`?                                                                                             |
-| `icp_profile_versions` | Immutable definition of a profile at one version             | `id`, `icp_profile_id` → icp_profiles, `version`, `definition_json`, `schema_version`, `created_by`                                               |
-| `campaigns`            | What to look for; `criteria_json` follows a versioned schema | `id`, `project_id` → projects, `icp_profile_version_id`? → icp_profile_versions, `name`, `objective`?, `criteria_json`, `criteria_schema_version` |
+| Table                  | Purpose                                                                           | Columns                                                                                                                                                                      |
+| ---------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `projects`             | Local workspace; `is_synthetic` flags test data only                              | `id`, `name`, `description`?, `is_synthetic`                                                                                                                                 |
+| `icp_profiles`         | Named ideal-customer profile                                                      | `id`, `project_id` → projects, `name` (unique per project), `description`?, `active_version_id`? → icp_profile_versions (one of its own, trigger), `archived_at`? (phase 11) |
+| `icp_profile_versions` | **Immutable, permanent** definition of a profile at one version (`IcpDefinition`) | `id`, `icp_profile_id` → icp_profiles, `version`, `definition_json`, `schema_version`, `created_by`                                                                          |
+| `campaigns`            | What to look for; `criteria_json` follows a versioned schema                      | `id`, `project_id` → projects, `icp_profile_version_id`? → icp_profile_versions, `name`, `objective`?, `criteria_json`, `criteria_schema_version`                            |
 
 ### Sources and provenance
 
@@ -307,14 +316,23 @@ them not evidence items, are in `input_json`.
 
 ### Scoring
 
-| Table                    | Purpose                               | Columns                                                                                                                         |
-| ------------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `scoring_models`         | Named scoring model                   | `id`, `key` (unique), `name`, `description`?                                                                                    |
-| `scoring_model_versions` | **Immutable** definition per version  | `id`, `scoring_model_id` → scoring_models, `version`, `definition_json`, `is_heuristic`                                         |
-| `score_runs`             | One scoring pass                      | `id`, `scoring_model_version_id`, `icp_profile_version_id`?, `dataset_snapshot_id`?, `job_id`?, `started_at`, `finished_at`?    |
-| `business_scores`        | **Immutable** total per business, run | `id`, `score_run_id` → score_runs, `business_id` → businesses, `total_score`? (0–100), `confidence`?                            |
-| `component_scores`       | Factor breakdown                      | `id`, `business_score_id` → business_scores, `component` (e.g. `ICP_MATCH`), `value`?, `weight`, `contribution`?, `confidence`? |
-| `score_explanations`     | Ordered reasons, gates, penalties     | `id`, `business_score_id`, `component`?, `kind` (explanation_kind), `message`, `evidence_item_id`?, `sort_order`                |
+Rebuilt by migration 0010 (phase 11); see [scoring.md](scoring.md).
+
+| Table                    | Purpose                                                                                                 | Columns                                                                                                                                                                                                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scoring_models`         | Named scoring model                                                                                     | `id`, `key` (unique: `lead_intelligence.heuristic` or `custom.<slug>`), `name`, `description`?, `active_version_id`? → scoring_model_versions (one of its own, trigger), `archived_at`?                                                                         |
+| `scoring_model_versions` | **Immutable, permanent** definition per version                                                         | `id`, `scoring_model_id` → scoring_models, `version`, `definition_json` (`ScoringDefinition`), `schema_version`, `is_heuristic`, `created_by`                                                                                                                   |
+| `score_runs`             | One ICP version and one scoring version over a project, or over the facts another run stored; permanent | `id`, `project_id` → projects, `job_id`? → jobs (unique), `scoring_model_version_id`, `icp_profile_version_id`, `facts_from_run_id`? → score_runs, `engine_version`, `started_at`, `finished_at`? (written once)                                                |
+| `business_scores`        | **Immutable, permanent** score of one business in one run                                               | `id`, `score_run_id` → score_runs, `business_id` → businesses (unique per run), `tier` (lead_tier), `total_score`? (0–100: required for priority, review and low, null when excluded), `confidence` (0–1), `facts_collected_at`, `facts_json`, `scorecard_json` |
+| `component_scores`       | **Immutable, permanent** component of a score                                                           | `id`, `business_score_id` → business_scores, `component` (e.g. `ICP_MATCH`, unique per score), `value`? (0–100), `weight`, `contribution`?, `coverage` (0–1)                                                                                                    |
+| `lead_outcomes`          | **Immutable, permanent** outcome of working a lead                                                      | `id`, `business_id` → businesses, `score_run_id`? → score_runs, `stage` (lead_stage), `previous_stage`, `lost_reason`? (only and always when `lost`), `reason`, `actor`, `occurred_at`                                                                          |
+
+The request columns of a score run cannot change (trigger). `score_explanations`, `explanation_kind`
+and `score_runs.dataset_snapshot_id` were dropped: the scorecard holds reasons, gates, risks and
+their evidence, and each score keeps the facts it read. A person's review of a score is a
+`review_decisions` row on the business (`lead_score_confirmed`, `lead_score_dismissed`,
+`lead_score_review_withdrawn`) whose new value is the run; an outcome also moves
+`businesses.lead_stage` through its state machine.
 
 ### Jobs
 

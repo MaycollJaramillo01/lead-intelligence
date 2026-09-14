@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => ({
   listAiInferences: vi.fn<typeof desktop.listAiInferences>(),
   listAiRuns: vi.fn<typeof desktop.listAiRuns>(),
   startAi: vi.fn<typeof desktop.startAi>(),
+  getLeadScorecard: vi.fn<typeof desktop.getLeadScorecard>(),
 }));
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
@@ -96,6 +97,7 @@ describe("BusinessesScreen", () => {
     mocks.listLatinoRuns.mockResolvedValue(NO_RUNS);
     mocks.listAiInferences.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
     mocks.listAiRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
+    mocks.getLeadScorecard.mockRejectedValue(new IpcError("not_found", "not scored yet"));
     mocks.getLatino.mockImplementation(async ({ business_id }) => ({
       ...NOT_EVALUATED,
       business_id,
@@ -235,6 +237,11 @@ describe("BusinessesScreen", () => {
         detail.evidence.length,
     );
     expect(within(inspector).getByText("+13055550101")).toBeTruthy();
+    expect(await within(inspector).findByText("Not scored by any finished run yet.")).toBeTruthy();
+    expect(mocks.getLeadScorecard).toHaveBeenCalledWith({
+      business_id: detail.business.id,
+      score_run_id: null,
+    });
   });
 
   it("shows the records behind a business, its conflicts, and lets a person choose what it shows", async () => {

@@ -87,6 +87,19 @@ pub const AI_INFERENCE: &str = "ai.inference";
 pub const AI_REVIEW: &str = "ai.review";
 pub const AI_BENCHMARK: &str = "ai.benchmark";
 pub const AI_MODEL_CHANGE: &str = "ai.model_change";
+pub const SCORING_CATALOG: &str = "scoring.catalog";
+pub const SCORING_SAVE_ICP: &str = "scoring.save_icp";
+pub const SCORING_SAVE_MODEL: &str = "scoring.save_model";
+pub const SCORING_CHANGE: &str = "scoring.change";
+pub const SCORING_SIMULATE: &str = "scoring.simulate";
+pub const SCORING_START: &str = "scoring.start";
+pub const SCORING_CONTROL: &str = "scoring.control";
+pub const SCORING_RUNS: &str = "scoring.runs";
+pub const SCORING_LEADS: &str = "scoring.leads";
+pub const SCORING_SCORECARD: &str = "scoring.scorecard";
+pub const SCORING_COMPARE: &str = "scoring.compare";
+pub const SCORING_CALIBRATION: &str = "scoring.calibration";
+pub const SCORING_ACT: &str = "scoring.act";
 pub const DEV_SEED_SYNTHETIC: &str = "dev.seed_synthetic";
 const SHUTDOWN: &str = "shutdown";
 
@@ -107,6 +120,9 @@ pub const CONTACTS_TIMEOUT: Duration = Duration::from_secs(40);
 /// The AI status asks the runtime about every model and may run LLM Fit; settings, benchmarks
 /// and model changes check the runtime first. The worker bounds them at 90 s.
 pub const AI_TIMEOUT: Duration = Duration::from_secs(100);
+/// A simulation over a project reads the facts of every business at once; the worker bounds it at
+/// 60 s.
+pub const SCORING_TIMEOUT: Duration = Duration::from_secs(70);
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 const READER_DRAIN_TIMEOUT: Duration = Duration::from_secs(2);
 const HEALTH_FAILURES_BEFORE_RESTART: u32 = 2;

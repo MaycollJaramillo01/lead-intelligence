@@ -7,7 +7,7 @@ commercial need, ICP fit and an explanation of why each one is worth contacting.
 
 Everything runs on this machine. No cloud service or LLM API is required.
 
-> **Status: Phase 10 — Local AI.** Discovery (phase 04) finds candidate references, the
+> **Status: Phase 11 — ICP, opportunity and lead scoring.** Discovery (phase 04) finds candidate references, the
 > Research Center (phase 05) crawls their websites, entity resolution (phase 06) merges records of the
 > same business, Latino evidence (phase 07) keeps explicitly evidenced ownership apart from
 > Spanish-speaking market affinity, and website intelligence (phase 08) audits every crawled site
@@ -21,8 +21,13 @@ Everything runs on this machine. No cloud service or LLM API is required.
 > extraction, classification, synthesis and explanation, one GPU task at a time: every answer
 > follows a strict schema, cites only the inputs it was given, is stored raw next to what it
 > validated to, and is shown as a model's answer, never as a fact; the app works without it.
-> Nothing is scored as a lead yet: qualification arrives in later phases. The
-> phase plan lives in [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
+> Versioned ICP profiles and scoring models (phase 11) now decide which businesses deserve contact,
+> why, with which offer and how sure: gates come before weights, an unknown fact is left out instead
+> of counted as zero, every factor shows its value, weight, contribution and evidence, and runs are
+> history that can be compared or simulated without touching a lead. Outcomes recorded afterwards
+> calibrate a run without leakage. The weights are a declared heuristic, nothing is trained and
+> nothing is sent: a suggested message is only a draft. The phase plan lives in
+> [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
 
 ## Requirements
 
@@ -78,6 +83,7 @@ docs/                        Architecture, decisions and operations
 - [docs/website-intelligence.md](docs/website-intelligence.md) — website audits: every rule and its limits, subscores, history
 - [docs/contact-intelligence.md](docs/contact-intelligence.md) — contact channels: what each status means, people, hypotheses, contactability, do-not-contact list
 - [docs/local-ai.md](docs/local-ai.md) — local AI: tasks, checks, prompts, VRAM, GPU queue, security, benchmark, RTX 4060 setup
+- [docs/scoring.md](docs/scoring.md) — lead scoring: facts, features, gates, formulas, versions, simulation, outcomes, calibration, limits
 - [docs/ui-system.md](docs/ui-system.md) — design tokens, navigation map, shortcuts, components
 - [docs/decisions.md](docs/decisions.md) — technical decisions and their trade-offs
 - [docs/operations.md](docs/operations.md) — configuration, logs, troubleshooting

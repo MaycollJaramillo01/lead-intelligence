@@ -14,23 +14,28 @@ use crate::data::{
     AiBenchmarkRequest, AiConfigureRequest, AiInferenceDetail, AiInferenceListQuery,
     AiInferencePage, AiInferenceQuery, AiModelChangeRequest, AiReviewRequest, AiRun,
     AiRunListQuery, AiRunPage, AiStartRequest, AiStatus, AiStatusQuery, BusinessDetail,
-    BusinessDetailQuery, BusinessListQuery, BusinessPage, CampaignListQuery, CampaignPage,
-    CampaignSaveRequest, CampaignSaved, CandidateDetail, CandidateDetailQuery, CandidateListQuery,
-    CandidatePage, CanonicalChoiceRequest, ContactActionRequest, ContactDetail, ContactDetailQuery,
-    ContactListQuery, ContactPage, ContactRun, ContactRunListQuery, ContactRunPage,
-    ContactStartRequest, ContactSuppression, CrawlRun, CrawlRunListQuery, CrawlRunPage,
-    CrawlStartRequest, CrawlUrlDetail, CrawlUrlDetailQuery, CrawlUrlListQuery, CrawlUrlPage,
-    CriteriaCheck, CriteriaCheckQuery, DatasetListQuery, DatasetPage, DecisionMakerItem,
-    DecisionMakerListQuery, DecisionMakerPage, DecisionMakerReviewRequest, DiscoveryControlRequest,
-    DiscoveryRun, DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest, ImportPreview,
+    BusinessDetailQuery, BusinessListQuery, BusinessPage, CalibrationQuery, CalibrationReport,
+    CampaignListQuery, CampaignPage, CampaignSaveRequest, CampaignSaved, CandidateDetail,
+    CandidateDetailQuery, CandidateListQuery, CandidatePage, CanonicalChoiceRequest,
+    ContactActionRequest, ContactDetail, ContactDetailQuery, ContactListQuery, ContactPage,
+    ContactRun, ContactRunListQuery, ContactRunPage, ContactStartRequest, ContactSuppression,
+    CrawlRun, CrawlRunListQuery, CrawlRunPage, CrawlStartRequest, CrawlUrlDetail,
+    CrawlUrlDetailQuery, CrawlUrlListQuery, CrawlUrlPage, CriteriaCheck, CriteriaCheckQuery,
+    DatasetListQuery, DatasetPage, DecisionMakerItem, DecisionMakerListQuery, DecisionMakerPage,
+    DecisionMakerReviewRequest, DiscoveryControlRequest, DiscoveryRun, DiscoveryRunListQuery,
+    DiscoveryRunPage, DiscoveryStartRequest, IcpProfileView, IcpSaveRequest, ImportPreview,
     ImportPreviewRequest, LatinoDetail, LatinoDetailQuery, LatinoReviewRequest, LatinoRun,
-    LatinoRunListQuery, LatinoRunPage, LatinoStartRequest, MatchActionRequest, MatchDetail,
-    MatchDetailQuery, MatchListQuery, MatchPage, ResolutionRun, ResolutionRunListQuery,
-    ResolutionRunPage, ResolutionStartRequest, SourceCatalog, SourceCatalogQuery,
-    SuppressionChangeRequest, SuppressionExport, SuppressionExportRequest,
-    SuppressionImportRequest, SuppressionImportResult, SuppressionListQuery, SuppressionPage,
-    SyntheticSeedResult, WebsiteAuditDetail, WebsiteAuditListQuery, WebsiteAuditPage,
-    WebsiteAuditQuery, WebsiteRun, WebsiteRunListQuery, WebsiteRunPage, WebsiteStartRequest,
+    LatinoRunListQuery, LatinoRunPage, LatinoStartRequest, LeadActionRequest, LeadScorePage,
+    LeadScoreQuery, LeadScorecardDetail, MatchActionRequest, MatchDetail, MatchDetailQuery,
+    MatchListQuery, MatchPage, ResolutionRun, ResolutionRunListQuery, ResolutionRunPage,
+    ResolutionStartRequest, ScoreCompareQuery, ScoreComparison, ScoreRunItem, ScoreRunListQuery,
+    ScoreRunPage, ScorecardQuery, ScoringCatalog, ScoringCatalogQuery, ScoringChangeRequest,
+    ScoringModelSaveRequest, ScoringModelView, ScoringSimulation, ScoringSimulationRequest,
+    ScoringStartRequest, SourceCatalog, SourceCatalogQuery, SuppressionChangeRequest,
+    SuppressionExport, SuppressionExportRequest, SuppressionImportRequest, SuppressionImportResult,
+    SuppressionListQuery, SuppressionPage, SyntheticSeedResult, WebsiteAuditDetail,
+    WebsiteAuditListQuery, WebsiteAuditPage, WebsiteAuditQuery, WebsiteRun, WebsiteRunListQuery,
+    WebsiteRunPage, WebsiteStartRequest,
 };
 use crate::error::AppError;
 use crate::protocol::{
@@ -46,10 +51,13 @@ use crate::worker::{
     DIAGNOSTICS_TIMEOUT, DISCOVERY_CANDIDATE, DISCOVERY_CANDIDATES, DISCOVERY_CONTROL,
     DISCOVERY_RUNS, DISCOVERY_START, DISCOVERY_TIMEOUT, IMPORT_TIMEOUT, LATINO_CONTROL, LATINO_GET,
     LATINO_REVIEW, LATINO_RUNS, LATINO_START, MATCHES_ACT, MATCHES_GET, MATCHES_LIST,
-    RESOLUTION_CONTROL, RESOLUTION_RUNS, RESOLUTION_START, RESOLUTION_TIMEOUT, SEED_TIMEOUT,
-    SOURCES_LIST, SOURCES_PREVIEW_IMPORT, SUPPRESSIONS_CHANGE, SUPPRESSIONS_EXPORT,
-    SUPPRESSIONS_IMPORT, SUPPRESSIONS_LIST, WEBSITE_AUDIT, WEBSITE_AUDITS, WEBSITE_CONTROL,
-    WEBSITE_RUNS, WEBSITE_START, WorkerSupervisor,
+    RESOLUTION_CONTROL, RESOLUTION_RUNS, RESOLUTION_START, RESOLUTION_TIMEOUT, SCORING_ACT,
+    SCORING_CALIBRATION, SCORING_CATALOG, SCORING_CHANGE, SCORING_COMPARE, SCORING_CONTROL,
+    SCORING_LEADS, SCORING_RUNS, SCORING_SAVE_ICP, SCORING_SAVE_MODEL, SCORING_SCORECARD,
+    SCORING_SIMULATE, SCORING_START, SCORING_TIMEOUT, SEED_TIMEOUT, SOURCES_LIST,
+    SOURCES_PREVIEW_IMPORT, SUPPRESSIONS_CHANGE, SUPPRESSIONS_EXPORT, SUPPRESSIONS_IMPORT,
+    SUPPRESSIONS_LIST, WEBSITE_AUDIT, WEBSITE_AUDITS, WEBSITE_CONTROL, WEBSITE_RUNS, WEBSITE_START,
+    WorkerSupervisor,
 };
 
 pub struct AppState {
@@ -1310,6 +1318,257 @@ pub async fn change_ai_model(
         Ok(status)
     }
     .instrument(ipc_span("change_ai_model"))
+    .await
+}
+
+// ---- ICP and lead scoring (phase 11) ------------------------------------------------------------
+
+/// ICP profiles and scoring models with their versions, the engine's features and blank templates.
+#[tauri::command]
+pub async fn get_scoring_catalog(
+    state: State<'_, AppState>,
+    query: ScoringCatalogQuery,
+) -> Result<ScoringCatalog, AppError> {
+    async {
+        let catalog: ScoringCatalog = state
+            .supervisor
+            .request_with(SCORING_CATALOG, &query, DATA_TIMEOUT)
+            .await?;
+        catalog.validate().map_err(AppError::Protocol)?;
+        Ok(catalog)
+    }
+    .instrument(ipc_span("get_scoring_catalog"))
+    .await
+}
+
+/// Creates an ICP profile, or a new version of one; a draft with problems is saved, never run.
+#[tauri::command]
+pub async fn save_icp_profile(
+    state: State<'_, AppState>,
+    request: IcpSaveRequest,
+) -> Result<IcpProfileView, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let view: IcpProfileView = state
+            .supervisor
+            .request_with(SCORING_SAVE_ICP, &request, DATA_TIMEOUT)
+            .await?;
+        view.validate().map_err(AppError::Protocol)?;
+        Ok(view)
+    }
+    .instrument(ipc_span("save_icp_profile"))
+    .await
+}
+
+/// Creates a scoring model, or a new version of one.
+#[tauri::command]
+pub async fn save_scoring_model(
+    state: State<'_, AppState>,
+    request: ScoringModelSaveRequest,
+) -> Result<ScoringModelView, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let view: ScoringModelView = state
+            .supervisor
+            .request_with(SCORING_SAVE_MODEL, &request, DATA_TIMEOUT)
+            .await?;
+        view.validate().map_err(AppError::Protocol)?;
+        Ok(view)
+    }
+    .instrument(ipc_span("save_scoring_model"))
+    .await
+}
+
+/// Activates a version, or archives or restores a profile or model, with a reason.
+#[tauri::command]
+pub async fn change_scoring(
+    state: State<'_, AppState>,
+    request: ScoringChangeRequest,
+) -> Result<ScoringCatalog, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let catalog: ScoringCatalog = state
+            .supervisor
+            .request_with(SCORING_CHANGE, &request, DATA_TIMEOUT)
+            .await?;
+        catalog.validate().map_err(AppError::Protocol)?;
+        Ok(catalog)
+    }
+    .instrument(ipc_span("change_scoring"))
+    .await
+}
+
+/// Scores drafts in memory over a project or a run's stored facts; nothing is written.
+#[tauri::command]
+pub async fn simulate_scoring(
+    state: State<'_, AppState>,
+    request: ScoringSimulationRequest,
+) -> Result<ScoringSimulation, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let simulation: ScoringSimulation = state
+            .supervisor
+            .request_with(SCORING_SIMULATE, &request, SCORING_TIMEOUT)
+            .await?;
+        simulation.validate(&request).map_err(AppError::Protocol)?;
+        Ok(simulation)
+    }
+    .instrument(ipc_span("simulate_scoring"))
+    .await
+}
+
+/// Starts a score run of one ICP version and one scoring version; it continues in the worker.
+#[tauri::command]
+pub async fn start_scoring(
+    state: State<'_, AppState>,
+    request: ScoringStartRequest,
+) -> Result<ScoreRunPage, AppError> {
+    async {
+        let page: ScoreRunPage = state
+            .supervisor
+            .request_with(SCORING_START, &request, CONTACTS_TIMEOUT)
+            .await?;
+        page.items
+            .iter()
+            .try_for_each(ScoreRunItem::validate)
+            .map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("start_scoring"))
+    .await
+}
+
+/// Pauses, resumes or cancels a score run; it stops between batches and stays resumable.
+#[tauri::command]
+pub async fn control_scoring(
+    state: State<'_, AppState>,
+    request: DiscoveryControlRequest,
+) -> Result<ScoreRunItem, AppError> {
+    async {
+        let run: ScoreRunItem = state
+            .supervisor
+            .request_with(SCORING_CONTROL, &request, CONTACTS_TIMEOUT)
+            .await?;
+        run.validate().map_err(AppError::Protocol)?;
+        Ok(run)
+    }
+    .instrument(ipc_span("control_scoring"))
+    .await
+}
+
+#[tauri::command]
+pub async fn list_score_runs(
+    state: State<'_, AppState>,
+    query: ScoreRunListQuery,
+) -> Result<ScoreRunPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: ScoreRunPage = state
+            .supervisor
+            .request_with(SCORING_RUNS, &query, DATA_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_score_runs"))
+    .await
+}
+
+/// The ranked leads of a run (the newest finished one by default), with their filters.
+#[tauri::command]
+pub async fn list_lead_scores(
+    state: State<'_, AppState>,
+    query: LeadScoreQuery,
+) -> Result<LeadScorePage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: LeadScorePage = state
+            .supervisor
+            .request_with(SCORING_LEADS, &query, CONTACTS_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_lead_scores"))
+    .await
+}
+
+/// One lead's scorecard with its history, outcomes, reviews and checked model wording.
+#[tauri::command]
+pub async fn get_lead_scorecard(
+    state: State<'_, AppState>,
+    query: ScorecardQuery,
+) -> Result<LeadScorecardDetail, AppError> {
+    async {
+        let detail: LeadScorecardDetail = state
+            .supervisor
+            .request_with(SCORING_SCORECARD, &query, DATA_TIMEOUT)
+            .await?;
+        detail.validate(&query).map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("get_lead_scorecard"))
+    .await
+}
+
+/// Two runs side by side: who entered or left the top K and how ranks moved.
+#[tauri::command]
+pub async fn compare_score_runs(
+    state: State<'_, AppState>,
+    query: ScoreCompareQuery,
+) -> Result<ScoreComparison, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let comparison: ScoreComparison = state
+            .supervisor
+            .request_with(SCORING_COMPARE, &query, CONTACTS_TIMEOUT)
+            .await?;
+        comparison.validate(&query).map_err(AppError::Protocol)?;
+        Ok(comparison)
+    }
+    .instrument(ipc_span("compare_score_runs"))
+    .await
+}
+
+/// Offline metrics of a run against the outcomes recorded after its facts were read.
+#[tauri::command]
+pub async fn get_calibration(
+    state: State<'_, AppState>,
+    query: CalibrationQuery,
+) -> Result<CalibrationReport, AppError> {
+    async {
+        let report: CalibrationReport = state
+            .supervisor
+            .request_with(SCORING_CALIBRATION, &query, CONTACTS_TIMEOUT)
+            .await?;
+        report.validate(&query).map_err(AppError::Protocol)?;
+        Ok(report)
+    }
+    .instrument(ipc_span("get_calibration"))
+    .await
+}
+
+/// A person's review of a score, or an outcome of working the lead, with a reason.
+#[tauri::command]
+pub async fn act_on_lead(
+    state: State<'_, AppState>,
+    request: LeadActionRequest,
+) -> Result<LeadScorecardDetail, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let detail: LeadScorecardDetail = state
+            .supervisor
+            .request_with(SCORING_ACT, &request, DATA_TIMEOUT)
+            .await?;
+        detail
+            .validate(&ScorecardQuery {
+                business_id: request.business_id.clone(),
+                score_run_id: Some(request.score_run_id.clone()),
+            })
+            .map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("act_on_lead"))
     .await
 }
 

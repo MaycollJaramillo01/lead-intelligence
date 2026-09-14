@@ -52,6 +52,32 @@ export type AiCircuitState = "closed" | "open" | "half_open";
 export type AiProfile = "fast" | "balanced" | "quality";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "OpportunityProblem".
+ */
+export type OpportunityProblem =
+  | "weak_conversion_path"
+  | "no_online_booking"
+  | "poor_mobile_experience"
+  | "weak_local_seo"
+  | "slow_or_broken_site"
+  | "missing_trust_signals"
+  | "missing_measurement"
+  | "low_contactability"
+  | "other";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreEvidenceKind".
+ */
+export type ScoreEvidenceKind =
+  | "business"
+  | "website_audit"
+  | "website_finding"
+  | "website_technology"
+  | "contact_channel"
+  | "decision_maker"
+  | "latino_assessment";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "JsonValue".
  */
 export type JsonValue = unknown;
@@ -271,6 +297,63 @@ export type CanonicalField = "name" | "location" | "website" | "phone" | "email"
  */
 export type SelectionMethod = "policy" | "manual";
 /**
+ * complete: every page the crawl acquired was analyzed; partial: some were not (the coverage
+ * says which and why); empty: no page could be analyzed.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteAuditStatus".
+ */
+export type WebsiteAuditStatus = "complete" | "partial" | "empty";
+/**
+ * What a website rule speaks to; each category has its own subscore.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteCategory".
+ */
+export type WebsiteCategory =
+  | "technical"
+  | "seo"
+  | "local_seo"
+  | "content"
+  | "conversion"
+  | "mobile"
+  | "accessibility"
+  | "measurement"
+  | "aeo_geo_readiness";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteFindingResult".
+ */
+export type WebsiteFindingResult = "pass" | "fail" | "warning" | "unknown" | "not_applicable";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "WebsiteFindingSeverity".
+ */
+export type WebsiteFindingSeverity = "critical" | "high" | "medium" | "low" | "info";
+/**
+ * Whom a channel reaches: the business, one of its locations, or a published person.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactLevel".
+ */
+export type ContactLevel = "business" | "location" | "person";
+/**
+ * The relationship a published role states; `unknown` when the role says none of these.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DecisionMakerRelationship".
+ */
+export type DecisionMakerRelationship =
+  "owner" | "founder" | "executive" | "partner" | "manager" | "unknown";
+/**
+ * unreviewed: extracted with nothing that makes it doubtful; ambiguous: waits in the review
+ * queue (its reasons say why); confirmed or rejected: a person decided.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DecisionMakerReview".
+ */
+export type DecisionMakerReview = "unreviewed" | "ambiguous" | "confirmed" | "rejected";
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "LatinoStatus".
  */
@@ -292,6 +375,15 @@ export type LatinoReviewFilter = "reviewed" | "unreviewed" | "outdated";
  * via the `definition` "BusinessSort".
  */
 export type BusinessSort = "name" | "last_seen";
+/**
+ * Where a business lands in one score run (phase 11). `priority`, `review` and `low` are scored
+ * by the thresholds of the scoring model; `insufficient_data`: a gate could not be decided or too
+ * much of the formula is unknown; `excluded`: a gate failed, and there is no total.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadTier".
+ */
+export type LeadTier = "priority" | "review" | "low" | "insufficient_data" | "excluded";
 /**
  * Observable stand-ins for company size. No source is asked to guess one it cannot see.
  *
@@ -337,6 +429,13 @@ export type Capability =
   | "freshness"
   | "size_proxy";
 /**
+ * must_have: a gate before any weight; nice_to_have: counts in ICP_MATCH; ignore: not read.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CriterionImportance".
+ */
+export type CriterionImportance = "must_have" | "nice_to_have" | "ignore";
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "CommandErrorCode".
  */
@@ -349,6 +448,23 @@ export type CommandErrorCode =
   | "not_found"
   | "not_allowed"
   | "internal";
+/**
+ * The independent components of a scorecard, 0 to 100 each (a null value is unknown).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreComponent".
+ */
+export type ScoreComponent =
+  | "ICP_MATCH"
+  | "LATINO_CONFIDENCE"
+  | "BUSINESS_HEALTH"
+  | "DIGITAL_GAP"
+  | "BUYING_CAPACITY"
+  | "CONTACTABILITY"
+  | "COMMERCIAL_INTENT"
+  | "DATA_CONFIDENCE"
+  | "OPPORTUNITY_SCORE"
+  | "FINAL_LEAD_SCORE";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ConfigFieldKind".
@@ -364,13 +480,6 @@ export type ConfigFieldKind = "text" | "number" | "secret" | "file_text";
  */
 export type ContactAction =
   "validate" | "confirm" | "mark_invalid" | "clear_review" | "mark_primary" | "suppress";
-/**
- * Whom a channel reaches: the business, one of its locations, or a published person.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ContactLevel".
- */
-export type ContactLevel = "business" | "location" | "person";
 /**
  * general: the business's own line, form or profile; department: a named department;
  * role_address: a shared mailbox (`info@`, `sales@`); personal: a published person's address or
@@ -393,22 +502,6 @@ export type ContactFreshness = "fresh" | "aging" | "stale";
  * via the `definition` "SuppressionKind".
  */
 export type SuppressionKind = "email" | "phone" | "domain" | "business";
-/**
- * The relationship a published role states; `unknown` when the role says none of these.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "DecisionMakerRelationship".
- */
-export type DecisionMakerRelationship =
-  "owner" | "founder" | "executive" | "partner" | "manager" | "unknown";
-/**
- * unreviewed: extracted with nothing that makes it doubtful; ambiguous: waits in the review
- * queue (its reasons say why); confirmed or rejected: a person decided.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "DecisionMakerReview".
- */
-export type DecisionMakerReview = "unreviewed" | "ambiguous" | "confirmed" | "rejected";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ConversionElementKind".
@@ -441,6 +534,11 @@ export type PageKind = "home" | "about" | "contact" | "services" | "other";
 export type CrawlUrlStatus = "queued" | "fetched" | "skipped" | "failed";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "GateOutcome".
+ */
+export type GateOutcome = "pass" | "fail" | "unknown";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "DecisionMakerDecision".
  */
 export type DecisionMakerDecision = "confirm" | "reject" | "reset";
@@ -449,6 +547,11 @@ export type DecisionMakerDecision = "confirm" | "reject" | "reset";
  * via the `definition` "WorkerState".
  */
 export type WorkerState = "stopped" | "starting" | "running" | "stopping" | "restarting" | "failed";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DigitalMaturity".
+ */
+export type DigitalMaturity = "low" | "medium" | "high";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "RunControlAction".
@@ -481,11 +584,6 @@ export type EvidenceFreshness = "fresh" | "aging" | "stale";
 export type EvidenceRole = "supports" | "contradicts" | "context";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ExplanationKind".
- */
-export type ExplanationKind = "reason" | "gate" | "penalty" | "missing_data";
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ExportStatus".
  */
 export type ExportStatus = "pending" | "running" | "succeeded" | "failed" | "cancelled";
@@ -495,10 +593,46 @@ export type ExportStatus = "pending" | "running" | "succeeded" | "failed" | "can
  */
 export type ExportFormat = "csv" | "xlsx" | "json" | "jsonl" | "parquet";
 /**
+ * Observable problems the opportunity engine detects from stored facts.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ProblemType".
+ */
+export type ProblemType =
+  | "no_website"
+  | "website_unreachable"
+  | "weak_conversion_path"
+  | "no_online_booking"
+  | "weak_local_seo"
+  | "weak_technical_seo"
+  | "poor_mobile_experience"
+  | "measurement_not_detected";
+/**
+ * known: evaluated from evidence; unknown: the facts cannot show it (never a zero);
+ * not_applicable: does not apply to this business (never a penalty).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FeatureState".
+ */
+export type FeatureState = "known" | "unknown" | "not_applicable";
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "FieldAgreement".
  */
 export type FieldAgreement = "match" | "partial" | "conflict" | "missing";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FinalInput".
+ */
+export type FinalInput = "ICP_MATCH" | "OPPORTUNITY_SCORE" | "CONTACTABILITY" | "LATINO_CONFIDENCE";
+/**
+ * What a campaign asks of Latino evidence: nothing, market affinity or better, or a verified
+ * Latino-owned business. It filters; it never measures quality or buying capacity.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LatinoRequirement".
+ */
+export type LatinoRequirement = "none" | "market_affinity" | "verified_latino_owned";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ImportFormat".
@@ -511,6 +645,13 @@ export type ImportFormat = "csv" | "tsv" | "json" | "jsonl";
  * via the `definition` "LatinoTrack".
  */
 export type LatinoTrack = "ownership" | "market" | "contradiction";
+/**
+ * confirm or dismiss a score after reviewing it, reset that review, or record an outcome.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadAction".
+ */
+export type LeadAction = "confirm" | "dismiss" | "reset" | "record_outcome";
 /**
  * What a mail-domain lookup answered. `timeout` and `error` say nothing about the domain.
  *
@@ -549,6 +690,24 @@ export type MatchStatus = "pending" | "deferred" | "merged" | "separate";
  */
 export type ReasonDirection = "for" | "against" | "rule";
 /**
+ * What OPPORTUNITY_SCORE may weigh. Latino evidence is not one of them, by design.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "OpportunityInput".
+ */
+export type OpportunityInput =
+  "DIGITAL_GAP" | "BUSINESS_HEALTH" | "BUYING_CAPACITY" | "COMMERCIAL_INTENT";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoringChangeAction".
+ */
+export type ScoringChangeAction = "activate" | "archive" | "restore";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoringTarget".
+ */
+export type ScoringTarget = "icp_profile" | "scoring_model";
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ServiceAreaKind".
  */
@@ -560,40 +719,6 @@ export type ServiceAreaKind = "city" | "county" | "state" | "postal_code" | "met
  * via the `definition` "SourceHealth".
  */
 export type SourceHealth = "ready" | "needs_configuration" | "disabled" | "unavailable";
-/**
- * complete: every page the crawl acquired was analyzed; partial: some were not (the coverage
- * says which and why); empty: no page could be analyzed.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "WebsiteAuditStatus".
- */
-export type WebsiteAuditStatus = "complete" | "partial" | "empty";
-/**
- * What a website rule speaks to; each category has its own subscore.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "WebsiteCategory".
- */
-export type WebsiteCategory =
-  | "technical"
-  | "seo"
-  | "local_seo"
-  | "content"
-  | "conversion"
-  | "mobile"
-  | "accessibility"
-  | "measurement"
-  | "aeo_geo_readiness";
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "WebsiteFindingResult".
- */
-export type WebsiteFindingResult = "pass" | "fail" | "warning" | "unknown" | "not_applicable";
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "WebsiteFindingSeverity".
- */
-export type WebsiteFindingSeverity = "critical" | "high" | "medium" | "low" | "info";
 
 /**
  * Generated from services/research-engine/src/research_engine/contracts.py and domain.py (protocol version 1, data contract version 1). Do not edit by hand.
@@ -699,6 +824,32 @@ export interface AiTaskChange {
   task_type: AiTaskType;
   enabled: boolean;
   profile: AiProfile;
+}
+/**
+ * A local model's wording of a problem, kept only when every finding it cites is evidence of
+ * this scorecard. It never changes a number.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiDraftedReason".
+ */
+export interface AiDraftedReason {
+  inference_run_id: string;
+  model: string;
+  problem: OpportunityProblem;
+  explanation: string;
+  evidence: ScoreEvidence[];
+}
+/**
+ * What a point rests on: the stored row it came from, and where to see it.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreEvidence".
+ */
+export interface ScoreEvidence {
+  kind: ScoreEvidenceKind;
+  ref: string;
+  label: string;
+  url: string | null;
 }
 /**
  * A model's answer as evidence-backed output: the run, every raw answer next to what it
@@ -1228,6 +1379,18 @@ export interface AiTaskSetting {
   updated_at: string;
 }
 /**
+ * A place an ICP includes or excludes. A part left empty matches any value.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Area".
+ */
+export interface Area {
+  country_code: string;
+  region: string | null;
+  locality: string | null;
+  postal_code: string | null;
+}
+/**
  * Append-only trail of important changes (status, soft delete, restore, purge, merge).
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -1559,6 +1722,154 @@ export interface BusinessDetailQuery {
   business_id: string;
 }
 /**
+ * Everything a score read about one canonical business, stored with the score, so the same
+ * facts can be scored again with other versions (`facts_from_run_id`).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BusinessFacts".
+ */
+export interface BusinessFacts {
+  facts_version: string;
+  business_id: string;
+  project_id: string;
+  display_name: string;
+  status: BusinessStatus;
+  is_synthetic: boolean;
+  first_seen_at: string;
+  last_seen_at: string;
+  collected_at: string;
+  source_count: number;
+  conflict_count: number;
+  names: string[];
+  locations: FactLocation[];
+  categories: string[];
+  domains: string[];
+  audit: FactAudit | null;
+  channels: FactChannel[];
+  contactability: Contactability;
+  people: FactPerson[];
+  business_suppressed: boolean;
+  latino: FactLatino | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FactLocation".
+ */
+export interface FactLocation {
+  country_code: string | null;
+  region: string | null;
+  locality: string | null;
+  postal_code: string | null;
+}
+/**
+ * The latest website audit of the business's crawled site.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FactAudit".
+ */
+export interface FactAudit {
+  id: string;
+  site: string;
+  status: WebsiteAuditStatus;
+  coverage: number;
+  pages_analyzed: number;
+  created_at: string;
+  subscores: FactSubscore[];
+  findings: FactFinding[];
+  technologies: FactTechnology[];
+  previous_audit_id: string | null;
+  changes: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FactSubscore".
+ */
+export interface FactSubscore {
+  category: WebsiteCategory;
+  score: number | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FactFinding".
+ */
+export interface FactFinding {
+  id: string;
+  rule_id: string;
+  category: WebsiteCategory;
+  result: WebsiteFindingResult;
+  severity: WebsiteFindingSeverity;
+  confidence: number;
+  observed_value: string | null;
+  url: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FactTechnology".
+ */
+export interface FactTechnology {
+  id: string;
+  key: string;
+  name: string;
+  category: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FactChannel".
+ */
+export interface FactChannel {
+  key: string;
+  contact_type: ContactType;
+  validation_status: ValidationStatus;
+  level: ContactLevel;
+  decision_maker_id: string | null;
+}
+/**
+ * An explainable subscore of how reachable a business is through the channels it publishes or
+ * the operator imported. Not the lead score; `score` is null when a gate stops it.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Contactability".
+ */
+export interface Contactability {
+  score: number | null;
+  version: string;
+  formula: string;
+  components: ContactabilityComponent[];
+  gates: string[];
+  channels_counted: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactabilityComponent".
+ */
+export interface ContactabilityComponent {
+  code: string;
+  weight: number;
+  value: number;
+  detail: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FactPerson".
+ */
+export interface FactPerson {
+  id: string;
+  relationship: DecisionMakerRelationship;
+  review_status: DecisionMakerReview;
+  role: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FactLatino".
+ */
+export interface FactLatino {
+  assessment_id: string;
+  status: LatinoStatus;
+  confidence: number;
+  method: AssessmentMethod;
+  contradictions: number;
+}
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "BusinessListItem".
  */
@@ -1611,6 +1922,8 @@ export interface BusinessPage {
   total: number;
 }
 /**
+ * Immutable, permanent result for one business in one run: the facts read and the scorecard.
+ *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "BusinessScore".
  */
@@ -1618,9 +1931,146 @@ export interface BusinessScore {
   id: string;
   score_run_id: string;
   business_id: string;
+  tier: LeadTier;
   total_score: number | null;
-  confidence: number | null;
+  confidence: number;
+  facts_collected_at: string;
+  facts_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  scorecard_json: {
+    [k: string]: JsonValue | undefined;
+  };
   created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CalibrationBand".
+ */
+export interface CalibrationBand {
+  low: number;
+  high: number;
+  businesses: number;
+  labeled: number;
+  mean_score: number | null;
+  observed_rate: number | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CalibrationQuery".
+ */
+export interface CalibrationQuery {
+  score_run_id: string;
+}
+/**
+ * Offline metrics of one run against the outcomes recorded after its facts were read. Nothing
+ * is trained; with few labels every number is a warning, not a verdict.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CalibrationReport".
+ */
+export interface CalibrationReport {
+  score_run: ScoreRunItem;
+  positive_stages: LeadStage[];
+  negative_stages: LeadStage[];
+  businesses: number;
+  labeled: number;
+  positives: number;
+  leakage_excluded: number;
+  precision_at_k: PrecisionAtK[];
+  lift_by_decile: DecileLift[];
+  calibration: CalibrationBand[];
+  cohorts: TierCohort[];
+  coverage: number;
+  labeled_share: number;
+  weights_are_heuristic: boolean;
+  warnings: string[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreRunItem".
+ */
+export interface ScoreRunItem {
+  job_id: string;
+  score_run_id: string;
+  project_id: string;
+  project_name: string;
+  status: JobStatus;
+  stage: string;
+  progress_done: number;
+  progress_total: number | null;
+  scoring_model_id: string;
+  scoring_model_key: string;
+  scoring_model_name: string;
+  scoring_model_version: number;
+  is_heuristic: boolean;
+  icp_profile_id: string;
+  icp_profile_name: string;
+  icp_profile_version: number;
+  engine_version: string;
+  facts_from_run_id: string | null;
+  stats: ScoreRunStats;
+  distribution: ScoreBin[];
+  requested_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  events: RunEvent[];
+  is_synthetic: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreRunStats".
+ */
+export interface ScoreRunStats {
+  businesses: number;
+  priority: number;
+  review: number;
+  low: number;
+  insufficient_data: number;
+  excluded: number;
+}
+/**
+ * Scored businesses whose total is in [low, low + 10) (the last bin includes 100).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreBin".
+ */
+export interface ScoreBin {
+  low: number;
+  businesses: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "PrecisionAtK".
+ */
+export interface PrecisionAtK {
+  k: number;
+  labeled: number;
+  positives: number;
+  precision: number | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DecileLift".
+ */
+export interface DecileLift {
+  decile: number;
+  businesses: number;
+  labeled: number;
+  positives: number;
+  rate: number | null;
+  lift: number | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "TierCohort".
+ */
+export interface TierCohort {
+  tier: LeadTier;
+  businesses: number;
+  labeled: number;
+  positives: number;
+  conversion: number | null;
 }
 /**
  * What to look for; `criteria_json` follows the discovery criteria schema version.
@@ -2013,6 +2463,49 @@ export interface CanonicalChoiceRequest {
   reason: string | null;
 }
 /**
+ * Buying capacity through explicit proxies only (locations, paid tools, a published team, site
+ * depth), never a financial claim.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CapacityCriterion".
+ */
+export interface CapacityCriterion {
+  importance: CriterionImportance;
+  weight: number;
+  min_proxies: number;
+}
+/**
+ * Terms matched as whole words against the category and service labels sources observed.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CategoryCriterion".
+ */
+export interface CategoryCriterion {
+  importance: CriterionImportance;
+  weight: number;
+  /**
+   * @maxItems 50
+   */
+  terms: string[];
+  /**
+   * @maxItems 50
+   */
+  excluded_terms: string[];
+}
+/**
+ * At least one usable published channel of these types, and a published decision maker when
+ * asked for.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ChannelCriterion".
+ */
+export interface ChannelCriterion {
+  importance: CriterionImportance;
+  weight: number;
+  any_of: ContactType[];
+  require_decision_maker: boolean;
+}
+/**
  * Which column of an imported file feeds which candidate field. Unmapped fields stay empty.
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -2052,7 +2545,15 @@ export interface ComponentScore {
   value: number | null;
   weight: number;
   contribution: number | null;
-  confidence: number | null;
+  coverage: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ComponentValue".
+ */
+export interface ComponentValue {
+  component: ScoreComponent;
+  value: number | null;
 }
 /**
  * One setting a source needs. Secrets live in the connector configuration, not in criteria.
@@ -2233,31 +2734,6 @@ export interface DecisionMaker {
   updated_at: string;
   deleted_at: string | null;
   deleted_reason: string | null;
-}
-/**
- * An explainable subscore of how reachable a business is through the channels it publishes or
- * the operator imported. Not the lead score; `score` is null when a gate stops it.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "Contactability".
- */
-export interface Contactability {
-  score: number | null;
-  version: string;
-  formula: string;
-  components: ContactabilityComponent[];
-  gates: string[];
-  channels_counted: number;
-}
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ContactabilityComponent".
- */
-export interface ContactabilityComponent {
-  code: string;
-  weight: number;
-  value: number;
-  detail: string | null;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -2743,6 +3219,18 @@ export interface CriteriaCheckQuery {
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CriterionView".
+ */
+export interface CriterionView {
+  criterion: string;
+  importance: CriterionImportance;
+  outcome: GateOutcome;
+  weight: number;
+  detail: string;
+  evidence: ScoreEvidence[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "DatabaseStatus".
  */
 export interface DatabaseStatus {
@@ -3109,6 +3597,24 @@ export interface Extraction {
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FeatureInfo".
+ */
+export interface FeatureInfo {
+  feature: string;
+  component: ScoreComponent;
+  problem: ProblemType | null;
+  description: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FeatureWeight".
+ */
+export interface FeatureWeight {
+  feature: string;
+  weight: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "FieldComparison".
  */
 export interface FieldComparison {
@@ -3119,6 +3625,190 @@ export interface FieldComparison {
   similarity: number | null;
 }
 /**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FinalWeight".
+ */
+export interface FinalWeight {
+  component: FinalInput;
+  weight: number;
+}
+/**
+ * A source listed the business within this many days.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FreshnessCriterion".
+ */
+export interface FreshnessCriterion {
+  importance: CriterionImportance;
+  weight: number;
+  max_days_since_seen: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "GateExample".
+ */
+export interface GateExample {
+  business_id: string;
+  display_name: string;
+  detail: string;
+}
+/**
+ * How many businesses a gate lets through, stops or cannot decide, with examples of why.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "GatePreview".
+ */
+export interface GatePreview {
+  gate: string;
+  passed: number;
+  failed: number;
+  unknown: number;
+  examples: GateExample[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "GateView".
+ */
+export interface GateView {
+  gate: string;
+  outcome: GateOutcome;
+  detail: string;
+  evidence: ScoreEvidence[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "GeographyCriterion".
+ */
+export interface GeographyCriterion {
+  importance: CriterionImportance;
+  weight: number;
+  /**
+   * @maxItems 25
+   */
+  include: Area[];
+  /**
+   * @maxItems 25
+   */
+  exclude: Area[];
+}
+/**
+ * One version of an ICP profile, stored verbatim in `icp_profile_versions.definition_json`.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "IcpDefinition".
+ */
+export interface IcpDefinition {
+  schema_version: 1;
+  geography: GeographyCriterion;
+  categories: CategoryCriterion;
+  size: SizeCriterion;
+  freshness: FreshnessCriterion;
+  reputation: ReputationCriterion;
+  digital_maturity: MaturityCriterion;
+  problems: ProblemCriterion;
+  channels: ChannelCriterion;
+  buying_capacity: CapacityCriterion;
+  latino: LatinoRequirement;
+  exclusions: IcpExclusions;
+  offers: Offer[];
+}
+/**
+ * Size by its only observable proxy: distinct locations. Employees and revenue are not seen.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SizeCriterion".
+ */
+export interface SizeCriterion {
+  importance: CriterionImportance;
+  weight: number;
+  min_locations: number;
+}
+/**
+ * Rating and reviews with their source. No connected source provides them yet: this criterion
+ * is always unknown, never a failure.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ReputationCriterion".
+ */
+export interface ReputationCriterion {
+  importance: CriterionImportance;
+  weight: number;
+  min_rating: number | null;
+  min_reviews: number | null;
+}
+/**
+ * Digital maturity from the website subscores: low below 50, medium below 80, high otherwise;
+ * a business without a website is low.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MaturityCriterion".
+ */
+export interface MaturityCriterion {
+  importance: CriterionImportance;
+  weight: number;
+  wanted: DigitalMaturity[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ProblemCriterion".
+ */
+export interface ProblemCriterion {
+  importance: CriterionImportance;
+  weight: number;
+  wanted: ProblemType[];
+}
+/**
+ * Hard exclusions, checked before anything is weighed.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "IcpExclusions".
+ */
+export interface IcpExclusions {
+  /**
+   * @maxItems 50
+   */
+  names: string[];
+  /**
+   * @maxItems 50
+   */
+  domains: string[];
+  /**
+   * @maxItems 50
+   */
+  categories: string[];
+  /**
+   * @maxItems 50
+   */
+  regions: string[];
+  /**
+   * @maxItems 50
+   */
+  postal_codes: string[];
+}
+/**
+ * Something the seller can actually deliver, and the problems it solves.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Offer".
+ */
+export interface Offer {
+  key: string;
+  name: string;
+  description: string;
+  solves: ProblemType[];
+  /**
+   * @maxItems 50
+   */
+  capabilities: string[];
+  /**
+   * @maxItems 50
+   */
+  not_for_categories: string[];
+}
+/**
+ * A named ideal-customer profile (phase 11): which version is active and whether it is
+ * archived. Its definitions are `icp_profile_versions`.
+ *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "IcpProfile".
  */
@@ -3131,9 +3821,11 @@ export interface IcpProfile {
   updated_at: string;
   deleted_at: string | null;
   deleted_reason: string | null;
+  active_version_id: string | null;
+  archived_at: string | null;
 }
 /**
- * Immutable definition of an ICP profile at one version.
+ * Immutable, permanent definition of an ICP profile at one version (`IcpDefinition`).
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "IcpProfileVersion".
@@ -3148,6 +3840,32 @@ export interface IcpProfileVersion {
   schema_version: number;
   created_by: string;
   created_at: string;
+}
+/**
+ * A profile with every version, newest first, and what validation says about the newest.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "IcpProfileView".
+ */
+export interface IcpProfileView {
+  profile: IcpProfile;
+  versions: IcpProfileVersion[];
+  problems: CriteriaProblem[];
+  is_synthetic: boolean;
+}
+/**
+ * A new profile when `profile_id` is null (clone = a new profile from another's definition),
+ * otherwise a new version of it; an identical definition reuses the latest version.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "IcpSaveRequest".
+ */
+export interface IcpSaveRequest {
+  profile_id: string | null;
+  project_id: string | null;
+  name: string;
+  description: string | null;
+  definition: IcpDefinition;
 }
 /**
  * What the file holds and what the mapping would make of it. Nothing is stored yet.
@@ -3198,6 +3916,17 @@ export interface ImportPreviewRequest {
   filename: string;
   content: string;
   mapping: ColumnMapping | null;
+}
+/**
+ * The probable commercial impact of a problem: an inference, labelled as one.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "InferredImpact".
+ */
+export interface InferredImpact {
+  problem: ProblemType;
+  text: string;
+  is_inference: true;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -3468,6 +4197,246 @@ export interface LatinoStartRequest {
   project_id: string | null;
 }
 /**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadActionRequest".
+ */
+export interface LeadActionRequest {
+  score_run_id: string;
+  business_id: string;
+  action: LeadAction;
+  stage: LeadStage | null;
+  lost_reason: string | null;
+  reason: string;
+}
+/**
+ * Immutable, permanent record of what happened when a lead was worked (phase 11): the feedback
+ * loop that calibration reads. A `lost` outcome says why.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadOutcome".
+ */
+export interface LeadOutcome {
+  id: string;
+  business_id: string;
+  score_run_id: string | null;
+  stage: LeadStage;
+  previous_stage: LeadStage;
+  lost_reason: string | null;
+  reason: string;
+  actor: string;
+  occurred_at: string;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadScoreHistoryItem".
+ */
+export interface LeadScoreHistoryItem {
+  score_run_id: string;
+  created_at: string;
+  scoring_model_key: string;
+  scoring_model_version: number;
+  icp_profile_name: string;
+  icp_profile_version: number;
+  tier: LeadTier;
+  total_score: number | null;
+  confidence: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadScoreItem".
+ */
+export interface LeadScoreItem {
+  business_id: string;
+  project_id: string;
+  display_name: string;
+  locality: string | null;
+  region: string | null;
+  primary_category: string | null;
+  lead_stage: LeadStage;
+  latino_status: LatinoStatus;
+  rank: number;
+  tier: LeadTier;
+  total_score: number | null;
+  confidence: number;
+  components: ComponentValue[];
+  top_reason: string | null;
+  offer_key: string | null;
+  problems: ProblemType[];
+  is_synthetic: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadScorePage".
+ */
+export interface LeadScorePage {
+  score_run: ScoreRunItem | null;
+  items: LeadScoreItem[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * The ranked leads of a run; `score_run_id` null reads the newest finished run.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadScoreQuery".
+ */
+export interface LeadScoreQuery {
+  score_run_id: string | null;
+  tier: LeadTier | null;
+  min_score: number | null;
+  problem: ProblemType | null;
+  search: string | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * The explanation of one lead in one run, stored with its score (`business_scores`).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadScorecard".
+ */
+export interface LeadScorecard {
+  business_id: string;
+  tier: LeadTier;
+  total_score: number | null;
+  confidence: number;
+  known_weight: number;
+  versions: ScoreVersions;
+  components: ScoreComponentView[];
+  features: ScoreFeature[];
+  gates: GateView[];
+  criteria: CriterionView[];
+  reasons: ScoreReason[];
+  contact_now: ScoreReason[];
+  impacts: InferredImpact[];
+  risks: ScoreRisk[];
+  missing: MissingData[];
+  offer: OfferRecommendation | null;
+  message: MessageDraft | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreVersions".
+ */
+export interface ScoreVersions {
+  engine_version: string;
+  facts_version: string;
+  scoring_model_key: string;
+  scoring_model_version: number;
+  is_heuristic: boolean;
+  icp_profile_name: string;
+  icp_profile_version: number;
+}
+/**
+ * `weight` and `contribution`: in the formula that uses this component (0 and null for
+ * DATA_CONFIDENCE and FINAL_LEAD_SCORE); `coverage`: share of its own weight that was known.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreComponentView".
+ */
+export interface ScoreComponentView {
+  component: ScoreComponent;
+  value: number | null;
+  weight: number;
+  contribution: number | null;
+  coverage: number;
+  formula: string;
+}
+/**
+ * One evaluated feature. `points`: what it adds to its component; `impact`: to the total.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreFeature".
+ */
+export interface ScoreFeature {
+  feature: string;
+  component: ScoreComponent;
+  problem: ProblemType | null;
+  state: FeatureState;
+  value: number | null;
+  weight: number;
+  points: number | null;
+  impact: number | null;
+  detail: string;
+  reason: string | null;
+  evidence: ScoreEvidence[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreReason".
+ */
+export interface ScoreReason {
+  feature: string;
+  text: string;
+  impact: number;
+  evidence: ScoreEvidence[];
+}
+/**
+ * A contradiction, a caveat or a reason to double-check before acting.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreRisk".
+ */
+export interface ScoreRisk {
+  code: string;
+  detail: string;
+  evidence: ScoreEvidence[];
+}
+/**
+ * An unknown feature and the share of the final formula it could have moved.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MissingData".
+ */
+export interface MissingData {
+  feature: string;
+  component: ScoreComponent;
+  detail: string;
+  weight_share: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "OfferRecommendation".
+ */
+export interface OfferRecommendation {
+  offer_key: string;
+  offer_name: string;
+  problems: ProblemType[];
+  why: string;
+  evidence: ScoreEvidence[];
+}
+/**
+ * A commercial message to adapt by hand. It is never sent.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MessageDraft".
+ */
+export interface MessageDraft {
+  subject: string;
+  body: string;
+  language: "en";
+  is_draft: true;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadScorecardDetail".
+ */
+export interface LeadScorecardDetail {
+  score_run: ScoreRunItem;
+  business_id: string;
+  display_name: string;
+  lead_stage: LeadStage;
+  rank: number;
+  scorecard: LeadScorecard;
+  history: LeadScoreHistoryItem[];
+  outcomes: LeadOutcome[];
+  decisions: ReviewDecision[];
+  ai_reasons: AiDraftedReason[];
+  ai_dropped: number;
+  is_synthetic: boolean;
+}
+/**
  * The cached answer of one mail-domain lookup; asked again once it expires.
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -3616,6 +4585,19 @@ export interface MatchPage {
   total: number;
 }
 /**
+ * A feature that does not apply to businesses in these categories (booking for roofers...).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "NotApplicableRule".
+ */
+export interface NotApplicableRule {
+  feature: string;
+  /**
+   * @maxItems 50
+   */
+  categories: string[];
+}
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "Note".
  */
@@ -3632,6 +4614,14 @@ export interface Note {
   deleted_reason: string | null;
 }
 /**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "OpportunityWeight".
+ */
+export interface OpportunityWeight {
+  component: OpportunityInput;
+  weight: number;
+}
+/**
  * A local workspace. Synthetic projects hold test data only.
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -3646,6 +4636,20 @@ export interface Project {
   updated_at: string;
   deleted_at: string | null;
   deleted_reason: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "RankChange".
+ */
+export interface RankChange {
+  business_id: string;
+  display_name: string;
+  left_rank: number | null;
+  right_rank: number | null;
+  left_tier: LeadTier | null;
+  right_tier: LeadTier | null;
+  left_total: number | null;
+  right_total: number | null;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -3718,32 +4722,102 @@ export interface ResolutionStartRequest {
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ScoreExplanation".
+ * via the `definition` "ScoreCompareQuery".
  */
-export interface ScoreExplanation {
-  id: string;
-  business_score_id: string;
-  component: string | null;
-  kind: ExplanationKind;
-  message: string;
-  evidence_item_id: string | null;
-  sort_order: number;
+export interface ScoreCompareQuery {
+  left_run_id: string;
+  right_run_id: string;
+  top_k: number;
 }
 /**
+ * Two runs side by side: who entered or left the top K and how ranks moved.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreComparison".
+ */
+export interface ScoreComparison {
+  left: ScoreRunItem;
+  right: ScoreRunItem;
+  same_facts: boolean;
+  top_k: number;
+  entered: number;
+  left_out: number;
+  mean_abs_rank_change: number | null;
+  changes: RankChange[];
+}
+/**
+ * One ICP version and one scoring version applied to a project's businesses, or to the facts
+ * another run stored (`facts_from_run_id`). Only `finished_at` is written after the insert.
+ *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ScoreRun".
  */
 export interface ScoreRun {
   id: string;
-  scoring_model_version_id: string;
-  icp_profile_version_id: string | null;
-  dataset_snapshot_id: string | null;
+  project_id: string;
   job_id: string | null;
+  scoring_model_version_id: string;
+  icp_profile_version_id: string;
+  facts_from_run_id: string | null;
+  engine_version: string;
   started_at: string;
   finished_at: string | null;
   created_at: string;
 }
 /**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreRunListQuery".
+ */
+export interface ScoreRunListQuery {
+  project_id: string | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreRunPage".
+ */
+export interface ScoreRunPage {
+  items: ScoreRunItem[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * `score_run_id` null reads the newest finished run that scored the business.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScorecardQuery".
+ */
+export interface ScorecardQuery {
+  business_id: string;
+  score_run_id: string | null;
+}
+/**
+ * Profiles and models to build with, the features a model can weigh and blank templates.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoringCatalog".
+ */
+export interface ScoringCatalog {
+  icp_profiles: IcpProfileView[];
+  models: ScoringModelView[];
+  features: FeatureInfo[];
+  engine_version: string;
+  icp_template: IcpDefinition;
+  scoring_template: ScoringDefinition;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoringModelView".
+ */
+export interface ScoringModelView {
+  model: ScoringModel;
+  versions: ScoringModelVersion[];
+  problems: CriteriaProblem[];
+}
+/**
+ * A named scoring formula (phase 11): which version is active and whether it is archived.
+ *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ScoringModel".
  */
@@ -3756,8 +4830,13 @@ export interface ScoringModel {
   updated_at: string;
   deleted_at: string | null;
   deleted_reason: string | null;
+  active_version_id: string | null;
+  archived_at: string | null;
 }
 /**
+ * Immutable, permanent definition of a scoring model at one version (`ScoringDefinition`).
+ * `is_heuristic`: its weights are a declared judgement, not fitted to outcomes.
+ *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ScoringModelVersion".
  */
@@ -3768,8 +4847,108 @@ export interface ScoringModelVersion {
   definition_json: {
     [k: string]: JsonValue | undefined;
   };
+  schema_version: number;
   is_heuristic: boolean;
+  created_by: string;
   created_at: string;
+}
+/**
+ * One version of a scoring model, stored verbatim in `scoring_model_versions.definition_json`.
+ * Weights are relative within each formula; a weight of 0 leaves a feature or input out.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoringDefinition".
+ */
+export interface ScoringDefinition {
+  schema_version: 1;
+  features: FeatureWeight[];
+  opportunity: OpportunityWeight[];
+  final: FinalWeight[];
+  not_applicable: NotApplicableRule[];
+  min_known_weight: number;
+  priority_threshold: number;
+  review_threshold: number;
+  weak_subscore_below: number;
+  require_observable_problem: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoringCatalogQuery".
+ */
+export interface ScoringCatalogQuery {
+  project_id: string | null;
+}
+/**
+ * Activates a version (`version_id`), archives or restores a profile or a model.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoringChangeRequest".
+ */
+export interface ScoringChangeRequest {
+  target: ScoringTarget;
+  id: string;
+  action: ScoringChangeAction;
+  version_id: string | null;
+  reason: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoringModelSaveRequest".
+ */
+export interface ScoringModelSaveRequest {
+  model_id: string | null;
+  name: string;
+  description: string | null;
+  definition: ScoringDefinition;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoringSimulation".
+ */
+export interface ScoringSimulation {
+  businesses: number;
+  tiers: TierCounts;
+  distribution: ScoreBin[];
+  gates: GatePreview[];
+  top: LeadScoreItem[];
+  facts_from_run_id: string | null;
+  collected_at: string;
+  problems: CriteriaProblem[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "TierCounts".
+ */
+export interface TierCounts {
+  priority: number;
+  review: number;
+  low: number;
+  insufficient_data: number;
+  excluded: number;
+}
+/**
+ * Scores drafts in memory, over a project's facts read now or a run's stored facts. Writes
+ * nothing.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoringSimulationRequest".
+ */
+export interface ScoringSimulationRequest {
+  project_id: string | null;
+  facts_from_run_id: string | null;
+  icp: IcpDefinition;
+  scoring: ScoringDefinition;
+  top: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoringStartRequest".
+ */
+export interface ScoringStartRequest {
+  project_id: string;
+  icp_profile_version_id: string;
+  scoring_model_version_id: string;
+  facts_from_run_id: string | null;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema

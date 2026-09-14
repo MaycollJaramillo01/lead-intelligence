@@ -1,0 +1,155 @@
+{
+  "profile": {
+    "id": "01900000-0000-7000-8000-000000001157",
+    "project_id": "01900000-0000-7000-8000-000000000001",
+    "name": "Synthetic ICP: local services with weak websites",
+    "description": "Synthetic test data",
+    "created_at": "2026-01-01T00:00:00.000Z",
+    "updated_at": "2026-01-01T00:00:00.000Z",
+    "deleted_at": null,
+    "deleted_reason": null,
+    "active_version_id": "01900000-0000-7000-8000-000000001159",
+    "archived_at": null
+  },
+  "versions": [
+    {
+      "id": "01900000-0000-7000-8000-000000001159",
+      "icp_profile_id": "01900000-0000-7000-8000-000000001157",
+      "version": 1,
+      "definition_json": {
+        "buying_capacity": {
+          "importance": "nice_to_have",
+          "min_proxies": 1,
+          "weight": 1
+        },
+        "categories": {
+          "excluded_terms": [],
+          "importance": "ignore",
+          "terms": [],
+          "weight": 1
+        },
+        "channels": {
+          "any_of": [
+            "phone",
+            "email"
+          ],
+          "importance": "must_have",
+          "require_decision_maker": false,
+          "weight": 3
+        },
+        "digital_maturity": {
+          "importance": "nice_to_have",
+          "wanted": [
+            "low",
+            "medium"
+          ],
+          "weight": 2
+        },
+        "exclusions": {
+          "categories": [],
+          "domains": [],
+          "names": [],
+          "postal_codes": [],
+          "regions": [
+            "NJ"
+          ]
+        },
+        "freshness": {
+          "importance": "ignore",
+          "max_days_since_seen": 365,
+          "weight": 1
+        },
+        "geography": {
+          "exclude": [],
+          "importance": "nice_to_have",
+          "include": [
+            {
+              "country_code": "US",
+              "locality": null,
+              "postal_code": null,
+              "region": "TX"
+            },
+            {
+              "country_code": "US",
+              "locality": null,
+              "postal_code": null,
+              "region": "FL"
+            },
+            {
+              "country_code": "US",
+              "locality": null,
+              "postal_code": null,
+              "region": "AZ"
+            },
+            {
+              "country_code": "US",
+              "locality": null,
+              "postal_code": null,
+              "region": "IL"
+            }
+          ],
+          "weight": 2
+        },
+        "latino": "none",
+        "offers": [
+          {
+            "capabilities": [
+              "web design",
+              "forms"
+            ],
+            "description": "A fast mobile site with a clear call to action and a quote form (synthetic offer).",
+            "key": "website_rebuild",
+            "name": "Website rebuild",
+            "not_for_categories": [],
+            "solves": [
+              "no_website",
+              "website_unreachable",
+              "weak_conversion_path",
+              "no_online_booking",
+              "poor_mobile_experience"
+            ]
+          },
+          {
+            "capabilities": [
+              "local seo",
+              "analytics"
+            ],
+            "description": "Business details, structured data and analytics (synthetic offer).",
+            "key": "local_seo",
+            "name": "Local SEO setup",
+            "not_for_categories": [
+              "grocery"
+            ],
+            "solves": [
+              "weak_local_seo",
+              "weak_technical_seo",
+              "measurement_not_detected"
+            ]
+          }
+        ],
+        "problems": {
+          "importance": "ignore",
+          "wanted": [],
+          "weight": 1
+        },
+        "reputation": {
+          "importance": "ignore",
+          "min_rating": null,
+          "min_reviews": null,
+          "weight": 1
+        },
+        "schema_version": 1,
+        "size": {
+          "importance": "ignore",
+          "min_locations": 1,
+          "weight": 1
+        }
+      },
+      "schema_version": 1,
+      "created_by": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "problems": [],
+  "is_synthetic": true
+}
