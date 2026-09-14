@@ -49,6 +49,11 @@
       "task_type": "visual_review",
       "enabled": false,
       "profile": "fast"
+    },
+    {
+      "task_type": "sales_brief",
+      "enabled": true,
+      "profile": "fast"
     }
   ],
   "min_free_ram_mib": 1024,

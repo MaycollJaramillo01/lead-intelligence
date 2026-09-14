@@ -341,6 +341,13 @@ def test_outcomes_follow_the_stage_machine_and_calibration_ignores_earlier_ones(
                 stage=stage,
                 lost_reason=lost_reason,
                 reason="test",
+                channel=None,
+                attempt_result=None,
+                value_amount=None,
+                value_currency=None,
+                contact_quality=None,
+                notes=None,
+                occurred_at=None,
             ),
             actor="test",
         )
@@ -375,6 +382,12 @@ def test_outcomes_follow_the_stage_machine_and_calibration_ignores_earlier_ones(
             actor="test",
             occurred_at=earlier,
             created_at=utc_now(),
+            channel=None,
+            attempt_result=None,
+            value_amount=None,
+            value_currency=None,
+            contact_quality=None,
+            notes=None,
         ),
     )
     again = store.calibration(conn, CalibrationQuery(score_run_id=first))

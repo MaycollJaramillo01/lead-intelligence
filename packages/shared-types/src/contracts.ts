@@ -30,7 +30,8 @@ export type AiTaskType =
   | "finding_synthesis"
   | "opportunity_reasoning"
   | "language_detection"
-  | "visual_review";
+  | "visual_review"
+  | "sales_brief";
 /**
  * Where the runtime placed the model while it answered, as the runtime reported it.
  *
@@ -103,7 +104,12 @@ export type AiReviewStatus = "unreviewed" | "accepted" | "rejected";
  * via the `definition` "AiInputKind".
  */
 export type AiInputKind =
-  "page_fragment" | "website_finding" | "contactability" | "latino_status" | "screenshot";
+  | "page_fragment"
+  | "website_finding"
+  | "contactability"
+  | "latino_status"
+  | "screenshot"
+  | "brief_claim";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "EntityType".
@@ -132,12 +138,21 @@ export type EntityType =
   | "tag"
   | "note"
   | "match_candidate"
-  | "contact_suppression";
+  | "contact_suppression"
+  | "saved_view"
+  | "research_checklist";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "AiModelChangeAction".
  */
 export type AiModelChangeAction = "pull" | "delete";
+/**
+ * `insufficient_evidence`: the input does not support an answer; the output says nothing.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AiOutcome".
+ */
+export type AiOutcome = "ok" | "insufficient_evidence";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "AiReviewDecision".
@@ -180,11 +195,62 @@ export type AppEnvironment = "development" | "production";
  */
 export type AssessmentMethod = "rules" | "manual_review";
 /**
+ * What one attempt to work a lead produced, as the analyst recorded it. Nothing is sent.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "AttemptResult".
+ */
+export type AttemptResult =
+  | "no_answer"
+  | "left_message"
+  | "reached"
+  | "replied"
+  | "bounced"
+  | "wrong_contact"
+  | "call_back_later"
+  | "meeting_set"
+  | "proposal_sent"
+  | "won"
+  | "lost";
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "AuditAction".
  */
 export type AuditAction =
   "create" | "update" | "status_change" | "soft_delete" | "restore" | "purge" | "merge" | "unmerge";
+/**
+ * The stored rows a brief, a pin or a timeline entry can point at. `contact_channel` refs are
+ * channel keys (phase 09 consolidates contact points into channels); every other ref is an id.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EvidenceRefKind".
+ */
+export type EvidenceRefKind =
+  | "business"
+  | "evidence_item"
+  | "website_audit"
+  | "website_finding"
+  | "website_technology"
+  | "contact_channel"
+  | "decision_maker"
+  | "latino_assessment"
+  | "inference_run"
+  | "score_run";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BriefSection".
+ */
+export type BriefSection =
+  | "business_snapshot"
+  | "icp_match"
+  | "verified_opportunity"
+  | "evidence"
+  | "recommended_offer"
+  | "contact_route"
+  | "decision_maker"
+  | "conversation_hooks"
+  | "risks_unknowns"
+  | "last_verified";
 /**
  * When a page may be rendered in Chromium: never, on a verifiable criterion, or always.
  *
@@ -192,6 +258,89 @@ export type AuditAction =
  * via the `definition` "BrowserMode".
  */
 export type BrowserMode = "never" | "auto" | "always";
+/**
+ * Safe actions over many leads. `sales_ready` needs its criteria per lead: never in bulk.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BulkAction".
+ */
+export type BulkAction =
+  "add_tag" | "remove_tag" | "assign" | "unassign" | "needs_research" | "disqualify";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BulkMode".
+ */
+export type BulkMode = "preview" | "apply";
+/**
+ * What the explorer filters, sorts and shows. Live fields read the current state (stage,
+ * research, tags, suppression, age of the facts); the others are the run's snapshot.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExplorerField".
+ */
+export type ExplorerField =
+  | "name"
+  | "locality"
+  | "region"
+  | "category"
+  | "domain"
+  | "lead_stage"
+  | "research_status"
+  | "assignee"
+  | "tag"
+  | "tier"
+  | "rank"
+  | "total_score"
+  | "confidence"
+  | "data_coverage"
+  | "icp_match"
+  | "opportunity_score"
+  | "digital_gap"
+  | "business_health"
+  | "buying_capacity"
+  | "contactability"
+  | "commercial_intent"
+  | "data_confidence"
+  | "latino_status"
+  | "latino_confidence"
+  | "main_channel"
+  | "channel_status"
+  | "usable_channels"
+  | "problem"
+  | "top_problem"
+  | "offer"
+  | "facts_age_days"
+  | "audit_status"
+  | "conflicts"
+  | "suppressed"
+  | "stale"
+  | "partial";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExplorerOperator".
+ */
+export type ExplorerOperator =
+  | "eq"
+  | "neq"
+  | "in"
+  | "not_in"
+  | "lt"
+  | "lte"
+  | "gt"
+  | "gte"
+  | "contains"
+  | "starts_with"
+  | "is_null"
+  | "is_not_null"
+  | "is_true"
+  | "is_false"
+  | "has"
+  | "has_not";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SortDirection".
+ */
+export type SortDirection = "asc" | "desc";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "BusinessStatus".
@@ -437,6 +586,31 @@ export type Capability =
 export type CriterionImportance = "must_have" | "nice_to_have" | "ignore";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ChecklistItemKind".
+ */
+export type ChecklistItemKind = "automatic" | "manual";
+/**
+ * What an automatic checklist item reads from the stored facts.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ChecklistRule".
+ */
+export type ChecklistRule =
+  | "scored_recently"
+  | "qualifying_tier"
+  | "verified_opportunity"
+  | "usable_contact"
+  | "contact_conflicts_resolved"
+  | "decision_maker_published"
+  | "website_audited"
+  | "latino_evaluated";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoringChangeAction".
+ */
+export type ScoringChangeAction = "activate" | "archive" | "restore";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "CommandErrorCode".
  */
 export type CommandErrorCode =
@@ -448,6 +622,29 @@ export type CommandErrorCode =
   | "not_found"
   | "not_allowed"
   | "internal";
+/**
+ * Where an analyst left a lead (phase 12), always with a reason. `sales_ready` is only allowed
+ * when every criterion of `SalesReadyCriterion` holds; the others are a person's call.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResearchStatus".
+ */
+export type ResearchStatus = "sales_ready" | "needs_research" | "disqualified";
+/**
+ * Observable problems the opportunity engine detects from stored facts.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ProblemType".
+ */
+export type ProblemType =
+  | "no_website"
+  | "website_unreachable"
+  | "weak_conversion_path"
+  | "no_online_booking"
+  | "weak_local_seo"
+  | "weak_technical_seo"
+  | "poor_mobile_experience"
+  | "measurement_not_detected";
 /**
  * The independent components of a scorecard, 0 to 100 each (a null value is unknown).
  *
@@ -465,6 +662,19 @@ export type ScoreComponent =
   | "DATA_CONFIDENCE"
   | "OPPORTUNITY_SCORE"
   | "FINAL_LEAD_SCORE";
+/**
+ * known: evaluated from evidence; unknown: the facts cannot show it (never a zero);
+ * not_applicable: does not apply to this business (never a penalty).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FeatureState".
+ */
+export type FeatureState = "known" | "unknown" | "not_applicable";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "GateOutcome".
+ */
+export type GateOutcome = "pass" | "fail" | "unknown";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ConfigFieldKind".
@@ -503,6 +713,14 @@ export type ContactFreshness = "fresh" | "aging" | "stale";
  */
 export type SuppressionKind = "email" | "phone" | "domain" | "business";
 /**
+ * Whom the contact route actually reached.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ContactQuality".
+ */
+export type ContactQuality =
+  "decision_maker" | "gatekeeper" | "wrong_person" | "unreachable" | "unknown";
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ConversionElementKind".
  */
@@ -533,10 +751,20 @@ export type PageKind = "home" | "about" | "contact" | "services" | "other";
  */
 export type CrawlUrlStatus = "queued" | "fetched" | "skipped" | "failed";
 /**
+ * Every one must hold before a lead can be marked sales-ready (docs/lead-explorer.md).
+ *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "GateOutcome".
+ * via the `definition` "SalesReadyCriterion".
  */
-export type GateOutcome = "pass" | "fail" | "unknown";
+export type SalesReadyCriterion =
+  | "not_suppressed"
+  | "active_business"
+  | "scored_recently"
+  | "qualifying_tier"
+  | "verified_opportunity"
+  | "usable_contact"
+  | "contact_conflicts_resolved"
+  | "checklist_complete";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "DecisionMakerDecision".
@@ -584,6 +812,11 @@ export type EvidenceFreshness = "fresh" | "aging" | "stale";
 export type EvidenceRole = "supports" | "contradicts" | "context";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExplorerFieldType".
+ */
+export type ExplorerFieldType = "text" | "number" | "enum" | "flag" | "set";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ExportStatus".
  */
 export type ExportStatus = "pending" | "running" | "succeeded" | "failed" | "cancelled";
@@ -592,29 +825,6 @@ export type ExportStatus = "pending" | "running" | "succeeded" | "failed" | "can
  * via the `definition` "ExportFormat".
  */
 export type ExportFormat = "csv" | "xlsx" | "json" | "jsonl" | "parquet";
-/**
- * Observable problems the opportunity engine detects from stored facts.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ProblemType".
- */
-export type ProblemType =
-  | "no_website"
-  | "website_unreachable"
-  | "weak_conversion_path"
-  | "no_online_booking"
-  | "weak_local_seo"
-  | "weak_technical_seo"
-  | "poor_mobile_experience"
-  | "measurement_not_detected";
-/**
- * known: evaluated from evidence; unknown: the facts cannot show it (never a zero);
- * not_applicable: does not apply to this business (never a penalty).
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "FeatureState".
- */
-export type FeatureState = "known" | "unknown" | "not_applicable";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "FieldAgreement".
@@ -651,7 +861,7 @@ export type LatinoTrack = "ownership" | "market" | "contradiction";
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "LeadAction".
  */
-export type LeadAction = "confirm" | "dismiss" | "reset" | "record_outcome";
+export type LeadAction = "confirm" | "dismiss" | "reset" | "record_outcome" | "record_attempt";
 /**
  * What a mail-domain lookup answered. `timeout` and `error` say nothing about the domain.
  *
@@ -698,10 +908,52 @@ export type ReasonDirection = "for" | "against" | "rule";
 export type OpportunityInput =
   "DIGITAL_GAP" | "BUSINESS_HEALTH" | "BUYING_CAPACITY" | "COMMERCIAL_INTENT";
 /**
+ * What a refresh asks the engines for: the website pages (a crawl), the published contacts, or
+ * the Latino evidence. Each one starts its job; nothing is sent to the business.
+ *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ScoringChangeAction".
+ * via the `definition` "RefreshScope".
  */
-export type ScoringChangeAction = "activate" | "archive" | "restore";
+export type RefreshScope = "pages" | "contacts" | "evidence";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResearchAction".
+ */
+export type ResearchAction =
+  | "set_status"
+  | "undo_status"
+  | "assign"
+  | "unassign"
+  | "add_tag"
+  | "remove_tag"
+  | "add_note"
+  | "delete_note"
+  | "pin"
+  | "unpin"
+  | "add_task"
+  | "complete_task"
+  | "dismiss_task"
+  | "reopen_task"
+  | "sync_tasks"
+  | "check_item"
+  | "uncheck_item"
+  | "correct_value"
+  | "request_refresh";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResearchTaskKind".
+ */
+export type ResearchTaskKind = "missing_data" | "checklist" | "refresh" | "custom";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResearchTaskStatus".
+ */
+export type ResearchTaskStatus = "open" | "done" | "dismissed";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SavedViewAction".
+ */
+export type SavedViewAction = "archive" | "restore";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ScoringTarget".
@@ -719,6 +971,11 @@ export type ServiceAreaKind = "city" | "county" | "state" | "postal_code" | "met
  * via the `definition` "SourceHealth".
  */
 export type SourceHealth = "ready" | "needs_configuration" | "disabled" | "unavailable";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "TimelineKind".
+ */
+export type TimelineKind = "source" | "change" | "analysis" | "review" | "research" | "outcome";
 
 /**
  * Generated from services/research-engine/src/research_engine/contracts.py and domain.py (protocol version 1, data contract version 1). Do not edit by hand.
@@ -1406,6 +1663,163 @@ export interface AuditEntry {
   detail_json: {
     [k: string]: JsonValue | undefined;
   } | null;
+}
+/**
+ * One statement of a brief, restating stored data. `ref` (B1, B2...) is what a model cites;
+ * `is_inference` marks a probable consequence, never a fact.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BriefClaim".
+ */
+export interface BriefClaim {
+  ref: string;
+  text: string;
+  is_inference: boolean;
+  evidence: BriefRef[];
+}
+/**
+ * A stored row a brief, a pin or a timeline entry points at.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BriefRef".
+ */
+export interface BriefRef {
+  kind: EvidenceRefKind;
+  ref: string;
+  label: string;
+  url: string | null;
+}
+/**
+ * The newest valid, not rejected `sales_brief` answer, reduced to sentences whose every cited
+ * claim is still in the brief; the others are dropped and counted.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BriefDraft".
+ */
+export interface BriefDraft {
+  inference_run_id: string;
+  model: string;
+  review_status: AiReviewStatus;
+  finished_at: string | null;
+  sections: BriefDraftSection[];
+  dropped: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BriefDraftSection".
+ */
+export interface BriefDraftSection {
+  section: BriefSection;
+  sentences: BriefDraftSentence[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BriefDraftSentence".
+ */
+export interface BriefDraftSentence {
+  text: string;
+  claims: string[];
+  evidence: BriefRef[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BriefSectionView".
+ */
+export interface BriefSectionView {
+  section: BriefSection;
+  claims: BriefClaim[];
+  empty_reason: string | null;
+}
+/**
+ * One action over leads chosen by id (at most 1 000), or over every lead a query matches (at
+ * most 5 000, applied only while that is still the count the analyst previewed).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BulkRequest".
+ */
+export interface BulkRequest {
+  mode: BulkMode;
+  action: BulkAction;
+  business_ids: string[];
+  query: ExplorerQuery | null;
+  expected: number | null;
+  tag: string | null;
+  assignee: string | null;
+  reason: string | null;
+}
+/**
+ * One window of the explorer over a score run (the newest finished one when null): filters, a
+ * quick search, up to four sort keys (the run's rank order when none) and an offset.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExplorerQuery".
+ */
+export interface ExplorerQuery {
+  score_run_id: string | null;
+  filters: ExplorerGroup;
+  search: string | null;
+  sort: ExplorerSort[];
+  offset: number;
+  limit: number;
+  with_total: boolean;
+}
+/**
+ * Conditions and groups joined by `and` or `or`, optionally negated. At most
+ * `EXPLORER_MAX_DEPTH` levels and `EXPLORER_MAX_CONDITIONS` conditions in the whole tree.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExplorerGroup".
+ */
+export interface ExplorerGroup {
+  kind: "group";
+  join: "and" | "or";
+  negate: boolean;
+  children: (ExplorerCondition | ExplorerGroup)[];
+}
+/**
+ * One test on one field. Unary operators take no value; `in` and `not_in` take a list; number
+ * fields compare with a number; enum and set fields accept only their own values.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExplorerCondition".
+ */
+export interface ExplorerCondition {
+  kind: "condition";
+  field: ExplorerField;
+  operator: ExplorerOperator;
+  value: string | number | string[] | null;
+}
+/**
+ * A sort key. Missing values always come last; the business id breaks the remaining ties.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExplorerSort".
+ */
+export interface ExplorerSort {
+  field: ExplorerField;
+  direction: SortDirection;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BulkResult".
+ */
+export interface BulkResult {
+  mode: BulkMode;
+  action: BulkAction;
+  targeted: number;
+  changed: number;
+  skipped: number;
+  skips: BulkSkip[];
+  batch_id: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "BulkSkip".
+ */
+export interface BulkSkip {
+  business_id: string;
+  display_name: string;
+  reason: string;
 }
 /**
  * Canonical business. Display values are chosen from observations, which keep raw values.
@@ -2506,6 +2920,150 @@ export interface ChannelCriterion {
   require_decision_maker: boolean;
 }
 /**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ChecklistCatalog".
+ */
+export interface ChecklistCatalog {
+  checklists: ChecklistView[];
+  template: ChecklistDefinition;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ChecklistView".
+ */
+export interface ChecklistView {
+  checklist: ResearchChecklist;
+  versions: ResearchChecklistVersion[];
+}
+/**
+ * What an analyst verifies before a lead is sales-ready, for a vertical or a campaign.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResearchChecklist".
+ */
+export interface ResearchChecklist {
+  id: string;
+  name: string;
+  description: string | null;
+  active_version_id: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResearchChecklistVersion".
+ */
+export interface ResearchChecklistVersion {
+  id: string;
+  checklist_id: string;
+  version: number;
+  definition_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  schema_version: number;
+  created_by: string;
+  created_at: string;
+}
+/**
+ * A checklist applies to the businesses of its campaigns first, then of its categories (whole
+ * words); with neither it applies to every lead no other checklist claims.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ChecklistDefinition".
+ */
+export interface ChecklistDefinition {
+  schema_version: 1;
+  campaign_ids: string[];
+  /**
+   * @maxItems 50
+   */
+  categories: string[];
+  items: ChecklistItem[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ChecklistItem".
+ */
+export interface ChecklistItem {
+  key: string;
+  label: string;
+  kind: ChecklistItemKind;
+  rule: ChecklistRule | null;
+  required: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ChecklistCatalogQuery".
+ */
+export interface ChecklistCatalogQuery {
+  include_archived: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ChecklistChangeRequest".
+ */
+export interface ChecklistChangeRequest {
+  checklist_id: string;
+  action: ScoringChangeAction;
+  version_id: string | null;
+  reason: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ChecklistItemState".
+ */
+export interface ChecklistItemState {
+  item: ChecklistItem;
+  done: boolean;
+  detail: string;
+  decided_by: string | null;
+  decided_at: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ChecklistSaveRequest".
+ */
+export interface ChecklistSaveRequest {
+  checklist_id: string | null;
+  name: string;
+  description: string | null;
+  definition: ChecklistDefinition;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ChecklistState".
+ */
+export interface ChecklistState {
+  checklist_id: string;
+  checklist_version_id: string;
+  name: string;
+  version: number;
+  matched_by: string;
+  items: ChecklistItemState[];
+  complete: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CitedPoint".
+ */
+export interface CitedPoint {
+  text: string;
+  /**
+   * @minItems 1
+   * @maxItems 8
+   */
+  evidence_ids:
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string];
+}
+/**
  * Which column of an imported file feeds which candidate field. Unmapped fields stay empty.
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -2533,6 +3091,222 @@ export interface ColumnMapping {
 export interface CommandError {
   code: CommandErrorCode;
   message: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ComparedLead".
+ */
+export interface ComparedLead {
+  row: ExplorerRow;
+  scorecard: LeadScorecard;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExplorerRow".
+ */
+export interface ExplorerRow {
+  business_id: string;
+  project_id: string;
+  rank: number | null;
+  display_name: string;
+  locality: string | null;
+  region: string | null;
+  category: string | null;
+  domain: string | null;
+  lead_stage: LeadStage;
+  research_status: ResearchStatus | null;
+  assignee: string | null;
+  tags: string[];
+  tier: LeadTier;
+  total_score: number | null;
+  confidence: number;
+  data_coverage: number;
+  icp_match: number | null;
+  opportunity_score: number | null;
+  digital_gap: number | null;
+  business_health: number | null;
+  buying_capacity: number | null;
+  contactability: number | null;
+  commercial_intent: number | null;
+  data_confidence: number | null;
+  latino_status: LatinoStatus;
+  latino_confidence: number | null;
+  main_channel: ContactType | null;
+  channel_status: ValidationStatus | null;
+  usable_channels: number;
+  problems: ProblemType[];
+  top_problem: ProblemType | null;
+  top_reason: string | null;
+  offer: string | null;
+  facts_collected_at: string;
+  facts_age_days: number;
+  audit_status: WebsiteAuditStatus | null;
+  conflicts: number;
+  suppressed: boolean;
+  stale: boolean;
+  partial: boolean;
+  is_synthetic: boolean;
+}
+/**
+ * The explanation of one lead in one run, stored with its score (`business_scores`).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadScorecard".
+ */
+export interface LeadScorecard {
+  business_id: string;
+  tier: LeadTier;
+  total_score: number | null;
+  confidence: number;
+  known_weight: number;
+  versions: ScoreVersions;
+  components: ScoreComponentView[];
+  features: ScoreFeature[];
+  gates: GateView[];
+  criteria: CriterionView[];
+  reasons: ScoreReason[];
+  contact_now: ScoreReason[];
+  impacts: InferredImpact[];
+  risks: ScoreRisk[];
+  missing: MissingData[];
+  offer: OfferRecommendation | null;
+  message: MessageDraft | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreVersions".
+ */
+export interface ScoreVersions {
+  engine_version: string;
+  facts_version: string;
+  scoring_model_key: string;
+  scoring_model_version: number;
+  is_heuristic: boolean;
+  icp_profile_name: string;
+  icp_profile_version: number;
+}
+/**
+ * `weight` and `contribution`: in the formula that uses this component (0 and null for
+ * DATA_CONFIDENCE and FINAL_LEAD_SCORE); `coverage`: share of its own weight that was known.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreComponentView".
+ */
+export interface ScoreComponentView {
+  component: ScoreComponent;
+  value: number | null;
+  weight: number;
+  contribution: number | null;
+  coverage: number;
+  formula: string;
+}
+/**
+ * One evaluated feature. `points`: what it adds to its component; `impact`: to the total.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreFeature".
+ */
+export interface ScoreFeature {
+  feature: string;
+  component: ScoreComponent;
+  problem: ProblemType | null;
+  state: FeatureState;
+  value: number | null;
+  weight: number;
+  points: number | null;
+  impact: number | null;
+  detail: string;
+  reason: string | null;
+  evidence: ScoreEvidence[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "GateView".
+ */
+export interface GateView {
+  gate: string;
+  outcome: GateOutcome;
+  detail: string;
+  evidence: ScoreEvidence[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CriterionView".
+ */
+export interface CriterionView {
+  criterion: string;
+  importance: CriterionImportance;
+  outcome: GateOutcome;
+  weight: number;
+  detail: string;
+  evidence: ScoreEvidence[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreReason".
+ */
+export interface ScoreReason {
+  feature: string;
+  text: string;
+  impact: number;
+  evidence: ScoreEvidence[];
+}
+/**
+ * The probable commercial impact of a problem: an inference, labelled as one.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "InferredImpact".
+ */
+export interface InferredImpact {
+  problem: ProblemType;
+  text: string;
+  is_inference: true;
+}
+/**
+ * A contradiction, a caveat or a reason to double-check before acting.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ScoreRisk".
+ */
+export interface ScoreRisk {
+  code: string;
+  detail: string;
+  evidence: ScoreEvidence[];
+}
+/**
+ * An unknown feature and the share of the final formula it could have moved.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MissingData".
+ */
+export interface MissingData {
+  feature: string;
+  component: ScoreComponent;
+  detail: string;
+  weight_share: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "OfferRecommendation".
+ */
+export interface OfferRecommendation {
+  offer_key: string;
+  offer_name: string;
+  problems: ProblemType[];
+  why: string;
+  evidence: ScoreEvidence[];
+}
+/**
+ * A commercial message to adapt by hand. It is never sent.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "MessageDraft".
+ */
+export interface MessageDraft {
+  subject: string;
+  body: string;
+  language: "en";
+  is_draft: true;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -2921,6 +3695,22 @@ export interface CoreStatus {
   uptime_s: number;
 }
 /**
+ * A value an analyst corrected: a manual observation with its reason, never an edited
+ * source.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CorrectionView".
+ */
+export interface CorrectionView {
+  field: CanonicalField;
+  value: string;
+  observation_id: string;
+  reason: string;
+  actor: string;
+  corrected_at: string;
+  shown: boolean;
+}
+/**
  * Pages that failed for the same reason. robots.txt and sitemaps report through their site.
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -3219,15 +4009,12 @@ export interface CriteriaCheckQuery {
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "CriterionView".
+ * via the `definition` "CriterionCheck".
  */
-export interface CriterionView {
-  criterion: string;
-  importance: CriterionImportance;
-  outcome: GateOutcome;
-  weight: number;
+export interface CriterionCheck {
+  criterion: SalesReadyCriterion;
+  passed: boolean;
   detail: string;
-  evidence: ScoreEvidence[];
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -3560,6 +4347,128 @@ export interface ErrorInfo {
   retryable: boolean;
 }
 /**
+ * One stored row behind a claim, looked up only within the business it belongs to.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EvidenceDetail".
+ */
+export interface EvidenceDetail {
+  business_id: string;
+  kind: EvidenceRefKind;
+  ref: string;
+  label: string;
+  excerpt: string | null;
+  status: string | null;
+  confidence: number | null;
+  observed_at: string | null;
+  source_name: string | null;
+  source_url: string | null;
+  provenance: Provenance | null;
+}
+/**
+ * Evidence an analyst marked as important for a lead. Unpinning keeps the row, with a
+ * reason.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EvidencePin".
+ */
+export interface EvidencePin {
+  id: string;
+  business_id: string;
+  ref_kind: EvidenceRefKind;
+  ref: string;
+  label: string;
+  note: string | null;
+  pinned_by: string;
+  pinned_at: string;
+  unpinned_by: string | null;
+  unpinned_at: string | null;
+  unpin_reason: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EvidenceQuery".
+ */
+export interface EvidenceQuery {
+  business_id: string;
+  kind: EvidenceRefKind;
+  ref: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExplorerCatalog".
+ */
+export interface ExplorerCatalog {
+  fields: ExplorerFieldInfo[];
+  max_depth: number;
+  max_conditions: number;
+  max_children: number;
+  max_sort: number;
+  max_page: number;
+  max_offset: number;
+  bulk_max_ids: number;
+  bulk_max_matching: number;
+  stale_after_days: number;
+  max_compared: number;
+  view_schema_version: number;
+  default_view: ViewDefinition;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExplorerFieldInfo".
+ */
+export interface ExplorerFieldInfo {
+  field: ExplorerField;
+  type: ExplorerFieldType;
+  operators: ExplorerOperator[];
+  values: string[];
+  sortable: boolean;
+  live: boolean;
+}
+/**
+ * Schema version 2 of a saved view. Version 1 (flat `and` conditions, one sort key, the visible
+ * columns only) is upgraded when read, never rewritten.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ViewDefinition".
+ */
+export interface ViewDefinition {
+  schema_version: 2;
+  score_run_id: string | null;
+  filters: ExplorerGroup;
+  search: string | null;
+  sort: ExplorerSort[];
+  columns: ViewColumn[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ViewColumn".
+ */
+export interface ViewColumn {
+  field: ExplorerField;
+  visible: boolean;
+  pinned: boolean;
+  width: number | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExplorerCatalogQuery".
+ */
+export interface ExplorerCatalogQuery {
+  scope: "lead_explorer";
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExplorerPage".
+ */
+export interface ExplorerPage {
+  score_run: ScoreRunItem | null;
+  offset: number;
+  rows: ExplorerRow[];
+  total: number | null;
+  generated_at: string;
+}
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "Export".
  */
@@ -3581,6 +4490,32 @@ export interface Export {
   error_message: string | null;
   created_at: string;
   updated_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportPreview".
+ */
+export interface ExportPreview {
+  score_run: ScoreRunItem | null;
+  matching: number;
+  excluded_suppressed: number;
+  exported: number;
+  columns: ExplorerField[];
+  sample: ExplorerRow[];
+  warnings: string[];
+  generated_at: string;
+}
+/**
+ * What an export of the explorer's query would hold. Nothing is written (exports: phase 13).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportPreviewRequest".
+ */
+export interface ExportPreviewRequest {
+  query: ExplorerQuery;
+  columns: ExplorerField[];
+  include_suppressed: boolean;
+  sample_size: number;
 }
 /**
  * One extractor pass over a raw record; every observed value points at one.
@@ -3664,16 +4599,6 @@ export interface GatePreview {
   failed: number;
   unknown: number;
   examples: GateExample[];
-}
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "GateView".
- */
-export interface GateView {
-  gate: string;
-  outcome: GateOutcome;
-  detail: string;
-  evidence: ScoreEvidence[];
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -3916,17 +4841,6 @@ export interface ImportPreviewRequest {
   filename: string;
   content: string;
   mapping: ColumnMapping | null;
-}
-/**
- * The probable commercial impact of a problem: an inference, labelled as one.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "InferredImpact".
- */
-export interface InferredImpact {
-  problem: ProblemType;
-  text: string;
-  is_inference: true;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -4207,6 +5121,77 @@ export interface LeadActionRequest {
   stage: LeadStage | null;
   lost_reason: string | null;
   reason: string;
+  channel: ContactType | null;
+  attempt_result: AttemptResult | null;
+  value_amount: number | null;
+  value_currency: string | null;
+  contact_quality: ContactQuality | null;
+  notes: string | null;
+  occurred_at: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadCompareQuery".
+ */
+export interface LeadCompareQuery {
+  business_ids: string[];
+  score_run_id: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadComparison".
+ */
+export interface LeadComparison {
+  score_run: ScoreRunItem;
+  leads: ComparedLead[];
+  missing: string[];
+}
+/**
+ * One business in one score run, projected from its stored score for the Lead Explorer
+ * (phase 12). Written with the score, rebuilt from `business_scores` when missing; `rank` is the
+ * business's place in the run once it finished. A projection: the scorecard stays the record.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadIndexRow".
+ */
+export interface LeadIndexRow {
+  score_run_id: string;
+  business_id: string;
+  project_id: string;
+  rank: number | null;
+  tier: LeadTier;
+  tier_order: number;
+  total_score: number | null;
+  confidence: number;
+  data_coverage: number;
+  icp_match: number | null;
+  opportunity_score: number | null;
+  digital_gap: number | null;
+  business_health: number | null;
+  buying_capacity: number | null;
+  contactability: number | null;
+  commercial_intent: number | null;
+  data_confidence: number | null;
+  display_name: string;
+  name_sort_key: string;
+  locality: string | null;
+  region: string | null;
+  primary_category: string | null;
+  primary_domain: string | null;
+  latino_status: LatinoStatus;
+  latino_confidence: number | null;
+  main_channel: ContactType | null;
+  channel_status: ValidationStatus | null;
+  usable_channels: number;
+  problem_mask: number;
+  top_problem: string | null;
+  top_reason: string | null;
+  offer_key: string | null;
+  facts_collected_at: string;
+  audit_status: WebsiteAuditStatus | null;
+  conflicts: number;
+  suppressed_when_scored: boolean;
+  is_synthetic: boolean;
 }
 /**
  * Immutable, permanent record of what happened when a lead was worked (phase 11): the feedback
@@ -4226,6 +5211,30 @@ export interface LeadOutcome {
   actor: string;
   occurred_at: string;
   created_at: string;
+  channel: ContactType | null;
+  attempt_result: AttemptResult | null;
+  value_amount: number | null;
+  value_currency: string | null;
+  contact_quality: ContactQuality | null;
+  notes: string | null;
+}
+/**
+ * The research status of a canonical business and whom it is assigned to (phase 12). Current
+ * state only: every change is also a `review_decisions` row, which is its history.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LeadResearch".
+ */
+export interface LeadResearch {
+  business_id: string;
+  project_id: string;
+  status: ResearchStatus | null;
+  status_reason: string | null;
+  status_by: string | null;
+  status_at: string | null;
+  assignee: string | null;
+  assigned_at: string | null;
+  updated_at: string;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -4289,134 +5298,6 @@ export interface LeadScoreQuery {
   search: string | null;
   limit: number;
   cursor: string | null;
-}
-/**
- * The explanation of one lead in one run, stored with its score (`business_scores`).
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "LeadScorecard".
- */
-export interface LeadScorecard {
-  business_id: string;
-  tier: LeadTier;
-  total_score: number | null;
-  confidence: number;
-  known_weight: number;
-  versions: ScoreVersions;
-  components: ScoreComponentView[];
-  features: ScoreFeature[];
-  gates: GateView[];
-  criteria: CriterionView[];
-  reasons: ScoreReason[];
-  contact_now: ScoreReason[];
-  impacts: InferredImpact[];
-  risks: ScoreRisk[];
-  missing: MissingData[];
-  offer: OfferRecommendation | null;
-  message: MessageDraft | null;
-}
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ScoreVersions".
- */
-export interface ScoreVersions {
-  engine_version: string;
-  facts_version: string;
-  scoring_model_key: string;
-  scoring_model_version: number;
-  is_heuristic: boolean;
-  icp_profile_name: string;
-  icp_profile_version: number;
-}
-/**
- * `weight` and `contribution`: in the formula that uses this component (0 and null for
- * DATA_CONFIDENCE and FINAL_LEAD_SCORE); `coverage`: share of its own weight that was known.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ScoreComponentView".
- */
-export interface ScoreComponentView {
-  component: ScoreComponent;
-  value: number | null;
-  weight: number;
-  contribution: number | null;
-  coverage: number;
-  formula: string;
-}
-/**
- * One evaluated feature. `points`: what it adds to its component; `impact`: to the total.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ScoreFeature".
- */
-export interface ScoreFeature {
-  feature: string;
-  component: ScoreComponent;
-  problem: ProblemType | null;
-  state: FeatureState;
-  value: number | null;
-  weight: number;
-  points: number | null;
-  impact: number | null;
-  detail: string;
-  reason: string | null;
-  evidence: ScoreEvidence[];
-}
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ScoreReason".
- */
-export interface ScoreReason {
-  feature: string;
-  text: string;
-  impact: number;
-  evidence: ScoreEvidence[];
-}
-/**
- * A contradiction, a caveat or a reason to double-check before acting.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ScoreRisk".
- */
-export interface ScoreRisk {
-  code: string;
-  detail: string;
-  evidence: ScoreEvidence[];
-}
-/**
- * An unknown feature and the share of the final formula it could have moved.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "MissingData".
- */
-export interface MissingData {
-  feature: string;
-  component: ScoreComponent;
-  detail: string;
-  weight_share: number;
-}
-/**
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "OfferRecommendation".
- */
-export interface OfferRecommendation {
-  offer_key: string;
-  offer_name: string;
-  problems: ProblemType[];
-  why: string;
-  evidence: ScoreEvidence[];
-}
-/**
- * A commercial message to adapt by hand. It is never sent.
- *
- * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "MessageDraft".
- */
-export interface MessageDraft {
-  subject: string;
-  body: string;
-  language: "en";
-  is_draft: true;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -4622,6 +5503,14 @@ export interface OpportunityWeight {
   weight: number;
 }
 /**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "PinView".
+ */
+export interface PinView {
+  pin: EvidencePin;
+  available: boolean;
+}
+/**
  * A local workspace. Synthetic projects hold test data only.
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -4650,6 +5539,102 @@ export interface RankChange {
   right_tier: LeadTier | null;
   left_total: number | null;
   right_total: number | null;
+}
+/**
+ * One change to a lead's research. Everything that removes or overrides something needs a
+ * reason; a status, a correction and a refresh are audited.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResearchActionRequest".
+ */
+export interface ResearchActionRequest {
+  business_id: string;
+  action: ResearchAction;
+  status: ResearchStatus | null;
+  assignee: string | null;
+  tag: string | null;
+  note: string | null;
+  note_id: string | null;
+  ref_kind: EvidenceRefKind | null;
+  ref: string | null;
+  task_id: string | null;
+  title: string | null;
+  item_key: string | null;
+  field: CanonicalField | null;
+  value: string | null;
+  scopes: RefreshScope[];
+  reason: string | null;
+}
+/**
+ * Immutable, permanent: a person ticked or unticked one manual checklist item.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResearchCheck".
+ */
+export interface ResearchCheck {
+  id: string;
+  business_id: string;
+  checklist_version_id: string;
+  item_key: string;
+  done: boolean;
+  note: string | null;
+  actor: string;
+  decided_at: string;
+}
+/**
+ * Work left on a lead. Closed with a reason when dismissed; reopened, never deleted.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResearchTask".
+ */
+export interface ResearchTask {
+  id: string;
+  business_id: string;
+  project_id: string;
+  kind: ResearchTaskKind;
+  key: string;
+  title: string;
+  detail_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  status: ResearchTaskStatus;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  closed_by: string | null;
+  closed_at: string | null;
+  close_reason: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResearchWorkspace".
+ */
+export interface ResearchWorkspace {
+  business_id: string;
+  project_id: string;
+  display_name: string;
+  is_synthetic: boolean;
+  score_run_id: string | null;
+  lead_stage: LeadStage;
+  research: LeadResearch | null;
+  can_undo: boolean;
+  suppressed: boolean;
+  sales_ready: CriterionCheck[];
+  sales_ready_allowed: boolean;
+  checklist: ChecklistState;
+  tasks: ResearchTask[];
+  pins: PinView[];
+  notes: Note[];
+  tags: string[];
+  corrections: CorrectionView[];
+  decisions: ReviewDecision[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResearchWorkspaceQuery".
+ */
+export interface ResearchWorkspaceQuery {
+  business_id: string;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -4719,6 +5704,210 @@ export interface ResolutionRunPage {
  */
 export interface ResolutionStartRequest {
   project_id: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SalesBrief".
+ */
+export interface SalesBrief {
+  business_id: string;
+  project_id: string;
+  display_name: string;
+  score_run_id: string | null;
+  versions: ScoreVersions | null;
+  generated_at: string;
+  last_verified_at: string | null;
+  suppressed: boolean;
+  research_status: ResearchStatus | null;
+  is_synthetic: boolean;
+  sections: BriefSectionView[];
+  draft: BriefDraft | null;
+}
+/**
+ * A model's wording of a brief: sentences per section, each citing the brief claims it
+ * restates. It adds no fact, number, person or accusation.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SalesBriefOutput".
+ */
+export interface SalesBriefOutput {
+  outcome: AiOutcome;
+  /**
+   * @maxItems 10
+   */
+  sections:
+    | []
+    | [SalesBriefSectionOutput]
+    | [SalesBriefSectionOutput, SalesBriefSectionOutput]
+    | [SalesBriefSectionOutput, SalesBriefSectionOutput, SalesBriefSectionOutput]
+    | [
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput
+      ]
+    | [
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput
+      ]
+    | [
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput
+      ]
+    | [
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput
+      ]
+    | [
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput
+      ]
+    | [
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput
+      ]
+    | [
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput,
+        SalesBriefSectionOutput
+      ];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SalesBriefSectionOutput".
+ */
+export interface SalesBriefSectionOutput {
+  section: BriefSection;
+  /**
+   * @maxItems 4
+   */
+  sentences:
+    | []
+    | [CitedPoint]
+    | [CitedPoint, CitedPoint]
+    | [CitedPoint, CitedPoint, CitedPoint]
+    | [CitedPoint, CitedPoint, CitedPoint, CitedPoint];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SalesBriefQuery".
+ */
+export interface SalesBriefQuery {
+  business_id: string;
+  score_run_id: string | null;
+}
+/**
+ * A named Lead Explorer view (phase 12); its definitions are `saved_view_versions`.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SavedView".
+ */
+export interface SavedView {
+  id: string;
+  scope: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SavedViewChangeRequest".
+ */
+export interface SavedViewChangeRequest {
+  view_id: string;
+  action: SavedViewAction;
+  reason: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SavedViewItem".
+ */
+export interface SavedViewItem {
+  view: SavedView;
+  versions: SavedViewVersion[];
+  definition: ViewDefinition;
+  upgraded_from: number | null;
+}
+/**
+ * Immutable, permanent definition of a view at one version. `schema_version` says which shape
+ * `definition_json` has; older shapes are upgraded when read, never rewritten.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SavedViewVersion".
+ */
+export interface SavedViewVersion {
+  id: string;
+  view_id: string;
+  version: number;
+  definition_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  schema_version: number;
+  created_by: string;
+  created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SavedViewList".
+ */
+export interface SavedViewList {
+  items: SavedViewItem[];
+  schema_version: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SavedViewQuery".
+ */
+export interface SavedViewQuery {
+  scope: "lead_explorer";
+  include_archived: boolean;
+}
+/**
+ * Creates a view, or a new version of one; an unchanged definition keeps the newest version.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "SavedViewSaveRequest".
+ */
+export interface SavedViewSaveRequest {
+  view_id: string | null;
+  scope: "lead_explorer";
+  name: string;
+  description: string | null;
+  definition: ViewDefinition;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -5167,6 +6356,42 @@ export interface TaskAttempt {
   error_code: string | null;
   error_message: string | null;
   retryable: boolean | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "TimelineEntry".
+ */
+export interface TimelineEntry {
+  key: string;
+  at: string;
+  kind: TimelineKind;
+  code: string;
+  title: string;
+  detail: string | null;
+  actor: string | null;
+  ref: BriefRef | null;
+  job_id: string | null;
+  score_run_id: string | null;
+  source_key: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "TimelinePage".
+ */
+export interface TimelinePage {
+  business_id: string;
+  entries: TimelineEntry[];
+  next_cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "TimelineQuery".
+ */
+export interface TimelineQuery {
+  business_id: string;
+  kinds: TimelineKind[];
+  limit: number;
+  cursor: string | null;
 }
 /**
  * Technical UI error forwarded to the desktop log (the UI never writes logs itself).

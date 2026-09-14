@@ -942,3 +942,185 @@ The interface:
 - **Business inspector:** a lead score panel with review and outcomes.
 
 Scoring runs appear in Jobs.
+
+## D-076 · A lead index projected from stored scores; windows of one bounded, parameterised query (phase 12)
+
+**Context.** The Lead Explorer must page 100 000 to 1 000 000 leads without loading them, and a
+scorecard is about 30 KB of JSON that no filter should read.
+
+**Decision.** `lead_index` holds one row per business per score run with the columns the explorer
+filters and sorts on, projected from the stored facts and scorecard:
+
+- written with the scores, and ranked when the run finishes in the order of D-072;
+- projected on first read for runs scored before phase 12;
+- dropped by trigger when a business is soft-deleted.
+
+A query is a tree of conditions joined by `and` or `or`, optionally negated, plus a quick search over
+the full-text index, up to four sort keys and a window. The tree is bounded: depth 3, 40 conditions,
+20 children per group, 50 values per list. A window is at most 500 rows, at an offset of at most
+5 000 000. The query compiles to one parameterised statement:
+
+- live fields (stage, research status, assignee, tags, do-not-contact, age of the facts) are joined
+  or computed only when a filter or a sort needs them;
+- a window's rows get their live state in one more query over those rows alone;
+- the total is counted only when asked for.
+
+The same compiler resolves the leads of a bulk action, the export preview and comparisons.
+
+**Why offsets.** A virtualized grid addresses any row (End, the scrollbar), and a keyset cursor cannot
+jump to row 999 900. A finished run's index never changes, so its windows are stable; only a live field
+used as a filter can move a lead between windows.
+
+**Trade-off.** The index repeats scorecard columns for every run: about 930 bytes a lead per run with
+its indexes, and 1 086 MiB of store files with one million index rows (D-082,
+[lead-explorer.md](lead-explorer.md)).
+
+## D-077 · Saved views are versioned and upgraded when read; the working layout is a local preference (phase 12)
+
+**Decision.** `saved_views` with immutable, permanent `saved_view_versions` that carry their
+`schema_version`:
+
+- saving an unchanged definition makes no version;
+- archiving and restoring need a reason and are audited;
+- a live name is unique.
+
+Schema 1 (flat `and` conditions, one sort key, the visible columns) is upgraded when read and never
+rewritten: its conditions become one `and` group, its columns stay visible (rank and name pinned) and
+every other field is added hidden. The next save appends a version in schema 2; a schema newer than
+the build is refused.
+
+The explorer's working layout (filters, search, sort, columns and the active view) is kept in the
+local preferences and restored after a restart. Unknown columns are dropped and new fields appended;
+a layout of an older schema falls back to the default view.
+
+**Why.** A view is shared, versioned work; what one screen shows at the moment is a preference.
+
+## D-078 · A research status is a decision with a reason; sales-ready is a rule, never a bulk action (phase 12)
+
+**Decision.** `lead_research` holds the current research status and assignee of a canonical business
+and is never deleted. Every change is also a `review_decisions` row (`research_status`,
+`research_assignee`) and an audit entry.
+
+- `sales_ready` is refused unless the eight criteria of [lead-explorer.md](lead-explorer.md) hold at
+  that moment. `needs_research` and `disqualified` need only their reason.
+- Undo sets the previous status again as a new decision (`Undo: <reason>`): nothing is erased, and
+  returning to sales-ready checks the criteria again.
+- **Bulk actions** (add or remove a tag, assign or unassign, needs research, disqualify) are previewed,
+  then applied with a reason: one audited decision per lead, sharing a batch id.
+  - By id they take at most 1 000 leads.
+  - Over a query they take at most 5 000, and apply only while the leads matching are as many as
+    previewed.
+  - `needs_research` skips leads on the do-not-contact list.
+  - Sales-ready is not among them.
+
+**Why.** Sales-ready means a person checked this lead against its evidence, which no bulk action can
+do.
+
+## D-079 · Checklists, tasks, pins and corrections are history; a correction is an observation, never an edit (phase 12)
+
+**Decision.**
+
+- **Checklists** are versioned definitions of automatic items, which read the stored facts, and manual
+  items, whose ticks are immutable `research_checks` (unticking needs a reason). A lead gets the
+  checklist that names a campaign one of its records came from, else one whose categories match the
+  lead's, else the default "Sales-ready checklist": seven required items, three optional, created on
+  first read.
+- **Tasks** (missing data, checklist, refresh, custom) keep one open task per key. Syncing opens one
+  for each weighted unknown of the score (up to 10) and each required item left undone. Dismissing
+  needs a reason, a task can be reopened, and none is deleted.
+- **Pins** mark any row a brief or a timeline cites and are unpinned once, with a reason; a pin whose
+  row is gone says so.
+- **Corrections** of a name, address, website, phone, email or category add an observation from the
+  `analyst.corrections` connector, with the reason in its raw record, and choose it as the value
+  shown (phase 06). The source rows are untouched; choosing another value undoes it.
+- **Refresh** opens or reuses the task `refresh:<scope>` and starts one engine job:
+  - pages: a crawl of up to five known website addresses;
+  - contacts: a contact check of the project, without mail DNS lookups;
+  - evidence: a Latino evaluation of the project.
+
+  The job ids are recorded on the task. Nothing reaches the business.
+
+## D-080 · A sales brief restates stored rows; a model may only reword its claims (phase 12)
+
+**Decision.** `leads.brief` builds ten sections deterministically:
+
+- each claim (B1, B2…, at most six per section) cites between one and eight stored rows;
+- an inference (impact, offer, hook) is marked as one;
+- an empty section gives its reason code;
+- hooks are neutral questions for each observed problem, never verdicts;
+- a lead on the do-not-contact list gets no contact route and is never worded by a model.
+
+The `sales_brief` task (phase 10 pipeline, quality profile) receives only the brief's claims and must
+cite claim ids. An answer is rejected (kept with its errors, never shown) when it:
+
+- cites an id it was not given;
+- repeats a section;
+- writes a number that no cited claim contains;
+- uses accusatory language (a fixed word list).
+
+On read, the newest valid, not rejected answer shows only the sentences whose every cited claim is
+still in the brief, matched by section and text; the rest are dropped and counted. Accepting or
+rejecting it is a phase 10 review with a reason, and nothing is deleted. A `sales_brief` request must
+name its businesses, and the analysis of a whole project leaves the task out.
+
+**Why.** A claim the data no longer supports disappears with the data, and wording cannot introduce a
+fact.
+
+## D-081 · The funnel records how a lead was worked, never touching its score (phase 12)
+
+**Decision.** `lead_outcomes` gains the channel, the attempt result, the contact quality, an optional
+value with its currency, and notes.
+
+- An attempt (`record_attempt`: channel and result required) keeps the stage.
+- An outcome moves the stage along the state machine of phase 11, and `lost` needs its reason.
+- Rows stay immutable. The core validates the pairing:
+  - a review records no work;
+  - an attempt names its channel and result;
+  - a value comes with a three-letter currency;
+  - notes stay within 4 000 characters.
+
+Calibration keeps labelling by the stages recorded after a run's facts were read, so no run's facts
+or scores are rewritten. Nothing sends a message.
+
+## D-082 · The explorer reads indexes, never the rows of a run; the grid reads windows (phase 12)
+
+**Context.** Profiling a million leads showed every window sorting the run's rows: 6.6 to 11 s a
+window and 11.8 s for an export preview, while the worker's Python memory stayed under 1.5 MiB. The
+first ordering term (`rank IS NULL`) kept SQLite off the rank index, and the run header counted tiers
+and the distribution again on every window.
+
+**Decision.** The read path:
+
+- **Walked orders.** Without sort keys, a finished run walks `lead_index_by_rank`; its rank is unique,
+  so it needs no tie-break. A single key on the name, or on the lead score descending, walks
+  `lead_index_by_name` or `lead_index_by_total`.
+- **Everything else.** A query with a condition or a search, or with any other order, is resolved in
+  `lead_index_scan`: a covering index of every column a condition or a sort reads. The planner is told
+  so with `INDEXED BY`, because without statistics it walked another index and read the table row by
+  row. Only the window's ids come out of the index; its rows are then read by id.
+- **Comparisons.** Names compare by their sort key (case, accents and spacing ignored), tiers sort by
+  their order (best first), and only an ascending key on a field that may be missing asks for
+  `NULLS LAST`, which no index can walk.
+- **Live conditions.** Tags and the do-not-contact list are sets read once per query, never a
+  subquery per lead. The export preview counts and warns in one pass.
+- **Run header.** A finished run's header is read once per worker process.
+- **Connections.** They map the store (256 MiB), cache up to 64 MiB and keep sorts in memory, so a
+  sort no index holds does not spill to temporary files.
+
+The grid:
+
+- reads windows of 100 rows as it scrolls, keeps at most 12, and counts once per query;
+- drops the answer to a superseded query, since a call to the worker cannot be cancelled;
+- caps its scroll area at 8 000 000 pixels and maps the rows beyond it proportionally;
+- keeps the selection by id in a session store, and "all matching" for the query that selected it;
+- folds the inspector's sections, which read nothing until opened, and reads the next lead ahead
+  once.
+
+**Trade-off.**
+
+- The covering index adds 279 bytes a lead per run to the table's 316 (measured in
+  [lead-explorer.md](lead-explorer.md)).
+- A deep window of an order no index holds still sorts the whole run's entries of that index.
+- A filtered query always reads the covering index, even when its filter matches most leads and a walk
+  would have stopped sooner.
+- A sort may hold about 100 bytes per lead in memory.

@@ -273,6 +273,14 @@ def open_sqlite(path: Path) -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA busy_timeout=5000")
+    # The worker opens a short-lived connection per request: large indexes (a Lead Explorer run of a
+    # million leads) are read through the OS page cache, and a sort stays in memory instead of
+    # spilling to temporary files (an unindexed sort at offset 500 000: 11 s spilled, 1.6 s here).
+    # ponytail: a sort over a run of N leads may hold about 100 bytes per lead in memory; move
+    # temp_store back to files if runs of tens of millions of leads appear.
+    conn.execute("PRAGMA mmap_size=268435456")
+    conn.execute("PRAGMA cache_size=-65536")
+    conn.execute("PRAGMA temp_store=MEMORY")
     return conn
 
 

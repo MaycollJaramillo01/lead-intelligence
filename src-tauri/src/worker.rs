@@ -100,6 +100,22 @@ pub const SCORING_SCORECARD: &str = "scoring.scorecard";
 pub const SCORING_COMPARE: &str = "scoring.compare";
 pub const SCORING_CALIBRATION: &str = "scoring.calibration";
 pub const SCORING_ACT: &str = "scoring.act";
+pub const LEADS_CATALOG: &str = "leads.catalog";
+pub const LEADS_EXPLORE: &str = "leads.explore";
+pub const LEADS_EXPORT_PREVIEW: &str = "leads.export_preview";
+pub const LEADS_BULK: &str = "leads.bulk";
+pub const LEADS_COMPARE: &str = "leads.compare";
+pub const VIEWS_LIST: &str = "views.list";
+pub const VIEWS_SAVE: &str = "views.save";
+pub const VIEWS_CHANGE: &str = "views.change";
+pub const RESEARCH_GET: &str = "research.get";
+pub const RESEARCH_ACT: &str = "research.act";
+pub const RESEARCH_TIMELINE: &str = "research.timeline";
+pub const RESEARCH_EVIDENCE: &str = "research.evidence";
+pub const RESEARCH_CHECKLISTS: &str = "research.checklists";
+pub const RESEARCH_SAVE_CHECKLIST: &str = "research.save_checklist";
+pub const RESEARCH_CHANGE_CHECKLIST: &str = "research.change_checklist";
+pub const RESEARCH_BRIEF: &str = "research.brief";
 pub const DEV_SEED_SYNTHETIC: &str = "dev.seed_synthetic";
 const SHUTDOWN: &str = "shutdown";
 
@@ -123,6 +139,12 @@ pub const AI_TIMEOUT: Duration = Duration::from_secs(100);
 /// A simulation over a project reads the facts of every business at once; the worker bounds it at
 /// 60 s.
 pub const SCORING_TIMEOUT: Duration = Duration::from_secs(70);
+/// The first window of a run scored before phase 12 projects its lead index, an export preview
+/// counts its whole query, and a research action may recompute a business's values or start jobs;
+/// the worker bounds them at 60 s.
+pub const LEADS_TIMEOUT: Duration = Duration::from_secs(70);
+/// A bulk action writes one audited change per lead, up to 5 000; the worker bounds it at 120 s.
+pub const BULK_TIMEOUT: Duration = Duration::from_secs(130);
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 const READER_DRAIN_TIMEOUT: Duration = Duration::from_secs(2);
 const HEALTH_FAILURES_BEFORE_RESTART: u32 = 2;

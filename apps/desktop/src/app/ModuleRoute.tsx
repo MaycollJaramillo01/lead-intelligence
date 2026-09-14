@@ -7,7 +7,7 @@ import { BusinessesScreen } from "@/features/businesses/BusinessesScreen";
 import { CampaignsScreen } from "@/features/campaigns/CampaignsScreen";
 import { DiscoveryScreen } from "@/features/discovery/DiscoveryScreen";
 import { SourcesScreen } from "@/features/sources/SourcesScreen";
-import { LeadExplorerScreen } from "@/features/businesses/LeadExplorerScreen";
+import { LeadExplorerScreen } from "@/features/leads/LeadExplorerScreen";
 import { DatasetsScreen } from "@/features/datasets/DatasetsScreen";
 import { JobsScreen } from "@/features/jobs/JobsScreen";
 import { OverviewScreen } from "@/features/overview/OverviewScreen";

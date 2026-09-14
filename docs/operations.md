@@ -73,6 +73,9 @@ files.
 
 Run only the tests that need local services: `uv run --directory services/research-engine pytest -m local_services -rs`.
 
+Profile the Lead Explorer over a synthetic index (one million rows by default, in a temporary
+directory deleted afterwards): `uv run --directory services/research-engine python scripts/profile_lead_explorer.py [rows]`.
+
 ## Troubleshooting
 
 | Symptom                                                              | Cause / fix                                                                                                                                                                                                    |

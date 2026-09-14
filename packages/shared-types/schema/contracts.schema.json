@@ -816,7 +816,8 @@
         "website_finding",
         "contactability",
         "latino_status",
-        "screenshot"
+        "screenshot",
+        "brief_claim"
       ],
       "title": "AiInputKind",
       "type": "string"
@@ -1106,6 +1107,15 @@
       ],
       "title": "AiModelInfo",
       "type": "object"
+    },
+    "AiOutcome": {
+      "description": "`insufficient_evidence`: the input does not support an answer; the output says nothing.",
+      "enum": [
+        "ok",
+        "insufficient_evidence"
+      ],
+      "title": "AiOutcome",
+      "type": "string"
     },
     "AiProfile": {
       "description": "A model assignment the operator configures; each task runs on one profile.",
@@ -2046,7 +2056,8 @@
         "finding_synthesis",
         "opportunity_reasoning",
         "language_detection",
-        "visual_review"
+        "visual_review",
+        "sales_brief"
       ],
       "title": "AiTaskType",
       "type": "string"
@@ -2196,6 +2207,24 @@
       "title": "AssessmentMethod",
       "type": "string"
     },
+    "AttemptResult": {
+      "description": "What one attempt to work a lead produced, as the analyst recorded it. Nothing is sent.",
+      "enum": [
+        "no_answer",
+        "left_message",
+        "reached",
+        "replied",
+        "bounced",
+        "wrong_contact",
+        "call_back_later",
+        "meeting_set",
+        "proposal_sent",
+        "won",
+        "lost"
+      ],
+      "title": "AttemptResult",
+      "type": "string"
+    },
     "AuditAction": {
       "enum": [
         "create",
@@ -2263,6 +2292,220 @@
       "title": "AuditEntry",
       "type": "object"
     },
+    "BriefClaim": {
+      "additionalProperties": false,
+      "description": "One statement of a brief, restating stored data. `ref` (B1, B2...) is what a model cites;\n`is_inference` marks a probable consequence, never a fact.",
+      "properties": {
+        "ref": {
+          "pattern": "^[A-Z][1-9][0-9]{0,2}$",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 400,
+          "minLength": 1,
+          "type": "string"
+        },
+        "is_inference": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/BriefRef"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "ref",
+        "text",
+        "is_inference",
+        "evidence"
+      ],
+      "title": "BriefClaim",
+      "type": "object"
+    },
+    "BriefDraft": {
+      "additionalProperties": false,
+      "description": "The newest valid, not rejected `sales_brief` answer, reduced to sentences whose every cited\nclaim is still in the brief; the others are dropped and counted.",
+      "properties": {
+        "inference_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "review_status": {
+          "$ref": "#/$defs/AiReviewStatus"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/BriefDraftSection"
+          },
+          "type": "array"
+        },
+        "dropped": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "inference_run_id",
+        "model",
+        "review_status",
+        "finished_at",
+        "sections",
+        "dropped"
+      ],
+      "title": "BriefDraft",
+      "type": "object"
+    },
+    "BriefDraftSection": {
+      "additionalProperties": false,
+      "properties": {
+        "section": {
+          "$ref": "#/$defs/BriefSection"
+        },
+        "sentences": {
+          "items": {
+            "$ref": "#/$defs/BriefDraftSentence"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "section",
+        "sentences"
+      ],
+      "title": "BriefDraftSection",
+      "type": "object"
+    },
+    "BriefDraftSentence": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "claims": {
+          "items": {
+            "pattern": "^[A-Z][1-9][0-9]{0,2}$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/BriefRef"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "text",
+        "claims",
+        "evidence"
+      ],
+      "title": "BriefDraftSentence",
+      "type": "object"
+    },
+    "BriefRef": {
+      "additionalProperties": false,
+      "description": "A stored row a brief, a pin or a timeline entry points at.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/EvidenceRefKind"
+        },
+        "ref": {
+          "maxLength": 400,
+          "minLength": 1,
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "ref",
+        "label",
+        "url"
+      ],
+      "title": "BriefRef",
+      "type": "object"
+    },
+    "BriefSection": {
+      "enum": [
+        "business_snapshot",
+        "icp_match",
+        "verified_opportunity",
+        "evidence",
+        "recommended_offer",
+        "contact_route",
+        "decision_maker",
+        "conversation_hooks",
+        "risks_unknowns",
+        "last_verified"
+      ],
+      "title": "BriefSection",
+      "type": "string"
+    },
+    "BriefSectionView": {
+      "additionalProperties": false,
+      "properties": {
+        "section": {
+          "$ref": "#/$defs/BriefSection"
+        },
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/BriefClaim"
+          },
+          "type": "array"
+        },
+        "empty_reason": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "section",
+        "claims",
+        "empty_reason"
+      ],
+      "title": "BriefSectionView",
+      "type": "object"
+    },
     "BrowserMode": {
       "description": "When a page may be rendered in Chromium: never, on a verifiable criterion, or always.",
       "enum": [
@@ -2272,6 +2515,190 @@
       ],
       "title": "BrowserMode",
       "type": "string"
+    },
+    "BulkAction": {
+      "description": "Safe actions over many leads. `sales_ready` needs its criteria per lead: never in bulk.",
+      "enum": [
+        "add_tag",
+        "remove_tag",
+        "assign",
+        "unassign",
+        "needs_research",
+        "disqualify"
+      ],
+      "title": "BulkAction",
+      "type": "string"
+    },
+    "BulkMode": {
+      "enum": [
+        "preview",
+        "apply"
+      ],
+      "title": "BulkMode",
+      "type": "string"
+    },
+    "BulkRequest": {
+      "additionalProperties": false,
+      "description": "One action over leads chosen by id (at most 1 000), or over every lead a query matches (at\nmost 5 000, applied only while that is still the count the analyst previewed).",
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/BulkMode"
+        },
+        "action": {
+          "$ref": "#/$defs/BulkAction"
+        },
+        "business_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "query": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExplorerQuery"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tag": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assignee": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "mode",
+        "action",
+        "business_ids",
+        "query",
+        "expected",
+        "tag",
+        "assignee",
+        "reason"
+      ],
+      "title": "BulkRequest",
+      "type": "object"
+    },
+    "BulkResult": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/BulkMode"
+        },
+        "action": {
+          "$ref": "#/$defs/BulkAction"
+        },
+        "targeted": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "changed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skips": {
+          "items": {
+            "$ref": "#/$defs/BulkSkip"
+          },
+          "type": "array"
+        },
+        "batch_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "mode",
+        "action",
+        "targeted",
+        "changed",
+        "skipped",
+        "skips",
+        "batch_id"
+      ],
+      "title": "BulkResult",
+      "type": "object"
+    },
+    "BulkSkip": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_id",
+        "display_name",
+        "reason"
+      ],
+      "title": "BulkSkip",
+      "type": "object"
     },
     "Business": {
       "additionalProperties": false,
@@ -4497,6 +4924,357 @@
       "title": "ChannelCriterion",
       "type": "object"
     },
+    "ChecklistCatalog": {
+      "additionalProperties": false,
+      "properties": {
+        "checklists": {
+          "items": {
+            "$ref": "#/$defs/ChecklistView"
+          },
+          "type": "array"
+        },
+        "template": {
+          "$ref": "#/$defs/ChecklistDefinition"
+        }
+      },
+      "required": [
+        "checklists",
+        "template"
+      ],
+      "title": "ChecklistCatalog",
+      "type": "object"
+    },
+    "ChecklistCatalogQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "include_archived": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "include_archived"
+      ],
+      "title": "ChecklistCatalogQuery",
+      "type": "object"
+    },
+    "ChecklistChangeRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "checklist_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/ScoringChangeAction"
+        },
+        "version_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "checklist_id",
+        "action",
+        "version_id",
+        "reason"
+      ],
+      "title": "ChecklistChangeRequest",
+      "type": "object"
+    },
+    "ChecklistDefinition": {
+      "additionalProperties": false,
+      "description": "A checklist applies to the businesses of its campaigns first, then of its categories (whole\nwords); with neither it applies to every lead no other checklist claims.",
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "campaign_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "categories": {
+          "items": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ChecklistItem"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "campaign_ids",
+        "categories",
+        "items"
+      ],
+      "title": "ChecklistDefinition",
+      "type": "object"
+    },
+    "ChecklistItem": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ChecklistItemKind"
+        },
+        "rule": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChecklistRule"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "kind",
+        "rule",
+        "required"
+      ],
+      "title": "ChecklistItem",
+      "type": "object"
+    },
+    "ChecklistItemKind": {
+      "enum": [
+        "automatic",
+        "manual"
+      ],
+      "title": "ChecklistItemKind",
+      "type": "string"
+    },
+    "ChecklistItemState": {
+      "additionalProperties": false,
+      "properties": {
+        "item": {
+          "$ref": "#/$defs/ChecklistItem"
+        },
+        "done": {
+          "type": "boolean"
+        },
+        "detail": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "decided_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decided_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "item",
+        "done",
+        "detail",
+        "decided_by",
+        "decided_at"
+      ],
+      "title": "ChecklistItemState",
+      "type": "object"
+    },
+    "ChecklistRule": {
+      "description": "What an automatic checklist item reads from the stored facts.",
+      "enum": [
+        "scored_recently",
+        "qualifying_tier",
+        "verified_opportunity",
+        "usable_contact",
+        "contact_conflicts_resolved",
+        "decision_maker_published",
+        "website_audited",
+        "latino_evaluated"
+      ],
+      "title": "ChecklistRule",
+      "type": "string"
+    },
+    "ChecklistSaveRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "checklist_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "definition": {
+          "$ref": "#/$defs/ChecklistDefinition"
+        }
+      },
+      "required": [
+        "checklist_id",
+        "name",
+        "description",
+        "definition"
+      ],
+      "title": "ChecklistSaveRequest",
+      "type": "object"
+    },
+    "ChecklistState": {
+      "additionalProperties": false,
+      "properties": {
+        "checklist_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "checklist_version_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "matched_by": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ChecklistItemState"
+          },
+          "type": "array"
+        },
+        "complete": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "checklist_id",
+        "checklist_version_id",
+        "name",
+        "version",
+        "matched_by",
+        "items",
+        "complete"
+      ],
+      "title": "ChecklistState",
+      "type": "object"
+    },
+    "ChecklistView": {
+      "additionalProperties": false,
+      "properties": {
+        "checklist": {
+          "$ref": "#/$defs/ResearchChecklist"
+        },
+        "versions": {
+          "items": {
+            "$ref": "#/$defs/ResearchChecklistVersion"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "checklist",
+        "versions"
+      ],
+      "title": "ChecklistView",
+      "type": "object"
+    },
+    "CitedPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "pattern": "^[A-Z][1-9][0-9]{0,2}$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "text",
+        "evidence_ids"
+      ],
+      "title": "CitedPoint",
+      "type": "object"
+    },
     "ClassificationKind": {
       "enum": [
         "category",
@@ -4741,6 +5519,23 @@
       ],
       "title": "CommandErrorCode",
       "type": "string"
+    },
+    "ComparedLead": {
+      "additionalProperties": false,
+      "properties": {
+        "row": {
+          "$ref": "#/$defs/ExplorerRow"
+        },
+        "scorecard": {
+          "$ref": "#/$defs/LeadScorecard"
+        }
+      },
+      "required": [
+        "row",
+        "scorecard"
+      ],
+      "title": "ComparedLead",
+      "type": "object"
     },
     "ComponentScore": {
       "additionalProperties": false,
@@ -5722,6 +6517,18 @@
       "title": "ContactPoint",
       "type": "object"
     },
+    "ContactQuality": {
+      "description": "Whom the contact route actually reached.",
+      "enum": [
+        "decision_maker",
+        "gatekeeper",
+        "wrong_person",
+        "unreachable",
+        "unknown"
+      ],
+      "title": "ContactQuality",
+      "type": "string"
+    },
     "ContactRole": {
       "description": "general: the business's own line, form or profile; department: a named department;\nrole_address: a shared mailbox (`info@`, `sales@`); personal: a published person's address or\nnumber.",
       "enum": [
@@ -6542,6 +7349,46 @@
         "uptime_s"
       ],
       "title": "CoreStatus",
+      "type": "object"
+    },
+    "CorrectionView": {
+      "additionalProperties": false,
+      "description": "A value an analyst corrected: a manual observation with its reason, never an edited\nsource.",
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/CanonicalField"
+        },
+        "value": {
+          "type": "string"
+        },
+        "observation_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "actor": {
+          "type": "string"
+        },
+        "corrected_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "shown": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "field",
+        "value",
+        "observation_id",
+        "reason",
+        "actor",
+        "corrected_at",
+        "shown"
+      ],
+      "title": "CorrectionView",
       "type": "object"
     },
     "CrawlErrorGroup": {
@@ -7925,6 +8772,29 @@
         "message"
       ],
       "title": "CriteriaProblem",
+      "type": "object"
+    },
+    "CriterionCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "criterion": {
+          "$ref": "#/$defs/SalesReadyCriterion"
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "detail": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "criterion",
+        "passed",
+        "detail"
+      ],
+      "title": "CriterionCheck",
       "type": "object"
     },
     "CriterionImportance": {
@@ -9657,7 +10527,9 @@
         "tag",
         "note",
         "match_candidate",
-        "contact_suppression"
+        "contact_suppression",
+        "saved_view",
+        "research_checklist"
       ],
       "title": "EntityType",
       "type": "string"
@@ -9763,6 +10635,117 @@
       ],
       "title": "EventLevel",
       "type": "string"
+    },
+    "EvidenceDetail": {
+      "additionalProperties": false,
+      "description": "One stored row behind a claim, looked up only within the business it belongs to.",
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/EvidenceRefKind"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "excerpt": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Provenance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "business_id",
+        "kind",
+        "ref",
+        "label",
+        "excerpt",
+        "status",
+        "confidence",
+        "observed_at",
+        "source_name",
+        "source_url",
+        "provenance"
+      ],
+      "title": "EvidenceDetail",
+      "type": "object"
     },
     "EvidenceFreshness": {
       "enum": [
@@ -9888,6 +10871,143 @@
       "title": "EvidenceItem",
       "type": "object"
     },
+    "EvidencePin": {
+      "additionalProperties": false,
+      "description": "Evidence an analyst marked as important for a lead. Unpinning keeps the row, with a\nreason.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "ref_kind": {
+          "$ref": "#/$defs/EvidenceRefKind"
+        },
+        "ref": {
+          "maxLength": 400,
+          "minLength": 1,
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pinned_by": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "pinned_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "unpinned_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unpinned_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unpin_reason": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "business_id",
+        "ref_kind",
+        "ref",
+        "label",
+        "note",
+        "pinned_by",
+        "pinned_at",
+        "unpinned_by",
+        "unpinned_at",
+        "unpin_reason"
+      ],
+      "title": "EvidencePin",
+      "type": "object"
+    },
+    "EvidenceQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/EvidenceRefKind"
+        },
+        "ref": {
+          "maxLength": 400,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_id",
+        "kind",
+        "ref"
+      ],
+      "title": "EvidenceQuery",
+      "type": "object"
+    },
+    "EvidenceRefKind": {
+      "description": "The stored rows a brief, a pin or a timeline entry can point at. `contact_channel` refs are\nchannel keys (phase 09 consolidates contact points into channels); every other ref is an id.",
+      "enum": [
+        "business",
+        "evidence_item",
+        "website_audit",
+        "website_finding",
+        "website_technology",
+        "contact_channel",
+        "decision_maker",
+        "latino_assessment",
+        "inference_run",
+        "score_run"
+      ],
+      "title": "EvidenceRefKind",
+      "type": "string"
+    },
     "EvidenceRole": {
       "enum": [
         "supports",
@@ -9979,6 +11099,793 @@
         "postal_codes"
       ],
       "title": "Exclusions",
+      "type": "object"
+    },
+    "ExplorerCatalog": {
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "items": {
+            "$ref": "#/$defs/ExplorerFieldInfo"
+          },
+          "type": "array"
+        },
+        "max_depth": {
+          "type": "integer"
+        },
+        "max_conditions": {
+          "type": "integer"
+        },
+        "max_children": {
+          "type": "integer"
+        },
+        "max_sort": {
+          "type": "integer"
+        },
+        "max_page": {
+          "type": "integer"
+        },
+        "max_offset": {
+          "type": "integer"
+        },
+        "bulk_max_ids": {
+          "type": "integer"
+        },
+        "bulk_max_matching": {
+          "type": "integer"
+        },
+        "stale_after_days": {
+          "type": "integer"
+        },
+        "max_compared": {
+          "type": "integer"
+        },
+        "view_schema_version": {
+          "type": "integer"
+        },
+        "default_view": {
+          "$ref": "#/$defs/ViewDefinition"
+        }
+      },
+      "required": [
+        "fields",
+        "max_depth",
+        "max_conditions",
+        "max_children",
+        "max_sort",
+        "max_page",
+        "max_offset",
+        "bulk_max_ids",
+        "bulk_max_matching",
+        "stale_after_days",
+        "max_compared",
+        "view_schema_version",
+        "default_view"
+      ],
+      "title": "ExplorerCatalog",
+      "type": "object"
+    },
+    "ExplorerCatalogQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "const": "lead_explorer",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope"
+      ],
+      "title": "ExplorerCatalogQuery",
+      "type": "object"
+    },
+    "ExplorerCondition": {
+      "additionalProperties": false,
+      "description": "One test on one field. Unary operators take no value; `in` and `not_in` take a list; number\nfields compare with a number; enum and set fields accept only their own values.",
+      "properties": {
+        "kind": {
+          "const": "condition",
+          "type": "string"
+        },
+        "field": {
+          "$ref": "#/$defs/ExplorerField"
+        },
+        "operator": {
+          "$ref": "#/$defs/ExplorerOperator"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "items": {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "field",
+        "operator",
+        "value"
+      ],
+      "title": "ExplorerCondition",
+      "type": "object"
+    },
+    "ExplorerField": {
+      "description": "What the explorer filters, sorts and shows. Live fields read the current state (stage,\nresearch, tags, suppression, age of the facts); the others are the run's snapshot.",
+      "enum": [
+        "name",
+        "locality",
+        "region",
+        "category",
+        "domain",
+        "lead_stage",
+        "research_status",
+        "assignee",
+        "tag",
+        "tier",
+        "rank",
+        "total_score",
+        "confidence",
+        "data_coverage",
+        "icp_match",
+        "opportunity_score",
+        "digital_gap",
+        "business_health",
+        "buying_capacity",
+        "contactability",
+        "commercial_intent",
+        "data_confidence",
+        "latino_status",
+        "latino_confidence",
+        "main_channel",
+        "channel_status",
+        "usable_channels",
+        "problem",
+        "top_problem",
+        "offer",
+        "facts_age_days",
+        "audit_status",
+        "conflicts",
+        "suppressed",
+        "stale",
+        "partial"
+      ],
+      "title": "ExplorerField",
+      "type": "string"
+    },
+    "ExplorerFieldInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/ExplorerField"
+        },
+        "type": {
+          "$ref": "#/$defs/ExplorerFieldType"
+        },
+        "operators": {
+          "items": {
+            "$ref": "#/$defs/ExplorerOperator"
+          },
+          "type": "array"
+        },
+        "values": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sortable": {
+          "type": "boolean"
+        },
+        "live": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "field",
+        "type",
+        "operators",
+        "values",
+        "sortable",
+        "live"
+      ],
+      "title": "ExplorerFieldInfo",
+      "type": "object"
+    },
+    "ExplorerFieldType": {
+      "enum": [
+        "text",
+        "number",
+        "enum",
+        "flag",
+        "set"
+      ],
+      "title": "ExplorerFieldType",
+      "type": "string"
+    },
+    "ExplorerGroup": {
+      "additionalProperties": false,
+      "description": "Conditions and groups joined by `and` or `or`, optionally negated. At most\n`EXPLORER_MAX_DEPTH` levels and `EXPLORER_MAX_CONDITIONS` conditions in the whole tree.",
+      "properties": {
+        "kind": {
+          "const": "group",
+          "type": "string"
+        },
+        "join": {
+          "enum": [
+            "and",
+            "or"
+          ],
+          "type": "string"
+        },
+        "negate": {
+          "type": "boolean"
+        },
+        "children": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "condition": "#/$defs/ExplorerCondition",
+                "group": "#/$defs/ExplorerGroup"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/ExplorerCondition"
+              },
+              {
+                "$ref": "#/$defs/ExplorerGroup"
+              }
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "join",
+        "negate",
+        "children"
+      ],
+      "title": "ExplorerGroup",
+      "type": "object"
+    },
+    "ExplorerOperator": {
+      "enum": [
+        "eq",
+        "neq",
+        "in",
+        "not_in",
+        "lt",
+        "lte",
+        "gt",
+        "gte",
+        "contains",
+        "starts_with",
+        "is_null",
+        "is_not_null",
+        "is_true",
+        "is_false",
+        "has",
+        "has_not"
+      ],
+      "title": "ExplorerOperator",
+      "type": "string"
+    },
+    "ExplorerPage": {
+      "additionalProperties": false,
+      "properties": {
+        "score_run": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScoreRunItem"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "offset": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/ExplorerRow"
+          },
+          "type": "array"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "generated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "score_run",
+        "offset",
+        "rows",
+        "total",
+        "generated_at"
+      ],
+      "title": "ExplorerPage",
+      "type": "object"
+    },
+    "ExplorerQuery": {
+      "additionalProperties": false,
+      "description": "One window of the explorer over a score run (the newest finished one when null): filters, a\nquick search, up to four sort keys (the run's rank order when none) and an offset.",
+      "properties": {
+        "score_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "filters": {
+          "$ref": "#/$defs/ExplorerGroup"
+        },
+        "search": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sort": {
+          "items": {
+            "$ref": "#/$defs/ExplorerSort"
+          },
+          "type": "array"
+        },
+        "offset": {
+          "maximum": 5000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "with_total": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "score_run_id",
+        "filters",
+        "search",
+        "sort",
+        "offset",
+        "limit",
+        "with_total"
+      ],
+      "title": "ExplorerQuery",
+      "type": "object"
+    },
+    "ExplorerRow": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "rank": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "locality": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lead_stage": {
+          "$ref": "#/$defs/LeadStage"
+        },
+        "research_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResearchStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assignee": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tier": {
+          "$ref": "#/$defs/LeadTier"
+        },
+        "total_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "data_coverage": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "icp_match": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "opportunity_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "digital_gap": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "business_health": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "buying_capacity": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "contactability": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "commercial_intent": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "data_confidence": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latino_status": {
+          "$ref": "#/$defs/LatinoStatus"
+        },
+        "latino_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "main_channel": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContactType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "channel_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ValidationStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "usable_channels": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "problems": {
+          "items": {
+            "$ref": "#/$defs/ProblemType"
+          },
+          "type": "array"
+        },
+        "top_problem": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProblemType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "top_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "offer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "facts_collected_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "facts_age_days": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "audit_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WebsiteAuditStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "conflicts": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "suppressed": {
+          "type": "boolean"
+        },
+        "stale": {
+          "type": "boolean"
+        },
+        "partial": {
+          "type": "boolean"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "business_id",
+        "project_id",
+        "rank",
+        "display_name",
+        "locality",
+        "region",
+        "category",
+        "domain",
+        "lead_stage",
+        "research_status",
+        "assignee",
+        "tags",
+        "tier",
+        "total_score",
+        "confidence",
+        "data_coverage",
+        "icp_match",
+        "opportunity_score",
+        "digital_gap",
+        "business_health",
+        "buying_capacity",
+        "contactability",
+        "commercial_intent",
+        "data_confidence",
+        "latino_status",
+        "latino_confidence",
+        "main_channel",
+        "channel_status",
+        "usable_channels",
+        "problems",
+        "top_problem",
+        "top_reason",
+        "offer",
+        "facts_collected_at",
+        "facts_age_days",
+        "audit_status",
+        "conflicts",
+        "suppressed",
+        "stale",
+        "partial",
+        "is_synthetic"
+      ],
+      "title": "ExplorerRow",
+      "type": "object"
+    },
+    "ExplorerSort": {
+      "additionalProperties": false,
+      "description": "A sort key. Missing values always come last; the business id breaks the remaining ties.",
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/ExplorerField"
+        },
+        "direction": {
+          "$ref": "#/$defs/SortDirection"
+        }
+      },
+      "required": [
+        "field",
+        "direction"
+      ],
+      "title": "ExplorerSort",
       "type": "object"
     },
     "Export": {
@@ -10129,6 +12036,100 @@
       ],
       "title": "ExportFormat",
       "type": "string"
+    },
+    "ExportPreview": {
+      "additionalProperties": false,
+      "properties": {
+        "score_run": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScoreRunItem"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "matching": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "excluded_suppressed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "exported": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/ExplorerField"
+          },
+          "type": "array"
+        },
+        "sample": {
+          "items": {
+            "$ref": "#/$defs/ExplorerRow"
+          },
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "score_run",
+        "matching",
+        "excluded_suppressed",
+        "exported",
+        "columns",
+        "sample",
+        "warnings",
+        "generated_at"
+      ],
+      "title": "ExportPreview",
+      "type": "object"
+    },
+    "ExportPreviewRequest": {
+      "additionalProperties": false,
+      "description": "What an export of the explorer's query would hold. Nothing is written (exports: phase 13).",
+      "properties": {
+        "query": {
+          "$ref": "#/$defs/ExplorerQuery"
+        },
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/ExplorerField"
+          },
+          "type": "array"
+        },
+        "include_suppressed": {
+          "type": "boolean"
+        },
+        "sample_size": {
+          "maximum": 50,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "query",
+        "columns",
+        "include_suppressed",
+        "sample_size"
+      ],
+      "title": "ExportPreviewRequest",
+      "type": "object"
     },
     "ExportStatus": {
       "enum": [
@@ -13055,7 +15056,8 @@
         "confirm",
         "dismiss",
         "reset",
-        "record_outcome"
+        "record_outcome",
+        "record_attempt"
       ],
       "title": "LeadAction",
       "type": "string"
@@ -13100,6 +15102,82 @@
           "maxLength": 2000,
           "minLength": 1,
           "type": "string"
+        },
+        "channel": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContactType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempt_result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AttemptResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value_amount": {
+          "anyOf": [
+            {
+              "maximum": 1000000000,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value_currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "contact_quality": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContactQuality"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "occurred_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -13108,9 +15186,421 @@
         "action",
         "stage",
         "lost_reason",
-        "reason"
+        "reason",
+        "channel",
+        "attempt_result",
+        "value_amount",
+        "value_currency",
+        "contact_quality",
+        "notes",
+        "occurred_at"
       ],
       "title": "LeadActionRequest",
+      "type": "object"
+    },
+    "LeadCompareQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "business_ids": {
+          "items": {
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "score_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "business_ids",
+        "score_run_id"
+      ],
+      "title": "LeadCompareQuery",
+      "type": "object"
+    },
+    "LeadComparison": {
+      "additionalProperties": false,
+      "properties": {
+        "score_run": {
+          "$ref": "#/$defs/ScoreRunItem"
+        },
+        "leads": {
+          "items": {
+            "$ref": "#/$defs/ComparedLead"
+          },
+          "type": "array"
+        },
+        "missing": {
+          "items": {
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "score_run",
+        "leads",
+        "missing"
+      ],
+      "title": "LeadComparison",
+      "type": "object"
+    },
+    "LeadIndexRow": {
+      "additionalProperties": false,
+      "description": "One business in one score run, projected from its stored score for the Lead Explorer\n(phase 12). Written with the score, rebuilt from `business_scores` when missing; `rank` is the\nbusiness's place in the run once it finished. A projection: the scorecard stays the record.",
+      "properties": {
+        "score_run_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "rank": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tier": {
+          "$ref": "#/$defs/LeadTier"
+        },
+        "tier_order": {
+          "maximum": 4,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "data_coverage": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "icp_match": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "opportunity_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "digital_gap": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "business_health": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "buying_capacity": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "contactability": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "commercial_intent": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "data_confidence": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "display_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "name_sort_key": {
+          "type": "string"
+        },
+        "locality": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_domain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latino_status": {
+          "$ref": "#/$defs/LatinoStatus"
+        },
+        "latino_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "main_channel": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContactType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "channel_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ValidationStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "usable_channels": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "problem_mask": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "top_problem": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "top_reason": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "offer_key": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "facts_collected_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "audit_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WebsiteAuditStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "conflicts": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "suppressed_when_scored": {
+          "type": "boolean"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "score_run_id",
+        "business_id",
+        "project_id",
+        "rank",
+        "tier",
+        "tier_order",
+        "total_score",
+        "confidence",
+        "data_coverage",
+        "icp_match",
+        "opportunity_score",
+        "digital_gap",
+        "business_health",
+        "buying_capacity",
+        "contactability",
+        "commercial_intent",
+        "data_confidence",
+        "display_name",
+        "name_sort_key",
+        "locality",
+        "region",
+        "primary_category",
+        "primary_domain",
+        "latino_status",
+        "latino_confidence",
+        "main_channel",
+        "channel_status",
+        "usable_channels",
+        "problem_mask",
+        "top_problem",
+        "top_reason",
+        "offer_key",
+        "facts_collected_at",
+        "audit_status",
+        "conflicts",
+        "suppressed_when_scored",
+        "is_synthetic"
+      ],
+      "title": "LeadIndexRow",
       "type": "object"
     },
     "LeadOutcome": {
@@ -13171,6 +15661,71 @@
         "created_at": {
           "format": "date-time",
           "type": "string"
+        },
+        "channel": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContactType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempt_result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AttemptResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value_amount": {
+          "anyOf": [
+            {
+              "maximum": 1000000000,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value_currency": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "contact_quality": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContactQuality"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -13183,9 +15738,112 @@
         "reason",
         "actor",
         "occurred_at",
-        "created_at"
+        "created_at",
+        "channel",
+        "attempt_result",
+        "value_amount",
+        "value_currency",
+        "contact_quality",
+        "notes"
       ],
       "title": "LeadOutcome",
+      "type": "object"
+    },
+    "LeadResearch": {
+      "additionalProperties": false,
+      "description": "The research status of a canonical business and whom it is assigned to (phase 12). Current\nstate only: every change is also a `review_decisions` row, which is its history.",
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResearchStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status_reason": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assignee": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assigned_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_id",
+        "project_id",
+        "status",
+        "status_reason",
+        "status_by",
+        "status_at",
+        "assignee",
+        "assigned_at",
+        "updated_at"
+      ],
+      "title": "LeadResearch",
       "type": "object"
     },
     "LeadScoreHistoryItem": {
@@ -15104,6 +17762,23 @@
       "title": "PageKind",
       "type": "string"
     },
+    "PinView": {
+      "additionalProperties": false,
+      "properties": {
+        "pin": {
+          "$ref": "#/$defs/EvidencePin"
+        },
+        "available": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "pin",
+        "available"
+      ],
+      "title": "PinView",
+      "type": "object"
+    },
     "PrecisionAtK": {
       "additionalProperties": false,
       "properties": {
@@ -15544,6 +18219,16 @@
       "title": "ReasonDirection",
       "type": "string"
     },
+    "RefreshScope": {
+      "description": "What a refresh asks the engines for: the website pages (a crawl), the published contacts, or\nthe Latino evidence. Each one starts its job; nothing is sent to the business.",
+      "enum": [
+        "pages",
+        "contacts",
+        "evidence"
+      ],
+      "title": "RefreshScope",
+      "type": "string"
+    },
     "ReputationCriterion": {
       "additionalProperties": false,
       "description": "Rating and reviews with their source. No connected source provides them yet: this criterion\nis always unknown, never a failure.",
@@ -15587,6 +18272,664 @@
         "min_reviews"
       ],
       "title": "ReputationCriterion",
+      "type": "object"
+    },
+    "ResearchAction": {
+      "enum": [
+        "set_status",
+        "undo_status",
+        "assign",
+        "unassign",
+        "add_tag",
+        "remove_tag",
+        "add_note",
+        "delete_note",
+        "pin",
+        "unpin",
+        "add_task",
+        "complete_task",
+        "dismiss_task",
+        "reopen_task",
+        "sync_tasks",
+        "check_item",
+        "uncheck_item",
+        "correct_value",
+        "request_refresh"
+      ],
+      "title": "ResearchAction",
+      "type": "string"
+    },
+    "ResearchActionRequest": {
+      "additionalProperties": false,
+      "description": "One change to a lead's research. Everything that removes or overrides something needs a\nreason; a status, a correction and a refresh are audited.",
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/ResearchAction"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResearchStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assignee": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tag": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "note_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ref_kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvidenceRefKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "maxLength": 400,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "task_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "title": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "item_key": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "field": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CanonicalField"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scopes": {
+          "items": {
+            "$ref": "#/$defs/RefreshScope"
+          },
+          "type": "array"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "business_id",
+        "action",
+        "status",
+        "assignee",
+        "tag",
+        "note",
+        "note_id",
+        "ref_kind",
+        "ref",
+        "task_id",
+        "title",
+        "item_key",
+        "field",
+        "value",
+        "scopes",
+        "reason"
+      ],
+      "title": "ResearchActionRequest",
+      "type": "object"
+    },
+    "ResearchCheck": {
+      "additionalProperties": false,
+      "description": "Immutable, permanent: a person ticked or unticked one manual checklist item.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "checklist_version_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "item_key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "done": {
+          "type": "boolean"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actor": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "decided_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "business_id",
+        "checklist_version_id",
+        "item_key",
+        "done",
+        "note",
+        "actor",
+        "decided_at"
+      ],
+      "title": "ResearchCheck",
+      "type": "object"
+    },
+    "ResearchChecklist": {
+      "additionalProperties": false,
+      "description": "What an analyst verifies before a lead is sales-ready, for a vertical or a campaign.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "active_version_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "archived_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "active_version_id",
+        "archived_at",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "ResearchChecklist",
+      "type": "object"
+    },
+    "ResearchChecklistVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "checklist_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "definition_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "schema_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "created_by": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "checklist_id",
+        "version",
+        "definition_json",
+        "schema_version",
+        "created_by",
+        "created_at"
+      ],
+      "title": "ResearchChecklistVersion",
+      "type": "object"
+    },
+    "ResearchStatus": {
+      "description": "Where an analyst left a lead (phase 12), always with a reason. `sales_ready` is only allowed\nwhen every criterion of `SalesReadyCriterion` holds; the others are a person's call.",
+      "enum": [
+        "sales_ready",
+        "needs_research",
+        "disqualified"
+      ],
+      "title": "ResearchStatus",
+      "type": "string"
+    },
+    "ResearchTask": {
+      "additionalProperties": false,
+      "description": "Work left on a lead. Closed with a reason when dismissed; reopened, never deleted.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ResearchTaskKind"
+        },
+        "key": {
+          "maxLength": 160,
+          "minLength": 1,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "detail_json": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/ResearchTaskStatus"
+        },
+        "created_by": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "closed_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "closed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "close_reason": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "business_id",
+        "project_id",
+        "kind",
+        "key",
+        "title",
+        "detail_json",
+        "status",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "closed_by",
+        "closed_at",
+        "close_reason"
+      ],
+      "title": "ResearchTask",
+      "type": "object"
+    },
+    "ResearchTaskKind": {
+      "enum": [
+        "missing_data",
+        "checklist",
+        "refresh",
+        "custom"
+      ],
+      "title": "ResearchTaskKind",
+      "type": "string"
+    },
+    "ResearchTaskStatus": {
+      "enum": [
+        "open",
+        "done",
+        "dismissed"
+      ],
+      "title": "ResearchTaskStatus",
+      "type": "string"
+    },
+    "ResearchWorkspace": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        },
+        "score_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lead_stage": {
+          "$ref": "#/$defs/LeadStage"
+        },
+        "research": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LeadResearch"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "can_undo": {
+          "type": "boolean"
+        },
+        "suppressed": {
+          "type": "boolean"
+        },
+        "sales_ready": {
+          "items": {
+            "$ref": "#/$defs/CriterionCheck"
+          },
+          "type": "array"
+        },
+        "sales_ready_allowed": {
+          "type": "boolean"
+        },
+        "checklist": {
+          "$ref": "#/$defs/ChecklistState"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/$defs/ResearchTask"
+          },
+          "type": "array"
+        },
+        "pins": {
+          "items": {
+            "$ref": "#/$defs/PinView"
+          },
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "$ref": "#/$defs/Note"
+          },
+          "type": "array"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "corrections": {
+          "items": {
+            "$ref": "#/$defs/CorrectionView"
+          },
+          "type": "array"
+        },
+        "decisions": {
+          "items": {
+            "$ref": "#/$defs/ReviewDecision"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "business_id",
+        "project_id",
+        "display_name",
+        "is_synthetic",
+        "score_run_id",
+        "lead_stage",
+        "research",
+        "can_undo",
+        "suppressed",
+        "sales_ready",
+        "sales_ready_allowed",
+        "checklist",
+        "tasks",
+        "pins",
+        "notes",
+        "tags",
+        "corrections",
+        "decisions"
+      ],
+      "title": "ResearchWorkspace",
+      "type": "object"
+    },
+    "ResearchWorkspaceQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_id"
+      ],
+      "title": "ResearchWorkspaceQuery",
       "type": "object"
     },
     "ResolutionRun": {
@@ -16008,6 +19351,454 @@
         "created_at"
       ],
       "title": "RunEvent",
+      "type": "object"
+    },
+    "SalesBrief": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "score_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "versions": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScoreVersions"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "generated_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "last_verified_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "suppressed": {
+          "type": "boolean"
+        },
+        "research_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResearchStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/BriefSectionView"
+          },
+          "type": "array"
+        },
+        "draft": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BriefDraft"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "business_id",
+        "project_id",
+        "display_name",
+        "score_run_id",
+        "versions",
+        "generated_at",
+        "last_verified_at",
+        "suppressed",
+        "research_status",
+        "is_synthetic",
+        "sections",
+        "draft"
+      ],
+      "title": "SalesBrief",
+      "type": "object"
+    },
+    "SalesBriefOutput": {
+      "additionalProperties": false,
+      "description": "A model's wording of a brief: sentences per section, each citing the brief claims it\nrestates. It adds no fact, number, person or accusation.",
+      "properties": {
+        "outcome": {
+          "$ref": "#/$defs/AiOutcome"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/SalesBriefSectionOutput"
+          },
+          "maxItems": 10,
+          "type": "array"
+        }
+      },
+      "required": [
+        "outcome",
+        "sections"
+      ],
+      "title": "SalesBriefOutput",
+      "type": "object"
+    },
+    "SalesBriefQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "score_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "business_id",
+        "score_run_id"
+      ],
+      "title": "SalesBriefQuery",
+      "type": "object"
+    },
+    "SalesBriefSectionOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "section": {
+          "$ref": "#/$defs/BriefSection"
+        },
+        "sentences": {
+          "items": {
+            "$ref": "#/$defs/CitedPoint"
+          },
+          "maxItems": 4,
+          "type": "array"
+        }
+      },
+      "required": [
+        "section",
+        "sentences"
+      ],
+      "title": "SalesBriefSectionOutput",
+      "type": "object"
+    },
+    "SalesReadyCriterion": {
+      "description": "Every one must hold before a lead can be marked sales-ready (docs/lead-explorer.md).",
+      "enum": [
+        "not_suppressed",
+        "active_business",
+        "scored_recently",
+        "qualifying_tier",
+        "verified_opportunity",
+        "usable_contact",
+        "contact_conflicts_resolved",
+        "checklist_complete"
+      ],
+      "title": "SalesReadyCriterion",
+      "type": "string"
+    },
+    "SavedView": {
+      "additionalProperties": false,
+      "description": "A named Lead Explorer view (phase 12); its definitions are `saved_view_versions`.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "scope": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "archived_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "scope",
+        "name",
+        "description",
+        "created_at",
+        "updated_at",
+        "archived_at"
+      ],
+      "title": "SavedView",
+      "type": "object"
+    },
+    "SavedViewAction": {
+      "enum": [
+        "archive",
+        "restore"
+      ],
+      "title": "SavedViewAction",
+      "type": "string"
+    },
+    "SavedViewChangeRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "view_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/SavedViewAction"
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "view_id",
+        "action",
+        "reason"
+      ],
+      "title": "SavedViewChangeRequest",
+      "type": "object"
+    },
+    "SavedViewItem": {
+      "additionalProperties": false,
+      "properties": {
+        "view": {
+          "$ref": "#/$defs/SavedView"
+        },
+        "versions": {
+          "items": {
+            "$ref": "#/$defs/SavedViewVersion"
+          },
+          "type": "array"
+        },
+        "definition": {
+          "$ref": "#/$defs/ViewDefinition"
+        },
+        "upgraded_from": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "view",
+        "versions",
+        "definition",
+        "upgraded_from"
+      ],
+      "title": "SavedViewItem",
+      "type": "object"
+    },
+    "SavedViewList": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/SavedViewItem"
+          },
+          "type": "array"
+        },
+        "schema_version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "schema_version"
+      ],
+      "title": "SavedViewList",
+      "type": "object"
+    },
+    "SavedViewQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "const": "lead_explorer",
+          "type": "string"
+        },
+        "include_archived": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "scope",
+        "include_archived"
+      ],
+      "title": "SavedViewQuery",
+      "type": "object"
+    },
+    "SavedViewSaveRequest": {
+      "additionalProperties": false,
+      "description": "Creates a view, or a new version of one; an unchanged definition keeps the newest version.",
+      "properties": {
+        "view_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scope": {
+          "const": "lead_explorer",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "definition": {
+          "$ref": "#/$defs/ViewDefinition"
+        }
+      },
+      "required": [
+        "view_id",
+        "scope",
+        "name",
+        "description",
+        "definition"
+      ],
+      "title": "SavedViewSaveRequest",
+      "type": "object"
+    },
+    "SavedViewVersion": {
+      "additionalProperties": false,
+      "description": "Immutable, permanent definition of a view at one version. `schema_version` says which shape\n`definition_json` has; older shapes are upgraded when read, never rewritten.",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "view_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "definition_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "schema_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "created_by": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "view_id",
+        "version",
+        "definition_json",
+        "schema_version",
+        "created_by",
+        "created_at"
+      ],
+      "title": "SavedViewVersion",
       "type": "object"
     },
     "ScoreBin": {
@@ -17537,6 +21328,14 @@
       "title": "SizeProxy",
       "type": "string"
     },
+    "SortDirection": {
+      "enum": [
+        "asc",
+        "desc"
+      ],
+      "title": "SortDirection",
+      "type": "string"
+    },
     "SourceCatalog": {
       "additionalProperties": false,
       "properties": {
@@ -18766,6 +22565,201 @@
       "title": "TierCounts",
       "type": "object"
     },
+    "TimelineEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string"
+        },
+        "at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/TimelineKind"
+        },
+        "code": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "maxLength": 600,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BriefRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "job_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "score_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_key": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "key",
+        "at",
+        "kind",
+        "code",
+        "title",
+        "detail",
+        "actor",
+        "ref",
+        "job_id",
+        "score_run_id",
+        "source_key"
+      ],
+      "title": "TimelineEntry",
+      "type": "object"
+    },
+    "TimelineKind": {
+      "enum": [
+        "source",
+        "change",
+        "analysis",
+        "review",
+        "research",
+        "outcome"
+      ],
+      "title": "TimelineKind",
+      "type": "string"
+    },
+    "TimelinePage": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/TimelineEntry"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "business_id",
+        "entries",
+        "next_cursor"
+      ],
+      "title": "TimelinePage",
+      "type": "object"
+    },
+    "TimelineQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "kinds": {
+          "items": {
+            "$ref": "#/$defs/TimelineKind"
+          },
+          "type": "array"
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "business_id",
+        "kinds",
+        "limit",
+        "cursor"
+      ],
+      "title": "TimelineQuery",
+      "type": "object"
+    },
     "UiErrorReport": {
       "additionalProperties": false,
       "description": "Technical UI error forwarded to the desktop log (the UI never writes logs itself).",
@@ -18811,6 +22805,97 @@
       ],
       "title": "ValidationStatus",
       "type": "string"
+    },
+    "ViewColumn": {
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/ExplorerField"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "maximum": 800,
+              "minimum": 48,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "field",
+        "visible",
+        "pinned",
+        "width"
+      ],
+      "title": "ViewColumn",
+      "type": "object"
+    },
+    "ViewDefinition": {
+      "additionalProperties": false,
+      "description": "Schema version 2 of a saved view. Version 1 (flat `and` conditions, one sort key, the visible\ncolumns only) is upgraded when read, never rewritten.",
+      "properties": {
+        "schema_version": {
+          "const": 2,
+          "type": "integer"
+        },
+        "score_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "filters": {
+          "$ref": "#/$defs/ExplorerGroup"
+        },
+        "search": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sort": {
+          "items": {
+            "$ref": "#/$defs/ExplorerSort"
+          },
+          "type": "array"
+        },
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/ViewColumn"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "score_run_id",
+        "filters",
+        "search",
+        "sort",
+        "columns"
+      ],
+      "title": "ViewDefinition",
+      "type": "object"
     },
     "WebPage": {
       "additionalProperties": false,

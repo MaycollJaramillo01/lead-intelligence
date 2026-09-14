@@ -17,6 +17,7 @@ export const TASKS: readonly AiTaskType[] = [
   "opportunity_reasoning",
   "language_detection",
   "visual_review",
+  "sales_brief",
 ];
 export const PROFILES: readonly AiProfile[] = ["fast", "balanced", "quality"];
 export const INFERENCE_STATUSES: readonly InferenceStatus[] = [
@@ -37,6 +38,7 @@ export const TASK_KEYS: Record<AiTaskType, TranslationKey> = {
   opportunity_reasoning: "ai.task.opportunity_reasoning",
   language_detection: "ai.task.language_detection",
   visual_review: "ai.task.visual_review",
+  sales_brief: "ai.task.sales_brief",
 };
 export const PROFILE_KEYS: Record<AiProfile, TranslationKey> = {
   fast: "ai.profile.fast",

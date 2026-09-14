@@ -88,6 +88,34 @@ import {
   type LeadScorecardDetail,
   type LeadScorePage,
   type LeadScoreQuery,
+  type BulkRequest,
+  type BulkResult,
+  type ChecklistCatalog,
+  type ChecklistCatalogQuery,
+  type ChecklistChangeRequest,
+  type ChecklistSaveRequest,
+  type EvidenceDetail,
+  type EvidenceQuery,
+  type ExplorerCatalog,
+  type ExplorerCatalogQuery,
+  type ExplorerPage,
+  type ExplorerQuery,
+  type ExportPreview,
+  type ExportPreviewRequest,
+  type LeadCompareQuery,
+  type LeadComparison,
+  type ResearchActionRequest,
+  type ResearchWorkspace,
+  type ResearchWorkspaceQuery,
+  type SalesBrief,
+  type SalesBriefQuery,
+  type SavedViewChangeRequest,
+  type SavedViewItem,
+  type SavedViewList,
+  type SavedViewQuery,
+  type SavedViewSaveRequest,
+  type TimelinePage,
+  type TimelineQuery,
   type ScorecardQuery,
   type ScoreCompareQuery,
   type ScoreComparison,
@@ -277,6 +305,32 @@ export const desktop = {
   getCalibration: (query: CalibrationQuery) =>
     call<CalibrationReport>("get_calibration", { query }),
   actOnLead: (request: LeadActionRequest) => call<LeadScorecardDetail>("act_on_lead", { request }),
+  getExplorerCatalog: (query: ExplorerCatalogQuery) =>
+    call<ExplorerCatalog>("get_explorer_catalog", { query }),
+  exploreLeads: (query: ExplorerQuery) => call<ExplorerPage>("explore_leads", { query }),
+  previewLeadExport: (request: ExportPreviewRequest) =>
+    call<ExportPreview>("preview_lead_export", { request }),
+  bulkLeads: (request: BulkRequest) => call<BulkResult>("bulk_leads", { request }),
+  compareLeads: (query: LeadCompareQuery) => call<LeadComparison>("compare_leads", { query }),
+  listSavedViews: (query: SavedViewQuery) => call<SavedViewList>("list_saved_views", { query }),
+  saveSavedView: (request: SavedViewSaveRequest) =>
+    call<SavedViewItem>("save_saved_view", { request }),
+  changeSavedView: (request: SavedViewChangeRequest) =>
+    call<SavedViewItem>("change_saved_view", { request }),
+  getResearchWorkspace: (query: ResearchWorkspaceQuery) =>
+    call<ResearchWorkspace>("get_research_workspace", { query }),
+  actOnResearch: (request: ResearchActionRequest) =>
+    call<ResearchWorkspace>("act_on_research", { request }),
+  getLeadTimeline: (query: TimelineQuery) => call<TimelinePage>("get_lead_timeline", { query }),
+  getEvidenceDetail: (query: EvidenceQuery) =>
+    call<EvidenceDetail>("get_evidence_detail", { query }),
+  listResearchChecklists: (query: ChecklistCatalogQuery) =>
+    call<ChecklistCatalog>("list_research_checklists", { query }),
+  saveResearchChecklist: (request: ChecklistSaveRequest) =>
+    call<ChecklistCatalog>("save_research_checklist", { request }),
+  changeResearchChecklist: (request: ChecklistChangeRequest) =>
+    call<ChecklistCatalog>("change_research_checklist", { request }),
+  getSalesBrief: (query: SalesBriefQuery) => call<SalesBrief>("get_sales_brief", { query }),
   /** Development builds only; the desktop core refuses it in release builds. */
   seedSyntheticData: () => call<SyntheticSeedResult>("seed_synthetic_data"),
   onWorkerStatus: async (handler: (status: WorkerStatus) => void): Promise<UnlistenFn> => {

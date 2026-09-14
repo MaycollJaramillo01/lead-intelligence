@@ -1,0 +1,82 @@
+{
+  "checklist_id": "01900000-0000-7000-8000-000000001633",
+  "name": "Sales-ready checklist",
+  "description": "Built-in: what every lead needs before it is sales-ready.",
+  "definition": {
+    "schema_version": 1,
+    "campaign_ids": [],
+    "categories": [],
+    "items": [
+      {
+        "key": "scored_recently",
+        "label": "Scored on facts read in the last 90 days",
+        "kind": "automatic",
+        "rule": "scored_recently",
+        "required": true
+      },
+      {
+        "key": "qualifying_tier",
+        "label": "Priority or review tier",
+        "kind": "automatic",
+        "rule": "qualifying_tier",
+        "required": true
+      },
+      {
+        "key": "verified_opportunity",
+        "label": "An observed problem the recommended offer solves",
+        "kind": "automatic",
+        "rule": "verified_opportunity",
+        "required": true
+      },
+      {
+        "key": "usable_contact",
+        "label": "A usable contact route off the do-not-contact list",
+        "kind": "automatic",
+        "rule": "usable_contact",
+        "required": true
+      },
+      {
+        "key": "contact_conflicts_resolved",
+        "label": "No disagreement on the contact values",
+        "kind": "automatic",
+        "rule": "contact_conflicts_resolved",
+        "required": true
+      },
+      {
+        "key": "decision_maker_published",
+        "label": "A decision maker the business published",
+        "kind": "automatic",
+        "rule": "decision_maker_published",
+        "required": false
+      },
+      {
+        "key": "website_audited",
+        "label": "The website audited, when there is one",
+        "kind": "automatic",
+        "rule": "website_audited",
+        "required": false
+      },
+      {
+        "key": "latino_evaluated",
+        "label": "Latino evidence evaluated",
+        "kind": "automatic",
+        "rule": "latino_evaluated",
+        "required": false
+      },
+      {
+        "key": "offer_fit_confirmed",
+        "label": "The recommended offer fits what the business sells",
+        "kind": "manual",
+        "rule": null,
+        "required": true
+      },
+      {
+        "key": "contact_route_reviewed",
+        "label": "A person reviewed the contact route",
+        "kind": "manual",
+        "rule": null,
+        "required": true
+      }
+    ]
+  }
+}

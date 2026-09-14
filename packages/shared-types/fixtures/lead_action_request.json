@@ -4,5 +4,12 @@
   "action": "record_outcome",
   "stage": "connected",
   "lost_reason": null,
-  "reason": "Synthetic fixture"
+  "reason": "Synthetic fixture",
+  "channel": null,
+  "attempt_result": null,
+  "value_amount": null,
+  "value_currency": null,
+  "contact_quality": null,
+  "notes": null,
+  "occurred_at": null
 }

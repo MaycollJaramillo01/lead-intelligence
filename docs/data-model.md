@@ -34,6 +34,11 @@ its source, and how the stores are kept safe. Delivered in phase 03; later phase
   and scoring model versions become permanent, with an active version and an archive mark; each
   score stores the facts it read and its whole scorecard; `lead_outcomes` records what happened when
   a lead was worked. See [scoring.md](scoring.md).
+- Lead research (phase 12) adds `0011_lead_research.sql`: `lead_index`, the explorer's projection of
+  every score run; `lead_research`, the research status and assignee of a lead; versioned
+  `saved_views`; versioned research checklists and the history of their manual items;
+  `research_tasks`; `evidence_pins`; and how a lead was worked, in `lead_outcomes`. See
+  [lead-explorer.md](lead-explorer.md).
 - Access: [`repository.py`](../services/research-engine/src/research_engine/repository.py) (SQLite) and
   [`datasets.py`](../services/research-engine/src/research_engine/datasets.py) (DuckDB + Parquet).
   Nothing else runs SQL against the model; the UI never does (D-004).
@@ -92,6 +97,14 @@ flowchart LR
     scoring_models --> scoring_model_versions --> score_runs --> business_scores --> component_scores
     score_runs -. facts_from_run_id .-> score_runs
     businesses --> lead_outcomes
+  end
+  subgraph research[Lead research]
+    score_runs --> lead_index
+    businesses --> lead_research
+    businesses --> research_tasks
+    businesses --> evidence_pins
+    research_checklists --> research_checklist_versions --> research_checks
+    saved_views --> saved_view_versions
   end
   subgraph ops[Operations]
     jobs --> job_tasks --> task_attempts
@@ -334,6 +347,31 @@ their evidence, and each score keeps the facts it read. A person's review of a s
 `lead_score_review_withdrawn`) whose new value is the run; an outcome also moves
 `businesses.lead_stage` through its state machine.
 
+### Lead research (phase 12)
+
+Added by migration 0011; see [lead-explorer.md](lead-explorer.md).
+
+| Table                         | Purpose                                                                                       | Columns                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ----------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lead_index`                  | Projection of one business in one score run, for the explorer; rebuilt from `business_scores` | `score_run_id` → score_runs, `business_id` → businesses (unique per run), `project_id`, `rank`? (place in the finished run), `tier`, `tier_order`, `total_score`?, `confidence`, `data_coverage`, `icp_match`?, `opportunity_score`?, `digital_gap`?, `business_health`?, `buying_capacity`?, `contactability`?, `commercial_intent`?, `data_confidence`?, `display_name`, `name_sort_key`, `locality`?, `region`?, `primary_category`?, `primary_domain`?, `latino_status`, `latino_confidence`?, `main_channel`? and `channel_status`? (both or neither), `usable_channels`, `problem_mask` (one bit per problem type), `top_problem`?, `top_reason`?, `offer_key`?, `facts_collected_at`, `audit_status`?, `conflicts`, `suppressed_when_scored`, `is_synthetic` |
+| `lead_research`               | **Permanent** research state of a canonical business                                          | `business_id` → businesses (key), `project_id`, `status`? (research_status) with `status_reason`, `status_by` and `status_at` (all or none), `assignee`? with `assigned_at`, `updated_at`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `saved_views`                 | Named explorer view; **permanent** (archived instead)                                         | `id`, `scope` (`lead_explorer`), `name` (unique live name per scope), `description`?, `archived_at`?                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `saved_view_versions`         | **Immutable, permanent** definition per version                                               | `id`, `view_id` → saved_views, `version`, `definition_json` (`ViewDefinition`), `schema_version`, `created_by`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `research_checklists`         | Named checklist; **permanent** (archived instead)                                             | `id`, `name` (unique live name), `description`?, `active_version_id`? → one of its own versions (trigger), `archived_at`?                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `research_checklist_versions` | **Immutable, permanent** definition per version                                               | `id`, `checklist_id` → research_checklists, `version`, `definition_json` (`ChecklistDefinition`: items, campaigns, categories), `schema_version`, `created_by`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `research_checks`             | **Immutable, permanent** tick or untick of a manual item                                      | `id`, `business_id` → businesses, `checklist_version_id`, `item_key`, `done`, `note`? (≤ 1 000 characters), `actor`, `decided_at`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `research_tasks`              | Work left on a lead; **permanent**                                                            | `id`, `business_id`, `project_id`, `kind` (research_task_kind), `key` (`missing:…`, `checklist:…`, `refresh:…`, `custom:…`; one open task per key), `title`, `detail_json`?, `status` (research_task_status: open ↔ done or dismissed), `created_by`, `closed_by`?, `closed_at`?, `close_reason`?                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `evidence_pins`               | Evidence an analyst marked as important; unpinned once, with a reason                         | `id`, `business_id`, `ref_kind` (evidence_ref_kind), `ref`, `label`, `note`?, `pinned_by`, `pinned_at`, `unpinned_by`?, `unpinned_at`?, `unpin_reason`? (one live pin per row)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+
+`lead_outcomes` gains `channel`? (contact_type), `attempt_result`? (attempt_result), `value_amount`?
+with `value_currency`? (three capital letters, both or neither), `contact_quality`?
+(contact_quality) and `notes`?; an attempt keeps the stage. New enumerations: `research_status`,
+`research_task_kind`, `research_task_status` (with its transitions), `evidence_ref_kind`,
+`attempt_result` and `contact_quality`; `entity_type` gains `saved_view` and `research_checklist`,
+and `ai_task_type` gains `sales_brief`. A change of research status or assignee is a
+`review_decisions` row (`research_status`, `research_assignee`). A correction is an observation from
+the `analyst.corrections` connector, chosen as the value the business shows.
+
 ### Jobs
 
 | Table             | Purpose                                     | Columns                                                                                                                                                                                      |
@@ -393,6 +431,10 @@ load and the Parquet copy; a test compares the three.
   person's review, else the rules, else `unknown`), its confidence and whether a person reviewed it.
   Lists filter by that status, a minimum confidence, a kind of source whose evidence the shown
   assessment counted, and the review state (`reviewed`, `unreviewed`, `outdated`).
+- **Lead Explorer (phase 12).** Offset windows over `lead_index`: a bounded tree of filters and up
+  to four sort keys become one parameterised query, the business id breaks ties, and `total` is
+  counted only when asked. Measurements over one million index rows are in
+  [lead-explorer.md](lead-explorer.md).
 - Measured on 20,000 synthetic businesses (180,000 observation rows): first page 20 ms, page 51
   18 ms, search 29 ms, last-seen order 15 ms, detail 2 ms; ingestion ~800 businesses/s with every
   constraint and the search index active (`test_performance_on_a_synthetic_dataset`).

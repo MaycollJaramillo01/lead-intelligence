@@ -7,7 +7,7 @@ commercial need, ICP fit and an explanation of why each one is worth contacting.
 
 Everything runs on this machine. No cloud service or LLM API is required.
 
-> **Status: Phase 11 — ICP, opportunity and lead scoring.** Discovery (phase 04) finds candidate references, the
+> **Status: Phase 12 — Lead Explorer and commercial research.** Discovery (phase 04) finds candidate references, the
 > Research Center (phase 05) crawls their websites, entity resolution (phase 06) merges records of the
 > same business, Latino evidence (phase 07) keeps explicitly evidenced ownership apart from
 > Spanish-speaking market affinity, and website intelligence (phase 08) audits every crawled site
@@ -26,7 +26,12 @@ Everything runs on this machine. No cloud service or LLM API is required.
 > of counted as zero, every factor shows its value, weight, contribution and evidence, and runs are
 > history that can be compared or simulated without touching a lead. Outcomes recorded afterwards
 > calibrate a run without leakage. The weights are a declared heuristic, nothing is trained and
-> nothing is sent: a suggested message is only a draft. The phase plan lives in
+> nothing is sent: a suggested message is only a draft. The Lead Explorer (phase 12) reads the leads
+> of any run window by window, a million as lightly as ten, with AND/OR filters, versioned saved
+> views, bulk actions previewed before they apply and an export preview. Its inspector gathers the
+> eleven things an analyst checks; the research workspace records every decision with its reason; a
+> lead becomes sales-ready only when eight exact criteria hold; and a sales brief cites the stored
+> rows behind each claim, which a local model may reword but never extend. The phase plan lives in
 > [`lead_intelligence_prompts/`](lead_intelligence_prompts/).
 
 ## Requirements
@@ -84,6 +89,7 @@ docs/                        Architecture, decisions and operations
 - [docs/contact-intelligence.md](docs/contact-intelligence.md) — contact channels: what each status means, people, hypotheses, contactability, do-not-contact list
 - [docs/local-ai.md](docs/local-ai.md) — local AI: tasks, checks, prompts, VRAM, GPU queue, security, benchmark, RTX 4060 setup
 - [docs/scoring.md](docs/scoring.md) — lead scoring: facts, features, gates, formulas, versions, simulation, outcomes, calibration, limits
+- [docs/lead-explorer.md](docs/lead-explorer.md) — Lead Explorer and research: analyst flow, exact sales-ready criteria, filters, views, bulk actions, sales briefs, funnel, performance
 - [docs/ui-system.md](docs/ui-system.md) — design tokens, navigation map, shortcuts, components
 - [docs/decisions.md](docs/decisions.md) — technical decisions and their trade-offs
 - [docs/operations.md](docs/operations.md) — configuration, logs, troubleshooting

@@ -20,8 +20,9 @@ import orjson
 
 from research_engine.ai.tasks import TASKS, PreparedInput, bounded_refs
 from research_engine.contacts import store as contacts_store
-from research_engine.domain import AiInputKind, AiTaskType
+from research_engine.domain import AiInputKind, AiTaskType, utc_now
 from research_engine.latino.store import page_links
+from research_engine.leads import brief as sales_brief
 
 MAX_SCREENSHOT_BYTES: Final = 4 * 1024 * 1024
 _KIND_RANK: Final = {"home": 0, "services": 1, "about": 2, "contact": 3, "other": 4}
@@ -275,6 +276,13 @@ def prepare(
                 for ref, image in zip(refs, images, strict=True)
             )
             facts = {"business_name": facts.get("business_name", "")} if facts else {}
+        case AiTaskType.SALES_BRIEF:
+            brief = sales_brief.build(conn, root, None, utc_now())
+            if brief.suppressed:
+                return None  # nobody words a pitch for a business that must not be contacted
+            refs, warnings = bounded_refs(spec, "B", sales_brief.ai_pieces(brief))
+            facts = {"business_name": brief.display_name}
+            images = ()
     if not refs:
         return None
     return PreparedInput(task, facts, tuple(refs), images, tuple(warnings))

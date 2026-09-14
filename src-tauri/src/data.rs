@@ -2030,6 +2030,8 @@ contract_enum!(EntityType {
     Note,
     MatchCandidate,
     ContactSuppression,
+    SavedView,
+    ResearchChecklist,
 });
 contract_enum!(MatchOutcome {
     AutoMerge,
@@ -4263,7 +4265,7 @@ impl SuppressionExport {
 const MAX_MODEL_NAME_CHARS: usize = 200;
 const MAX_START_BUSINESSES: usize = 200;
 const MAX_BENCHMARK_MODELS: usize = 4;
-const AI_TASKS: usize = 6;
+const AI_TASKS: usize = 7;
 
 contract_enum!(AiTaskType {
     EvidenceExtraction,
@@ -4271,7 +4273,8 @@ contract_enum!(AiTaskType {
     FindingSynthesis,
     OpportunityReasoning,
     LanguageDetection,
-    VisualReview
+    VisualReview,
+    SalesBrief
 });
 contract_enum!(AiProfile {
     Fast,
@@ -4303,7 +4306,8 @@ contract_enum!(AiInputKind {
     WebsiteFinding,
     Contactability,
     LatinoStatus,
-    Screenshot
+    Screenshot,
+    BriefClaim
 });
 contract_enum!(AiUnavailableReason {
     TaskDisabled,
@@ -4778,6 +4782,9 @@ impl AiStartRequest {
             return Err(format!("choose 1 to {AI_TASKS} tasks"));
         }
         check_unique(&self.task_types, "task")?;
+        if self.task_types.contains(&AiTaskType::SalesBrief) && self.business_ids.is_empty() {
+            return Err("a sales brief is worded lead by lead: name the businesses".into());
+        }
         if self.business_ids.len() > MAX_START_BUSINESSES {
             return Err(format!(
                 "at most {MAX_START_BUSINESSES} businesses per request"
@@ -5192,7 +5199,8 @@ contract_enum!(LeadAction {
     Confirm,
     Dismiss,
     Reset,
-    RecordOutcome
+    RecordOutcome,
+    RecordAttempt
 });
 contract_enum!(OpportunityProblem {
     WeakConversionPath,
@@ -6494,6 +6502,12 @@ pub struct LeadOutcome {
     pub actor: String,
     pub occurred_at: UtcTimestamp,
     pub created_at: UtcTimestamp,
+    pub channel: Option<ContactType>,
+    pub attempt_result: Option<AttemptResult>,
+    pub value_amount: Option<f64>,
+    pub value_currency: Option<String>,
+    pub contact_quality: Option<ContactQuality>,
+    pub notes: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -6770,20 +6784,2106 @@ pub struct LeadActionRequest {
     pub stage: Option<LeadStage>,
     pub lost_reason: Option<String>,
     pub reason: String,
+    pub channel: Option<ContactType>,
+    pub attempt_result: Option<AttemptResult>,
+    pub value_amount: Option<f64>,
+    pub value_currency: Option<String>,
+    pub contact_quality: Option<ContactQuality>,
+    pub notes: Option<String>,
+    pub occurred_at: Option<UtcTimestamp>,
 }
 
 impl LeadActionRequest {
-    /// A review names no stage; an outcome always does; only a lost lead says why it was lost.
+    /// A review records no work; an outcome names the stage reached; an attempt keeps the stage and
+    /// names its channel and result; a value comes with its currency; only a lost lead says why.
     pub fn validate(&self) -> Result<(), String> {
         check_text_reason(&self.reason)?;
         if (self.action == LeadAction::RecordOutcome) != self.stage.is_some() {
-            return Err("an outcome names the stage the lead reached, a review does not".into());
+            return Err(
+                "an outcome names the stage the lead reached, a review or an attempt does not"
+                    .into(),
+            );
+        }
+        let work = matches!(
+            self.action,
+            LeadAction::RecordOutcome | LeadAction::RecordAttempt
+        );
+        let details = self.channel.is_some()
+            || self.attempt_result.is_some()
+            || self.value_amount.is_some()
+            || self.value_currency.is_some()
+            || self.contact_quality.is_some()
+            || self.notes.is_some()
+            || self.occurred_at.is_some();
+        if !work && details {
+            return Err("a review records no work".into());
+        }
+        if self.action == LeadAction::RecordAttempt
+            && (self.channel.is_none() || self.attempt_result.is_none())
+        {
+            return Err("an attempt names its channel and its result".into());
         }
         if (self.stage == Some(LeadStage::Lost)) != self.lost_reason.is_some() {
             return Err("a lost lead needs a lost reason, and only a lost lead has one".into());
         }
         if let Some(lost) = &self.lost_reason {
             check_label("a lost reason", lost, 500)?;
+        }
+        if self.value_amount.is_some() != self.value_currency.is_some() {
+            return Err("a value comes with its currency".into());
+        }
+        if let Some(amount) = self.value_amount {
+            within("value_amount", amount, 0.0, 1_000_000_000.0)?;
+        }
+        if let Some(currency) = &self.value_currency
+            && !(currency.len() == 3 && currency.bytes().all(|b| b.is_ascii_uppercase()))
+        {
+            return Err(format!("{currency:?} is not a currency code"));
+        }
+        check_optional("notes", &self.notes, MAX_NOTE_CHARS)
+    }
+}
+
+// ---- lead explorer, research workspace and sales briefs (phase 12) ------------------------------
+// Mirrors the phase 12 section of `domain.py`. The core refuses filter trees deeper, wider or
+// fuller than the explorer allows and tests a field does not take, windows that do not answer
+// their query, bulk actions that do not say what they touch or why, research requests missing what
+// their action needs, a workspace whose criteria contradict each other, a brief claim without
+// evidence, a contact route around the do-not-contact list, and a draft that restates a claim the
+// brief does not make.
+
+const EXPLORER_MAX_DEPTH: usize = 3;
+const EXPLORER_MAX_CONDITIONS: usize = 40;
+const EXPLORER_MAX_CHILDREN: usize = 20;
+const EXPLORER_MAX_SORT: usize = 4;
+const EXPLORER_MAX_OFFSET: u64 = 5_000_000;
+const EXPLORER_MAX_VALUES: usize = 50;
+const EXPLORER_FIELD_COUNT: usize = 36;
+const BULK_MAX_IDS: usize = 1000;
+const BULK_MAX_MATCHING: u64 = 5000;
+const BULK_MAX_SKIPS: usize = 100;
+const MAX_COMPARED: usize = 4;
+const MAX_EXPORT_SAMPLE: u32 = 50;
+const STALE_AFTER_DAYS: u64 = 90;
+const VIEW_SCHEMA_VERSION: u32 = 2;
+const CHECKLIST_SCHEMA_VERSION: u32 = 1;
+const MAX_VIEW_VERSIONS: usize = 20;
+const MAX_CHECKLIST_ITEMS: usize = 30;
+const MAX_CHECKLIST_CAMPAIGNS: usize = 50;
+const MAX_NAME_CHARS: usize = 120;
+const MAX_TAG_CHARS: usize = 64;
+const MAX_NOTE_CHARS: usize = 4000;
+const MAX_SHORT_NOTE_CHARS: usize = 1000;
+const MAX_REF_CHARS: usize = 400;
+const MAX_CLAIM_CHARS: usize = 400;
+const MAX_CLAIM_EVIDENCE: usize = 8;
+
+contract_enum!(ExplorerField {
+    Name,
+    Locality,
+    Region,
+    Category,
+    Domain,
+    LeadStage,
+    ResearchStatus,
+    Assignee,
+    Tag,
+    Tier,
+    Rank,
+    TotalScore,
+    Confidence,
+    DataCoverage,
+    IcpMatch,
+    OpportunityScore,
+    DigitalGap,
+    BusinessHealth,
+    BuyingCapacity,
+    Contactability,
+    CommercialIntent,
+    DataConfidence,
+    LatinoStatus,
+    LatinoConfidence,
+    MainChannel,
+    ChannelStatus,
+    UsableChannels,
+    Problem,
+    TopProblem,
+    Offer,
+    FactsAgeDays,
+    AuditStatus,
+    Conflicts,
+    Suppressed,
+    Stale,
+    Partial
+});
+contract_enum!(ExplorerFieldType {
+    Text,
+    Number,
+    Enum,
+    Flag,
+    Set
+});
+contract_enum!(ExplorerOperator {
+    Eq,
+    Neq,
+    In,
+    NotIn,
+    Lt,
+    Lte,
+    Gt,
+    Gte,
+    Contains,
+    StartsWith,
+    IsNull,
+    IsNotNull,
+    IsTrue,
+    IsFalse,
+    Has,
+    HasNot
+});
+contract_enum!(ExplorerScope { LeadExplorer });
+contract_enum!(ConditionKind { Condition });
+contract_enum!(GroupKind { Group });
+contract_enum!(GroupJoin { And, Or });
+contract_enum!(SortDirection { Asc, Desc });
+contract_enum!(ResearchStatus {
+    SalesReady,
+    NeedsResearch,
+    Disqualified
+});
+contract_enum!(ResearchTaskKind {
+    MissingData,
+    Checklist,
+    Refresh,
+    Custom
+});
+contract_enum!(ResearchTaskStatus {
+    Open,
+    Done,
+    Dismissed
+});
+contract_enum!(EvidenceRefKind {
+    Business,
+    EvidenceItem,
+    WebsiteAudit,
+    WebsiteFinding,
+    WebsiteTechnology,
+    ContactChannel,
+    DecisionMaker,
+    LatinoAssessment,
+    InferenceRun,
+    ScoreRun
+});
+contract_enum!(AttemptResult {
+    NoAnswer,
+    LeftMessage,
+    Reached,
+    Replied,
+    Bounced,
+    WrongContact,
+    CallBackLater,
+    MeetingSet,
+    ProposalSent,
+    Won,
+    Lost
+});
+contract_enum!(ContactQuality {
+    DecisionMaker,
+    Gatekeeper,
+    WrongPerson,
+    Unreachable,
+    Unknown
+});
+contract_enum!(SavedViewAction { Archive, Restore });
+contract_enum!(BulkAction {
+    AddTag,
+    RemoveTag,
+    Assign,
+    Unassign,
+    NeedsResearch,
+    Disqualify
+});
+contract_enum!(BulkMode { Preview, Apply });
+contract_enum!(SalesReadyCriterion {
+    NotSuppressed,
+    ActiveBusiness,
+    ScoredRecently,
+    QualifyingTier,
+    VerifiedOpportunity,
+    UsableContact,
+    ContactConflictsResolved,
+    ChecklistComplete
+});
+contract_enum!(ChecklistItemKind { Automatic, Manual });
+contract_enum!(ChecklistRule {
+    ScoredRecently,
+    QualifyingTier,
+    VerifiedOpportunity,
+    UsableContact,
+    ContactConflictsResolved,
+    DecisionMakerPublished,
+    WebsiteAudited,
+    LatinoEvaluated
+});
+contract_enum!(RefreshScope {
+    Pages,
+    Contacts,
+    Evidence
+});
+contract_enum!(ResearchAction {
+    SetStatus,
+    UndoStatus,
+    Assign,
+    Unassign,
+    AddTag,
+    RemoveTag,
+    AddNote,
+    DeleteNote,
+    Pin,
+    Unpin,
+    AddTask,
+    CompleteTask,
+    DismissTask,
+    ReopenTask,
+    SyncTasks,
+    CheckItem,
+    UncheckItem,
+    CorrectValue,
+    RequestRefresh
+});
+contract_enum!(TimelineKind {
+    Source,
+    Change,
+    Analysis,
+    Review,
+    Research,
+    Outcome
+});
+contract_enum!(BriefSection {
+    BusinessSnapshot,
+    IcpMatch,
+    VerifiedOpportunity,
+    Evidence,
+    RecommendedOffer,
+    ContactRoute,
+    DecisionMaker,
+    ConversationHooks,
+    RisksUnknowns,
+    LastVerified
+});
+
+/// The order a workspace lists its criteria in (docs/lead-explorer.md).
+const SALES_READY_ORDER: [SalesReadyCriterion; 8] = [
+    SalesReadyCriterion::NotSuppressed,
+    SalesReadyCriterion::ActiveBusiness,
+    SalesReadyCriterion::ScoredRecently,
+    SalesReadyCriterion::QualifyingTier,
+    SalesReadyCriterion::VerifiedOpportunity,
+    SalesReadyCriterion::UsableContact,
+    SalesReadyCriterion::ContactConflictsResolved,
+    SalesReadyCriterion::ChecklistComplete,
+];
+const BRIEF_ORDER: [BriefSection; 10] = [
+    BriefSection::BusinessSnapshot,
+    BriefSection::IcpMatch,
+    BriefSection::VerifiedOpportunity,
+    BriefSection::Evidence,
+    BriefSection::RecommendedOffer,
+    BriefSection::ContactRoute,
+    BriefSection::DecisionMaker,
+    BriefSection::ConversationHooks,
+    BriefSection::RisksUnknowns,
+    BriefSection::LastVerified,
+];
+
+impl ExplorerField {
+    /// The kind of value a field holds (`EXPLORER_FIELDS` in `domain.py`).
+    pub fn field_type(self) -> ExplorerFieldType {
+        match self {
+            Self::Name
+            | Self::Locality
+            | Self::Region
+            | Self::Category
+            | Self::Domain
+            | Self::Assignee
+            | Self::Offer => ExplorerFieldType::Text,
+            Self::LeadStage
+            | Self::ResearchStatus
+            | Self::Tier
+            | Self::LatinoStatus
+            | Self::MainChannel
+            | Self::ChannelStatus
+            | Self::TopProblem
+            | Self::AuditStatus => ExplorerFieldType::Enum,
+            Self::Tag | Self::Problem => ExplorerFieldType::Set,
+            Self::Suppressed | Self::Stale | Self::Partial => ExplorerFieldType::Flag,
+            Self::Rank
+            | Self::TotalScore
+            | Self::Confidence
+            | Self::DataCoverage
+            | Self::IcpMatch
+            | Self::OpportunityScore
+            | Self::DigitalGap
+            | Self::BusinessHealth
+            | Self::BuyingCapacity
+            | Self::Contactability
+            | Self::CommercialIntent
+            | Self::DataConfidence
+            | Self::LatinoConfidence
+            | Self::UsableChannels
+            | Self::FactsAgeDays
+            | Self::Conflicts => ExplorerFieldType::Number,
+        }
+    }
+
+    /// Read from the current state rather than from the run's snapshot.
+    pub fn is_live(self) -> bool {
+        matches!(
+            self,
+            Self::LeadStage
+                | Self::ResearchStatus
+                | Self::Assignee
+                | Self::Tag
+                | Self::FactsAgeDays
+                | Self::Suppressed
+                | Self::Stale
+        )
+    }
+
+    /// Whether an enum or set field takes `value`; free text and tags take any.
+    fn accepts(self, value: &str) -> bool {
+        fn parses<T: serde::de::DeserializeOwned>(value: &str) -> bool {
+            serde_json::from_value::<T>(Value::String(value.to_owned())).is_ok()
+        }
+        match self {
+            Self::LeadStage => parses::<LeadStage>(value),
+            Self::ResearchStatus => parses::<ResearchStatus>(value),
+            Self::Tier => parses::<LeadTier>(value),
+            Self::LatinoStatus => parses::<LatinoStatus>(value),
+            Self::MainChannel => parses::<ContactType>(value),
+            Self::ChannelStatus => parses::<ValidationStatus>(value),
+            Self::TopProblem | Self::Problem => parses::<ProblemType>(value),
+            Self::AuditStatus => parses::<WebsiteAuditStatus>(value),
+            _ => true,
+        }
+    }
+}
+
+impl ExplorerFieldType {
+    pub fn operators(self) -> &'static [ExplorerOperator] {
+        use ExplorerOperator as Op;
+        match self {
+            Self::Text => &[
+                Op::Eq,
+                Op::Neq,
+                Op::Contains,
+                Op::StartsWith,
+                Op::In,
+                Op::NotIn,
+                Op::IsNull,
+                Op::IsNotNull,
+            ],
+            Self::Number => &[
+                Op::Eq,
+                Op::Neq,
+                Op::Lt,
+                Op::Lte,
+                Op::Gt,
+                Op::Gte,
+                Op::IsNull,
+                Op::IsNotNull,
+            ],
+            Self::Enum => &[
+                Op::Eq,
+                Op::Neq,
+                Op::In,
+                Op::NotIn,
+                Op::IsNull,
+                Op::IsNotNull,
+            ],
+            Self::Flag => &[Op::IsTrue, Op::IsFalse],
+            Self::Set => &[Op::Has, Op::HasNot],
+        }
+    }
+}
+
+impl ExplorerOperator {
+    fn is_unary(self) -> bool {
+        matches!(
+            self,
+            Self::IsNull | Self::IsNotNull | Self::IsTrue | Self::IsFalse
+        )
+    }
+}
+
+fn check_optional(name: &str, text: &Option<String>, max: usize) -> Result<(), String> {
+    text.as_deref()
+        .map_or(Ok(()), |text| check_label(name, text, max))
+}
+
+fn check_unique_ids<'a>(ids: impl IntoIterator<Item = &'a Id>, what: &str) -> Result<(), String> {
+    let mut seen = HashSet::new();
+    for id in ids {
+        if !seen.insert(id) {
+            return Err(format!("{what} {id} appears twice"));
+        }
+    }
+    Ok(())
+}
+
+fn check_search(search: &Option<String>) -> Result<(), String> {
+    if search
+        .as_ref()
+        .is_some_and(|s| s.chars().count() > MAX_SEARCH_CHARS)
+    {
+        return Err(format!(
+            "search must be at most {MAX_SEARCH_CHARS} characters"
+        ));
+    }
+    Ok(())
+}
+
+/// The ref a model cites for a brief claim: `B1` to `B999`.
+fn is_brief_ref(text: &str) -> bool {
+    let mut chars = text.chars();
+    let letter = chars.next().is_some_and(|c| c.is_ascii_uppercase());
+    let digits = chars.as_str();
+    letter
+        && (1..=3).contains(&digits.len())
+        && !digits.starts_with('0')
+        && digits.bytes().all(|b| b.is_ascii_digit())
+}
+
+/// A condition's value: a number, a text, or the texts of `in` and `not_in`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ExplorerValue {
+    Number(f64),
+    Text(String),
+    List(Vec<String>),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExplorerCondition {
+    pub kind: ConditionKind,
+    pub field: ExplorerField,
+    pub operator: ExplorerOperator,
+    pub value: Option<ExplorerValue>,
+}
+
+impl ExplorerCondition {
+    /// A test the field takes, with exactly the value that test needs.
+    pub fn validate(&self) -> Result<(), String> {
+        let kind = self.field.field_type();
+        if !kind.operators().contains(&self.operator) {
+            return Err(format!(
+                "{:?} does not apply to {:?}",
+                self.operator, self.field
+            ));
+        }
+        let texts: Vec<&str> = match (&self.value, self.operator) {
+            (None, operator) if operator.is_unary() => return Ok(()),
+            (_, operator) if operator.is_unary() => {
+                return Err(format!("{operator:?} takes no value"));
+            }
+            (Some(ExplorerValue::List(values)), ExplorerOperator::In | ExplorerOperator::NotIn) => {
+                if values.is_empty() || values.len() > EXPLORER_MAX_VALUES {
+                    return Err(format!("a list holds 1 to {EXPLORER_MAX_VALUES} values"));
+                }
+                values.iter().map(String::as_str).collect()
+            }
+            (_, ExplorerOperator::In | ExplorerOperator::NotIn) => {
+                return Err("in and not_in take a list of values".into());
+            }
+            (Some(ExplorerValue::Number(number)), _) if kind == ExplorerFieldType::Number => {
+                return if number.is_finite() {
+                    Ok(())
+                } else {
+                    Err("a number must be finite".into())
+                };
+            }
+            (_, _) if kind == ExplorerFieldType::Number => {
+                return Err(format!("{:?} compares with a number", self.field));
+            }
+            (Some(ExplorerValue::Text(text)), _) => vec![text.as_str()],
+            _ => return Err(format!("{:?} compares with text", self.field)),
+        };
+        for text in texts {
+            if text.is_empty() || text.chars().count() > MAX_SEARCH_CHARS {
+                return Err(format!("a value has 1 to {MAX_SEARCH_CHARS} characters"));
+            }
+            if !self.field.accepts(text) {
+                return Err(format!("{:?} has no value {text:?}", self.field));
+            }
+        }
+        Ok(())
+    }
+}
+
+/// A condition or a nested group; the `kind` of each tells them apart.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ExplorerNode {
+    Condition(ExplorerCondition),
+    Group(ExplorerGroup),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExplorerGroup {
+    pub kind: GroupKind,
+    pub join: GroupJoin,
+    pub negate: bool,
+    pub children: Vec<ExplorerNode>,
+}
+
+impl ExplorerGroup {
+    fn depth(&self) -> usize {
+        1 + self
+            .children
+            .iter()
+            .map(|child| match child {
+                ExplorerNode::Group(group) => group.depth(),
+                ExplorerNode::Condition(_) => 0,
+            })
+            .max()
+            .unwrap_or(0)
+    }
+
+    fn conditions(&self) -> usize {
+        self.children
+            .iter()
+            .map(|child| match child {
+                ExplorerNode::Group(group) => group.conditions(),
+                ExplorerNode::Condition(_) => 1,
+            })
+            .sum()
+    }
+
+    fn validate_children(&self) -> Result<(), String> {
+        if self.children.len() > EXPLORER_MAX_CHILDREN {
+            return Err(format!(
+                "a group holds at most {EXPLORER_MAX_CHILDREN} children"
+            ));
+        }
+        for child in &self.children {
+            match child {
+                ExplorerNode::Condition(condition) => condition.validate()?,
+                ExplorerNode::Group(group) => group.validate_children()?,
+            }
+        }
+        Ok(())
+    }
+
+    /// At most three levels, twenty children a group and forty tests in all, each one valid.
+    pub fn validate(&self) -> Result<(), String> {
+        if self.depth() > EXPLORER_MAX_DEPTH {
+            return Err(format!(
+                "filters nest at most {EXPLORER_MAX_DEPTH} groups deep"
+            ));
+        }
+        if self.conditions() > EXPLORER_MAX_CONDITIONS {
+            return Err(format!(
+                "filters hold at most {EXPLORER_MAX_CONDITIONS} conditions"
+            ));
+        }
+        self.validate_children()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExplorerSort {
+    pub field: ExplorerField,
+    pub direction: SortDirection,
+}
+
+fn check_sort(sort: &[ExplorerSort]) -> Result<(), String> {
+    if sort.len() > EXPLORER_MAX_SORT {
+        return Err(format!("sort by at most {EXPLORER_MAX_SORT} fields"));
+    }
+    if let Some(key) = sort
+        .iter()
+        .find(|key| key.field.field_type() == ExplorerFieldType::Set)
+    {
+        return Err(format!("{:?} cannot be sorted", key.field));
+    }
+    let fields: Vec<ExplorerField> = sort.iter().map(|key| key.field).collect();
+    check_unique(&fields, "sort field")
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExplorerQuery {
+    pub score_run_id: Option<Id>,
+    pub filters: ExplorerGroup,
+    pub search: Option<String>,
+    pub sort: Vec<ExplorerSort>,
+    pub offset: u64,
+    pub limit: u32,
+    pub with_total: bool,
+}
+
+impl ExplorerQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)?;
+        within("offset", self.offset, 0, EXPLORER_MAX_OFFSET)?;
+        check_search(&self.search)?;
+        check_sort(&self.sort)?;
+        self.filters.validate()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExplorerRow {
+    pub business_id: Id,
+    pub project_id: Id,
+    pub rank: Option<u64>,
+    pub display_name: String,
+    pub locality: Option<String>,
+    pub region: Option<String>,
+    pub category: Option<String>,
+    pub domain: Option<String>,
+    pub lead_stage: LeadStage,
+    pub research_status: Option<ResearchStatus>,
+    pub assignee: Option<String>,
+    pub tags: Vec<String>,
+    pub tier: LeadTier,
+    pub total_score: Option<f64>,
+    pub confidence: Confidence,
+    pub data_coverage: Confidence,
+    pub icp_match: Option<f64>,
+    pub opportunity_score: Option<f64>,
+    pub digital_gap: Option<f64>,
+    pub business_health: Option<f64>,
+    pub buying_capacity: Option<f64>,
+    pub contactability: Option<f64>,
+    pub commercial_intent: Option<f64>,
+    pub data_confidence: Option<f64>,
+    pub latino_status: LatinoStatus,
+    pub latino_confidence: Option<Confidence>,
+    pub main_channel: Option<ContactType>,
+    pub channel_status: Option<ValidationStatus>,
+    pub usable_channels: u64,
+    pub problems: Vec<ProblemType>,
+    pub top_problem: Option<ProblemType>,
+    pub top_reason: Option<String>,
+    pub offer: Option<String>,
+    pub facts_collected_at: UtcTimestamp,
+    pub facts_age_days: u64,
+    pub audit_status: Option<WebsiteAuditStatus>,
+    pub conflicts: u64,
+    pub suppressed: bool,
+    pub stale: bool,
+    pub partial: bool,
+    pub is_synthetic: bool,
+}
+
+impl ExplorerRow {
+    /// Scores on their scale, a channel shown only when one is usable, and a top problem that is
+    /// one of its problems.
+    pub fn validate(&self) -> Result<(), String> {
+        for (name, value) in [
+            ("total_score", self.total_score),
+            ("icp_match", self.icp_match),
+            ("opportunity_score", self.opportunity_score),
+            ("digital_gap", self.digital_gap),
+            ("business_health", self.business_health),
+            ("buying_capacity", self.buying_capacity),
+            ("contactability", self.contactability),
+            ("commercial_intent", self.commercial_intent),
+            ("data_confidence", self.data_confidence),
+        ] {
+            check_points(name, value)?;
+        }
+        if self.rank == Some(0) {
+            return Err(format!("lead {} has no place in its run", self.business_id));
+        }
+        if self.main_channel.is_some() != self.channel_status.is_some()
+            || (self.main_channel.is_some() && self.usable_channels == 0)
+        {
+            return Err(format!(
+                "lead {} shows a channel it cannot use",
+                self.business_id
+            ));
+        }
+        check_unique(&self.problems, "problem")?;
+        if self
+            .top_problem
+            .is_some_and(|problem| !self.problems.contains(&problem))
+        {
+            return Err(format!(
+                "the top problem of lead {} is not one of its problems",
+                self.business_id
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExplorerPage {
+    pub score_run: Option<ScoreRunItem>,
+    pub offset: u64,
+    pub rows: Vec<ExplorerRow>,
+    pub total: Option<u64>,
+    pub generated_at: UtcTimestamp,
+}
+
+impl ExplorerPage {
+    /// The window asked for: its offset and size, a total only when counted, leads of the run's
+    /// project once each, and the run's rank order when no sort was asked for.
+    pub fn validate(&self, query: &ExplorerQuery) -> Result<(), String> {
+        if self.offset != query.offset || self.rows.len() > query.limit as usize {
+            return Err("the window is not the one asked for".into());
+        }
+        if self.total.is_some() != query.with_total {
+            return Err("a window counts its leads only when asked to".into());
+        }
+        if let Some(total) = self.total
+            && !self.rows.is_empty()
+            && self.offset + self.rows.len() as u64 > total
+        {
+            return Err("the window holds more leads than match".into());
+        }
+        let Some(run) = &self.score_run else {
+            if self.rows.is_empty() && self.total.unwrap_or(0) == 0 {
+                return Ok(());
+            }
+            return Err("leads without the run that scored them".into());
+        };
+        run.validate()?;
+        if query
+            .score_run_id
+            .as_ref()
+            .is_some_and(|id| id != &run.score_run_id)
+        {
+            return Err("these leads belong to another run".into());
+        }
+        let mut seen = HashSet::new();
+        for row in &self.rows {
+            row.validate()?;
+            if row.project_id != run.project_id || !seen.insert(&row.business_id) {
+                return Err(format!("lead {} is out of place", row.business_id));
+            }
+        }
+        if query.sort.is_empty()
+            && self
+                .rows
+                .windows(2)
+                .any(|pair| pair[0].rank.unwrap_or(u64::MAX) > pair[1].rank.unwrap_or(u64::MAX))
+        {
+            return Err("the leads are not in the run's rank order".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewColumn {
+    pub field: ExplorerField,
+    pub visible: bool,
+    pub pinned: bool,
+    pub width: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ViewDefinition {
+    pub schema_version: u32,
+    pub score_run_id: Option<Id>,
+    pub filters: ExplorerGroup,
+    pub search: Option<String>,
+    pub sort: Vec<ExplorerSort>,
+    pub columns: Vec<ViewColumn>,
+}
+
+impl ViewDefinition {
+    /// The schema this build writes, valid filters and sort keys, and every column at most once.
+    pub fn validate(&self) -> Result<(), String> {
+        if self.schema_version != VIEW_SCHEMA_VERSION {
+            return Err(format!(
+                "a view definition has schema version {VIEW_SCHEMA_VERSION}"
+            ));
+        }
+        self.filters.validate()?;
+        check_search(&self.search)?;
+        check_sort(&self.sort)?;
+        if self.columns.is_empty() || self.columns.len() > EXPLORER_FIELD_COUNT {
+            return Err(format!("a view shows 1 to {EXPLORER_FIELD_COUNT} columns"));
+        }
+        let fields: Vec<ExplorerField> = self.columns.iter().map(|column| column.field).collect();
+        check_unique(&fields, "column")?;
+        if let Some(width) = self
+            .columns
+            .iter()
+            .filter_map(|column| column.width)
+            .find(|width| !(48..=800).contains(width))
+        {
+            return Err(format!("a column width of {width} is out of bounds"));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExplorerCatalogQuery {
+    pub scope: ExplorerScope,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExplorerFieldInfo {
+    pub field: ExplorerField,
+    #[serde(rename = "type")]
+    pub field_type: ExplorerFieldType,
+    pub operators: Vec<ExplorerOperator>,
+    pub values: Vec<String>,
+    pub sortable: bool,
+    pub live: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExplorerCatalog {
+    pub fields: Vec<ExplorerFieldInfo>,
+    pub max_depth: u64,
+    pub max_conditions: u64,
+    pub max_children: u64,
+    pub max_sort: u64,
+    pub max_page: u64,
+    pub max_offset: u64,
+    pub bulk_max_ids: u64,
+    pub bulk_max_matching: u64,
+    pub stale_after_days: u64,
+    pub max_compared: u64,
+    pub view_schema_version: u64,
+    pub default_view: ViewDefinition,
+}
+
+impl ExplorerCatalog {
+    /// Every field once, typed and tested as this build expects, and the limits it enforces.
+    pub fn validate(&self) -> Result<(), String> {
+        let fields: Vec<ExplorerField> = self.fields.iter().map(|info| info.field).collect();
+        if fields.len() != EXPLORER_FIELD_COUNT {
+            return Err(format!("the catalogue describes {} fields", fields.len()));
+        }
+        check_unique(&fields, "field")?;
+        for info in &self.fields {
+            let kind = info.field.field_type();
+            let same = info.field_type == kind
+                && info.operators == kind.operators()
+                && info.sortable == (kind != ExplorerFieldType::Set)
+                && info.live == info.field.is_live()
+                && info.values.iter().all(|value| info.field.accepts(value));
+            if !same {
+                return Err(format!(
+                    "the catalogue describes {:?} differently",
+                    info.field
+                ));
+            }
+        }
+        let limits = [
+            (self.max_depth, EXPLORER_MAX_DEPTH as u64),
+            (self.max_conditions, EXPLORER_MAX_CONDITIONS as u64),
+            (self.max_children, EXPLORER_MAX_CHILDREN as u64),
+            (self.max_sort, EXPLORER_MAX_SORT as u64),
+            (self.max_page, u64::from(MAX_PAGE_SIZE)),
+            (self.max_offset, EXPLORER_MAX_OFFSET),
+            (self.bulk_max_ids, BULK_MAX_IDS as u64),
+            (self.bulk_max_matching, BULK_MAX_MATCHING),
+            (self.stale_after_days, STALE_AFTER_DAYS),
+            (self.max_compared, MAX_COMPARED as u64),
+            (self.view_schema_version, u64::from(VIEW_SCHEMA_VERSION)),
+        ];
+        if limits.iter().any(|(got, expected)| got != expected) {
+            return Err("the catalogue's limits are not this build's".into());
+        }
+        self.default_view.validate()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SavedView {
+    pub id: Id,
+    pub scope: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub created_at: UtcTimestamp,
+    pub updated_at: UtcTimestamp,
+    pub archived_at: Option<UtcTimestamp>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SavedViewVersion {
+    pub id: Id,
+    pub view_id: Id,
+    pub version: u32,
+    pub definition_json: Map<String, Value>,
+    pub schema_version: u32,
+    pub created_by: String,
+    pub created_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SavedViewQuery {
+    pub scope: ExplorerScope,
+    pub include_archived: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SavedViewItem {
+    pub view: SavedView,
+    pub versions: Vec<SavedViewVersion>,
+    pub definition: ViewDefinition,
+    pub upgraded_from: Option<u32>,
+}
+
+impl SavedViewItem {
+    /// Versions of this view, newest first; a definition in the current schema, saying which
+    /// older schema it was upgraded from when the newest version holds one.
+    pub fn validate(&self) -> Result<(), String> {
+        let Some(newest) = self.versions.first() else {
+            return Err(format!("view {} has no version", self.view.id));
+        };
+        check_label("a view name", &self.view.name, MAX_NAME_CHARS)?;
+        if self.versions.len() > MAX_VIEW_VERSIONS
+            || self.versions.iter().any(|v| v.view_id != self.view.id)
+            || self
+                .versions
+                .windows(2)
+                .any(|pair| pair[0].version <= pair[1].version)
+        {
+            return Err(format!(
+                "the versions of view {} are out of place",
+                self.view.id
+            ));
+        }
+        let upgraded = match self.upgraded_from {
+            None => newest.schema_version == VIEW_SCHEMA_VERSION,
+            Some(from) => from == newest.schema_version && from < VIEW_SCHEMA_VERSION,
+        };
+        if !upgraded {
+            return Err(format!(
+                "view {} does not say which schema its definition came from",
+                self.view.id
+            ));
+        }
+        self.definition.validate()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SavedViewList {
+    pub items: Vec<SavedViewItem>,
+    pub schema_version: u32,
+}
+
+impl SavedViewList {
+    pub fn validate(&self, query: &SavedViewQuery) -> Result<(), String> {
+        if self.schema_version != VIEW_SCHEMA_VERSION {
+            return Err("the views come from another schema".into());
+        }
+        check_unique_ids(self.items.iter().map(|item| &item.view.id), "view")?;
+        for item in &self.items {
+            item.validate()?;
+            if !query.include_archived && item.view.archived_at.is_some() {
+                return Err(format!("view {} is archived", item.view.id));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SavedViewSaveRequest {
+    pub view_id: Option<Id>,
+    pub scope: ExplorerScope,
+    pub name: String,
+    pub description: Option<String>,
+    pub definition: ViewDefinition,
+}
+
+impl SavedViewSaveRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        check_label("a view name", &self.name, MAX_NAME_CHARS)?;
+        if self
+            .description
+            .as_ref()
+            .is_some_and(|d| d.chars().count() > MAX_DESCRIPTION_CHARS)
+        {
+            return Err(format!(
+                "a description has at most {MAX_DESCRIPTION_CHARS} characters"
+            ));
+        }
+        self.definition.validate()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SavedViewChangeRequest {
+    pub view_id: Id,
+    pub action: SavedViewAction,
+    pub reason: String,
+}
+
+impl SavedViewChangeRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        check_text_reason(&self.reason)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportPreviewRequest {
+    pub query: ExplorerQuery,
+    pub columns: Vec<ExplorerField>,
+    pub include_suppressed: bool,
+    pub sample_size: u32,
+}
+
+impl ExportPreviewRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        self.query.validate()?;
+        if self.columns.is_empty() || self.columns.len() > EXPLORER_FIELD_COUNT {
+            return Err(format!(
+                "an export holds 1 to {EXPLORER_FIELD_COUNT} columns"
+            ));
+        }
+        check_unique(&self.columns, "column")?;
+        within("sample_size", self.sample_size, 1, MAX_EXPORT_SAMPLE)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportPreview {
+    pub score_run: Option<ScoreRunItem>,
+    pub matching: u64,
+    pub excluded_suppressed: u64,
+    pub exported: u64,
+    pub columns: Vec<ExplorerField>,
+    pub sample: Vec<ExplorerRow>,
+    pub warnings: Vec<String>,
+    pub generated_at: UtcTimestamp,
+}
+
+impl ExportPreview {
+    /// Counts that add up, a sample of the preview asked for that leaves suppressed leads out
+    /// unless they were asked for, and the warning that hypotheses never leave the store.
+    pub fn validate(&self, request: &ExportPreviewRequest) -> Result<(), String> {
+        if self.columns != request.columns || self.sample.len() > request.sample_size as usize {
+            return Err("the preview is not the one asked for".into());
+        }
+        if self.excluded_suppressed > self.matching
+            || self.exported != self.matching - self.excluded_suppressed
+        {
+            return Err("the preview's counts do not add up".into());
+        }
+        if request.include_suppressed && self.excluded_suppressed > 0 {
+            return Err("suppressed leads were asked for and left out".into());
+        }
+        if !request.include_suppressed && self.sample.iter().any(|row| row.suppressed) {
+            return Err("a suppressed lead in a sample that leaves them out".into());
+        }
+        match &self.score_run {
+            Some(run) => {
+                run.validate()?;
+                if !self
+                    .warnings
+                    .iter()
+                    .any(|warning| warning == "hypotheses_never_exported")
+                {
+                    return Err("an export always says hypotheses never leave the store".into());
+                }
+            }
+            None if self.matching > 0 => {
+                return Err("leads without the run that scored them".into());
+            }
+            None => {}
+        }
+        self.sample.iter().try_for_each(ExplorerRow::validate)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BulkRequest {
+    pub mode: BulkMode,
+    pub action: BulkAction,
+    pub business_ids: Vec<Id>,
+    pub query: Option<ExplorerQuery>,
+    pub expected: Option<u64>,
+    pub tag: Option<String>,
+    pub assignee: Option<String>,
+    pub reason: Option<String>,
+}
+
+impl BulkRequest {
+    /// Leads chosen by id or by query, what the action needs, and an applied change that says why
+    /// and, over a query, how many leads it previewed.
+    pub fn validate(&self) -> Result<(), String> {
+        if self.business_ids.is_empty() == self.query.is_none() {
+            return Err("choose leads by id or by query, not both".into());
+        }
+        if self.business_ids.len() > BULK_MAX_IDS {
+            return Err(format!("choose at most {BULK_MAX_IDS} leads by id"));
+        }
+        check_unique_ids(&self.business_ids, "lead")?;
+        if matches!(self.action, BulkAction::AddTag | BulkAction::RemoveTag) && self.tag.is_none() {
+            return Err("a tag action needs its tag".into());
+        }
+        if self.action == BulkAction::Assign && self.assignee.is_none() {
+            return Err("assigning needs an assignee".into());
+        }
+        check_optional("a tag", &self.tag, MAX_TAG_CHARS)?;
+        check_optional("an assignee", &self.assignee, MAX_NAME_CHARS)?;
+        if self.mode == BulkMode::Apply {
+            if self.reason.as_deref().is_none_or(|r| r.trim().is_empty()) {
+                return Err("an applied bulk action needs a reason".into());
+            }
+            if self.query.is_some() && self.expected.is_none() {
+                return Err("an apply over a query needs the count that was previewed".into());
+            }
+        }
+        check_reason(&self.reason)?;
+        self.query.as_ref().map_or(Ok(()), ExplorerQuery::validate)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BulkSkip {
+    pub business_id: Id,
+    pub display_name: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BulkResult {
+    pub mode: BulkMode,
+    pub action: BulkAction,
+    pub targeted: u64,
+    pub changed: u64,
+    pub skipped: u64,
+    pub skips: Vec<BulkSkip>,
+    pub batch_id: Option<Id>,
+}
+
+impl BulkResult {
+    /// The action asked for, counts within its targets, known reasons to skip, and a batch only
+    /// when something was applied.
+    pub fn validate(&self, request: &BulkRequest) -> Result<(), String> {
+        if self.mode != request.mode || self.action != request.action {
+            return Err("the result is not the action asked for".into());
+        }
+        if !request.business_ids.is_empty() && self.targeted != request.business_ids.len() as u64 {
+            return Err("the result targets other leads".into());
+        }
+        if self.changed + self.skipped > self.targeted
+            || self.skips.len() as u64 > self.skipped.min(BULK_MAX_SKIPS as u64)
+        {
+            return Err("the result's counts do not add up".into());
+        }
+        if let Some(skip) = self.skips.iter().find(|skip| {
+            !matches!(
+                skip.reason.as_str(),
+                "unchanged" | "suppressed" | "not_found"
+            )
+        }) {
+            return Err(format!(
+                "lead {} was skipped for no known reason",
+                skip.business_id
+            ));
+        }
+        if self.batch_id.is_some() != (self.mode == BulkMode::Apply && self.changed > 0) {
+            return Err("a batch names changes that were applied, and only those".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LeadCompareQuery {
+    pub business_ids: Vec<Id>,
+    pub score_run_id: Option<Id>,
+}
+
+impl LeadCompareQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        if !(2..=MAX_COMPARED).contains(&self.business_ids.len()) {
+            return Err(format!("compare 2 to {MAX_COMPARED} leads"));
+        }
+        check_unique_ids(&self.business_ids, "lead")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ComparedLead {
+    pub row: ExplorerRow,
+    pub scorecard: LeadScorecard,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LeadComparison {
+    pub score_run: ScoreRunItem,
+    pub leads: Vec<ComparedLead>,
+    pub missing: Vec<Id>,
+}
+
+impl LeadComparison {
+    /// The run asked for, and every lead asked for either compared with its own scorecard or
+    /// said to be missing.
+    pub fn validate(&self, query: &LeadCompareQuery) -> Result<(), String> {
+        self.score_run.validate()?;
+        if query
+            .score_run_id
+            .as_ref()
+            .is_some_and(|id| id != &self.score_run.score_run_id)
+        {
+            return Err("the comparison comes from another run".into());
+        }
+        for lead in &self.leads {
+            lead.row.validate()?;
+            lead.scorecard.validate()?;
+            if lead.scorecard.business_id != lead.row.business_id
+                || lead.row.project_id != self.score_run.project_id
+            {
+                return Err(format!("lead {} is out of place", lead.row.business_id));
+            }
+        }
+        let answered: Vec<&Id> = self
+            .leads
+            .iter()
+            .map(|lead| &lead.row.business_id)
+            .chain(&self.missing)
+            .collect();
+        check_unique_ids(answered.iter().copied(), "lead")?;
+        let asked: HashSet<&Id> = query.business_ids.iter().collect();
+        if answered.len() != asked.len() || answered.iter().any(|id| !asked.contains(id)) {
+            return Err("the comparison does not answer the leads asked for".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LeadResearch {
+    pub business_id: Id,
+    pub project_id: Id,
+    pub status: Option<ResearchStatus>,
+    pub status_reason: Option<String>,
+    pub status_by: Option<String>,
+    pub status_at: Option<UtcTimestamp>,
+    pub assignee: Option<String>,
+    pub assigned_at: Option<UtcTimestamp>,
+    pub updated_at: UtcTimestamp,
+}
+
+impl LeadResearch {
+    /// A status always says why, who and when; an assignee always says since when.
+    pub fn validate(&self) -> Result<(), String> {
+        let status = self.status.is_some();
+        if status != self.status_reason.is_some()
+            || status != self.status_by.is_some()
+            || status != self.status_at.is_some()
+            || self.assignee.is_some() != self.assigned_at.is_some()
+        {
+            return Err(format!(
+                "the research state of {} is incomplete",
+                self.business_id
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResearchChecklist {
+    pub id: Id,
+    pub name: String,
+    pub description: Option<String>,
+    pub active_version_id: Option<Id>,
+    pub archived_at: Option<UtcTimestamp>,
+    pub created_at: UtcTimestamp,
+    pub updated_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResearchChecklistVersion {
+    pub id: Id,
+    pub checklist_id: Id,
+    pub version: u32,
+    pub definition_json: Map<String, Value>,
+    pub schema_version: u32,
+    pub created_by: String,
+    pub created_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResearchTask {
+    pub id: Id,
+    pub business_id: Id,
+    pub project_id: Id,
+    pub kind: ResearchTaskKind,
+    pub key: String,
+    pub title: String,
+    pub detail_json: Option<Map<String, Value>>,
+    pub status: ResearchTaskStatus,
+    pub created_by: String,
+    pub created_at: UtcTimestamp,
+    pub updated_at: UtcTimestamp,
+    pub closed_by: Option<String>,
+    pub closed_at: Option<UtcTimestamp>,
+    pub close_reason: Option<String>,
+}
+
+impl ResearchTask {
+    /// An open task was never closed; a closed one says who closed it and when.
+    pub fn validate(&self) -> Result<(), String> {
+        if (self.status == ResearchTaskStatus::Open) != self.closed_at.is_none()
+            || self.closed_at.is_some() != self.closed_by.is_some()
+        {
+            return Err(format!("task {} is closed and open at once", self.id));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EvidencePin {
+    pub id: Id,
+    pub business_id: Id,
+    pub ref_kind: EvidenceRefKind,
+    #[serde(rename = "ref")]
+    pub reference: String,
+    pub label: String,
+    pub note: Option<String>,
+    pub pinned_by: String,
+    pub pinned_at: UtcTimestamp,
+    pub unpinned_by: Option<String>,
+    pub unpinned_at: Option<UtcTimestamp>,
+    pub unpin_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Note {
+    pub id: Id,
+    pub project_id: Id,
+    pub entity_type: EntityType,
+    pub entity_id: Id,
+    pub body: String,
+    pub author: String,
+    pub created_at: UtcTimestamp,
+    pub updated_at: UtcTimestamp,
+    pub deleted_at: Option<UtcTimestamp>,
+    pub deleted_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChecklistItem {
+    pub key: String,
+    pub label: String,
+    pub kind: ChecklistItemKind,
+    pub rule: Option<ChecklistRule>,
+    pub required: bool,
+}
+
+impl ChecklistItem {
+    pub fn validate(&self) -> Result<(), String> {
+        check_label("an item key", &self.key, MAX_CODE_CHARS)?;
+        check_label("an item label", &self.label, 300)?;
+        if (self.kind == ChecklistItemKind::Automatic) != self.rule.is_some() {
+            return Err(format!(
+                "item {}: an automatic item names its rule, and only an automatic item does",
+                self.key
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChecklistDefinition {
+    pub schema_version: u32,
+    pub campaign_ids: Vec<Id>,
+    pub categories: Vec<String>,
+    pub items: Vec<ChecklistItem>,
+}
+
+impl ChecklistDefinition {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.schema_version != CHECKLIST_SCHEMA_VERSION {
+            return Err(format!(
+                "a checklist has schema version {CHECKLIST_SCHEMA_VERSION}"
+            ));
+        }
+        if self.campaign_ids.len() > MAX_CHECKLIST_CAMPAIGNS {
+            return Err(format!(
+                "a checklist names at most {MAX_CHECKLIST_CAMPAIGNS} campaigns"
+            ));
+        }
+        check_unique_ids(&self.campaign_ids, "campaign")?;
+        check_terms("categories", &self.categories)?;
+        if self.items.is_empty() || self.items.len() > MAX_CHECKLIST_ITEMS {
+            return Err(format!(
+                "a checklist holds 1 to {MAX_CHECKLIST_ITEMS} items"
+            ));
+        }
+        let mut keys = HashSet::new();
+        for item in &self.items {
+            item.validate()?;
+            if !keys.insert(item.key.as_str()) {
+                return Err(format!("item {} appears twice", item.key));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChecklistCatalogQuery {
+    pub include_archived: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChecklistView {
+    pub checklist: ResearchChecklist,
+    pub versions: Vec<ResearchChecklistVersion>,
+}
+
+impl ChecklistView {
+    pub fn validate(&self) -> Result<(), String> {
+        if self
+            .versions
+            .iter()
+            .any(|version| version.checklist_id != self.checklist.id)
+        {
+            return Err(format!(
+                "a version of checklist {} belongs to another",
+                self.checklist.id
+            ));
+        }
+        let numbers: Vec<u32> = self.versions.iter().map(|v| v.version).collect();
+        let ids: Vec<&Id> = self.versions.iter().map(|v| &v.id).collect();
+        check_versions(
+            &numbers,
+            &ids,
+            self.checklist.active_version_id.as_ref(),
+            &self.checklist.name,
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChecklistCatalog {
+    pub checklists: Vec<ChecklistView>,
+    pub template: ChecklistDefinition,
+}
+
+impl ChecklistCatalog {
+    pub fn validate(&self, query: &ChecklistCatalogQuery) -> Result<(), String> {
+        self.template.validate()?;
+        check_unique_ids(
+            self.checklists.iter().map(|view| &view.checklist.id),
+            "checklist",
+        )?;
+        for view in &self.checklists {
+            view.validate()?;
+            if !query.include_archived && view.checklist.archived_at.is_some() {
+                return Err(format!("checklist {} is archived", view.checklist.id));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChecklistSaveRequest {
+    pub checklist_id: Option<Id>,
+    pub name: String,
+    pub description: Option<String>,
+    pub definition: ChecklistDefinition,
+}
+
+impl ChecklistSaveRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        check_label("a checklist name", &self.name, MAX_NAME_CHARS)?;
+        if self
+            .description
+            .as_ref()
+            .is_some_and(|d| d.chars().count() > MAX_DESCRIPTION_CHARS)
+        {
+            return Err(format!(
+                "a description has at most {MAX_DESCRIPTION_CHARS} characters"
+            ));
+        }
+        self.definition.validate()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChecklistChangeRequest {
+    pub checklist_id: Id,
+    pub action: ScoringChangeAction,
+    pub version_id: Option<Id>,
+    pub reason: String,
+}
+
+impl ChecklistChangeRequest {
+    /// Activation names its version; archiving and restoring do not; every change says why.
+    pub fn validate(&self) -> Result<(), String> {
+        check_text_reason(&self.reason)?;
+        if (self.action == ScoringChangeAction::Activate) != self.version_id.is_some() {
+            return Err("only an activation names a version, and it always does".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CriterionCheck {
+    pub criterion: SalesReadyCriterion,
+    pub passed: bool,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChecklistItemState {
+    pub item: ChecklistItem,
+    pub done: bool,
+    pub detail: String,
+    pub decided_by: Option<String>,
+    pub decided_at: Option<UtcTimestamp>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChecklistState {
+    pub checklist_id: Id,
+    pub checklist_version_id: Id,
+    pub name: String,
+    pub version: u32,
+    pub matched_by: String,
+    pub items: Vec<ChecklistItemState>,
+    pub complete: bool,
+}
+
+impl ChecklistState {
+    /// Each item once, and complete exactly when every required item is done.
+    pub fn validate(&self) -> Result<(), String> {
+        if self.version == 0
+            || !matches!(
+                self.matched_by.as_str(),
+                "campaign" | "category" | "default"
+            )
+        {
+            return Err(format!(
+                "checklist {} is not matched to the lead",
+                self.checklist_id
+            ));
+        }
+        let mut keys = HashSet::new();
+        for state in &self.items {
+            state.item.validate()?;
+            if !keys.insert(state.item.key.as_str()) {
+                return Err(format!("item {} appears twice", state.item.key));
+            }
+        }
+        let complete = self
+            .items
+            .iter()
+            .all(|state| state.done || !state.item.required);
+        if complete != self.complete {
+            return Err("a checklist is complete exactly when its required items are done".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PinView {
+    pub pin: EvidencePin,
+    pub available: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CorrectionView {
+    pub field: CanonicalField,
+    pub value: String,
+    pub observation_id: Id,
+    pub reason: String,
+    pub actor: String,
+    pub corrected_at: UtcTimestamp,
+    pub shown: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResearchWorkspaceQuery {
+    pub business_id: Id,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResearchWorkspace {
+    pub business_id: Id,
+    pub project_id: Id,
+    pub display_name: String,
+    pub is_synthetic: bool,
+    pub score_run_id: Option<Id>,
+    pub lead_stage: LeadStage,
+    pub research: Option<LeadResearch>,
+    pub can_undo: bool,
+    pub suppressed: bool,
+    pub sales_ready: Vec<CriterionCheck>,
+    pub sales_ready_allowed: bool,
+    pub checklist: ChecklistState,
+    pub tasks: Vec<ResearchTask>,
+    pub pins: Vec<PinView>,
+    pub notes: Vec<Note>,
+    pub tags: Vec<String>,
+    pub corrections: Vec<CorrectionView>,
+    pub decisions: Vec<ReviewDecision>,
+}
+
+impl ResearchWorkspace {
+    /// Every criterion once and in order, sales-ready allowed exactly when all hold, the
+    /// do-not-contact list and the checklist agreeing with their criteria, and tasks, pins, notes
+    /// and decisions of this lead only (a merged record answers with its canonical business).
+    pub fn validate(&self) -> Result<(), String> {
+        let criteria: Vec<SalesReadyCriterion> = self
+            .sales_ready
+            .iter()
+            .map(|check| check.criterion)
+            .collect();
+        if criteria != SALES_READY_ORDER {
+            return Err("the workspace does not list every criterion in order".into());
+        }
+        if self.sales_ready_allowed != self.sales_ready.iter().all(|check| check.passed) {
+            return Err("sales-ready is allowed exactly when every criterion holds".into());
+        }
+        if self.suppressed == self.sales_ready[0].passed
+            || self.checklist.complete != self.sales_ready[7].passed
+        {
+            return Err("the workspace and its criteria disagree".into());
+        }
+        self.checklist.validate()?;
+        if let Some(research) = &self.research {
+            research.validate()?;
+            if research.business_id != self.business_id {
+                return Err("the research state belongs to another lead".into());
+            }
+        }
+        let own = |id: &Id| id == &self.business_id;
+        for task in &self.tasks {
+            task.validate()?;
+            if !own(&task.business_id) {
+                return Err(format!("task {} belongs to another lead", task.id));
+            }
+        }
+        if let Some(view) = self
+            .pins
+            .iter()
+            .find(|view| !own(&view.pin.business_id) || view.pin.unpinned_at.is_some())
+        {
+            return Err(format!(
+                "pin {} is not a live pin of this lead",
+                view.pin.id
+            ));
+        }
+        if let Some(note) = self
+            .notes
+            .iter()
+            .find(|note| !own(&note.entity_id) || note.deleted_at.is_some())
+        {
+            return Err(format!("note {} is not a live note of this lead", note.id));
+        }
+        if let Some(decision) = self.decisions.iter().find(|d| !own(&d.entity_id)) {
+            return Err(format!("decision {} belongs to another lead", decision.id));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResearchActionRequest {
+    pub business_id: Id,
+    pub action: ResearchAction,
+    pub status: Option<ResearchStatus>,
+    pub assignee: Option<String>,
+    pub tag: Option<String>,
+    pub note: Option<String>,
+    pub note_id: Option<Id>,
+    pub ref_kind: Option<EvidenceRefKind>,
+    #[serde(rename = "ref")]
+    pub reference: Option<String>,
+    pub task_id: Option<Id>,
+    pub title: Option<String>,
+    pub item_key: Option<String>,
+    pub field: Option<CanonicalField>,
+    pub value: Option<String>,
+    pub scopes: Vec<RefreshScope>,
+    pub reason: Option<String>,
+}
+
+impl ResearchActionRequest {
+    /// What each action needs, within bounds, and a reason whenever something is removed,
+    /// overridden or decided.
+    pub fn validate(&self) -> Result<(), String> {
+        use ResearchAction as A;
+        let needed: &[&str] = match self.action {
+            A::SetStatus => &["status", "reason"],
+            A::UndoStatus => &["reason"],
+            A::Assign => &["assignee"],
+            A::AddTag | A::RemoveTag => &["tag"],
+            A::AddNote => &["note"],
+            A::DeleteNote => &["note_id", "reason"],
+            A::Pin => &["ref_kind", "ref"],
+            A::Unpin => &["ref_kind", "ref", "reason"],
+            A::AddTask => &["title"],
+            A::CompleteTask | A::ReopenTask => &["task_id"],
+            A::DismissTask => &["task_id", "reason"],
+            A::CheckItem => &["item_key"],
+            A::UncheckItem => &["item_key", "reason"],
+            A::CorrectValue => &["field", "value", "reason"],
+            A::Unassign | A::SyncTasks | A::RequestRefresh => &[],
+        };
+        let has = |name: &str| match name {
+            "status" => self.status.is_some(),
+            "assignee" => self.assignee.is_some(),
+            "tag" => self.tag.is_some(),
+            "note" => self.note.is_some(),
+            "note_id" => self.note_id.is_some(),
+            "ref_kind" => self.ref_kind.is_some(),
+            "ref" => self.reference.is_some(),
+            "task_id" => self.task_id.is_some(),
+            "title" => self.title.is_some(),
+            "item_key" => self.item_key.is_some(),
+            "field" => self.field.is_some(),
+            "value" => self.value.is_some(),
+            _ => self.reason.is_some(),
+        };
+        let missing: Vec<&str> = needed.iter().copied().filter(|name| !has(name)).collect();
+        if !missing.is_empty() {
+            return Err(format!("{:?} needs {}", self.action, missing.join(", ")));
+        }
+        if self.action == A::RequestRefresh && self.scopes.is_empty() {
+            return Err("choose what to refresh".into());
+        }
+        check_unique(&self.scopes, "scope")?;
+        let note_limit = if matches!(self.action, A::Pin | A::CheckItem) {
+            MAX_SHORT_NOTE_CHARS
+        } else {
+            MAX_NOTE_CHARS
+        };
+        check_optional("an assignee", &self.assignee, MAX_NAME_CHARS)?;
+        check_optional("a tag", &self.tag, MAX_TAG_CHARS)?;
+        check_optional("a note", &self.note, note_limit)?;
+        check_optional("a reference", &self.reference, MAX_REF_CHARS)?;
+        check_optional("a title", &self.title, 300)?;
+        check_optional("an item key", &self.item_key, MAX_CODE_CHARS)?;
+        check_optional("a value", &self.value, 500)?;
+        check_reason(&self.reason)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BriefRef {
+    pub kind: EvidenceRefKind,
+    #[serde(rename = "ref")]
+    pub reference: String,
+    pub label: String,
+    pub url: Option<String>,
+}
+
+impl BriefRef {
+    pub fn validate(&self) -> Result<(), String> {
+        check_label("a reference", &self.reference, MAX_REF_CHARS)?;
+        check_label("a label", &self.label, 300)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TimelineQuery {
+    pub business_id: Id,
+    pub kinds: Vec<TimelineKind>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl TimelineQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)?;
+        check_unique(&self.kinds, "kind")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TimelineEntry {
+    pub key: String,
+    pub at: UtcTimestamp,
+    pub kind: TimelineKind,
+    pub code: String,
+    pub title: String,
+    pub detail: Option<String>,
+    pub actor: Option<String>,
+    #[serde(rename = "ref")]
+    pub reference: Option<BriefRef>,
+    pub job_id: Option<Id>,
+    pub score_run_id: Option<Id>,
+    pub source_key: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TimelinePage {
+    pub business_id: Id,
+    pub entries: Vec<TimelineEntry>,
+    pub next_cursor: Option<Cursor>,
+}
+
+impl TimelinePage {
+    /// Newest first without repeats, only the kinds asked for, and a next page only after a full
+    /// one.
+    pub fn validate(&self, query: &TimelineQuery) -> Result<(), String> {
+        if self.entries.len() > query.limit as usize
+            || (self.next_cursor.is_some() && self.entries.len() != query.limit as usize)
+        {
+            return Err("the timeline page is not the one asked for".into());
+        }
+        if self
+            .entries
+            .windows(2)
+            .any(|pair| (&pair[0].at, &pair[0].key) <= (&pair[1].at, &pair[1].key))
+        {
+            return Err("a timeline runs newest first, each entry once".into());
+        }
+        for entry in &self.entries {
+            if !query.kinds.is_empty() && !query.kinds.contains(&entry.kind) {
+                return Err(format!("entry {} is of a kind not asked for", entry.key));
+            }
+            if let Some(reference) = &entry.reference {
+                reference.validate()?;
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EvidenceQuery {
+    pub business_id: Id,
+    pub kind: EvidenceRefKind,
+    #[serde(rename = "ref")]
+    pub reference: String,
+}
+
+impl EvidenceQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_label("a reference", &self.reference, MAX_REF_CHARS)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EvidenceDetail {
+    pub business_id: Id,
+    pub kind: EvidenceRefKind,
+    #[serde(rename = "ref")]
+    pub reference: String,
+    pub label: String,
+    pub excerpt: Option<String>,
+    pub status: Option<String>,
+    pub confidence: Option<Confidence>,
+    pub observed_at: Option<UtcTimestamp>,
+    pub source_name: Option<String>,
+    pub source_url: Option<String>,
+    pub provenance: Option<Provenance>,
+}
+
+impl EvidenceDetail {
+    pub fn validate(&self, query: &EvidenceQuery) -> Result<(), String> {
+        if self.kind != query.kind || self.reference != query.reference {
+            return Err("the evidence is not the row asked for".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BriefClaim {
+    #[serde(rename = "ref")]
+    pub reference: String,
+    pub text: String,
+    pub is_inference: bool,
+    pub evidence: Vec<BriefRef>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BriefSectionView {
+    pub section: BriefSection,
+    pub claims: Vec<BriefClaim>,
+    pub empty_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SalesBriefQuery {
+    pub business_id: Id,
+    pub score_run_id: Option<Id>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BriefDraftSentence {
+    pub text: String,
+    pub claims: Vec<String>,
+    pub evidence: Vec<BriefRef>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BriefDraftSection {
+    pub section: BriefSection,
+    pub sentences: Vec<BriefDraftSentence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BriefDraft {
+    pub inference_run_id: Id,
+    pub model: String,
+    pub review_status: AiReviewStatus,
+    pub finished_at: Option<UtcTimestamp>,
+    pub sections: Vec<BriefDraftSection>,
+    pub dropped: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SalesBrief {
+    pub business_id: Id,
+    pub project_id: Id,
+    pub display_name: String,
+    pub score_run_id: Option<Id>,
+    pub versions: Option<ScoreVersions>,
+    pub generated_at: UtcTimestamp,
+    pub last_verified_at: Option<UtcTimestamp>,
+    pub suppressed: bool,
+    pub research_status: Option<ResearchStatus>,
+    pub is_synthetic: bool,
+    pub sections: Vec<BriefSectionView>,
+    pub draft: Option<BriefDraft>,
+}
+
+impl SalesBrief {
+    /// Every section once and in order, each with claims or a reason it has none; every claim
+    /// citing its rows; no contact route around the do-not-contact list; and a draft that restates
+    /// only claims this brief makes.
+    pub fn validate(&self, query: &SalesBriefQuery) -> Result<(), String> {
+        if query.score_run_id.is_some() && query.score_run_id != self.score_run_id {
+            return Err("the brief comes from another run".into());
+        }
+        if self.score_run_id.is_some() != self.versions.is_some() {
+            return Err("a scored brief names the versions that scored it".into());
+        }
+        let sections: Vec<BriefSection> = self.sections.iter().map(|view| view.section).collect();
+        if sections != BRIEF_ORDER {
+            return Err("the brief does not hold every section in order".into());
+        }
+        let mut claims = HashSet::new();
+        for view in &self.sections {
+            if view.claims.is_empty() == view.empty_reason.is_none() {
+                return Err(format!(
+                    "section {:?} holds claims or says why it has none",
+                    view.section
+                ));
+            }
+            for claim in &view.claims {
+                if !is_brief_ref(&claim.reference) || !claims.insert(claim.reference.as_str()) {
+                    return Err(format!("claim {} is not a claim ref", claim.reference));
+                }
+                check_label("a claim", &claim.text, MAX_CLAIM_CHARS)?;
+                if claim.evidence.is_empty() || claim.evidence.len() > MAX_CLAIM_EVIDENCE {
+                    return Err(format!(
+                        "claim {} cites 1 to {MAX_CLAIM_EVIDENCE} rows",
+                        claim.reference
+                    ));
+                }
+                claim.evidence.iter().try_for_each(BriefRef::validate)?;
+                if self.suppressed
+                    && view.section == BriefSection::ContactRoute
+                    && claim
+                        .evidence
+                        .iter()
+                        .any(|evidence| evidence.kind == EvidenceRefKind::ContactChannel)
+                {
+                    return Err("a brief never routes around the do-not-contact list".into());
+                }
+            }
+        }
+        if let Some(draft) = &self.draft {
+            let parts: Vec<BriefSection> = draft.sections.iter().map(|part| part.section).collect();
+            check_unique(&parts, "draft section")?;
+            let invented = draft
+                .sections
+                .iter()
+                .flat_map(|part| &part.sentences)
+                .any(|sentence| {
+                    sentence.claims.is_empty()
+                        || sentence.evidence.is_empty()
+                        || sentence
+                            .claims
+                            .iter()
+                            .any(|claim| !claims.contains(claim.as_str()))
+                });
+            if invented {
+                return Err(format!(
+                    "draft {} restates a claim this brief does not make",
+                    draft.inference_run_id
+                ));
+            }
         }
         Ok(())
     }

@@ -100,6 +100,22 @@ pub fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Build
         commands::compare_score_runs,
         commands::get_calibration,
         commands::act_on_lead,
+        commands::get_explorer_catalog,
+        commands::explore_leads,
+        commands::preview_lead_export,
+        commands::bulk_leads,
+        commands::compare_leads,
+        commands::list_saved_views,
+        commands::save_saved_view,
+        commands::change_saved_view,
+        commands::get_research_workspace,
+        commands::act_on_research,
+        commands::get_lead_timeline,
+        commands::get_evidence_detail,
+        commands::list_research_checklists,
+        commands::save_research_checklist,
+        commands::change_research_checklist,
+        commands::get_sales_brief,
         commands::seed_synthetic_data
     ])
 }

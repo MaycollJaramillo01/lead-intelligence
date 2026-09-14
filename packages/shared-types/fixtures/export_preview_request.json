@@ -1,0 +1,28 @@
+{
+  "query": {
+    "score_run_id": null,
+    "filters": {
+      "kind": "group",
+      "join": "and",
+      "negate": false,
+      "children": []
+    },
+    "search": null,
+    "sort": [
+      {
+        "field": "total_score",
+        "direction": "desc"
+      }
+    ],
+    "offset": 0,
+    "limit": 5,
+    "with_total": true
+  },
+  "columns": [
+    "name",
+    "tier",
+    "total_score"
+  ],
+  "include_suppressed": false,
+  "sample_size": 3
+}

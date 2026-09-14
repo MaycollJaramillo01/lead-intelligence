@@ -1,0 +1,13 @@
+{
+  "mode": "preview",
+  "action": "add_tag",
+  "business_ids": [
+    "01900000-0000-7000-8000-000000000951",
+    "01900000-0000-7000-8000-000000000090"
+  ],
+  "query": null,
+  "expected": null,
+  "tag": "synthetic-shortlist",
+  "assignee": null,
+  "reason": null
+}

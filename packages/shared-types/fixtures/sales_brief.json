@@ -1,0 +1,360 @@
+{
+  "business_id": "01900000-0000-7000-8000-000000000090",
+  "project_id": "01900000-0000-7000-8000-000000000001",
+  "display_name": "Synthetic Bakery 0001",
+  "score_run_id": "01900000-0000-7000-8000-000000001398",
+  "versions": {
+    "engine_version": "1.0.0",
+    "facts_version": "1.0.0",
+    "scoring_model_key": "custom.synthetic_model_contactability_first",
+    "scoring_model_version": 1,
+    "is_heuristic": true,
+    "icp_profile_name": "Synthetic ICP: local services with weak websites",
+    "icp_profile_version": 1
+  },
+  "generated_at": "2026-01-01T00:00:00.000Z",
+  "last_verified_at": "2026-01-01T00:00:00.000Z",
+  "suppressed": false,
+  "research_status": "needs_research",
+  "is_synthetic": true,
+  "sections": [
+    {
+      "section": "business_snapshot",
+      "claims": [
+        {
+          "ref": "B1",
+          "text": "Synthetic Bakery 0001 is listed as Bakery in Austin, TX.",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "business",
+              "ref": "01900000-0000-7000-8000-000000000090",
+              "label": "Synthetic Bakery 0001",
+              "url": null
+            }
+          ]
+        },
+        {
+          "ref": "B2",
+          "text": "Listed by 1 acquired record(s), last on 2026-01-01.",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "business",
+              "ref": "01900000-0000-7000-8000-000000000090",
+              "label": "Synthetic Bakery 0001",
+              "url": null
+            }
+          ]
+        },
+        {
+          "ref": "B3",
+          "text": "Website: synthetic-bakery-0001.example.",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "website_audit",
+              "ref": "01900000-0000-7000-8000-000000000465",
+              "label": "synthetic-bakery-0001.example",
+              "url": null
+            }
+          ]
+        }
+      ],
+      "empty_reason": null
+    },
+    {
+      "section": "icp_match",
+      "claims": [
+        {
+          "ref": "B4",
+          "text": "Geography: In the target geography (Austin, TX).",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "business",
+              "ref": "01900000-0000-7000-8000-000000000090",
+              "label": "Synthetic Bakery 0001",
+              "url": null
+            }
+          ]
+        },
+        {
+          "ref": "B5",
+          "text": "Channels: 2 usable channel(s).",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "contact_channel",
+              "ref": "email:hello@synthetic-bakery-0001.example",
+              "label": "email: likely_valid",
+              "url": null
+            },
+            {
+              "kind": "contact_channel",
+              "ref": "phone:+15125550101",
+              "label": "phone: structurally_valid",
+              "url": null
+            }
+          ]
+        }
+      ],
+      "empty_reason": null
+    },
+    {
+      "section": "verified_opportunity",
+      "claims": [
+        {
+          "ref": "B6",
+          "text": "The crawl could not analyze any page of the site.",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "website_audit",
+              "ref": "01900000-0000-7000-8000-000000000465",
+              "label": "synthetic-bakery-0001.example",
+              "url": null
+            }
+          ]
+        },
+        {
+          "ref": "B7",
+          "text": "Visitors who reach the site probably leave before they can make contact.",
+          "is_inference": true,
+          "evidence": [
+            {
+              "kind": "website_audit",
+              "ref": "01900000-0000-7000-8000-000000000465",
+              "label": "synthetic-bakery-0001.example",
+              "url": null
+            }
+          ]
+        }
+      ],
+      "empty_reason": null
+    },
+    {
+      "section": "evidence",
+      "claims": [
+        {
+          "ref": "B8",
+          "text": "Pinned: Synthetic Bakery 0001 (Synthetic pin)",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "business",
+              "ref": "01900000-0000-7000-8000-000000000090",
+              "label": "Synthetic Bakery 0001",
+              "url": null
+            }
+          ]
+        },
+        {
+          "ref": "B9",
+          "text": "The crawl could not analyze any page of the site",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "website_audit",
+              "ref": "01900000-0000-7000-8000-000000000465",
+              "label": "synthetic-bakery-0001.example",
+              "url": null
+            }
+          ]
+        },
+        {
+          "ref": "B10",
+          "text": "validation: likely_valid",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "contact_channel",
+              "ref": "email:hello@synthetic-bakery-0001.example",
+              "label": "email: likely_valid",
+              "url": null
+            },
+            {
+              "kind": "contact_channel",
+              "ref": "phone:+15125550101",
+              "label": "phone: structurally_valid",
+              "url": null
+            }
+          ]
+        },
+        {
+          "ref": "B11",
+          "text": "2 usable channel(s)",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "contact_channel",
+              "ref": "email:hello@synthetic-bakery-0001.example",
+              "label": "email: likely_valid",
+              "url": null
+            },
+            {
+              "kind": "contact_channel",
+              "ref": "phone:+15125550101",
+              "label": "phone: structurally_valid",
+              "url": null
+            }
+          ]
+        }
+      ],
+      "empty_reason": null
+    },
+    {
+      "section": "recommended_offer",
+      "claims": [
+        {
+          "ref": "B12",
+          "text": "Website rebuild: It addresses what the evidence shows: the website could not be loaded reliably.",
+          "is_inference": true,
+          "evidence": [
+            {
+              "kind": "website_audit",
+              "ref": "01900000-0000-7000-8000-000000000465",
+              "label": "synthetic-bakery-0001.example",
+              "url": null
+            }
+          ]
+        }
+      ],
+      "empty_reason": null
+    },
+    {
+      "section": "contact_route",
+      "claims": [
+        {
+          "ref": "B13",
+          "text": "Email: hello@synthetic-bakery-0001.example (likely valid, fresh).",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "contact_channel",
+              "ref": "email:hello@synthetic-bakery-0001.example",
+              "label": "email: hello@synthetic-bakery-0001.example",
+              "url": null
+            }
+          ]
+        }
+      ],
+      "empty_reason": null
+    },
+    {
+      "section": "decision_maker",
+      "claims": [],
+      "empty_reason": "no_decision_maker_published"
+    },
+    {
+      "section": "conversation_hooks",
+      "claims": [
+        {
+          "ref": "B14",
+          "text": "Offer to look at why the website did not load when it was checked.",
+          "is_inference": true,
+          "evidence": [
+            {
+              "kind": "website_audit",
+              "ref": "01900000-0000-7000-8000-000000000465",
+              "label": "synthetic-bakery-0001.example",
+              "url": null
+            }
+          ]
+        }
+      ],
+      "empty_reason": null
+    },
+    {
+      "section": "risks_unknowns",
+      "claims": [
+        {
+          "ref": "B15",
+          "text": "Unknown: 0 capacity proxies observed, 1 unknown.",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "business",
+              "ref": "01900000-0000-7000-8000-000000000090",
+              "label": "Synthetic Bakery 0001",
+              "url": null
+            }
+          ]
+        },
+        {
+          "ref": "B16",
+          "text": "Unknown: Calls to action and forms could not be evaluated.",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "business",
+              "ref": "01900000-0000-7000-8000-000000000090",
+              "label": "Synthetic Bakery 0001",
+              "url": null
+            }
+          ]
+        },
+        {
+          "ref": "B17",
+          "text": "Unknown: No advertising pixel detected (which does not mean none).",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "business",
+              "ref": "01900000-0000-7000-8000-000000000090",
+              "label": "Synthetic Bakery 0001",
+              "url": null
+            }
+          ]
+        }
+      ],
+      "empty_reason": null
+    },
+    {
+      "section": "last_verified",
+      "claims": [
+        {
+          "ref": "B18",
+          "text": "Facts read on 2026-01-01.",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "score_run",
+              "ref": "01900000-0000-7000-8000-000000001398",
+              "label": "Synthetic ICP: local services with weak websites v1 · custom.synthetic_model_contactability_first v1",
+              "url": null
+            }
+          ]
+        },
+        {
+          "ref": "B19",
+          "text": "Website audited on 2026-01-01.",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "website_audit",
+              "ref": "01900000-0000-7000-8000-000000000465",
+              "label": "synthetic-bakery-0001.example",
+              "url": null
+            }
+          ]
+        },
+        {
+          "ref": "B20",
+          "text": "Contact channels checked on 2026-01-01.",
+          "is_inference": false,
+          "evidence": [
+            {
+              "kind": "contact_channel",
+              "ref": "phone:+15125550101",
+              "label": "phone: +15125550101",
+              "url": null
+            }
+          ]
+        }
+      ],
+      "empty_reason": null
+    }
+  ],
+  "draft": null
+}

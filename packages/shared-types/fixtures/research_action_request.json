@@ -1,0 +1,18 @@
+{
+  "business_id": "01900000-0000-7000-8000-000000000090",
+  "action": "set_status",
+  "status": "disqualified",
+  "assignee": null,
+  "tag": null,
+  "note": null,
+  "note_id": null,
+  "ref_kind": null,
+  "ref": null,
+  "task_id": null,
+  "title": null,
+  "item_key": null,
+  "field": null,
+  "value": null,
+  "scopes": [],
+  "reason": "Synthetic fixture"
+}

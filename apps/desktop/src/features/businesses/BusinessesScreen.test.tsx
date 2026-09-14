@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   BusinessDetail,
@@ -82,9 +83,11 @@ function renderScreen() {
   const host = document.createElement("div");
   document.body.append(host);
   render(
-    <PageActionsProvider value={host}>
-      <BusinessesScreen />
-    </PageActionsProvider>,
+    <MemoryRouter>
+      <PageActionsProvider value={host}>
+        <BusinessesScreen />
+      </PageActionsProvider>
+    </MemoryRouter>,
   );
   return host;
 }

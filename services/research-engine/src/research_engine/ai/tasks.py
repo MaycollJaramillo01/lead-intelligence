@@ -32,6 +32,7 @@ from research_engine.domain import (
     JsonObject,
     LanguageDetectionOutput,
     OpportunityReasoningOutput,
+    SalesBriefOutput,
     VisualReviewOutput,
 )
 
@@ -98,8 +99,30 @@ TASKS: Final[Mapping[AiTaskType, TaskSpec]] = {
                  frozenset({AiInputKind.SCREENSHOT}), max_refs=2, max_ref_chars=300,
                  max_input_chars=1_000, timeout_s=240, temperature=0.0, max_output_tokens=800,
                  batchable=False, requires_vision=True),
+        TaskSpec(AiTaskType.SALES_BRIEF, "1.0.0", SalesBriefOutput, "1.0.0",
+                 frozenset({AiInputKind.BRIEF_CLAIM}), max_refs=40, max_ref_chars=500,
+                 max_input_chars=8_000, timeout_s=240, temperature=0.2, max_output_tokens=1_500,
+                 batchable=False, numbers_from_evidence=True),
     )
 }  # fmt: skip
+
+#: Words a sales brief never uses about a business or its people (checked as whole words).
+ACCUSATORY_WORDS: Final = frozenset(
+    {
+        "amateurish", "awful", "clueless", "disgraceful", "dumb", "embarrassing", "fraud",
+        "garbage", "horrible", "idiot", "incompetent", "lazy", "negligent", "pathetic", "scam",
+        "shady", "sloppy", "stupid", "terrible", "trash", "ugly", "unprofessional", "useless",
+        "worthless",
+    }
+)  # fmt: skip
+_WORDS: Final = re.compile(r"[a-z]+")
+
+
+def accusatory_word(text: str) -> str | None:
+    """The first word of `ACCUSATORY_WORDS` in `text`, or None."""
+    return next(
+        (word for word in _WORDS.findall(text.casefold()) if word in ACCUSATORY_WORDS), None
+    )
 
 
 # ---- prompt templates ---------------------------------------------------------------------------
@@ -395,6 +418,16 @@ def semantic_errors(output: BaseModel, prepared: PreparedInput) -> list[str]:
             seen = [item.evidence_id for item in output.fragments]
             if len(seen) != len(set(seen)):
                 errors.append("fragment_repeated")
+        case SalesBriefOutput():
+            sections = [section.section for section in output.sections]
+            if len(sections) != len(set(sections)):
+                errors.append("section_repeated")
+            errors += [
+                f"accusatory_language:{word}"
+                for section in output.sections
+                for sentence in section.sentences
+                if (word := accusatory_word(sentence.text)) is not None
+            ]
     if spec.numbers_from_evidence:
         every = " ".join(ref.text for ref in prepared.refs)
         for text, cited in _texts(data, frozenset({"text", "explanation"})):

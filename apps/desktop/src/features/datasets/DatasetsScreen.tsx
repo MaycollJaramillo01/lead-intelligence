@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { DatasetListItem } from "@lead/shared-types";
+import { useSearchParams } from "react-router";
 import { DataTable } from "@/components/data/DataTable";
 import { DateTime, Mono, TestDataBadge, Text } from "@/components/data/cells";
 import { filterFieldsFrom, type FilterCondition } from "@/components/data/filters";
@@ -69,6 +70,8 @@ export function DatasetsScreen() {
     [],
   );
   const pages = useKeysetPages(fetchPage, "list_datasets");
+  // a `?dataset=` link marks its dataset
+  const [params] = useSearchParams();
 
   return (
     <PageShell>
@@ -82,6 +85,7 @@ export function DatasetsScreen() {
           conditions={conditions}
           onConditionsChange={setConditions}
           pinnedLeft={["name"]}
+          activeRowId={params.get("dataset")}
           isLoading={pages.loading && pages.items.length === 0 && !pages.error}
           emptyState={
             pages.error ? (

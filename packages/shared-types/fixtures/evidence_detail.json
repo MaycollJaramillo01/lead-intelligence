@@ -1,0 +1,13 @@
+{
+  "business_id": "01900000-0000-7000-8000-000000000090",
+  "kind": "business",
+  "ref": "01900000-0000-7000-8000-000000000090",
+  "label": "Synthetic Bakery 0001",
+  "excerpt": null,
+  "status": "candidate",
+  "confidence": null,
+  "observed_at": "2026-01-01T00:00:00.000Z",
+  "source_name": null,
+  "source_url": null,
+  "provenance": null
+}

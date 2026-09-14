@@ -1,0 +1,2310 @@
+{
+  "score_run": {
+    "job_id": "01900000-0000-7000-8000-000000001399",
+    "score_run_id": "01900000-0000-7000-8000-000000001398",
+    "project_id": "01900000-0000-7000-8000-000000000001",
+    "project_name": "Synthetic test workspace",
+    "status": "succeeded",
+    "stage": "done",
+    "progress_done": 20,
+    "progress_total": 20,
+    "scoring_model_id": "01900000-0000-7000-8000-000000001394",
+    "scoring_model_key": "custom.synthetic_model_contactability_first",
+    "scoring_model_name": "Synthetic model: contactability first",
+    "scoring_model_version": 1,
+    "is_heuristic": true,
+    "icp_profile_id": "01900000-0000-7000-8000-000000001157",
+    "icp_profile_name": "Synthetic ICP: local services with weak websites",
+    "icp_profile_version": 1,
+    "engine_version": "1.0.0",
+    "facts_from_run_id": "01900000-0000-7000-8000-000000001162",
+    "stats": {
+      "businesses": 20,
+      "priority": 0,
+      "review": 2,
+      "low": 8,
+      "insufficient_data": 10,
+      "excluded": 0
+    },
+    "distribution": [
+      {
+        "low": 0,
+        "businesses": 0
+      },
+      {
+        "low": 10,
+        "businesses": 0
+      },
+      {
+        "low": 20,
+        "businesses": 0
+      },
+      {
+        "low": 30,
+        "businesses": 4
+      },
+      {
+        "low": 40,
+        "businesses": 4
+      },
+      {
+        "low": 50,
+        "businesses": 0
+      },
+      {
+        "low": 60,
+        "businesses": 2
+      },
+      {
+        "low": 70,
+        "businesses": 0
+      },
+      {
+        "low": 80,
+        "businesses": 0
+      },
+      {
+        "low": 90,
+        "businesses": 0
+      }
+    ],
+    "requested_at": "2026-01-01T00:00:00.000Z",
+    "started_at": "2026-01-01T00:00:00.000Z",
+    "finished_at": "2026-01-01T00:00:00.000Z",
+    "events": [
+      {
+        "level": "info",
+        "event": "run_succeeded",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "businesses": 20,
+          "excluded": 0,
+          "insufficient_data": 10,
+          "low": 8,
+          "priority": 0,
+          "review": 2
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "level": "info",
+        "event": "stage_started",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "businesses": 20,
+          "facts": "stored"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "level": "info",
+        "event": "run_queued",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "project_id": "01900000-0000-7000-8000-000000000001",
+          "score_run_id": "01900000-0000-7000-8000-000000001398"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      }
+    ],
+    "is_synthetic": true
+  },
+  "leads": [
+    {
+      "row": {
+        "business_id": "01900000-0000-7000-8000-000000000951",
+        "project_id": "01900000-0000-7000-8000-000000000001",
+        "rank": 11,
+        "display_name": "Synthetic Plumbing 0701",
+        "locality": "Austin",
+        "region": "TX",
+        "category": null,
+        "domain": "synthetic-plumbing-0701.example",
+        "lead_stage": "not_contacted",
+        "research_status": null,
+        "assignee": null,
+        "tags": [],
+        "tier": "insufficient_data",
+        "total_score": 79.8167,
+        "confidence": 0.6129,
+        "data_coverage": 1.0,
+        "icp_match": 100.0,
+        "opportunity_score": 58.3333,
+        "digital_gap": null,
+        "business_health": 66.6667,
+        "buying_capacity": 50.0,
+        "contactability": 86.0,
+        "commercial_intent": null,
+        "data_confidence": 61.29,
+        "latino_status": "unknown",
+        "latino_confidence": null,
+        "main_channel": "email",
+        "channel_status": "likely_valid",
+        "usable_channels": 6,
+        "problems": [],
+        "top_problem": null,
+        "top_reason": "5 usable channel(s)",
+        "offer": null,
+        "facts_collected_at": "2026-01-01T00:00:00.000Z",
+        "facts_age_days": 0,
+        "audit_status": null,
+        "conflicts": 0,
+        "suppressed": false,
+        "stale": false,
+        "partial": true,
+        "is_synthetic": true
+      },
+      "scorecard": {
+        "business_id": "01900000-0000-7000-8000-000000000951",
+        "tier": "insufficient_data",
+        "total_score": 79.8167,
+        "confidence": 0.6129,
+        "known_weight": 1.0,
+        "versions": {
+          "engine_version": "1.0.0",
+          "facts_version": "1.0.0",
+          "scoring_model_key": "custom.synthetic_model_contactability_first",
+          "scoring_model_version": 1,
+          "is_heuristic": true,
+          "icp_profile_name": "Synthetic ICP: local services with weak websites",
+          "icp_profile_version": 1
+        },
+        "components": [
+          {
+            "component": "ICP_MATCH",
+            "value": 100.0,
+            "weight": 25,
+            "contribution": 25.0,
+            "coverage": 0.75,
+            "formula": "100 * Σ(criterion * weight) / Σ weight over decided criteria that are not ignored (pass 1, fail 0); undecided criteria are left out"
+          },
+          {
+            "component": "LATINO_CONFIDENCE",
+            "value": null,
+            "weight": 0,
+            "contribution": null,
+            "coverage": 0.0,
+            "formula": "100 * confidence of the Latino assessment the business shows, when its status is not unknown; campaigns filter by the Latino requirement"
+          },
+          {
+            "component": "BUSINESS_HEALTH",
+            "value": 66.6667,
+            "weight": 20,
+            "contribution": 33.3333,
+            "coverage": 0.4286,
+            "formula": "100 * Σ(value * weight) / Σ weight over known features with a weight; unknown and not applicable features are left out and lower the coverage"
+          },
+          {
+            "component": "DIGITAL_GAP",
+            "value": null,
+            "weight": 45,
+            "contribution": null,
+            "coverage": 0.0,
+            "formula": "100 * Σ(value * weight) / Σ weight over known features with a weight; unknown and not applicable features are left out and lower the coverage"
+          },
+          {
+            "component": "BUYING_CAPACITY",
+            "value": 50.0,
+            "weight": 20,
+            "contribution": 25.0,
+            "coverage": 0.6667,
+            "formula": "100 * Σ(value * weight) / Σ weight over known features with a weight; unknown and not applicable features are left out and lower the coverage"
+          },
+          {
+            "component": "CONTACTABILITY",
+            "value": 86.0,
+            "weight": 40,
+            "contribution": 34.4,
+            "coverage": 1.0,
+            "formula": "score = round(100 x sum(weight x value) / sum(weight)) over availability 25, validation 30, role 15, freshness 15, source 15; only published or imported channels that are not invalid, suppressed or in the fictional range count; hypotheses never count; a suppressed business has no score"
+          },
+          {
+            "component": "COMMERCIAL_INTENT",
+            "value": null,
+            "weight": 15,
+            "contribution": null,
+            "coverage": 0.0,
+            "formula": "100 * Σ(value * weight) / Σ weight over known features with a weight; unknown and not applicable features are left out and lower the coverage"
+          },
+          {
+            "component": "DATA_CONFIDENCE",
+            "value": 61.29,
+            "weight": 0,
+            "contribution": null,
+            "coverage": 0.8571,
+            "formula": "100 * Σ(value * weight) / Σ weight over known features with a weight; unknown and not applicable features are left out and lower the coverage"
+          },
+          {
+            "component": "OPPORTUNITY_SCORE",
+            "value": 58.3333,
+            "weight": 35,
+            "contribution": 20.4167,
+            "coverage": 0.4,
+            "formula": "OPPORTUNITY_SCORE = (DIGITAL_GAP * 45 + BUSINESS_HEALTH * 20 + BUYING_CAPACITY * 20 + COMMERCIAL_INTENT * 15) / Σ weight of the known inputs"
+          },
+          {
+            "component": "FINAL_LEAD_SCORE",
+            "value": 79.8167,
+            "weight": 0,
+            "contribution": null,
+            "coverage": 1.0,
+            "formula": "FINAL_LEAD_SCORE = (ICP_MATCH * 25 + OPPORTUNITY_SCORE * 35 + CONTACTABILITY * 40) / Σ weight of the known inputs; gates are decided first, and the tier follows the model's thresholds"
+          }
+        ],
+        "features": [
+          {
+            "feature": "gap.no_website",
+            "component": "DIGITAL_GAP",
+            "problem": "no_website",
+            "state": "not_applicable",
+            "value": null,
+            "weight": 3,
+            "points": null,
+            "impact": null,
+            "detail": "A website is known for this business",
+            "reason": "website_known",
+            "evidence": []
+          },
+          {
+            "feature": "gap.website_unreachable",
+            "component": "DIGITAL_GAP",
+            "problem": "website_unreachable",
+            "state": "unknown",
+            "value": null,
+            "weight": 3,
+            "points": null,
+            "impact": null,
+            "detail": "The website has not been crawled and audited",
+            "reason": "no_audit",
+            "evidence": []
+          },
+          {
+            "feature": "gap.conversion_path",
+            "component": "DIGITAL_GAP",
+            "problem": "weak_conversion_path",
+            "state": "unknown",
+            "value": null,
+            "weight": 3,
+            "points": null,
+            "impact": null,
+            "detail": "The website has not been crawled and audited",
+            "reason": "no_audit",
+            "evidence": []
+          },
+          {
+            "feature": "gap.online_booking",
+            "component": "DIGITAL_GAP",
+            "problem": "no_online_booking",
+            "state": "unknown",
+            "value": null,
+            "weight": 1,
+            "points": null,
+            "impact": null,
+            "detail": "The website has not been crawled and audited",
+            "reason": "no_audit",
+            "evidence": []
+          },
+          {
+            "feature": "gap.local_seo",
+            "component": "DIGITAL_GAP",
+            "problem": "weak_local_seo",
+            "state": "unknown",
+            "value": null,
+            "weight": 2,
+            "points": null,
+            "impact": null,
+            "detail": "The website has not been crawled and audited",
+            "reason": "no_audit",
+            "evidence": []
+          },
+          {
+            "feature": "gap.technical_seo",
+            "component": "DIGITAL_GAP",
+            "problem": "weak_technical_seo",
+            "state": "unknown",
+            "value": null,
+            "weight": 1,
+            "points": null,
+            "impact": null,
+            "detail": "The website has not been crawled and audited",
+            "reason": "no_audit",
+            "evidence": []
+          },
+          {
+            "feature": "gap.mobile",
+            "component": "DIGITAL_GAP",
+            "problem": "poor_mobile_experience",
+            "state": "unknown",
+            "value": null,
+            "weight": 2,
+            "points": null,
+            "impact": null,
+            "detail": "The website has not been crawled and audited",
+            "reason": "no_audit",
+            "evidence": []
+          },
+          {
+            "feature": "gap.measurement",
+            "component": "DIGITAL_GAP",
+            "problem": "measurement_not_detected",
+            "state": "unknown",
+            "value": null,
+            "weight": 1,
+            "points": null,
+            "impact": null,
+            "detail": "The website has not been crawled and audited",
+            "reason": "no_audit",
+            "evidence": []
+          },
+          {
+            "feature": "health.recently_seen",
+            "component": "BUSINESS_HEALTH",
+            "problem": null,
+            "state": "known",
+            "value": 1.0,
+            "weight": 2,
+            "points": 66.6667,
+            "impact": 11.6667,
+            "detail": "Last listed by a source 30 days before these facts were read",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000951",
+                "label": "Synthetic Plumbing 0701",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "health.site_answers",
+            "component": "BUSINESS_HEALTH",
+            "problem": null,
+            "state": "unknown",
+            "value": null,
+            "weight": 2,
+            "points": null,
+            "impact": null,
+            "detail": "The website has not been crawled and audited",
+            "reason": "no_audit",
+            "evidence": []
+          },
+          {
+            "feature": "health.site_maintained",
+            "component": "BUSINESS_HEALTH",
+            "problem": null,
+            "state": "unknown",
+            "value": null,
+            "weight": 1,
+            "points": null,
+            "impact": null,
+            "detail": "The website has not been crawled and audited",
+            "reason": "no_audit",
+            "evidence": []
+          },
+          {
+            "feature": "health.trust_signals",
+            "component": "BUSINESS_HEALTH",
+            "problem": null,
+            "state": "unknown",
+            "value": null,
+            "weight": 1,
+            "points": null,
+            "impact": null,
+            "detail": "The website has not been crawled and audited",
+            "reason": "no_audit",
+            "evidence": []
+          },
+          {
+            "feature": "health.multiple_sources",
+            "component": "BUSINESS_HEALTH",
+            "problem": null,
+            "state": "known",
+            "value": 0.0,
+            "weight": 1,
+            "points": 0.0,
+            "impact": 0.0,
+            "detail": "Listed by 1 acquired record(s)",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000951",
+                "label": "Synthetic Plumbing 0701",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "capacity.multiple_locations",
+            "component": "BUYING_CAPACITY",
+            "problem": null,
+            "state": "known",
+            "value": 0.0,
+            "weight": 2,
+            "points": 0.0,
+            "impact": 0.0,
+            "detail": "1 distinct location(s)",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000951",
+                "label": "Synthetic Plumbing 0701",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "capacity.paid_tools",
+            "component": "BUYING_CAPACITY",
+            "problem": null,
+            "state": "unknown",
+            "value": null,
+            "weight": 1,
+            "points": null,
+            "impact": null,
+            "detail": "No crawled site to detect tools on",
+            "reason": "no_audit",
+            "evidence": []
+          },
+          {
+            "feature": "capacity.team_published",
+            "component": "BUYING_CAPACITY",
+            "problem": null,
+            "state": "known",
+            "value": 1.0,
+            "weight": 2,
+            "points": 50.0,
+            "impact": 8.75,
+            "detail": "3 published decision maker(s)",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "decision_maker",
+                "ref": "01900000-0000-7000-8000-000000001032",
+                "label": "Owner",
+                "url": null
+              },
+              {
+                "kind": "decision_maker",
+                "ref": "01900000-0000-7000-8000-000000001033",
+                "label": "Office Manager",
+                "url": null
+              },
+              {
+                "kind": "decision_maker",
+                "ref": "01900000-0000-7000-8000-000000001031",
+                "label": "General Manager",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "capacity.site_depth",
+            "component": "BUYING_CAPACITY",
+            "problem": null,
+            "state": "unknown",
+            "value": null,
+            "weight": 1,
+            "points": null,
+            "impact": null,
+            "detail": "The website has not been crawled and audited",
+            "reason": "no_audit",
+            "evidence": []
+          },
+          {
+            "feature": "intent.advertising_active",
+            "component": "COMMERCIAL_INTENT",
+            "problem": null,
+            "state": "unknown",
+            "value": null,
+            "weight": 2,
+            "points": null,
+            "impact": null,
+            "detail": "No advertising pixel detected (which does not mean none)",
+            "reason": "not_detected",
+            "evidence": []
+          },
+          {
+            "feature": "intent.site_changed",
+            "component": "COMMERCIAL_INTENT",
+            "problem": null,
+            "state": "unknown",
+            "value": null,
+            "weight": 1,
+            "points": null,
+            "impact": null,
+            "detail": "The website has not been crawled and audited",
+            "reason": "no_audit",
+            "evidence": []
+          },
+          {
+            "feature": "intent.reputation_without_conversion",
+            "component": "COMMERCIAL_INTENT",
+            "problem": null,
+            "state": "unknown",
+            "value": null,
+            "weight": 2,
+            "points": null,
+            "impact": null,
+            "detail": "The website has not been crawled and audited",
+            "reason": "no_audit",
+            "evidence": []
+          },
+          {
+            "feature": "data.coverage",
+            "component": "DATA_CONFIDENCE",
+            "problem": null,
+            "state": "known",
+            "value": 0.2258,
+            "weight": 3,
+            "points": 11.29,
+            "impact": null,
+            "detail": "23% of the weighted opportunity features are known",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000951",
+                "label": "Synthetic Plumbing 0701",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "data.freshness",
+            "component": "DATA_CONFIDENCE",
+            "problem": null,
+            "state": "known",
+            "value": 1.0,
+            "weight": 2,
+            "points": 33.3333,
+            "impact": null,
+            "detail": "Newest data is 30 days old",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000951",
+                "label": "Synthetic Plumbing 0701",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "data.agreement",
+            "component": "DATA_CONFIDENCE",
+            "problem": null,
+            "state": "known",
+            "value": 1.0,
+            "weight": 1,
+            "points": 16.6667,
+            "impact": null,
+            "detail": "0 field(s) whose records disagree",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000951",
+                "label": "Synthetic Plumbing 0701",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "data.audit_coverage",
+            "component": "DATA_CONFIDENCE",
+            "problem": null,
+            "state": "unknown",
+            "value": null,
+            "weight": 1,
+            "points": null,
+            "impact": null,
+            "detail": "The website has not been crawled and audited",
+            "reason": "no_audit",
+            "evidence": []
+          },
+          {
+            "feature": "contact.availability",
+            "component": "CONTACTABILITY",
+            "problem": null,
+            "state": "known",
+            "value": 0.6,
+            "weight": 25,
+            "points": 15.0,
+            "impact": 6.0,
+            "detail": "availability: email, form, social_profile",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "booking_form:https://calendly.com/synthetic-plumbing-0701/visit",
+                "label": "booking_form: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "contact_form:https://synthetic-plumbing-0701.example/contact/send",
+                "label": "contact_form: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:info@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:jordan.sample@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:sales@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550171",
+                "label": "phone: structurally_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550172",
+                "label": "phone: structurally_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "social:facebook:syntheticplumbing0701",
+                "label": "social_profile: likely_valid",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "contact.validation",
+            "component": "CONTACTABILITY",
+            "problem": null,
+            "state": "known",
+            "value": 1.0,
+            "weight": 30,
+            "points": 30.0,
+            "impact": 12.0,
+            "detail": "validation: likely_valid",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "booking_form:https://calendly.com/synthetic-plumbing-0701/visit",
+                "label": "booking_form: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "contact_form:https://synthetic-plumbing-0701.example/contact/send",
+                "label": "contact_form: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:info@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:jordan.sample@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:sales@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550171",
+                "label": "phone: structurally_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550172",
+                "label": "phone: structurally_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "social:facebook:syntheticplumbing0701",
+                "label": "social_profile: likely_valid",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "contact.role",
+            "component": "CONTACTABILITY",
+            "problem": null,
+            "state": "known",
+            "value": 0.7,
+            "weight": 15,
+            "points": 10.5,
+            "impact": 4.2,
+            "detail": "role: manager",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "booking_form:https://calendly.com/synthetic-plumbing-0701/visit",
+                "label": "booking_form: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "contact_form:https://synthetic-plumbing-0701.example/contact/send",
+                "label": "contact_form: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:info@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:jordan.sample@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:sales@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550171",
+                "label": "phone: structurally_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550172",
+                "label": "phone: structurally_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "social:facebook:syntheticplumbing0701",
+                "label": "social_profile: likely_valid",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "contact.freshness",
+            "component": "CONTACTABILITY",
+            "problem": null,
+            "state": "known",
+            "value": 1.0,
+            "weight": 15,
+            "points": 15.0,
+            "impact": 6.0,
+            "detail": "freshness: fresh",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "booking_form:https://calendly.com/synthetic-plumbing-0701/visit",
+                "label": "booking_form: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "contact_form:https://synthetic-plumbing-0701.example/contact/send",
+                "label": "contact_form: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:info@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:jordan.sample@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:sales@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550171",
+                "label": "phone: structurally_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550172",
+                "label": "phone: structurally_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "social:facebook:syntheticplumbing0701",
+                "label": "social_profile: likely_valid",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "contact.source",
+            "component": "CONTACTABILITY",
+            "problem": null,
+            "state": "known",
+            "value": 1.0,
+            "weight": 15,
+            "points": 15.0,
+            "impact": 6.0,
+            "detail": "source: business_website",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "booking_form:https://calendly.com/synthetic-plumbing-0701/visit",
+                "label": "booking_form: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "contact_form:https://synthetic-plumbing-0701.example/contact/send",
+                "label": "contact_form: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:info@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:jordan.sample@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:sales@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550171",
+                "label": "phone: structurally_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550172",
+                "label": "phone: structurally_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "social:facebook:syntheticplumbing0701",
+                "label": "social_profile: likely_valid",
+                "url": null
+              }
+            ]
+          }
+        ],
+        "gates": [
+          {
+            "gate": "gate.do_not_contact",
+            "outcome": "pass",
+            "detail": "Not on the do-not-contact list",
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000951",
+                "label": "Synthetic Plumbing 0701",
+                "url": null
+              }
+            ]
+          },
+          {
+            "gate": "gate.business_closed",
+            "outcome": "pass",
+            "detail": "Business status: candidate",
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000951",
+                "label": "Synthetic Plumbing 0701",
+                "url": null
+              }
+            ]
+          },
+          {
+            "gate": "gate.exclusions",
+            "outcome": "pass",
+            "detail": "No exclusion applies",
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000951",
+                "label": "Synthetic Plumbing 0701",
+                "url": null
+              }
+            ]
+          },
+          {
+            "gate": "gate.observable_problem",
+            "outcome": "unknown",
+            "detail": "No problem an offer can solve could be evaluated",
+            "evidence": []
+          },
+          {
+            "gate": "criterion.channels",
+            "outcome": "pass",
+            "detail": "5 usable channel(s)",
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "email:info@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:jordan.sample@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:sales@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550171",
+                "label": "phone: structurally_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550172",
+                "label": "phone: structurally_valid",
+                "url": null
+              }
+            ]
+          }
+        ],
+        "criteria": [
+          {
+            "criterion": "criterion.geography",
+            "importance": "nice_to_have",
+            "outcome": "pass",
+            "weight": 2,
+            "detail": "In the target geography (Austin, TX)",
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000951",
+                "label": "Synthetic Plumbing 0701",
+                "url": null
+              }
+            ]
+          },
+          {
+            "criterion": "criterion.digital_maturity",
+            "importance": "nice_to_have",
+            "outcome": "unknown",
+            "weight": 2,
+            "detail": "The website has not been audited",
+            "evidence": []
+          },
+          {
+            "criterion": "criterion.channels",
+            "importance": "must_have",
+            "outcome": "pass",
+            "weight": 3,
+            "detail": "5 usable channel(s)",
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "email:info@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:jordan.sample@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:sales@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550171",
+                "label": "phone: structurally_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550172",
+                "label": "phone: structurally_valid",
+                "url": null
+              }
+            ]
+          },
+          {
+            "criterion": "criterion.buying_capacity",
+            "importance": "nice_to_have",
+            "outcome": "pass",
+            "weight": 1,
+            "detail": "1 capacity proxies observed",
+            "evidence": [
+              {
+                "kind": "decision_maker",
+                "ref": "01900000-0000-7000-8000-000000001032",
+                "label": "Owner",
+                "url": null
+              },
+              {
+                "kind": "decision_maker",
+                "ref": "01900000-0000-7000-8000-000000001033",
+                "label": "Office Manager",
+                "url": null
+              },
+              {
+                "kind": "decision_maker",
+                "ref": "01900000-0000-7000-8000-000000001031",
+                "label": "General Manager",
+                "url": null
+              }
+            ]
+          }
+        ],
+        "reasons": [
+          {
+            "feature": "criterion.channels",
+            "text": "5 usable channel(s)",
+            "impact": 12.5,
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "email:info@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:jordan.sample@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:sales@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550171",
+                "label": "phone: structurally_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550172",
+                "label": "phone: structurally_valid",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "contact.validation",
+            "text": "validation: likely_valid",
+            "impact": 12.0,
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "booking_form:https://calendly.com/synthetic-plumbing-0701/visit",
+                "label": "booking_form: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "contact_form:https://synthetic-plumbing-0701.example/contact/send",
+                "label": "contact_form: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:info@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:jordan.sample@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "email:sales@synthetic-plumbing-0701.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550171",
+                "label": "phone: structurally_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550172",
+                "label": "phone: structurally_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "social:facebook:syntheticplumbing0701",
+                "label": "social_profile: likely_valid",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "health.recently_seen",
+            "text": "Last listed by a source 30 days before these facts were read",
+            "impact": 11.6667,
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000951",
+                "label": "Synthetic Plumbing 0701",
+                "url": null
+              }
+            ]
+          }
+        ],
+        "contact_now": [],
+        "impacts": [],
+        "risks": [
+          {
+            "code": "gate_undecided",
+            "detail": "gate.observable_problem: No problem an offer can solve could be evaluated",
+            "evidence": []
+          }
+        ],
+        "missing": [
+          {
+            "feature": "criterion.digital_maturity",
+            "component": "ICP_MATCH",
+            "detail": "The website has not been audited",
+            "weight_share": 0.0625
+          },
+          {
+            "feature": "gap.conversion_path",
+            "component": "DIGITAL_GAP",
+            "detail": "The website has not been crawled and audited",
+            "weight_share": 0.0295
+          },
+          {
+            "feature": "gap.website_unreachable",
+            "component": "DIGITAL_GAP",
+            "detail": "The website has not been crawled and audited",
+            "weight_share": 0.0295
+          },
+          {
+            "feature": "intent.advertising_active",
+            "component": "COMMERCIAL_INTENT",
+            "detail": "No advertising pixel detected (which does not mean none)",
+            "weight_share": 0.021
+          },
+          {
+            "feature": "intent.reputation_without_conversion",
+            "component": "COMMERCIAL_INTENT",
+            "detail": "The website has not been crawled and audited",
+            "weight_share": 0.021
+          },
+          {
+            "feature": "health.site_answers",
+            "component": "BUSINESS_HEALTH",
+            "detail": "The website has not been crawled and audited",
+            "weight_share": 0.02
+          },
+          {
+            "feature": "gap.local_seo",
+            "component": "DIGITAL_GAP",
+            "detail": "The website has not been crawled and audited",
+            "weight_share": 0.0197
+          },
+          {
+            "feature": "gap.mobile",
+            "component": "DIGITAL_GAP",
+            "detail": "The website has not been crawled and audited",
+            "weight_share": 0.0197
+          },
+          {
+            "feature": "capacity.paid_tools",
+            "component": "BUYING_CAPACITY",
+            "detail": "No crawled site to detect tools on",
+            "weight_share": 0.0117
+          },
+          {
+            "feature": "capacity.site_depth",
+            "component": "BUYING_CAPACITY",
+            "detail": "The website has not been crawled and audited",
+            "weight_share": 0.0117
+          },
+          {
+            "feature": "intent.site_changed",
+            "component": "COMMERCIAL_INTENT",
+            "detail": "The website has not been crawled and audited",
+            "weight_share": 0.0105
+          },
+          {
+            "feature": "health.site_maintained",
+            "component": "BUSINESS_HEALTH",
+            "detail": "The website has not been crawled and audited",
+            "weight_share": 0.01
+          },
+          {
+            "feature": "health.trust_signals",
+            "component": "BUSINESS_HEALTH",
+            "detail": "The website has not been crawled and audited",
+            "weight_share": 0.01
+          },
+          {
+            "feature": "gap.measurement",
+            "component": "DIGITAL_GAP",
+            "detail": "The website has not been crawled and audited",
+            "weight_share": 0.0098
+          },
+          {
+            "feature": "gap.online_booking",
+            "component": "DIGITAL_GAP",
+            "detail": "The website has not been crawled and audited",
+            "weight_share": 0.0098
+          },
+          {
+            "feature": "gap.technical_seo",
+            "component": "DIGITAL_GAP",
+            "detail": "The website has not been crawled and audited",
+            "weight_share": 0.0098
+          }
+        ],
+        "offer": null,
+        "message": null
+      }
+    },
+    {
+      "row": {
+        "business_id": "01900000-0000-7000-8000-000000000090",
+        "project_id": "01900000-0000-7000-8000-000000000001",
+        "rank": 1,
+        "display_name": "Synthetic Bakery 0001",
+        "locality": "Austin",
+        "region": "TX",
+        "category": "Bakery",
+        "domain": "synthetic-bakery-0001.example",
+        "lead_stage": "attempted",
+        "research_status": "needs_research",
+        "assignee": "Synthetic analyst",
+        "tags": [
+          "synthetic-shortlist"
+        ],
+        "tier": "review",
+        "total_score": 65.4483,
+        "confidence": 0.6444,
+        "data_coverage": 1.0,
+        "icp_match": 71.4286,
+        "opportunity_score": 49.1176,
+        "digital_gap": 75.0,
+        "business_health": 40.0,
+        "buying_capacity": 0.0,
+        "contactability": 76.0,
+        "commercial_intent": null,
+        "data_confidence": 64.44,
+        "latino_status": "unknown",
+        "latino_confidence": null,
+        "main_channel": "email",
+        "channel_status": "likely_valid",
+        "usable_channels": 1,
+        "problems": [
+          "website_unreachable"
+        ],
+        "top_problem": "website_unreachable",
+        "top_reason": "The crawl could not analyze any page of the site",
+        "offer": "website_rebuild",
+        "facts_collected_at": "2026-01-01T00:00:00.000Z",
+        "facts_age_days": 0,
+        "audit_status": "empty",
+        "conflicts": 0,
+        "suppressed": false,
+        "stale": false,
+        "partial": true,
+        "is_synthetic": true
+      },
+      "scorecard": {
+        "business_id": "01900000-0000-7000-8000-000000000090",
+        "tier": "review",
+        "total_score": 65.4483,
+        "confidence": 0.6444,
+        "known_weight": 1.0,
+        "versions": {
+          "engine_version": "1.0.0",
+          "facts_version": "1.0.0",
+          "scoring_model_key": "custom.synthetic_model_contactability_first",
+          "scoring_model_version": 1,
+          "is_heuristic": true,
+          "icp_profile_name": "Synthetic ICP: local services with weak websites",
+          "icp_profile_version": 1
+        },
+        "components": [
+          {
+            "component": "ICP_MATCH",
+            "value": 71.4286,
+            "weight": 25,
+            "contribution": 17.8571,
+            "coverage": 0.875,
+            "formula": "100 * Σ(criterion * weight) / Σ weight over decided criteria that are not ignored (pass 1, fail 0); undecided criteria are left out"
+          },
+          {
+            "component": "LATINO_CONFIDENCE",
+            "value": null,
+            "weight": 0,
+            "contribution": null,
+            "coverage": 0.0,
+            "formula": "100 * confidence of the Latino assessment the business shows, when its status is not unknown; campaigns filter by the Latino requirement"
+          },
+          {
+            "component": "BUSINESS_HEALTH",
+            "value": 40.0,
+            "weight": 20,
+            "contribution": 9.4118,
+            "coverage": 0.7143,
+            "formula": "100 * Σ(value * weight) / Σ weight over known features with a weight; unknown and not applicable features are left out and lower the coverage"
+          },
+          {
+            "component": "DIGITAL_GAP",
+            "value": 75.0,
+            "weight": 45,
+            "contribution": 39.7059,
+            "coverage": 0.25,
+            "formula": "100 * Σ(value * weight) / Σ weight over known features with a weight; unknown and not applicable features are left out and lower the coverage"
+          },
+          {
+            "component": "BUYING_CAPACITY",
+            "value": 0.0,
+            "weight": 20,
+            "contribution": 0.0,
+            "coverage": 0.8333,
+            "formula": "100 * Σ(value * weight) / Σ weight over known features with a weight; unknown and not applicable features are left out and lower the coverage"
+          },
+          {
+            "component": "CONTACTABILITY",
+            "value": 76.0,
+            "weight": 40,
+            "contribution": 30.4,
+            "coverage": 1.0,
+            "formula": "score = round(100 x sum(weight x value) / sum(weight)) over availability 25, validation 30, role 15, freshness 15, source 15; only published or imported channels that are not invalid, suppressed or in the fictional range count; hypotheses never count; a suppressed business has no score"
+          },
+          {
+            "component": "COMMERCIAL_INTENT",
+            "value": null,
+            "weight": 15,
+            "contribution": null,
+            "coverage": 0.0,
+            "formula": "100 * Σ(value * weight) / Σ weight over known features with a weight; unknown and not applicable features are left out and lower the coverage"
+          },
+          {
+            "component": "DATA_CONFIDENCE",
+            "value": 64.44,
+            "weight": 0,
+            "contribution": null,
+            "coverage": 1.0,
+            "formula": "100 * Σ(value * weight) / Σ weight over known features with a weight; unknown and not applicable features are left out and lower the coverage"
+          },
+          {
+            "component": "OPPORTUNITY_SCORE",
+            "value": 49.1176,
+            "weight": 35,
+            "contribution": 17.1912,
+            "coverage": 0.85,
+            "formula": "OPPORTUNITY_SCORE = (DIGITAL_GAP * 45 + BUSINESS_HEALTH * 20 + BUYING_CAPACITY * 20 + COMMERCIAL_INTENT * 15) / Σ weight of the known inputs"
+          },
+          {
+            "component": "FINAL_LEAD_SCORE",
+            "value": 65.4483,
+            "weight": 0,
+            "contribution": null,
+            "coverage": 1.0,
+            "formula": "FINAL_LEAD_SCORE = (ICP_MATCH * 25 + OPPORTUNITY_SCORE * 35 + CONTACTABILITY * 40) / Σ weight of the known inputs; gates are decided first, and the tier follows the model's thresholds"
+          }
+        ],
+        "features": [
+          {
+            "feature": "gap.no_website",
+            "component": "DIGITAL_GAP",
+            "problem": "no_website",
+            "state": "not_applicable",
+            "value": null,
+            "weight": 3,
+            "points": null,
+            "impact": null,
+            "detail": "A website is known for this business",
+            "reason": "website_known",
+            "evidence": []
+          },
+          {
+            "feature": "gap.website_unreachable",
+            "component": "DIGITAL_GAP",
+            "problem": "website_unreachable",
+            "state": "known",
+            "value": 1.0,
+            "weight": 3,
+            "points": 75.0,
+            "impact": 13.8971,
+            "detail": "The crawl could not analyze any page of the site",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "website_audit",
+                "ref": "01900000-0000-7000-8000-000000000465",
+                "label": "synthetic-bakery-0001.example",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "gap.conversion_path",
+            "component": "DIGITAL_GAP",
+            "problem": "weak_conversion_path",
+            "state": "unknown",
+            "value": null,
+            "weight": 3,
+            "points": null,
+            "impact": null,
+            "detail": "Calls to action and forms could not be evaluated",
+            "reason": "finding_unknown",
+            "evidence": []
+          },
+          {
+            "feature": "gap.online_booking",
+            "component": "DIGITAL_GAP",
+            "problem": "no_online_booking",
+            "state": "unknown",
+            "value": null,
+            "weight": 1,
+            "points": null,
+            "impact": null,
+            "detail": "conversion.booking_or_quote could not be evaluated",
+            "reason": "finding_unknown",
+            "evidence": []
+          },
+          {
+            "feature": "gap.local_seo",
+            "component": "DIGITAL_GAP",
+            "problem": "weak_local_seo",
+            "state": "unknown",
+            "value": null,
+            "weight": 2,
+            "points": null,
+            "impact": null,
+            "detail": "No local SEO rule could be evaluated",
+            "reason": "subscore_unknown",
+            "evidence": []
+          },
+          {
+            "feature": "gap.technical_seo",
+            "component": "DIGITAL_GAP",
+            "problem": "weak_technical_seo",
+            "state": "known",
+            "value": 0.0,
+            "weight": 1,
+            "points": 0.0,
+            "impact": 0.0,
+            "detail": "Seo subscore 75/100",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "website_finding",
+                "ref": "01900000-0000-7000-8000-000000000481",
+                "label": "seo.sitemap: warning",
+                "url": "https://synthetic-bakery-0001.example/sitemap.xml"
+              },
+              {
+                "kind": "website_audit",
+                "ref": "01900000-0000-7000-8000-000000000465",
+                "label": "synthetic-bakery-0001.example",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "gap.mobile",
+            "component": "DIGITAL_GAP",
+            "problem": "poor_mobile_experience",
+            "state": "unknown",
+            "value": null,
+            "weight": 2,
+            "points": null,
+            "impact": null,
+            "detail": "mobile.viewport could not be evaluated",
+            "reason": "finding_unknown",
+            "evidence": []
+          },
+          {
+            "feature": "gap.measurement",
+            "component": "DIGITAL_GAP",
+            "problem": "measurement_not_detected",
+            "state": "unknown",
+            "value": null,
+            "weight": 1,
+            "points": null,
+            "impact": null,
+            "detail": "measurement.analytics could not be evaluated",
+            "reason": "finding_unknown",
+            "evidence": []
+          },
+          {
+            "feature": "health.recently_seen",
+            "component": "BUSINESS_HEALTH",
+            "problem": null,
+            "state": "known",
+            "value": 1.0,
+            "weight": 2,
+            "points": 40.0,
+            "impact": 3.2941,
+            "detail": "Last listed by a source 0 days before these facts were read",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000090",
+                "label": "Synthetic Bakery 0001",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "health.site_answers",
+            "component": "BUSINESS_HEALTH",
+            "problem": null,
+            "state": "known",
+            "value": 0.0,
+            "weight": 2,
+            "points": 0.0,
+            "impact": 0.0,
+            "detail": "No page of the site could be analyzed",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "website_audit",
+                "ref": "01900000-0000-7000-8000-000000000465",
+                "label": "synthetic-bakery-0001.example",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "health.site_maintained",
+            "component": "BUSINESS_HEALTH",
+            "problem": null,
+            "state": "unknown",
+            "value": null,
+            "weight": 1,
+            "points": null,
+            "impact": null,
+            "detail": "content.freshness could not be evaluated",
+            "reason": "finding_unknown",
+            "evidence": []
+          },
+          {
+            "feature": "health.trust_signals",
+            "component": "BUSINESS_HEALTH",
+            "problem": null,
+            "state": "unknown",
+            "value": null,
+            "weight": 1,
+            "points": null,
+            "impact": null,
+            "detail": "conversion.trust_signals could not be evaluated",
+            "reason": "finding_unknown",
+            "evidence": []
+          },
+          {
+            "feature": "health.multiple_sources",
+            "component": "BUSINESS_HEALTH",
+            "problem": null,
+            "state": "known",
+            "value": 0.0,
+            "weight": 1,
+            "points": 0.0,
+            "impact": 0.0,
+            "detail": "Listed by 1 acquired record(s)",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000090",
+                "label": "Synthetic Bakery 0001",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "capacity.multiple_locations",
+            "component": "BUYING_CAPACITY",
+            "problem": null,
+            "state": "known",
+            "value": 0.0,
+            "weight": 2,
+            "points": 0.0,
+            "impact": 0.0,
+            "detail": "1 distinct location(s)",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000090",
+                "label": "Synthetic Bakery 0001",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "capacity.paid_tools",
+            "component": "BUYING_CAPACITY",
+            "problem": null,
+            "state": "unknown",
+            "value": null,
+            "weight": 1,
+            "points": null,
+            "impact": null,
+            "detail": "No booking, ecommerce or call tracking tool detected",
+            "reason": "not_detected",
+            "evidence": []
+          },
+          {
+            "feature": "capacity.team_published",
+            "component": "BUYING_CAPACITY",
+            "problem": null,
+            "state": "known",
+            "value": 0.0,
+            "weight": 2,
+            "points": 0.0,
+            "impact": 0.0,
+            "detail": "0 published decision maker(s)",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "website_audit",
+                "ref": "01900000-0000-7000-8000-000000000465",
+                "label": "synthetic-bakery-0001.example",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "capacity.site_depth",
+            "component": "BUYING_CAPACITY",
+            "problem": null,
+            "state": "known",
+            "value": 0.0,
+            "weight": 1,
+            "points": 0.0,
+            "impact": 0.0,
+            "detail": "0 page(s) analyzed",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "website_audit",
+                "ref": "01900000-0000-7000-8000-000000000465",
+                "label": "synthetic-bakery-0001.example",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "intent.advertising_active",
+            "component": "COMMERCIAL_INTENT",
+            "problem": null,
+            "state": "unknown",
+            "value": null,
+            "weight": 2,
+            "points": null,
+            "impact": null,
+            "detail": "No advertising pixel detected (which does not mean none)",
+            "reason": "not_detected",
+            "evidence": []
+          },
+          {
+            "feature": "intent.site_changed",
+            "component": "COMMERCIAL_INTENT",
+            "problem": null,
+            "state": "unknown",
+            "value": null,
+            "weight": 1,
+            "points": null,
+            "impact": null,
+            "detail": "Only one audit of the site: nothing to compare",
+            "reason": "single_audit",
+            "evidence": []
+          },
+          {
+            "feature": "intent.reputation_without_conversion",
+            "component": "COMMERCIAL_INTENT",
+            "problem": null,
+            "state": "unknown",
+            "value": null,
+            "weight": 2,
+            "points": null,
+            "impact": null,
+            "detail": "Trust signals or the conversion subscore are unknown",
+            "reason": "finding_unknown",
+            "evidence": []
+          },
+          {
+            "feature": "data.coverage",
+            "component": "DATA_CONFIDENCE",
+            "problem": null,
+            "state": "known",
+            "value": 0.4516,
+            "weight": 3,
+            "points": 19.3543,
+            "impact": null,
+            "detail": "45% of the weighted opportunity features are known",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000090",
+                "label": "Synthetic Bakery 0001",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "data.freshness",
+            "component": "DATA_CONFIDENCE",
+            "problem": null,
+            "state": "known",
+            "value": 1.0,
+            "weight": 2,
+            "points": 28.5714,
+            "impact": null,
+            "detail": "Newest data is 0 days old",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "website_audit",
+                "ref": "01900000-0000-7000-8000-000000000465",
+                "label": "synthetic-bakery-0001.example",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "data.agreement",
+            "component": "DATA_CONFIDENCE",
+            "problem": null,
+            "state": "known",
+            "value": 1.0,
+            "weight": 1,
+            "points": 14.2857,
+            "impact": null,
+            "detail": "0 field(s) whose records disagree",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000090",
+                "label": "Synthetic Bakery 0001",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "data.audit_coverage",
+            "component": "DATA_CONFIDENCE",
+            "problem": null,
+            "state": "known",
+            "value": 0.156,
+            "weight": 1,
+            "points": 2.2286,
+            "impact": null,
+            "detail": "Audit coverage 16%",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "website_audit",
+                "ref": "01900000-0000-7000-8000-000000000465",
+                "label": "synthetic-bakery-0001.example",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "contact.availability",
+            "component": "CONTACTABILITY",
+            "problem": null,
+            "state": "known",
+            "value": 0.35,
+            "weight": 25,
+            "points": 8.75,
+            "impact": 3.5,
+            "detail": "availability: email",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "email:hello@synthetic-bakery-0001.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550101",
+                "label": "phone: structurally_valid",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "contact.validation",
+            "component": "CONTACTABILITY",
+            "problem": null,
+            "state": "known",
+            "value": 1.0,
+            "weight": 30,
+            "points": 30.0,
+            "impact": 12.0,
+            "detail": "validation: likely_valid",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "email:hello@synthetic-bakery-0001.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550101",
+                "label": "phone: structurally_valid",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "contact.role",
+            "component": "CONTACTABILITY",
+            "problem": null,
+            "state": "known",
+            "value": 0.5,
+            "weight": 15,
+            "points": 7.5,
+            "impact": 3.0,
+            "detail": "role: role_address",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "email:hello@synthetic-bakery-0001.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550101",
+                "label": "phone: structurally_valid",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "contact.freshness",
+            "component": "CONTACTABILITY",
+            "problem": null,
+            "state": "known",
+            "value": 1.0,
+            "weight": 15,
+            "points": 15.0,
+            "impact": 6.0,
+            "detail": "freshness: fresh",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "email:hello@synthetic-bakery-0001.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550101",
+                "label": "phone: structurally_valid",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "contact.source",
+            "component": "CONTACTABILITY",
+            "problem": null,
+            "state": "known",
+            "value": 1.0,
+            "weight": 15,
+            "points": 15.0,
+            "impact": 6.0,
+            "detail": "source: business_website",
+            "reason": null,
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "email:hello@synthetic-bakery-0001.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550101",
+                "label": "phone: structurally_valid",
+                "url": null
+              }
+            ]
+          }
+        ],
+        "gates": [
+          {
+            "gate": "gate.do_not_contact",
+            "outcome": "pass",
+            "detail": "Not on the do-not-contact list",
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000090",
+                "label": "Synthetic Bakery 0001",
+                "url": null
+              }
+            ]
+          },
+          {
+            "gate": "gate.business_closed",
+            "outcome": "pass",
+            "detail": "Business status: candidate",
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000090",
+                "label": "Synthetic Bakery 0001",
+                "url": null
+              }
+            ]
+          },
+          {
+            "gate": "gate.exclusions",
+            "outcome": "pass",
+            "detail": "No exclusion applies",
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000090",
+                "label": "Synthetic Bakery 0001",
+                "url": null
+              }
+            ]
+          },
+          {
+            "gate": "gate.observable_problem",
+            "outcome": "pass",
+            "detail": "1 problem(s) an offer can solve",
+            "evidence": [
+              {
+                "kind": "website_audit",
+                "ref": "01900000-0000-7000-8000-000000000465",
+                "label": "synthetic-bakery-0001.example",
+                "url": null
+              }
+            ]
+          },
+          {
+            "gate": "criterion.channels",
+            "outcome": "pass",
+            "detail": "2 usable channel(s)",
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "email:hello@synthetic-bakery-0001.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550101",
+                "label": "phone: structurally_valid",
+                "url": null
+              }
+            ]
+          }
+        ],
+        "criteria": [
+          {
+            "criterion": "criterion.geography",
+            "importance": "nice_to_have",
+            "outcome": "pass",
+            "weight": 2,
+            "detail": "In the target geography (Austin, TX)",
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000090",
+                "label": "Synthetic Bakery 0001",
+                "url": null
+              }
+            ]
+          },
+          {
+            "criterion": "criterion.digital_maturity",
+            "importance": "nice_to_have",
+            "outcome": "fail",
+            "weight": 2,
+            "detail": "Mean website subscore 81/100: high",
+            "evidence": [
+              {
+                "kind": "website_audit",
+                "ref": "01900000-0000-7000-8000-000000000465",
+                "label": "synthetic-bakery-0001.example",
+                "url": null
+              }
+            ]
+          },
+          {
+            "criterion": "criterion.channels",
+            "importance": "must_have",
+            "outcome": "pass",
+            "weight": 3,
+            "detail": "2 usable channel(s)",
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "email:hello@synthetic-bakery-0001.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550101",
+                "label": "phone: structurally_valid",
+                "url": null
+              }
+            ]
+          },
+          {
+            "criterion": "criterion.buying_capacity",
+            "importance": "nice_to_have",
+            "outcome": "unknown",
+            "weight": 1,
+            "detail": "0 capacity proxies observed, 1 unknown",
+            "evidence": []
+          }
+        ],
+        "reasons": [
+          {
+            "feature": "gap.website_unreachable",
+            "text": "The crawl could not analyze any page of the site",
+            "impact": 13.8971,
+            "evidence": [
+              {
+                "kind": "website_audit",
+                "ref": "01900000-0000-7000-8000-000000000465",
+                "label": "synthetic-bakery-0001.example",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "contact.validation",
+            "text": "validation: likely_valid",
+            "impact": 12.0,
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "email:hello@synthetic-bakery-0001.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550101",
+                "label": "phone: structurally_valid",
+                "url": null
+              }
+            ]
+          },
+          {
+            "feature": "criterion.channels",
+            "text": "2 usable channel(s)",
+            "impact": 10.7143,
+            "evidence": [
+              {
+                "kind": "contact_channel",
+                "ref": "email:hello@synthetic-bakery-0001.example",
+                "label": "email: likely_valid",
+                "url": null
+              },
+              {
+                "kind": "contact_channel",
+                "ref": "phone:+15125550101",
+                "label": "phone: structurally_valid",
+                "url": null
+              }
+            ]
+          }
+        ],
+        "contact_now": [],
+        "impacts": [
+          {
+            "problem": "website_unreachable",
+            "text": "Visitors who reach the site probably leave before they can make contact.",
+            "is_inference": true
+          }
+        ],
+        "risks": [],
+        "missing": [
+          {
+            "feature": "criterion.buying_capacity",
+            "component": "ICP_MATCH",
+            "detail": "0 capacity proxies observed, 1 unknown",
+            "weight_share": 0.0312
+          },
+          {
+            "feature": "gap.conversion_path",
+            "component": "DIGITAL_GAP",
+            "detail": "Calls to action and forms could not be evaluated",
+            "weight_share": 0.0295
+          },
+          {
+            "feature": "intent.advertising_active",
+            "component": "COMMERCIAL_INTENT",
+            "detail": "No advertising pixel detected (which does not mean none)",
+            "weight_share": 0.021
+          },
+          {
+            "feature": "intent.reputation_without_conversion",
+            "component": "COMMERCIAL_INTENT",
+            "detail": "Trust signals or the conversion subscore are unknown",
+            "weight_share": 0.021
+          },
+          {
+            "feature": "gap.local_seo",
+            "component": "DIGITAL_GAP",
+            "detail": "No local SEO rule could be evaluated",
+            "weight_share": 0.0197
+          },
+          {
+            "feature": "gap.mobile",
+            "component": "DIGITAL_GAP",
+            "detail": "mobile.viewport could not be evaluated",
+            "weight_share": 0.0197
+          },
+          {
+            "feature": "capacity.paid_tools",
+            "component": "BUYING_CAPACITY",
+            "detail": "No booking, ecommerce or call tracking tool detected",
+            "weight_share": 0.0117
+          },
+          {
+            "feature": "intent.site_changed",
+            "component": "COMMERCIAL_INTENT",
+            "detail": "Only one audit of the site: nothing to compare",
+            "weight_share": 0.0105
+          },
+          {
+            "feature": "health.site_maintained",
+            "component": "BUSINESS_HEALTH",
+            "detail": "content.freshness could not be evaluated",
+            "weight_share": 0.01
+          },
+          {
+            "feature": "health.trust_signals",
+            "component": "BUSINESS_HEALTH",
+            "detail": "conversion.trust_signals could not be evaluated",
+            "weight_share": 0.01
+          },
+          {
+            "feature": "gap.measurement",
+            "component": "DIGITAL_GAP",
+            "detail": "measurement.analytics could not be evaluated",
+            "weight_share": 0.0098
+          },
+          {
+            "feature": "gap.online_booking",
+            "component": "DIGITAL_GAP",
+            "detail": "conversion.booking_or_quote could not be evaluated",
+            "weight_share": 0.0098
+          }
+        ],
+        "offer": {
+          "offer_key": "website_rebuild",
+          "offer_name": "Website rebuild",
+          "problems": [
+            "website_unreachable"
+          ],
+          "why": "It addresses what the evidence shows: the website could not be loaded reliably.",
+          "evidence": [
+            {
+              "kind": "website_audit",
+              "ref": "01900000-0000-7000-8000-000000000465",
+              "label": "synthetic-bakery-0001.example",
+              "url": null
+            }
+          ]
+        },
+        "message": {
+          "subject": "Website rebuild for Synthetic Bakery 0001",
+          "body": "Hello Synthetic Bakery 0001 team,\n\nWhile reviewing synthetic-bakery-0001.example we noticed that:\n- the website could not be loaded reliably\n\nWe help businesses like yours with Website rebuild: A fast mobile site with a clear call to action and a quote form (synthetic offer).\n\nWould a short call to go over what we found be useful?\n\n(Draft for review: adapt it before sending. Lead Intelligence never sends messages.)",
+          "language": "en",
+          "is_draft": true
+        }
+      }
+    }
+  ],
+  "missing": []
+}

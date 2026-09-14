@@ -57,9 +57,9 @@ const crawls = crawlFixture as CrawlRunPage;
 const discovery = discoveryFixture as DiscoveryRunPage;
 const scores = scoreFixture as ScoreRunPage;
 
-function renderJobs() {
+function renderJobs(path = "/jobs") {
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[path]}>
       <JobsScreen />
     </MemoryRouter>,
   );
@@ -155,6 +155,27 @@ describe("JobsScreen", () => {
       expect(mocks.controlScoring).toHaveBeenCalledWith({ job_id: run.job_id, action: "cancel" }),
     );
     expect(mocks.controlAi).not.toHaveBeenCalled();
+  });
+
+  it("marks the job a link points at and opens a score run in the Lead Explorer", async () => {
+    const [crawl] = crawls.items;
+    const [score] = scores.items;
+    if (!crawl || !score) throw new Error("the fixtures hold a crawl and a score run");
+    renderJobs(`/jobs?job=${crawl.job_id}`);
+    const name = await screen.findByText(/^Crawl · Synthetic discovery campaign/);
+    expect(name.closest("li")?.getAttribute("aria-current")).toBe("true");
+    expect(
+      screen
+        .getAllByRole("link", { name: "Lead Explorer" })
+        .map((link) => link.getAttribute("href")),
+    ).toContain(`/lead-explorer?run=${score.score_run_id}`);
+  });
+
+  it("says when the job a link points at is not among those listed", async () => {
+    renderJobs("/jobs?job=01900000-0000-7000-8000-ffffffffffff");
+    expect(
+      await screen.findByText("The linked job is not among the newest jobs listed"),
+    ).toBeTruthy();
   });
 
   it("says so when nothing has run", async () => {

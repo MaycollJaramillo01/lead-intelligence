@@ -252,6 +252,24 @@
       "max_refs": 2,
       "timeout_s": 240,
       "temperature": 0.0
+    },
+    {
+      "task_type": "sales_brief",
+      "task_version": "1.0.0",
+      "output_schema_version": "1.0.0",
+      "prompt_template_id": "sales_brief",
+      "prompt_template_version": "1.0.0",
+      "enabled": true,
+      "profile": "fast",
+      "model": "synthetic-text:1b",
+      "available": true,
+      "unavailable_reason": null,
+      "requires_vision": false,
+      "batchable": false,
+      "max_input_chars": 8000,
+      "max_refs": 40,
+      "timeout_s": 240,
+      "temperature": 0.2
     }
   ],
   "limits": {

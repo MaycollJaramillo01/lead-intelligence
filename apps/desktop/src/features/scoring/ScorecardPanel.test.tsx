@@ -72,6 +72,47 @@ describe("ScorecardPanel", () => {
         stage: "lost",
         lost_reason: "No budget this year",
         reason: "Called the owner twice",
+        channel: null,
+        attempt_result: null,
+        value_amount: null,
+        value_currency: null,
+        contact_quality: null,
+        notes: null,
+        occurred_at: null,
+      }),
+    );
+  });
+
+  it("records a contact attempt with its channel and result, keeping the stage", async () => {
+    const user = userEvent.setup();
+    render(<ScorecardPanel businessId={detail.business_id} scoreRunId={run} />);
+    await screen.findByText("Review or record an outcome");
+    await user.selectOptions(screen.getByLabelText("Action"), "record_attempt");
+    expect(screen.queryByLabelText("Stage reached")).toBeNull();
+    const save = screen.getByRole("button", { name: "Save" }) as HTMLButtonElement;
+    await user.click(screen.getByLabelText("Reason"));
+    await user.paste("Called the published number");
+    expect(save.disabled).toBe(true); // an attempt names its channel and result
+    await user.selectOptions(screen.getByLabelText("Channel"), "phone");
+    await user.selectOptions(screen.getByLabelText("Result"), "left_message");
+    await user.click(screen.getByLabelText("Value (optional)"));
+    await user.paste("1200");
+    await user.click(save);
+    await waitFor(() =>
+      expect(mocks.actOnLead).toHaveBeenCalledWith({
+        score_run_id: run,
+        business_id: detail.business_id,
+        action: "record_attempt",
+        stage: null,
+        lost_reason: null,
+        reason: "Called the published number",
+        channel: "phone",
+        attempt_result: "left_message",
+        value_amount: 1200,
+        value_currency: "USD",
+        contact_quality: null,
+        notes: null,
+        occurred_at: null,
       }),
     );
   });

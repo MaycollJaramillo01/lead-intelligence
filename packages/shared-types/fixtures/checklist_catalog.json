@@ -1,0 +1,179 @@
+{
+  "checklists": [
+    {
+      "checklist": {
+        "id": "01900000-0000-7000-8000-000000001633",
+        "name": "Sales-ready checklist",
+        "description": "Built-in: what every lead needs before it is sales-ready.",
+        "active_version_id": "01900000-0000-7000-8000-000000001635",
+        "archived_at": null,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z"
+      },
+      "versions": [
+        {
+          "id": "01900000-0000-7000-8000-000000001635",
+          "checklist_id": "01900000-0000-7000-8000-000000001633",
+          "version": 1,
+          "definition_json": {
+            "campaign_ids": [],
+            "categories": [],
+            "items": [
+              {
+                "key": "scored_recently",
+                "kind": "automatic",
+                "label": "Scored on facts read in the last 90 days",
+                "required": true,
+                "rule": "scored_recently"
+              },
+              {
+                "key": "qualifying_tier",
+                "kind": "automatic",
+                "label": "Priority or review tier",
+                "required": true,
+                "rule": "qualifying_tier"
+              },
+              {
+                "key": "verified_opportunity",
+                "kind": "automatic",
+                "label": "An observed problem the recommended offer solves",
+                "required": true,
+                "rule": "verified_opportunity"
+              },
+              {
+                "key": "usable_contact",
+                "kind": "automatic",
+                "label": "A usable contact route off the do-not-contact list",
+                "required": true,
+                "rule": "usable_contact"
+              },
+              {
+                "key": "contact_conflicts_resolved",
+                "kind": "automatic",
+                "label": "No disagreement on the contact values",
+                "required": true,
+                "rule": "contact_conflicts_resolved"
+              },
+              {
+                "key": "decision_maker_published",
+                "kind": "automatic",
+                "label": "A decision maker the business published",
+                "required": false,
+                "rule": "decision_maker_published"
+              },
+              {
+                "key": "website_audited",
+                "kind": "automatic",
+                "label": "The website audited, when there is one",
+                "required": false,
+                "rule": "website_audited"
+              },
+              {
+                "key": "latino_evaluated",
+                "kind": "automatic",
+                "label": "Latino evidence evaluated",
+                "required": false,
+                "rule": "latino_evaluated"
+              },
+              {
+                "key": "offer_fit_confirmed",
+                "kind": "manual",
+                "label": "The recommended offer fits what the business sells",
+                "required": true,
+                "rule": null
+              },
+              {
+                "key": "contact_route_reviewed",
+                "kind": "manual",
+                "label": "A person reviewed the contact route",
+                "required": true,
+                "rule": null
+              }
+            ],
+            "schema_version": 1
+          },
+          "schema_version": 1,
+          "created_by": "lead-research",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        }
+      ]
+    }
+  ],
+  "template": {
+    "schema_version": 1,
+    "campaign_ids": [],
+    "categories": [],
+    "items": [
+      {
+        "key": "scored_recently",
+        "label": "Scored on facts read in the last 90 days",
+        "kind": "automatic",
+        "rule": "scored_recently",
+        "required": true
+      },
+      {
+        "key": "qualifying_tier",
+        "label": "Priority or review tier",
+        "kind": "automatic",
+        "rule": "qualifying_tier",
+        "required": true
+      },
+      {
+        "key": "verified_opportunity",
+        "label": "An observed problem the recommended offer solves",
+        "kind": "automatic",
+        "rule": "verified_opportunity",
+        "required": true
+      },
+      {
+        "key": "usable_contact",
+        "label": "A usable contact route off the do-not-contact list",
+        "kind": "automatic",
+        "rule": "usable_contact",
+        "required": true
+      },
+      {
+        "key": "contact_conflicts_resolved",
+        "label": "No disagreement on the contact values",
+        "kind": "automatic",
+        "rule": "contact_conflicts_resolved",
+        "required": true
+      },
+      {
+        "key": "decision_maker_published",
+        "label": "A decision maker the business published",
+        "kind": "automatic",
+        "rule": "decision_maker_published",
+        "required": false
+      },
+      {
+        "key": "website_audited",
+        "label": "The website audited, when there is one",
+        "kind": "automatic",
+        "rule": "website_audited",
+        "required": false
+      },
+      {
+        "key": "latino_evaluated",
+        "label": "Latino evidence evaluated",
+        "kind": "automatic",
+        "rule": "latino_evaluated",
+        "required": false
+      },
+      {
+        "key": "offer_fit_confirmed",
+        "label": "The recommended offer fits what the business sells",
+        "kind": "manual",
+        "rule": null,
+        "required": true
+      },
+      {
+        "key": "contact_route_reviewed",
+        "label": "A person reviewed the contact route",
+        "kind": "manual",
+        "rule": null,
+        "required": true
+      }
+    ]
+  }
+}

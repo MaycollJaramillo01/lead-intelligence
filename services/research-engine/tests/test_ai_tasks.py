@@ -26,6 +26,7 @@ PINNED = {
     AiTaskType.OPPORTUNITY_REASONING: "1.0.0",
     AiTaskType.LANGUAGE_DETECTION: "1.0.0",
     AiTaskType.VISUAL_REVIEW: "1.0.0",
+    AiTaskType.SALES_BRIEF: "1.0.0",
 }
 ZERO_WIDTH = chr(0x200B)
 
@@ -81,7 +82,7 @@ def test_template_and_schema_hashes_are_pinned_to_their_versions() -> None:
     )
 
 
-PINNED_FINGERPRINT = "84b727a744cb69d76def805bb15b9d8f7eb8ca70aafac2bc52a994a8e3757f26"
+PINNED_FINGERPRINT = "e785721d3b00aef14e56f5729a647fac958998be9871f9702ac6987cc0cc0e38"
 
 
 def test_the_output_schema_is_strict() -> None:

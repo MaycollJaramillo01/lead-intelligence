@@ -1,7 +1,9 @@
 import { createHashRouter, createMemoryRouter, Navigate, type RouteObject } from "react-router";
 import { ModuleRoute } from "@/app/ModuleRoute";
 import { DEFAULT_ROUTE, NAV_ITEMS } from "@/app/navigation";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { BusinessScreen } from "@/features/businesses/BusinessScreen";
 import { NotFoundScreen } from "@/features/placeholder/NotFoundScreen";
 
 export const appRoutes: RouteObject[] = [
@@ -14,6 +16,14 @@ export const appRoutes: RouteObject[] = [
         path: item.path.slice(1),
         element: <ModuleRoute item={item} />,
       })),
+      {
+        path: "businesses/:businessId",
+        element: (
+          <ErrorBoundary scope="business">
+            <BusinessScreen />
+          </ErrorBoundary>
+        ),
+      },
       { path: "*", element: <NotFoundScreen /> },
     ],
   },

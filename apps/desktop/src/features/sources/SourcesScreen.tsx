@@ -1,8 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import type { SourceHealth, SourceInfo } from "@lead/shared-types";
 import { Ban, CircleCheck, ExternalLink, Settings2, TriangleAlert } from "lucide-react";
+import { useSearchParams } from "react-router";
 import { PageScroll, PageShell, Section } from "@/components/layout/page-chrome";
-import { StateBlock } from "@/components/states/StateBlock";
+import { InlineNotice, StateBlock } from "@/components/states/StateBlock";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, useLanguage, useT, type Translator } from "@/lib/i18n";
 import { desktop } from "@/lib/ipc";
@@ -32,14 +33,18 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-function SourceCard({ source }: { source: SourceInfo }) {
+function SourceCard({ source, linked }: { source: SourceInfo; linked: boolean }) {
   const t = useT();
   const language = useLanguage();
   const { icon: Icon, tone } = HEALTH[source.health];
   const meta = source.metadata;
 
   return (
-    <article className="space-y-2 rounded-md border bg-card p-3">
+    <article
+      id={`source-${meta.key}`}
+      aria-current={linked ? "true" : undefined}
+      className={cn("space-y-2 rounded-md border bg-card p-3", linked && "ring-2 ring-primary/60")}
+    >
       <header className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="truncate text-sm font-medium">{meta.name}</h3>
@@ -134,6 +139,15 @@ export function SourcesScreen() {
   const language = useLanguage();
   const fetchCatalog = useCallback(() => desktop.listSources({ project_id: null }), []);
   const { data: catalog, error, reload } = useLoaded(fetchCatalog, "list_sources");
+  const [params] = useSearchParams();
+  const linked = params.get("source");
+
+  // a `?source=` link brings its source into view once the catalogue is read
+  useEffect(() => {
+    if (linked && catalog) {
+      document.getElementById(`source-${linked}`)?.scrollIntoView({ block: "center" });
+    }
+  }, [linked, catalog]);
 
   return (
     <PageShell>
@@ -165,8 +179,17 @@ export function SourcesScreen() {
           ) : (
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">{t("sources.intro")}</p>
+              {linked && !catalog.sources.some((source) => source.metadata.key === linked) && (
+                <InlineNotice variant="partial">
+                  {t("sources.notListed", { key: linked })}
+                </InlineNotice>
+              )}
               {catalog.sources.map((source) => (
-                <SourceCard key={source.metadata.key} source={source} />
+                <SourceCard
+                  key={source.metadata.key}
+                  source={source}
+                  linked={source.metadata.key === linked}
+                />
               ))}
             </div>
           )}

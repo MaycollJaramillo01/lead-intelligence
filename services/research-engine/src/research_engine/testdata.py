@@ -25,6 +25,7 @@ from research_engine.discovery.normalize import dedup_key, domain_of
 from research_engine.domain import (
     AcquiredPage,
     AcquisitionMethod,
+    AttemptResult,
     AuditAction,
     Business,
     BusinessClassification,
@@ -35,6 +36,7 @@ from research_engine.domain import (
     ClassificationKind,
     ContactOrigin,
     ContactPoint,
+    ContactQuality,
     ContactType,
     CrawlTarget,
     CrawlUrl,
@@ -45,6 +47,7 @@ from research_engine.domain import (
     EntityType,
     EventLevel,
     EvidenceItem,
+    EvidenceRefKind,
     EvidenceStatus,
     EvidenceStrength,
     EvidenceType,
@@ -68,6 +71,12 @@ from research_engine.domain import (
     Project,
     RawRecord,
     Record,
+    ResearchAction,
+    ResearchActionRequest,
+    ResearchStatus,
+    SavedView,
+    SavedViewSaveRequest,
+    SavedViewVersion,
     ScoringChangeAction,
     ScoringChangeRequest,
     ScoringDefinition,
@@ -83,6 +92,7 @@ from research_engine.domain import (
     SuppressionKind,
     SyntheticSeedResult,
     ValidationStatus,
+    ViewDefinition,
     Website,
     default_crawl_settings,
     empty_criteria,
@@ -415,7 +425,9 @@ def seed_synthetic_workspace(
     seed_latino(conn, SyntheticContext(project_id, connector_id, run.id, now), data_dir)
     seed_website(conn, SyntheticContext(project_id, connector_id, run.id, now), data_dir)
     seed_contacts(conn, SyntheticContext(project_id, connector_id, run.id, now), data_dir)
-    seed_scoring(conn, SyntheticContext(project_id, connector_id, run.id, now))
+    scoring = seed_scoring(conn, SyntheticContext(project_id, connector_id, run.id, now))
+    seed_leads(conn, SyntheticContext(project_id, connector_id, run.id, now),
+               scoring.business_id, scoring.run_ids[0])  # fmt: skip
     snapshot = snapshot_businesses(
         conn,
         data_dir,
@@ -1691,10 +1703,132 @@ def seed_scoring(conn: sqlite3.Connection, ctx: SyntheticContext) -> ScoringFixt
     ):  # fmt: skip
         store.act(conn, LeadActionRequest(
             score_run_id=first[0], business_id=lead.business_id, action=action, stage=stage,
-            lost_reason=None, reason=reason,
+            lost_reason=None, reason=reason, channel=None, attempt_result=None,
+            value_amount=None, value_currency=None, contact_quality=None, notes=None,
+            occurred_at=None,
         ), actor=ACTOR_DEV_SEED)  # fmt: skip
     return ScoringFixture(profile_id=profile_id, model_id=model_id, run_ids=(first[0], second[0]),
                           job_ids=(first[1], second[1]), business_id=lead.business_id)  # fmt: skip
+
+
+# ---- lead explorer (phase 12) --------------------------------------------------------------------
+
+SYNTHETIC_VIEW_NAME = "Synthetic view: priority and review leads"
+SYNTHETIC_LEGACY_VIEW_NAME = "Synthetic view saved with schema 1"
+
+
+@dataclass(frozen=True, slots=True)
+class LeadsFixture:
+    view_id: str
+    #: A view stored with the first view schema, upgraded whenever it is read.
+    legacy_view_id: str
+    #: The scored lead an analyst is researching (see `seed_leads`).
+    business_id: str
+
+
+def seed_leads(
+    conn: sqlite3.Connection, ctx: SyntheticContext, business_id: str, score_run_id: str
+) -> LeadsFixture:
+    """Phase 12 work over a scored lead (test data): the built-in checklist, a saved view, a view
+    stored with schema version 1, and a lead under research: needs research, assigned, tagged, with
+    a note, a pinned piece of evidence, its open tasks, a checked item and a call attempt. Nothing
+    here contacts anyone."""
+    from research_engine.leads import explorer, research, views
+    from research_engine.scoring import store
+
+    research.ensure_default_checklist(conn)
+    tiers = {
+        "kind": "condition",
+        "field": "tier",
+        "operator": "in",
+        "value": ["priority", "review"],
+    }
+    definition = ViewDefinition.model_validate(explorer.default_view().model_dump() | {
+        "filters": {"kind": "group", "join": "and", "negate": False, "children": [tiers]},
+        "sort": [{"field": "total_score", "direction": "desc"}],
+    })  # fmt: skip
+    view = views.save_view(conn, SavedViewSaveRequest(
+        view_id=None, scope="lead_explorer", name=SYNTHETIC_VIEW_NAME,
+        description="Synthetic test data", definition=definition,
+    ), actor=ACTOR_DEV_SEED)  # fmt: skip
+    legacy = SavedView(
+        id=ctx.ids(), scope="lead_explorer", name=SYNTHETIC_LEGACY_VIEW_NAME,
+        description="Synthetic test data", created_at=ctx.now, updated_at=ctx.now, archived_at=None,
+    )  # fmt: skip
+    schema_1: JsonObject = {
+        "schema_version": 1, "score_run_id": None, "search": None,
+        "conditions": [{"field": "tier", "operator": "eq", "value": "low"}],
+        "sort": {"field": "total_score", "direction": "desc"},
+        "columns": ["rank", "name", "tier", "total_score"],
+    }  # fmt: skip
+    insert(conn, legacy, SavedViewVersion(
+        id=ctx.ids(), view_id=legacy.id, version=1, definition_json=schema_1, schema_version=1,
+        created_by=ACTOR_DEV_SEED, created_at=ctx.now,
+    ))  # fmt: skip
+
+    def act(action: ResearchAction, **fields: object) -> None:
+        blank: dict[str, object] = dict.fromkeys(ResearchActionRequest.model_fields)
+        request = ResearchActionRequest.model_validate(
+            blank | {"business_id": business_id, "action": action, "scopes": []} | fields
+        )
+        research.act(conn, request, utc_now(), actor=ACTOR_DEV_SEED)
+
+    act(ResearchAction.SET_STATUS, status=ResearchStatus.NEEDS_RESEARCH,
+        reason="Find who decides (synthetic test data)")  # fmt: skip
+    act(ResearchAction.ASSIGN, assignee="Synthetic analyst")
+    act(ResearchAction.ADD_TAG, tag="synthetic-shortlist")
+    act(ResearchAction.ADD_NOTE, note="Synthetic note: ask when they are open.")
+    act(ResearchAction.PIN, ref_kind=EvidenceRefKind.BUSINESS, ref=business_id,
+        note="Synthetic pin")  # fmt: skip
+    act(ResearchAction.SYNC_TASKS)
+    act(ResearchAction.CHECK_ITEM, item_key="offer_fit_confirmed", note="Synthetic check")
+    store.act(conn, LeadActionRequest(
+        score_run_id=score_run_id, business_id=business_id, action=LeadAction.RECORD_ATTEMPT,
+        stage=None, lost_reason=None, reason="Left a voicemail (synthetic test data)",
+        channel=ContactType.PHONE, attempt_result=AttemptResult.LEFT_MESSAGE, value_amount=None,
+        value_currency=None, contact_quality=ContactQuality.UNKNOWN, notes=None, occurred_at=None,
+    ), actor=ACTOR_DEV_SEED)  # fmt: skip
+    return LeadsFixture(view_id=view.view.id, legacy_view_id=legacy.id, business_id=business_id)
+
+
+_SCALE_INDEX = (
+    "INSERT INTO lead_index (score_run_id, business_id, project_id, rank, tier, tier_order, "
+    "total_score, confidence, data_coverage, icp_match, opportunity_score, digital_gap, "
+    "business_health, buying_capacity, contactability, commercial_intent, data_confidence, "
+    "display_name, name_sort_key, locality, region, primary_category, primary_domain, "
+    "latino_status, latino_confidence, main_channel, channel_status, usable_channels, "
+    "problem_mask, top_problem, top_reason, offer_key, facts_collected_at, audit_status, "
+    "conflicts, suppressed_when_scored, is_synthetic) "
+    "WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ?) "
+    "SELECT t.score_run_id, printf('00000000-0000-4000-8000-%012x', i), t.project_id, NULL, "
+    "CASE i % 4 WHEN 0 THEN 'priority' WHEN 1 THEN 'review' WHEN 2 THEN 'low' "
+    "ELSE 'insufficient_data' END, i % 4, (i * 7919 % 10001) / 100.0, (i * 31 % 101) / 100.0, "
+    "0.8, NULL, i * 13 % 101, i * 17 % 101, NULL, NULL, i * 19 % 101, NULL, NULL, "
+    "printf('Synthetic Scale Lead %07d', i), printf('synthetic scale lead %07d', i), 'Austin', "
+    "CASE i % 3 WHEN 0 THEN 'TX' WHEN 1 THEN 'FL' ELSE 'AZ' END, 'Roofing', NULL, 'unknown', "
+    "NULL, CASE WHEN i % 2 = 0 THEN 'phone' END, "
+    "CASE WHEN i % 2 = 0 THEN 'structurally_valid' END, i % 2, i % 256, NULL, NULL, "
+    "CASE WHEN i % 5 = 0 THEN 'website_rebuild' END, t.facts_collected_at, NULL, 0, 0, 1 "
+    "FROM n, (SELECT score_run_id, project_id, facts_collected_at FROM lead_index "
+    "WHERE score_run_id = ? LIMIT 1) t"
+)
+
+
+def clone_lead_index(conn: sqlite3.Connection, score_run_id: str, count: int) -> None:
+    """`count` synthetic index rows next to a score run's own, varied deterministically by their
+    number `i` (tier `i % 4`, region `i % 3`, problem mask `i % 256`), then the run ranked again
+    (test data for scale tests and profiling). Their businesses do not exist: a window reads the
+    index only, and a row without live state shows the state it was scored with."""
+    from research_engine.leads import index
+
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = OFF")
+    try:
+        with atomic(conn):
+            conn.execute(_SCALE_INDEX, (count, score_run_id))
+            index.rank_run(conn, score_run_id)
+    finally:
+        conn.execute("PRAGMA foreign_keys = ON")
 
 
 # ---- local AI (phase 10) -------------------------------------------------------------------------
@@ -1860,4 +1994,16 @@ def synthetic_answer(request: ChatRequest) -> str:
                    "evidence_ids": [finding]}  # fmt: skip
         return dumps({"outcome": "ok", "problems": [problem], "strengths": [],
                       "missing_information": ["Opening hours"]})  # fmt: skip
+    if "sections" in fields:  # a sales brief: each section restates one of its claims literally
+        cited: dict[str, str] = {}
+        for ref, text in refs.items():
+            section, _, claim = text.partition(": ")
+            if len(claim) <= 300:
+                cited.setdefault(section, ref)
+        if not cited:
+            return dumps({"outcome": "insufficient_evidence", "sections": []})
+        return dumps({"outcome": "ok", "sections": [
+            {"section": section,
+             "sentences": [{"text": refs[ref].partition(": ")[2], "evidence_ids": [ref]}]}
+            for section, ref in cited.items()]})  # fmt: skip
     return dumps({"outcome": "insufficient_evidence", "observations": []})

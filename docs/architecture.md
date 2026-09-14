@@ -277,9 +277,8 @@ ScoringModelsScreen ─ desktop.saveScoringModel ─ desktop.startScoring({proje
   → worker: one lead_scoring job; on a thread, per 200 canonical businesses: facts from the store
     or from the stored run → model.score → business_scores and component_scores, checkpoint
   ⟳ desktop.listScoreRuns while a run moves ─ compareScoreRuns ─ getCalibration
-LeadExplorerScreen ─ desktop.listLeadScores({score_run_id, tier, min_score, problem, search, cursor})
-  → ranked rows of the newest finished run (ROW_NUMBER over the whole run); validate() checks the
-  rank order and the filters
+scoring.leads ─ keyset pages of a run in rank order; validate() checks the rank order and the
+  filters (the Lead Explorer reads lead_index since phase 12: next section)
 ScorecardPanel (BusinessInspector) ─ desktop.getLeadScorecard({business_id, score_run_id}) → the
   scorecard, earlier scores, outcomes, reviews, AI wording only when it cites the scorecard's own
   findings; validate() refuses contributions that do not add up and claims without evidence
@@ -289,6 +288,31 @@ JobsScreen ─ listScoreRuns; cancel goes to control_scoring
 ```
 
 Features, gates, formulas, versions, calibration and limits are in [scoring.md](scoring.md).
+
+## Data flow: lead explorer and research
+
+```text
+a score run writes business_scores → leads.index.project → lead_index rows, ranked when it finishes
+LeadExplorerScreen ─ desktop.getExplorerCatalog → get_explorer_catalog → leads.catalog: fields,
+  operators, values, limits and the default view
+  ─ useLeadWindows: desktop.exploreLeads({score_run_id, filters, search, sort, offset, limit,
+    with_total}) → explore_leads: validate() bounds the tree, the sort keys and the window
+  → leads.explore: one parameterised query over lead_index; live fields (stage, research, tags,
+    suppression) joined only when a filter or a sort needs them                  (research-engine)
+  → 100-row windows read as the grid scrolls, 12 kept; the answer to a superseded query is dropped
+  ─ previewLeadExport (leads.export_preview) · bulkLeads (leads.bulk: preview, then apply with the
+    previewed count) · compareLeads (leads.compare) · views.list · views.save · views.change
+InspectorPanel · BusinessScreen ─ BusinessInspector: get_business; folded sections read nothing
+  ─ getSalesBrief (research.brief), read once for why this lead, evidence, unknowns and the offer
+  ─ getLeadTimeline (research.timeline, keyset cursor) · getEvidenceDetail (research.evidence)
+  ─ getResearchWorkspace (research.get) · actOnResearch (research.act): status against the
+    sales-ready criteria, assignee, tags, notes, pins, tasks, checks, corrections, refresh → jobs
+  ─ startAi({business_ids, task_types: [sales_brief]}) → a model rewords the brief's claims
+    (phase 10 checks) · reviewAiInference accepts or rejects the wording
+  ─ actOnLead (scoring.act): attempts and outcomes; no score is rewritten
+```
+
+Criteria, rules, limits and measurements are in [lead-explorer.md](lead-explorer.md).
 
 Worker errors keep their meaning across the boundary: `not_found` → `CommandError.not_found`,
 `not_allowed` → `not_allowed`, `invalid_payload` → `invalid_input`; anything else is `worker_error`

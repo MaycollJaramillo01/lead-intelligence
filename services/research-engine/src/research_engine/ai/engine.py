@@ -367,7 +367,12 @@ class AiService(jobs.BackgroundJobs[AiRun, AiRunPage]):
     def plan(self, conn: sqlite3.Connection, project_id: str | None) -> tuple[list[str], list[str]]:
         return store.plan_runs(
             conn,
-            AiStartRequest(project_id=project_id, business_ids=[], task_types=list(AiTaskType)),
+            # a sales brief is asked lead by lead, from its research workspace, never per project
+            AiStartRequest(
+                project_id=project_id,
+                business_ids=[],
+                task_types=[task for task in AiTaskType if task is not AiTaskType.SALES_BRIEF],
+            ),
             actor=ACTOR,
         )
 

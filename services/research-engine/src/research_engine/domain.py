@@ -24,10 +24,17 @@ import time
 import unicodedata
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal, Self
 from uuid import UUID
 
-from pydantic import AfterValidator, AwareDatetime, Field, JsonValue, PlainSerializer
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    Field,
+    JsonValue,
+    PlainSerializer,
+    model_validator,
+)
 
 from research_engine.contracts import Contract, GpuStatus, OllamaStatus
 
@@ -241,6 +248,8 @@ class AiTaskType(StrEnum):
     OPPORTUNITY_REASONING = "opportunity_reasoning"
     LANGUAGE_DETECTION = "language_detection"
     VISUAL_REVIEW = "visual_review"
+    #: Phase 12: rewords a deterministic sales brief; may only cite the brief's own claims.
+    SALES_BRIEF = "sales_brief"
 
 
 class AiProfile(StrEnum):
@@ -334,6 +343,8 @@ class EntityType(StrEnum):
     NOTE = "note"
     MATCH_CANDIDATE = "match_candidate"
     CONTACT_SUPPRESSION = "contact_suppression"
+    SAVED_VIEW = "saved_view"
+    RESEARCH_CHECKLIST = "research_checklist"
 
 
 class AuditAction(StrEnum):
@@ -528,6 +539,70 @@ class MailDomainResult(StrEnum):
     ERROR = "error"
 
 
+class ResearchStatus(StrEnum):
+    """Where an analyst left a lead (phase 12), always with a reason. `sales_ready` is only allowed
+    when every criterion of `SalesReadyCriterion` holds; the others are a person's call."""
+
+    SALES_READY = "sales_ready"
+    NEEDS_RESEARCH = "needs_research"
+    DISQUALIFIED = "disqualified"
+
+
+class ResearchTaskKind(StrEnum):
+    MISSING_DATA = "missing_data"
+    CHECKLIST = "checklist"
+    REFRESH = "refresh"
+    CUSTOM = "custom"
+
+
+class ResearchTaskStatus(StrEnum):
+    OPEN = "open"
+    DONE = "done"
+    DISMISSED = "dismissed"
+
+
+class EvidenceRefKind(StrEnum):
+    """The stored rows a brief, a pin or a timeline entry can point at. `contact_channel` refs are
+    channel keys (phase 09 consolidates contact points into channels); every other ref is an id."""
+
+    BUSINESS = "business"
+    EVIDENCE_ITEM = "evidence_item"
+    WEBSITE_AUDIT = "website_audit"
+    WEBSITE_FINDING = "website_finding"
+    WEBSITE_TECHNOLOGY = "website_technology"
+    CONTACT_CHANNEL = "contact_channel"
+    DECISION_MAKER = "decision_maker"
+    LATINO_ASSESSMENT = "latino_assessment"
+    INFERENCE_RUN = "inference_run"
+    SCORE_RUN = "score_run"
+
+
+class AttemptResult(StrEnum):
+    """What one attempt to work a lead produced, as the analyst recorded it. Nothing is sent."""
+
+    NO_ANSWER = "no_answer"
+    LEFT_MESSAGE = "left_message"
+    REACHED = "reached"
+    REPLIED = "replied"
+    BOUNCED = "bounced"
+    WRONG_CONTACT = "wrong_contact"
+    CALL_BACK_LATER = "call_back_later"
+    MEETING_SET = "meeting_set"
+    PROPOSAL_SENT = "proposal_sent"
+    WON = "won"
+    LOST = "lost"
+
+
+class ContactQuality(StrEnum):
+    """Whom the contact route actually reached."""
+
+    DECISION_MAKER = "decision_maker"
+    GATEKEEPER = "gatekeeper"
+    WRONG_PERSON = "wrong_person"
+    UNREACHABLE = "unreachable"
+    UNKNOWN = "unknown"
+
+
 def _table_name(enum: type[StrEnum]) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "_", enum.__name__).lower()
 
@@ -581,6 +656,12 @@ ENUMS: dict[str, type[StrEnum]] = {
         DecisionMakerReview,
         DecisionMakerRelationship,
         MailDomainResult,
+        ResearchStatus,
+        ResearchTaskKind,
+        ResearchTaskStatus,
+        EvidenceRefKind,
+        AttemptResult,
+        ContactQuality,
     )
 }
 
@@ -668,6 +749,11 @@ TRANSITIONS: dict[type[StrEnum], dict[str, frozenset[str]]] = {
             "fetched": (),
             "skipped": (),
             "failed": (),
+        },
+        ResearchTaskStatus: {
+            "open": ("done", "dismissed"),
+            "done": ("open",),
+            "dismissed": ("open",),
         },
     }.items()
 }
@@ -1499,6 +1585,178 @@ class LeadOutcome(Record):
     actor: Label
     occurred_at: UtcTimestamp
     created_at: UtcTimestamp
+    #: Phase 12: how the lead was worked. An attempt keeps the stage (`stage == previous_stage`).
+    channel: ContactType | None
+    attempt_result: AttemptResult | None
+    value_amount: Annotated[float, Field(ge=0, le=1_000_000_000)] | None
+    value_currency: Annotated[str, Field(pattern=r"^[A-Z]{3}$")] | None
+    contact_quality: ContactQuality | None
+    notes: Annotated[str, Field(min_length=1, max_length=4000)] | None
+
+
+class LeadIndexRow(Record):
+    """One business in one score run, projected from its stored score for the Lead Explorer
+    (phase 12). Written with the score, rebuilt from `business_scores` when missing; `rank` is the
+    business's place in the run once it finished. A projection: the scorecard stays the record."""
+
+    TABLE = "lead_index"
+    score_run_id: Id
+    business_id: Id
+    project_id: Id
+    rank: Annotated[int, Field(ge=1)] | None
+    tier: LeadTier
+    tier_order: Annotated[int, Field(ge=0, le=4)]
+    total_score: Annotated[float, Field(ge=0, le=100)] | None
+    confidence: Confidence
+    #: The share of the final formula's weight that was known.
+    data_coverage: Confidence
+    icp_match: Annotated[float, Field(ge=0, le=100)] | None
+    opportunity_score: Annotated[float, Field(ge=0, le=100)] | None
+    digital_gap: Annotated[float, Field(ge=0, le=100)] | None
+    business_health: Annotated[float, Field(ge=0, le=100)] | None
+    buying_capacity: Annotated[float, Field(ge=0, le=100)] | None
+    contactability: Annotated[float, Field(ge=0, le=100)] | None
+    commercial_intent: Annotated[float, Field(ge=0, le=100)] | None
+    data_confidence: Annotated[float, Field(ge=0, le=100)] | None
+    display_name: Label
+    name_sort_key: str
+    locality: str | None
+    region: str | None
+    primary_category: str | None
+    primary_domain: str | None
+    latino_status: LatinoStatus
+    latino_confidence: Confidence | None
+    main_channel: ContactType | None
+    channel_status: ValidationStatus | None
+    usable_channels: Annotated[int, Field(ge=0)]
+    problem_mask: Annotated[int, Field(ge=0, le=255)]
+    top_problem: Code | None
+    top_reason: Annotated[str, Field(min_length=1, max_length=300)] | None
+    offer_key: Code | None
+    facts_collected_at: UtcTimestamp
+    audit_status: WebsiteAuditStatus | None
+    conflicts: Annotated[int, Field(ge=0)]
+    suppressed_when_scored: bool
+    is_synthetic: bool
+
+
+class LeadResearch(Record):
+    """The research status of a canonical business and whom it is assigned to (phase 12). Current
+    state only: every change is also a `review_decisions` row, which is its history."""
+
+    TABLE = "lead_research"
+    business_id: Id
+    project_id: Id
+    status: ResearchStatus | None
+    status_reason: Annotated[str, Field(min_length=1, max_length=2000)] | None
+    status_by: str | None
+    status_at: UtcTimestamp | None
+    assignee: Annotated[str, Field(min_length=1, max_length=120)] | None
+    assigned_at: UtcTimestamp | None
+    updated_at: UtcTimestamp
+
+
+class SavedView(Record):
+    """A named Lead Explorer view (phase 12); its definitions are `saved_view_versions`."""
+
+    TABLE = "saved_views"
+    id: Id
+    scope: Code
+    name: Annotated[str, Field(min_length=1, max_length=120)]
+    description: Annotated[str, Field(max_length=2000)] | None
+    created_at: UtcTimestamp
+    updated_at: UtcTimestamp
+    archived_at: UtcTimestamp | None
+
+
+class SavedViewVersion(Record):
+    """Immutable, permanent definition of a view at one version. `schema_version` says which shape
+    `definition_json` has; older shapes are upgraded when read, never rewritten."""
+
+    TABLE = "saved_view_versions"
+    id: Id
+    view_id: Id
+    version: Annotated[int, Field(ge=1)]
+    definition_json: JsonObject
+    schema_version: Annotated[int, Field(ge=1)]
+    created_by: Label
+    created_at: UtcTimestamp
+
+
+class ResearchChecklist(Record):
+    """What an analyst verifies before a lead is sales-ready, for a vertical or a campaign."""
+
+    TABLE = "research_checklists"
+    id: Id
+    name: Annotated[str, Field(min_length=1, max_length=120)]
+    description: Annotated[str, Field(max_length=2000)] | None
+    active_version_id: Id | None
+    archived_at: UtcTimestamp | None
+    created_at: UtcTimestamp
+    updated_at: UtcTimestamp
+
+
+class ResearchChecklistVersion(Record):
+    TABLE = "research_checklist_versions"
+    id: Id
+    checklist_id: Id
+    version: Annotated[int, Field(ge=1)]
+    definition_json: JsonObject
+    schema_version: Annotated[int, Field(ge=1)]
+    created_by: Label
+    created_at: UtcTimestamp
+
+
+class ResearchCheck(Record):
+    """Immutable, permanent: a person ticked or unticked one manual checklist item."""
+
+    TABLE = "research_checks"
+    id: Id
+    business_id: Id
+    checklist_version_id: Id
+    item_key: Code
+    done: bool
+    note: Annotated[str, Field(min_length=1, max_length=1000)] | None
+    actor: Label
+    decided_at: UtcTimestamp
+
+
+class ResearchTask(Record):
+    """Work left on a lead. Closed with a reason when dismissed; reopened, never deleted."""
+
+    TABLE = "research_tasks"
+    id: Id
+    business_id: Id
+    project_id: Id
+    kind: ResearchTaskKind
+    key: Annotated[str, Field(min_length=1, max_length=160)]
+    title: Label
+    detail_json: JsonObject | None
+    status: ResearchTaskStatus
+    created_by: Label
+    created_at: UtcTimestamp
+    updated_at: UtcTimestamp
+    closed_by: str | None
+    closed_at: UtcTimestamp | None
+    close_reason: Annotated[str, Field(min_length=1, max_length=2000)] | None
+
+
+class EvidencePin(Record):
+    """Evidence an analyst marked as important for a lead. Unpinning keeps the row, with a
+    reason."""
+
+    TABLE = "evidence_pins"
+    id: Id
+    business_id: Id
+    ref_kind: EvidenceRefKind
+    ref: Annotated[str, Field(min_length=1, max_length=400)]
+    label: Label
+    note: Annotated[str, Field(min_length=1, max_length=1000)] | None
+    pinned_by: Label
+    pinned_at: UtcTimestamp
+    unpinned_by: str | None
+    unpinned_at: UtcTimestamp | None
+    unpin_reason: Annotated[str, Field(min_length=1, max_length=2000)] | None
 
 
 class Job(Record):
@@ -1825,6 +2083,15 @@ RECORDS: tuple[type[Record], ...] = (
     BusinessScore,
     ComponentScore,
     LeadOutcome,
+    LeadIndexRow,
+    LeadResearch,
+    SavedView,
+    SavedViewVersion,
+    ResearchChecklist,
+    ResearchChecklistVersion,
+    ResearchCheck,
+    ResearchTask,
+    EvidencePin,
     Job,
     JobTask,
     TaskAttempt,
@@ -3901,6 +4168,8 @@ class AiInputKind(StrEnum):
     CONTACTABILITY = "contactability"
     LATINO_STATUS = "latino_status"
     SCREENSHOT = "screenshot"
+    #: A claim of a deterministic sales brief (phase 12), with the evidence it rests on.
+    BRIEF_CLAIM = "brief_claim"
 
 
 class AiInputRef(Contract):
@@ -4120,7 +4389,7 @@ class AiTaskChange(Contract):
 
 class AiConfigureRequest(Contract):
     profiles: Annotated[list[AiProfileChange], _between(0, 3)]
-    tasks: Annotated[list[AiTaskChange], _between(0, 6)]
+    tasks: Annotated[list[AiTaskChange], _between(0, len(AiTaskType))]
     min_free_ram_mib: Annotated[int, Field(ge=256, le=65536)]
     min_free_vram_mib: Annotated[int, Field(ge=0, le=65536)]
 
@@ -4131,7 +4400,13 @@ class AiStartRequest(Contract):
 
     project_id: Id | None
     business_ids: Annotated[list[Id], _between(0, 200)]
-    task_types: Annotated[list[AiTaskType], _between(1, 6)]
+    task_types: Annotated[list[AiTaskType], _between(1, len(AiTaskType))]
+
+    @model_validator(mode="after")
+    def _briefs_lead_by_lead(self) -> Self:
+        if AiTaskType.SALES_BRIEF in self.task_types and not self.business_ids:
+            raise ValueError("a sales brief is worded lead by lead: name the businesses")
+        return self
 
 
 class AiStats(Contract):
@@ -4188,7 +4463,7 @@ class AiBenchmarkAction(StrEnum):
 class AiBenchmarkRequest(Contract):
     action: AiBenchmarkAction
     models: Annotated[list[ModelName], _between(0, 4)]
-    task_types: Annotated[list[AiTaskType], _between(0, 6)]
+    task_types: Annotated[list[AiTaskType], _between(0, len(AiTaskType))]
 
 
 class AiInferenceListQuery(Contract):
@@ -5162,6 +5437,8 @@ class LeadAction(StrEnum):
     DISMISS = "dismiss"
     RESET = "reset"
     RECORD_OUTCOME = "record_outcome"
+    #: Phase 12: an attempt to work the lead that keeps its stage (channel and result required).
+    RECORD_ATTEMPT = "record_attempt"
 
 
 class LeadActionRequest(Contract):
@@ -5173,6 +5450,959 @@ class LeadActionRequest(Contract):
     #: Required when the outcome is `lost`.
     lost_reason: Annotated[str, Field(min_length=1, max_length=500)] | None
     reason: ReviewReason
+    #: Phase 12: how the lead was worked. `record_attempt` needs a channel and a result; an outcome
+    #: may carry them too.
+    channel: ContactType | None
+    attempt_result: AttemptResult | None
+    value_amount: Annotated[float, Field(ge=0, le=1_000_000_000)] | None
+    value_currency: Annotated[str, Field(pattern=r"^[A-Z]{3}$")] | None
+    contact_quality: ContactQuality | None
+    notes: Annotated[str, Field(min_length=1, max_length=4000)] | None
+    #: When it happened; null means now. Never in the future.
+    occurred_at: UtcTimestamp | None
+
+
+# ---- Lead explorer, research workspace and sales briefs (phase 12) ------------------------------
+# The analyst's experience over what the engines stored; nothing here computes a fact. The explorer
+# reads `lead_index`, filtered by a bounded tree of conditions the store compiles to parameterised
+# SQL; research decisions, checks, tasks, pins and corrections are audited history; a sales brief
+# restates stored facts and inferences with their evidence, and a model may only reword it.
+
+EXPLORER_MAX_DEPTH = 3
+EXPLORER_MAX_CONDITIONS = 40
+EXPLORER_MAX_CHILDREN = 20
+EXPLORER_MAX_SORT = 4
+EXPLORER_MAX_OFFSET = 5_000_000
+EXPLORER_MAX_VALUES = 50
+BULK_MAX_IDS = 1000
+BULK_MAX_MATCHING = 5000
+VIEW_SCHEMA_VERSION = 2
+CHECKLIST_SCHEMA_VERSION = 1
+#: Facts read longer ago than this are stale: shown as such, and never sales-ready.
+STALE_AFTER_DAYS = 90
+MAX_COMPARED = 4
+ExplorerText = Annotated[str, Field(min_length=1, max_length=200)]
+
+
+class ExplorerField(StrEnum):
+    """What the explorer filters, sorts and shows. Live fields read the current state (stage,
+    research, tags, suppression, age of the facts); the others are the run's snapshot."""
+
+    NAME = "name"
+    LOCALITY = "locality"
+    REGION = "region"
+    CATEGORY = "category"
+    DOMAIN = "domain"
+    LEAD_STAGE = "lead_stage"
+    RESEARCH_STATUS = "research_status"
+    ASSIGNEE = "assignee"
+    TAG = "tag"
+    TIER = "tier"
+    RANK = "rank"
+    TOTAL_SCORE = "total_score"
+    CONFIDENCE = "confidence"
+    DATA_COVERAGE = "data_coverage"
+    ICP_MATCH = "icp_match"
+    OPPORTUNITY_SCORE = "opportunity_score"
+    DIGITAL_GAP = "digital_gap"
+    BUSINESS_HEALTH = "business_health"
+    BUYING_CAPACITY = "buying_capacity"
+    CONTACTABILITY = "contactability"
+    COMMERCIAL_INTENT = "commercial_intent"
+    DATA_CONFIDENCE = "data_confidence"
+    LATINO_STATUS = "latino_status"
+    LATINO_CONFIDENCE = "latino_confidence"
+    MAIN_CHANNEL = "main_channel"
+    CHANNEL_STATUS = "channel_status"
+    USABLE_CHANNELS = "usable_channels"
+    PROBLEM = "problem"
+    TOP_PROBLEM = "top_problem"
+    OFFER = "offer"
+    FACTS_AGE_DAYS = "facts_age_days"
+    AUDIT_STATUS = "audit_status"
+    CONFLICTS = "conflicts"
+    SUPPRESSED = "suppressed"
+    STALE = "stale"
+    PARTIAL = "partial"
+
+
+class ExplorerFieldType(StrEnum):
+    TEXT = "text"
+    NUMBER = "number"
+    ENUM = "enum"
+    FLAG = "flag"
+    #: Several values per lead (tags, observed problems): a lead `has` one of them or not.
+    SET = "set"
+
+
+class ExplorerOperator(StrEnum):
+    EQ = "eq"
+    NEQ = "neq"
+    IN = "in"
+    NOT_IN = "not_in"
+    LT = "lt"
+    LTE = "lte"
+    GT = "gt"
+    GTE = "gte"
+    CONTAINS = "contains"
+    STARTS_WITH = "starts_with"
+    IS_NULL = "is_null"
+    IS_NOT_NULL = "is_not_null"
+    IS_TRUE = "is_true"
+    IS_FALSE = "is_false"
+    HAS = "has"
+    HAS_NOT = "has_not"
+
+
+_OP = ExplorerOperator
+EXPLORER_UNARY: frozenset[ExplorerOperator] = frozenset(
+    {_OP.IS_NULL, _OP.IS_NOT_NULL, _OP.IS_TRUE, _OP.IS_FALSE}
+)
+_OPERATORS: dict[ExplorerFieldType, tuple[ExplorerOperator, ...]] = {
+    ExplorerFieldType.TEXT: (
+        _OP.EQ, _OP.NEQ, _OP.CONTAINS, _OP.STARTS_WITH, _OP.IN, _OP.NOT_IN, _OP.IS_NULL,
+        _OP.IS_NOT_NULL,
+    ),
+    ExplorerFieldType.NUMBER: (
+        _OP.EQ, _OP.NEQ, _OP.LT, _OP.LTE, _OP.GT, _OP.GTE, _OP.IS_NULL, _OP.IS_NOT_NULL,
+    ),
+    ExplorerFieldType.ENUM: (_OP.EQ, _OP.NEQ, _OP.IN, _OP.NOT_IN, _OP.IS_NULL, _OP.IS_NOT_NULL),
+    ExplorerFieldType.FLAG: (_OP.IS_TRUE, _OP.IS_FALSE),
+    ExplorerFieldType.SET: (_OP.HAS, _OP.HAS_NOT),
+}  # fmt: skip
+
+
+class ExplorerFieldInfo(Contract):
+    field: ExplorerField
+    type: ExplorerFieldType
+    operators: list[ExplorerOperator]
+    #: The values an enum or set field can take; empty for free text.
+    values: list[str]
+    sortable: bool
+    #: Read from the current state rather than from the run's snapshot.
+    live: bool
+
+
+def _info(
+    field: ExplorerField,
+    kind: ExplorerFieldType,
+    values: type[StrEnum] | None = None,
+    *,
+    live: bool = False,
+) -> ExplorerFieldInfo:
+    return ExplorerFieldInfo(
+        field=field,
+        type=kind,
+        operators=list(_OPERATORS[kind]),
+        values=[member.value for member in values] if values else [],
+        sortable=kind is not ExplorerFieldType.SET,
+        live=live,
+    )
+
+
+_F, _T = ExplorerField, ExplorerFieldType
+EXPLORER_FIELDS: dict[ExplorerField, ExplorerFieldInfo] = {
+    info.field: info
+    for info in (
+        _info(_F.NAME, _T.TEXT), _info(_F.LOCALITY, _T.TEXT), _info(_F.REGION, _T.TEXT),
+        _info(_F.CATEGORY, _T.TEXT), _info(_F.DOMAIN, _T.TEXT),
+        _info(_F.LEAD_STAGE, _T.ENUM, LeadStage, live=True),
+        _info(_F.RESEARCH_STATUS, _T.ENUM, ResearchStatus, live=True),
+        _info(_F.ASSIGNEE, _T.TEXT, live=True), _info(_F.TAG, _T.SET, live=True),
+        _info(_F.TIER, _T.ENUM, LeadTier), _info(_F.RANK, _T.NUMBER),
+        _info(_F.TOTAL_SCORE, _T.NUMBER), _info(_F.CONFIDENCE, _T.NUMBER),
+        _info(_F.DATA_COVERAGE, _T.NUMBER), _info(_F.ICP_MATCH, _T.NUMBER),
+        _info(_F.OPPORTUNITY_SCORE, _T.NUMBER), _info(_F.DIGITAL_GAP, _T.NUMBER),
+        _info(_F.BUSINESS_HEALTH, _T.NUMBER), _info(_F.BUYING_CAPACITY, _T.NUMBER),
+        _info(_F.CONTACTABILITY, _T.NUMBER), _info(_F.COMMERCIAL_INTENT, _T.NUMBER),
+        _info(_F.DATA_CONFIDENCE, _T.NUMBER), _info(_F.LATINO_STATUS, _T.ENUM, LatinoStatus),
+        _info(_F.LATINO_CONFIDENCE, _T.NUMBER), _info(_F.MAIN_CHANNEL, _T.ENUM, ContactType),
+        _info(_F.CHANNEL_STATUS, _T.ENUM, ValidationStatus),
+        _info(_F.USABLE_CHANNELS, _T.NUMBER), _info(_F.PROBLEM, _T.SET, ProblemType),
+        _info(_F.TOP_PROBLEM, _T.ENUM, ProblemType), _info(_F.OFFER, _T.TEXT),
+        _info(_F.FACTS_AGE_DAYS, _T.NUMBER, live=True),
+        _info(_F.AUDIT_STATUS, _T.ENUM, WebsiteAuditStatus), _info(_F.CONFLICTS, _T.NUMBER),
+        _info(_F.SUPPRESSED, _T.FLAG, live=True), _info(_F.STALE, _T.FLAG, live=True),
+        _info(_F.PARTIAL, _T.FLAG),
+    )
+}  # fmt: skip
+
+ExplorerValue = (
+    ExplorerText | float | Annotated[list[ExplorerText], _between(1, EXPLORER_MAX_VALUES)] | None
+)
+
+
+class ExplorerCondition(Contract):
+    """One test on one field. Unary operators take no value; `in` and `not_in` take a list; number
+    fields compare with a number; enum and set fields accept only their own values."""
+
+    kind: Literal["condition"]
+    field: ExplorerField
+    operator: ExplorerOperator
+    value: ExplorerValue
+
+    @model_validator(mode="after")
+    def _fits_the_field(self) -> Self:
+        info = EXPLORER_FIELDS[self.field]
+        if self.operator not in info.operators:
+            raise ValueError(f"'{self.operator}' does not apply to {self.field}")
+        if self.operator in EXPLORER_UNARY:
+            if self.value is not None:
+                raise ValueError(f"'{self.operator}' takes no value")
+            return self
+        if self.operator in (_OP.IN, _OP.NOT_IN):
+            if not isinstance(self.value, list):
+                raise ValueError(f"'{self.operator}' takes a list of values")
+            wanted = self.value
+        elif info.type is ExplorerFieldType.NUMBER:
+            if not isinstance(self.value, float):
+                raise ValueError(f"{self.field} compares with a number")
+            return self
+        elif isinstance(self.value, str):
+            wanted = [self.value]
+        else:
+            raise ValueError(f"{self.field} compares with text")
+        if info.values and (unknown := [value for value in wanted if value not in info.values]):
+            raise ValueError(f"{self.field} has no value {unknown[0]!r}")
+        return self
+
+
+class ExplorerGroup(Contract):
+    """Conditions and groups joined by `and` or `or`, optionally negated. At most
+    `EXPLORER_MAX_DEPTH` levels and `EXPLORER_MAX_CONDITIONS` conditions in the whole tree."""
+
+    kind: Literal["group"]
+    join: Literal["and", "or"]
+    negate: bool
+    children: Annotated[list["ExplorerNode"], _between(0, EXPLORER_MAX_CHILDREN)]
+
+    @model_validator(mode="after")
+    def _bounded(self) -> Self:
+        if group_depth(self) > EXPLORER_MAX_DEPTH:
+            raise ValueError(f"filters nest at most {EXPLORER_MAX_DEPTH} groups deep")
+        if condition_count(self) > EXPLORER_MAX_CONDITIONS:
+            raise ValueError(f"filters hold at most {EXPLORER_MAX_CONDITIONS} conditions")
+        return self
+
+
+ExplorerNode = Annotated[ExplorerCondition | ExplorerGroup, Field(discriminator="kind")]
+ExplorerGroup.model_rebuild()
+
+
+def group_depth(group: ExplorerGroup) -> int:
+    nested = (group_depth(child) for child in group.children if isinstance(child, ExplorerGroup))
+    return 1 + max(nested, default=0)
+
+
+def condition_count(group: ExplorerGroup) -> int:
+    return sum(
+        condition_count(child) if isinstance(child, ExplorerGroup) else 1
+        for child in group.children
+    )
+
+
+def no_filters() -> ExplorerGroup:
+    return ExplorerGroup(kind="group", join="and", negate=False, children=[])
+
+
+class SortDirection(StrEnum):
+    ASC = "asc"
+    DESC = "desc"
+
+
+class ExplorerSort(Contract):
+    """A sort key. Missing values always come last; the business id breaks the remaining ties."""
+
+    field: ExplorerField
+    direction: SortDirection
+
+    @model_validator(mode="after")
+    def _sortable(self) -> Self:
+        if not EXPLORER_FIELDS[self.field].sortable:
+            raise ValueError(f"{self.field} cannot be sorted")
+        return self
+
+
+def _unique_fields(fields: list[ExplorerField], what: str) -> None:
+    if len(set(fields)) != len(fields):
+        raise ValueError(f"a field appears twice in the {what}")
+
+
+class ExplorerQuery(Contract):
+    """One window of the explorer over a score run (the newest finished one when null): filters, a
+    quick search, up to four sort keys (the run's rank order when none) and an offset."""
+
+    score_run_id: Id | None
+    filters: ExplorerGroup
+    search: Annotated[str, Field(max_length=200)] | None
+    sort: Annotated[list[ExplorerSort], _between(0, EXPLORER_MAX_SORT)]
+    offset: Annotated[int, Field(ge=0, le=EXPLORER_MAX_OFFSET)]
+    limit: Annotated[int, Field(ge=1, le=MAX_PAGE_SIZE)]
+    #: Count every matching lead too: the first window of a query asks, later windows do not.
+    with_total: bool
+
+    @model_validator(mode="after")
+    def _unique_sort(self) -> Self:
+        _unique_fields([key.field for key in self.sort], "sort")
+        return self
+
+
+class ExplorerRow(Contract):
+    business_id: Id
+    project_id: Id
+    #: The place in the whole finished run, whatever the filters.
+    rank: Annotated[int, Field(ge=1)] | None
+    display_name: str
+    locality: str | None
+    region: str | None
+    category: str | None
+    domain: str | None
+    lead_stage: LeadStage
+    research_status: ResearchStatus | None
+    assignee: str | None
+    tags: list[str]
+    tier: LeadTier
+    total_score: Points | None
+    confidence: Confidence
+    data_coverage: Confidence
+    icp_match: Points | None
+    opportunity_score: Points | None
+    digital_gap: Points | None
+    #: An estimate from explicit proxies, as the scorecard labels it.
+    business_health: Points | None
+    #: An estimate from explicit proxies, never a financial claim.
+    buying_capacity: Points | None
+    contactability: Points | None
+    commercial_intent: Points | None
+    data_confidence: Points | None
+    latino_status: LatinoStatus
+    latino_confidence: Confidence | None
+    main_channel: ContactType | None
+    channel_status: ValidationStatus | None
+    usable_channels: NonNegative
+    problems: list[ProblemType]
+    top_problem: ProblemType | None
+    top_reason: str | None
+    offer: str | None
+    facts_collected_at: UtcTimestamp
+    facts_age_days: NonNegative
+    audit_status: WebsiteAuditStatus | None
+    conflicts: NonNegative
+    #: On the do-not-contact list now, not only when it was scored.
+    suppressed: bool
+    #: Facts read more than `STALE_AFTER_DAYS` ago.
+    stale: bool
+    #: The score could not read everything: insufficient data, or a partial or empty audit.
+    partial: bool
+    is_synthetic: bool
+
+
+class ExplorerPage(Contract):
+    score_run: ScoreRunItem | None
+    offset: NonNegative
+    rows: list[ExplorerRow]
+    #: Every matching lead, when the query asked for it.
+    total: NonNegative | None
+    generated_at: UtcTimestamp
+
+
+class ViewColumn(Contract):
+    field: ExplorerField
+    visible: bool
+    pinned: bool
+    width: Annotated[int, Field(ge=48, le=800)] | None
+
+
+class ViewDefinition(Contract):
+    """Schema version 2 of a saved view. Version 1 (flat `and` conditions, one sort key, the visible
+    columns only) is upgraded when read, never rewritten."""
+
+    schema_version: Literal[2]
+    score_run_id: Id | None
+    filters: ExplorerGroup
+    search: Annotated[str, Field(max_length=200)] | None
+    sort: Annotated[list[ExplorerSort], _between(0, EXPLORER_MAX_SORT)]
+    columns: Annotated[list[ViewColumn], _between(1, len(ExplorerField))]
+
+    @model_validator(mode="after")
+    def _unique(self) -> Self:
+        _unique_fields([key.field for key in self.sort], "sort")
+        _unique_fields([column.field for column in self.columns], "columns")
+        return self
+
+
+class ExplorerCatalogQuery(Contract):
+    scope: Literal["lead_explorer"]
+
+
+class ExplorerCatalog(Contract):
+    fields: list[ExplorerFieldInfo]
+    max_depth: int
+    max_conditions: int
+    max_children: int
+    max_sort: int
+    max_page: int
+    max_offset: int
+    bulk_max_ids: int
+    bulk_max_matching: int
+    stale_after_days: int
+    max_compared: int
+    view_schema_version: int
+    default_view: ViewDefinition
+
+
+class SavedViewQuery(Contract):
+    scope: Literal["lead_explorer"]
+    include_archived: bool
+
+
+class SavedViewItem(Contract):
+    view: SavedView
+    #: Newest first, at most 20.
+    versions: list[SavedViewVersion]
+    #: The newest definition, upgraded to the current schema when it was older.
+    definition: ViewDefinition
+    upgraded_from: Annotated[int, Field(ge=1)] | None
+
+
+class SavedViewList(Contract):
+    items: list[SavedViewItem]
+    schema_version: int
+
+
+class SavedViewSaveRequest(Contract):
+    """Creates a view, or a new version of one; an unchanged definition keeps the newest version."""
+
+    view_id: Id | None
+    scope: Literal["lead_explorer"]
+    name: Annotated[str, Field(min_length=1, max_length=120)]
+    description: Annotated[str, Field(max_length=2000)] | None
+    definition: ViewDefinition
+
+
+class SavedViewAction(StrEnum):
+    ARCHIVE = "archive"
+    RESTORE = "restore"
+
+
+class SavedViewChangeRequest(Contract):
+    view_id: Id
+    action: SavedViewAction
+    reason: ReviewReason
+
+
+class ExportPreviewRequest(Contract):
+    """What an export of the explorer's query would hold. Nothing is written (exports: phase 13)."""
+
+    query: ExplorerQuery
+    columns: Annotated[list[ExplorerField], _between(1, len(ExplorerField))]
+    include_suppressed: bool
+    sample_size: Annotated[int, Field(ge=1, le=50)]
+
+
+class ExportPreview(Contract):
+    score_run: ScoreRunItem | None
+    matching: NonNegative
+    #: Suppressed leads left out (zero when they were included on purpose).
+    excluded_suppressed: NonNegative
+    exported: NonNegative
+    columns: list[ExplorerField]
+    sample: list[ExplorerRow]
+    #: `suppressed_included`, `stale_rows`, `partial_rows`, `hypotheses_never_exported`...
+    warnings: list[Code]
+    generated_at: UtcTimestamp
+
+
+class BulkAction(StrEnum):
+    """Safe actions over many leads. `sales_ready` needs its criteria per lead: never in bulk."""
+
+    ADD_TAG = "add_tag"
+    REMOVE_TAG = "remove_tag"
+    ASSIGN = "assign"
+    UNASSIGN = "unassign"
+    NEEDS_RESEARCH = "needs_research"
+    DISQUALIFY = "disqualify"
+
+
+class BulkMode(StrEnum):
+    PREVIEW = "preview"
+    APPLY = "apply"
+
+
+class BulkRequest(Contract):
+    """One action over leads chosen by id (at most 1 000), or over every lead a query matches (at
+    most 5 000, applied only while that is still the count the analyst previewed)."""
+
+    mode: BulkMode
+    action: BulkAction
+    business_ids: Annotated[list[Id], _between(0, BULK_MAX_IDS)]
+    query: ExplorerQuery | None
+    expected: NonNegative | None
+    tag: Annotated[str, Field(min_length=1, max_length=64)] | None
+    assignee: Annotated[str, Field(min_length=1, max_length=120)] | None
+    reason: ReviewReason | None
+
+    @model_validator(mode="after")
+    def _complete(self) -> Self:
+        if bool(self.business_ids) == (self.query is not None):
+            raise ValueError("choose leads by id or by query, not both")
+        if self.action in (BulkAction.ADD_TAG, BulkAction.REMOVE_TAG) and self.tag is None:
+            raise ValueError(f"{self.action} needs a tag")
+        if self.action is BulkAction.ASSIGN and self.assignee is None:
+            raise ValueError("assign needs an assignee")
+        if self.mode is BulkMode.APPLY and self.reason is None:
+            raise ValueError("an applied bulk action needs a reason")
+        if self.mode is BulkMode.APPLY and self.query is not None and self.expected is None:
+            raise ValueError("an apply over a query needs the count that was previewed")
+        return self
+
+
+class BulkSkip(Contract):
+    business_id: Id
+    display_name: str
+    #: `unchanged`, `suppressed`, `not_found`.
+    reason: Code
+
+
+class BulkResult(Contract):
+    mode: BulkMode
+    action: BulkAction
+    targeted: NonNegative
+    #: Changed (apply) or that would change (preview).
+    changed: NonNegative
+    skipped: NonNegative
+    #: The first 100 skipped leads and why.
+    skips: list[BulkSkip]
+    batch_id: Id | None
+
+
+class LeadCompareQuery(Contract):
+    business_ids: Annotated[list[Id], _between(2, MAX_COMPARED)]
+    score_run_id: Id | None
+
+
+class ComparedLead(Contract):
+    row: ExplorerRow
+    scorecard: LeadScorecard
+
+
+class LeadComparison(Contract):
+    score_run: ScoreRunItem
+    leads: list[ComparedLead]
+    #: Asked for, but not scored by that run.
+    missing: list[Id]
+
+
+class SalesReadyCriterion(StrEnum):
+    """Every one must hold before a lead can be marked sales-ready (docs/lead-explorer.md)."""
+
+    NOT_SUPPRESSED = "not_suppressed"
+    ACTIVE_BUSINESS = "active_business"
+    SCORED_RECENTLY = "scored_recently"
+    QUALIFYING_TIER = "qualifying_tier"
+    VERIFIED_OPPORTUNITY = "verified_opportunity"
+    USABLE_CONTACT = "usable_contact"
+    CONTACT_CONFLICTS_RESOLVED = "contact_conflicts_resolved"
+    CHECKLIST_COMPLETE = "checklist_complete"
+
+
+class ChecklistItemKind(StrEnum):
+    AUTOMATIC = "automatic"
+    MANUAL = "manual"
+
+
+class ChecklistRule(StrEnum):
+    """What an automatic checklist item reads from the stored facts."""
+
+    SCORED_RECENTLY = "scored_recently"
+    QUALIFYING_TIER = "qualifying_tier"
+    VERIFIED_OPPORTUNITY = "verified_opportunity"
+    USABLE_CONTACT = "usable_contact"
+    CONTACT_CONFLICTS_RESOLVED = "contact_conflicts_resolved"
+    DECISION_MAKER_PUBLISHED = "decision_maker_published"
+    WEBSITE_AUDITED = "website_audited"
+    LATINO_EVALUATED = "latino_evaluated"
+
+
+class ChecklistItem(Contract):
+    key: Code
+    label: Label
+    kind: ChecklistItemKind
+    rule: ChecklistRule | None
+    required: bool
+
+    @model_validator(mode="after")
+    def _rule_when_automatic(self) -> Self:
+        if (self.kind is ChecklistItemKind.AUTOMATIC) != (self.rule is not None):
+            raise ValueError("an automatic item names its rule, and only an automatic item does")
+        return self
+
+
+class ChecklistDefinition(Contract):
+    """A checklist applies to the businesses of its campaigns first, then of its categories (whole
+    words); with neither it applies to every lead no other checklist claims."""
+
+    schema_version: Literal[1]
+    campaign_ids: Annotated[list[Id], _between(0, 50)]
+    categories: Terms
+    items: Annotated[list[ChecklistItem], _between(1, 30)]
+
+    @model_validator(mode="after")
+    def _unique_keys(self) -> Self:
+        keys = [item.key for item in self.items]
+        if len(set(keys)) != len(keys):
+            raise ValueError("an item key appears twice")
+        return self
+
+
+class ChecklistCatalogQuery(Contract):
+    include_archived: bool
+
+
+class ChecklistView(Contract):
+    checklist: ResearchChecklist
+    versions: list[ResearchChecklistVersion]
+
+
+class ChecklistCatalog(Contract):
+    checklists: list[ChecklistView]
+    template: ChecklistDefinition
+
+
+class ChecklistSaveRequest(Contract):
+    checklist_id: Id | None
+    name: Annotated[str, Field(min_length=1, max_length=120)]
+    description: Annotated[str, Field(max_length=2000)] | None
+    definition: ChecklistDefinition
+
+
+class ChecklistChangeRequest(Contract):
+    checklist_id: Id
+    action: ScoringChangeAction
+    version_id: Id | None
+    reason: ReviewReason
+
+
+class CriterionCheck(Contract):
+    criterion: SalesReadyCriterion
+    passed: bool
+    detail: ScoreText
+
+
+class ChecklistItemState(Contract):
+    item: ChecklistItem
+    done: bool
+    #: Why an automatic item holds or not; the note of a manual one.
+    detail: ScoreText
+    decided_by: str | None
+    decided_at: UtcTimestamp | None
+
+
+class ChecklistState(Contract):
+    checklist_id: Id
+    checklist_version_id: Id
+    name: str
+    version: Annotated[int, Field(ge=1)]
+    #: `campaign`, `category` or `default`.
+    matched_by: Code
+    items: list[ChecklistItemState]
+    #: Every required item is done.
+    complete: bool
+
+
+class PinView(Contract):
+    pin: EvidencePin
+    #: The pinned row still exists and belongs to this business.
+    available: bool
+
+
+class CorrectionView(Contract):
+    """A value an analyst corrected: a manual observation with its reason, never an edited
+    source."""
+
+    field: CanonicalField
+    value: str
+    observation_id: Id
+    reason: str
+    actor: str
+    corrected_at: UtcTimestamp
+    #: Still the value the business shows.
+    shown: bool
+
+
+class ResearchWorkspace(Contract):
+    business_id: Id
+    project_id: Id
+    display_name: str
+    is_synthetic: bool
+    #: The newest finished run that scored the business, read by the criteria.
+    score_run_id: Id | None
+    lead_stage: LeadStage
+    research: LeadResearch | None
+    #: The last status change can be undone back to the status before it.
+    can_undo: bool
+    suppressed: bool
+    sales_ready: list[CriterionCheck]
+    sales_ready_allowed: bool
+    checklist: ChecklistState
+    tasks: list[ResearchTask]
+    pins: list[PinView]
+    notes: list[Note]
+    tags: list[str]
+    corrections: list[CorrectionView]
+    decisions: list[ReviewDecision]
+
+
+class ResearchWorkspaceQuery(Contract):
+    business_id: Id
+
+
+class RefreshScope(StrEnum):
+    """What a refresh asks the engines for: the website pages (a crawl), the published contacts, or
+    the Latino evidence. Each one starts its job; nothing is sent to the business."""
+
+    PAGES = "pages"
+    CONTACTS = "contacts"
+    EVIDENCE = "evidence"
+
+
+class ResearchAction(StrEnum):
+    SET_STATUS = "set_status"
+    UNDO_STATUS = "undo_status"
+    ASSIGN = "assign"
+    UNASSIGN = "unassign"
+    ADD_TAG = "add_tag"
+    REMOVE_TAG = "remove_tag"
+    ADD_NOTE = "add_note"
+    DELETE_NOTE = "delete_note"
+    PIN = "pin"
+    UNPIN = "unpin"
+    ADD_TASK = "add_task"
+    COMPLETE_TASK = "complete_task"
+    DISMISS_TASK = "dismiss_task"
+    REOPEN_TASK = "reopen_task"
+    SYNC_TASKS = "sync_tasks"
+    CHECK_ITEM = "check_item"
+    UNCHECK_ITEM = "uncheck_item"
+    CORRECT_VALUE = "correct_value"
+    REQUEST_REFRESH = "request_refresh"
+
+
+_ACTION_NEEDS: dict[ResearchAction, tuple[str, ...]] = {
+    ResearchAction.SET_STATUS: ("status", "reason"),
+    ResearchAction.UNDO_STATUS: ("reason",),
+    ResearchAction.ASSIGN: ("assignee",),
+    ResearchAction.ADD_TAG: ("tag",),
+    ResearchAction.REMOVE_TAG: ("tag",),
+    ResearchAction.ADD_NOTE: ("note",),
+    ResearchAction.DELETE_NOTE: ("note_id", "reason"),
+    ResearchAction.PIN: ("ref_kind", "ref"),
+    ResearchAction.UNPIN: ("ref_kind", "ref", "reason"),
+    ResearchAction.ADD_TASK: ("title",),
+    ResearchAction.COMPLETE_TASK: ("task_id",),
+    ResearchAction.DISMISS_TASK: ("task_id", "reason"),
+    ResearchAction.REOPEN_TASK: ("task_id",),
+    ResearchAction.CHECK_ITEM: ("item_key",),
+    ResearchAction.UNCHECK_ITEM: ("item_key", "reason"),
+    ResearchAction.CORRECT_VALUE: ("field", "value", "reason"),
+}
+
+
+class ResearchActionRequest(Contract):
+    """One change to a lead's research. Everything that removes or overrides something needs a
+    reason; a status, a correction and a refresh are audited."""
+
+    business_id: Id
+    action: ResearchAction
+    status: ResearchStatus | None
+    assignee: Annotated[str, Field(min_length=1, max_length=120)] | None
+    tag: Annotated[str, Field(min_length=1, max_length=64)] | None
+    #: A note's body, or the short note of a pin or a checked item (at most 1 000 characters there).
+    note: Annotated[str, Field(min_length=1, max_length=4000)] | None
+    note_id: Id | None
+    ref_kind: EvidenceRefKind | None
+    ref: Annotated[str, Field(min_length=1, max_length=400)] | None
+    task_id: Id | None
+    title: Label | None
+    item_key: Code | None
+    field: CanonicalField | None
+    value: Annotated[str, Field(min_length=1, max_length=500)] | None
+    scopes: Annotated[list[RefreshScope], _between(0, len(RefreshScope))]
+    reason: ReviewReason | None
+
+    @model_validator(mode="after")
+    def _fields_of_the_action(self) -> Self:
+        missing = [
+            name for name in _ACTION_NEEDS.get(self.action, ()) if getattr(self, name) is None
+        ]
+        if missing:
+            raise ValueError(f"{self.action} needs {', '.join(missing)}")
+        if self.action is ResearchAction.REQUEST_REFRESH and not self.scopes:
+            raise ValueError("choose what to refresh")
+        short = self.action in (ResearchAction.PIN, ResearchAction.CHECK_ITEM)
+        if short and self.note is not None and len(self.note) > 1000:
+            raise ValueError("a pin or a checked item keeps at most 1000 characters of note")
+        return self
+
+
+class BriefRef(Contract):
+    """A stored row a brief, a pin or a timeline entry points at."""
+
+    kind: EvidenceRefKind
+    ref: Annotated[str, Field(min_length=1, max_length=400)]
+    label: Label
+    url: Annotated[str, Field(max_length=2048)] | None
+
+
+class TimelineKind(StrEnum):
+    SOURCE = "source"
+    CHANGE = "change"
+    ANALYSIS = "analysis"
+    REVIEW = "review"
+    RESEARCH = "research"
+    OUTCOME = "outcome"
+
+
+class TimelineQuery(Contract):
+    business_id: Id
+    #: Empty: every kind.
+    kinds: Annotated[list[TimelineKind], _between(0, len(TimelineKind))]
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class TimelineEntry(Contract):
+    #: `<table>:<id>`, unique in a timeline.
+    key: Annotated[str, Field(min_length=1, max_length=120)]
+    at: UtcTimestamp
+    kind: TimelineKind
+    code: Code
+    title: ScoreText
+    detail: Annotated[str, Field(max_length=600)] | None
+    actor: str | None
+    ref: BriefRef | None
+    job_id: Id | None
+    score_run_id: Id | None
+    source_key: Code | None
+
+
+class TimelinePage(Contract):
+    business_id: Id
+    entries: list[TimelineEntry]
+    next_cursor: Cursor | None
+
+
+class EvidenceQuery(Contract):
+    business_id: Id
+    kind: EvidenceRefKind
+    ref: Annotated[str, Field(min_length=1, max_length=400)]
+
+
+class EvidenceDetail(Contract):
+    """One stored row behind a claim, looked up only within the business it belongs to."""
+
+    business_id: Id
+    kind: EvidenceRefKind
+    ref: str
+    label: str
+    #: What the row says: a finding's observed value, an evidence snippet, a channel's value...
+    excerpt: Annotated[str, Field(max_length=2000)] | None
+    #: Its state: a finding result, a validation status, an assessment status...
+    status: Code | None
+    confidence: Confidence | None
+    observed_at: UtcTimestamp | None
+    source_name: str | None
+    source_url: Annotated[str, Field(max_length=2048)] | None
+    provenance: Provenance | None
+
+
+class BriefSection(StrEnum):
+    BUSINESS_SNAPSHOT = "business_snapshot"
+    ICP_MATCH = "icp_match"
+    VERIFIED_OPPORTUNITY = "verified_opportunity"
+    EVIDENCE = "evidence"
+    RECOMMENDED_OFFER = "recommended_offer"
+    CONTACT_ROUTE = "contact_route"
+    DECISION_MAKER = "decision_maker"
+    CONVERSATION_HOOKS = "conversation_hooks"
+    RISKS_UNKNOWNS = "risks_unknowns"
+    LAST_VERIFIED = "last_verified"
+
+
+class BriefClaim(Contract):
+    """One statement of a brief, restating stored data. `ref` (B1, B2...) is what a model cites;
+    `is_inference` marks a probable consequence, never a fact."""
+
+    ref: EvidenceRef
+    text: Annotated[str, Field(min_length=1, max_length=400)]
+    is_inference: bool
+    evidence: Annotated[list[BriefRef], _between(1, 8)]
+
+
+class BriefSectionView(Contract):
+    section: BriefSection
+    claims: list[BriefClaim]
+    #: Why a section holds no claim: `no_decision_maker_published`, `no_usable_contact`...
+    empty_reason: Code | None
+
+
+class SalesBriefQuery(Contract):
+    business_id: Id
+    score_run_id: Id | None
+
+
+class BriefDraftSentence(Contract):
+    text: str
+    #: The brief claims the sentence restates, all still in this brief.
+    claims: list[EvidenceRef]
+    evidence: list[BriefRef]
+
+
+class BriefDraftSection(Contract):
+    section: BriefSection
+    sentences: list[BriefDraftSentence]
+
+
+class BriefDraft(Contract):
+    """The newest valid, not rejected `sales_brief` answer, reduced to sentences whose every cited
+    claim is still in the brief; the others are dropped and counted."""
+
+    inference_run_id: Id
+    model: str
+    review_status: AiReviewStatus
+    finished_at: UtcTimestamp | None
+    sections: list[BriefDraftSection]
+    dropped: NonNegative
+
+
+class SalesBrief(Contract):
+    business_id: Id
+    project_id: Id
+    display_name: str
+    score_run_id: Id | None
+    versions: ScoreVersions | None
+    generated_at: UtcTimestamp
+    #: The newest date the facts behind the brief were read or checked.
+    last_verified_at: UtcTimestamp | None
+    suppressed: bool
+    research_status: ResearchStatus | None
+    is_synthetic: bool
+    #: Every section in order; an empty one says why.
+    sections: list[BriefSectionView]
+    draft: BriefDraft | None
+
+
+class SalesBriefSectionOutput(Contract):
+    section: BriefSection
+    sentences: Annotated[list[CitedPoint], Field(max_length=4)]
+
+
+class SalesBriefOutput(Contract):
+    """A model's wording of a brief: sentences per section, each citing the brief claims it
+    restates. It adds no fact, number, person or accusation."""
+
+    outcome: AiOutcome
+    sections: Annotated[list[SalesBriefSectionOutput], Field(max_length=10)]
 
 
 DATA_MODELS: tuple[type[Contract], ...] = (
@@ -5305,4 +6535,58 @@ DATA_MODELS: tuple[type[Contract], ...] = (
     CalibrationQuery,
     CalibrationReport,
     LeadActionRequest,
+    ExplorerFieldInfo,
+    ExplorerCondition,
+    ExplorerGroup,
+    ExplorerSort,
+    ExplorerQuery,
+    ExplorerRow,
+    ExplorerPage,
+    ViewColumn,
+    ViewDefinition,
+    ExplorerCatalogQuery,
+    ExplorerCatalog,
+    SavedViewQuery,
+    SavedViewItem,
+    SavedViewList,
+    SavedViewSaveRequest,
+    SavedViewChangeRequest,
+    ExportPreviewRequest,
+    ExportPreview,
+    BulkRequest,
+    BulkSkip,
+    BulkResult,
+    LeadCompareQuery,
+    ComparedLead,
+    LeadComparison,
+    ChecklistItem,
+    ChecklistDefinition,
+    ChecklistCatalogQuery,
+    ChecklistView,
+    ChecklistCatalog,
+    ChecklistSaveRequest,
+    ChecklistChangeRequest,
+    CriterionCheck,
+    ChecklistItemState,
+    ChecklistState,
+    PinView,
+    CorrectionView,
+    ResearchWorkspace,
+    ResearchWorkspaceQuery,
+    ResearchActionRequest,
+    BriefRef,
+    TimelineQuery,
+    TimelineEntry,
+    TimelinePage,
+    EvidenceQuery,
+    EvidenceDetail,
+    BriefClaim,
+    BriefSectionView,
+    SalesBriefQuery,
+    BriefDraftSentence,
+    BriefDraftSection,
+    BriefDraft,
+    SalesBrief,
+    SalesBriefSectionOutput,
+    SalesBriefOutput,
 )

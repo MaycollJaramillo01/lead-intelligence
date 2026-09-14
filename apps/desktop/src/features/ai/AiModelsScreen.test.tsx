@@ -88,7 +88,7 @@ describe("AiModelsScreen", () => {
     await waitFor(() => expect(mocks.configureAi).toHaveBeenCalledTimes(1));
     const [request] = mocks.configureAi.mock.calls[0] ?? [];
     expect(request?.profiles).toHaveLength(3);
-    expect(request?.tasks).toHaveLength(6);
+    expect(request?.tasks).toHaveLength(7);
     expect(request?.min_free_ram_mib).toBe(1024);
   });
 

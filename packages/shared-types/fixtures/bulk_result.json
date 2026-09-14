@@ -1,0 +1,15 @@
+{
+  "mode": "preview",
+  "action": "add_tag",
+  "targeted": 2,
+  "changed": 1,
+  "skipped": 1,
+  "skips": [
+    {
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "display_name": "Synthetic Bakery 0001",
+      "reason": "unchanged"
+    }
+  ],
+  "batch_id": null
+}

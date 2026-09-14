@@ -14,11 +14,12 @@ use lead_intelligence_lib::data::{
     CampaignSaved, CandidateDetail, CandidatePage, CanonicalField, ContactDetail, ContactOrigin,
     ContactPage, ContactRunPage, ContactSuppression, CrawlRun, CrawlRunPage, CrawlUrlDetail,
     CrawlUrlPage, CriteriaCheck, DatasetPage, DecisionMakerPage, DiscoveryRun, DiscoveryRunPage,
-    ImportPreview, JobStatus, LatinoDetail, LatinoRunPage, LatinoStatus, LeadScorePage,
-    LeadScorecardDetail, MatchDetail, MatchPage, MatchStatus, ResolutionRunPage, ScoreComparison,
-    ScoreRunPage, ScoringCatalog, ScoringSimulation, SelectionMethod, SourceCatalog,
-    SourceRunStatus, SuppressionExport, SyntheticSeedResult, WebsiteAuditDetail, WebsiteAuditPage,
-    WebsiteRunPage,
+    ExplorerCatalog, ExplorerPage, ImportPreview, JobStatus, LatinoDetail, LatinoRunPage,
+    LatinoStatus, LeadScorePage, LeadScorecardDetail, MatchDetail, MatchPage, MatchStatus,
+    ResearchStatus, ResearchWorkspace, ResolutionRunPage, SalesBrief, SavedViewItem,
+    ScoreComparison, ScoreRunPage, ScoringCatalog, ScoringSimulation, SelectionMethod,
+    SourceCatalog, SourceRunStatus, SuppressionExport, SyntheticSeedResult, TimelinePage,
+    WebsiteAuditDetail, WebsiteAuditPage, WebsiteRunPage,
 };
 use lead_intelligence_lib::protocol::{
     CommandError, CommandErrorCode, ComponentState, DiagnosticsReport, WorkerState,
@@ -675,6 +676,101 @@ fn data_commands_serve_real_store_queries_through_ipc() {
     .deserialize()
     .expect("typed report");
     assert!(report.weights_are_heuristic && report.labeled <= report.businesses);
+
+    // lead explorer and research: the catalogue, a window of the newest run, filters nested too
+    // deep for the core, a status without and with a reason, a saved view, the brief and the
+    // timeline all go through IPC and the real worker
+    let explorer: ExplorerCatalog = invoke(
+        &dev,
+        "get_explorer_catalog",
+        json!({ "query": { "scope": "lead_explorer" } }),
+    )
+    .expect("explorer catalogue")
+    .deserialize()
+    .expect("typed catalogue");
+    let empty_group = json!({ "kind": "group", "join": "and", "negate": false, "children": [] });
+    let window_query = |filters: serde_json::Value| {
+        json!({ "query": {
+            "score_run_id": null, "filters": filters, "search": null, "sort": [], "offset": 0,
+            "limit": 10, "with_total": true
+        }})
+    };
+    let window: ExplorerPage = invoke(&dev, "explore_leads", window_query(empty_group.clone()))
+        .expect("a window of leads")
+        .deserialize()
+        .expect("typed window");
+    assert_eq!(window.total, Some(seed.business_count));
+    let deep = json!({ "kind": "group", "join": "and", "negate": false, "children": [
+        { "kind": "group", "join": "or", "negate": false, "children": [
+            { "kind": "group", "join": "and", "negate": false, "children": [empty_group] }
+        ]}
+    ]});
+    let too_deep = invoke(&dev, "explore_leads", window_query(deep))
+        .expect_err("filters nest at most three groups deep");
+    assert_eq!(command_error(too_deep).code, CommandErrorCode::InvalidInput);
+    let researched = window.rows[0].business_id.clone();
+    let set_status = |reason: serde_json::Value| {
+        invoke(
+            &dev,
+            "act_on_research",
+            json!({ "request": {
+                "business_id": researched, "action": "set_status", "status": "disqualified",
+                "assignee": null, "tag": null, "note": null, "note_id": null, "ref_kind": null,
+                "ref": null, "task_id": null, "title": null, "item_key": null, "field": null,
+                "value": null, "scopes": [], "reason": reason
+            }}),
+        )
+    };
+    let unexplained = set_status(serde_json::Value::Null).expect_err("a status needs a reason");
+    assert_eq!(
+        command_error(unexplained).code,
+        CommandErrorCode::InvalidInput
+    );
+    let workspace: ResearchWorkspace = set_status(json!("IPC test"))
+        .expect("disqualified")
+        .deserialize()
+        .expect("typed workspace");
+    assert_eq!(
+        workspace.research.expect("research state").status,
+        Some(ResearchStatus::Disqualified)
+    );
+    let view: SavedViewItem = invoke(
+        &dev,
+        "save_saved_view",
+        json!({ "request": {
+            "view_id": null, "scope": "lead_explorer", "name": "IPC view", "description": null,
+            "definition": explorer.default_view
+        }}),
+    )
+    .expect("saved view")
+    .deserialize()
+    .expect("typed view");
+    assert_eq!(view.versions.len(), 1);
+    let brief: SalesBrief = invoke(
+        &dev,
+        "get_sales_brief",
+        json!({ "query": { "business_id": researched, "score_run_id": null } }),
+    )
+    .expect("sales brief")
+    .deserialize()
+    .expect("typed brief");
+    assert_eq!(brief.research_status, Some(ResearchStatus::Disqualified));
+    let timeline: TimelinePage = invoke(
+        &dev,
+        "get_lead_timeline",
+        json!({ "query": {
+            "business_id": researched, "kinds": ["review"], "limit": 20, "cursor": null
+        }}),
+    )
+    .expect("timeline")
+    .deserialize()
+    .expect("typed timeline");
+    assert!(
+        timeline
+            .entries
+            .iter()
+            .any(|entry| entry.detail.as_deref() == Some("IPC test"))
+    );
 
     let datasets: DatasetPage = invoke(
         &dev,

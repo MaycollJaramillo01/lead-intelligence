@@ -60,6 +60,10 @@ Six sections, sixteen modules. Status is what the module actually is today.
 The registry (`src/app/navigation.ts`) is the single source: sidebar, breadcrumbs, command palette,
 shortcuts and the "not configured" pages all read from it.
 
+`/businesses/<id>` opens a business in full (phase 12) and belongs to Businesses in the breadcrumbs.
+Internal links carry what they point at: `?run=` on the Lead Explorer, `?job=` on Jobs, `?source=` on
+Sources and `?dataset=` on Datasets (`src/lib/links.ts`).
+
 ## Keyboard
 
 Shortcuts live in `src/lib/shortcuts.ts`; a test fails if two shortcuts claim the same combo, and
@@ -80,6 +84,10 @@ field, except the command palette.
 
 Every interactive element is reachable by Tab, the focus ring is one treatment defined in the base
 layer, and a skip link jumps to the main region.
+
+The Lead Explorer's grid keeps the focus and points at its active row (`aria-activedescendant`):
+↑ and ↓, Page Up and Page Down, Home and End move; Space selects the row by id; Enter opens it in
+the inspector. A header click sorts by that column and Shift+click adds a sort key (up to four).
 
 ## Reusable components
 
@@ -111,27 +119,30 @@ only when the app needs it (the toaster follows our theme store instead of next-
 
 ## State
 
-| Kind                  | Where                                  | Rule                                                    |
-| --------------------- | -------------------------------------- | ------------------------------------------------------- |
-| Remote / IPC          | `features/diagnostics/store.ts`        | Only through the typed adapter in `lib/ipc.ts`          |
-| Remote lists          | `lib/useKeysetPages.ts`                | Keyset pages; a new query restarts, stale answers drop  |
-| Persisted preferences | `stores/preferences.ts` (localStorage) | Theme, density, language, sidebar size, column layouts  |
-| Ephemeral UI          | `stores/ui.ts`                         | Palette, help, inspector, selected row; never persisted |
+| Kind                  | Where                                  | Rule                                                                         |
+| --------------------- | -------------------------------------- | ---------------------------------------------------------------------------- |
+| Remote / IPC          | `features/diagnostics/store.ts`        | Only through the typed adapter in `lib/ipc.ts`                               |
+| Remote lists          | `lib/useKeysetPages.ts`                | Keyset pages; a new query restarts, stale answers drop                       |
+| Persisted preferences | `stores/preferences.ts` (localStorage) | Theme, density, language, sidebar size, column layouts                       |
+| Ephemeral UI          | `stores/ui.ts`                         | Palette, help, inspector, selected row; never persisted                      |
+| Explorer session      | `features/leads/store.ts`              | Leads selected by id, "all matching", grid position; never persisted         |
+| Explorer layout       | `stores/preferences.ts` (`explorer`)   | Filters, search, sort, columns and the active view; restored after a restart |
 
 Components never call `invoke` directly and never run SQL. Stores are small and selected field by
 field so a change in one screen does not re-render the others.
 
 ## Screens today
 
-| Screen         | What it shows                                                                                                  |
-| -------------- | -------------------------------------------------------------------------------------------------------------- |
-| Overview       | Live subsystem states, the screens that work, and the pipeline status                                          |
-| Businesses     | Real store query: server search, keyset paging, inspector with every value's provenance; empty until phase 04  |
-| Lead Explorer  | Ranked leads of the newest finished score run, filtered in the store; inspector with the lead score (phase 11) |
-| ICP Builder    | Versioned profiles: criteria, Latino requirement, exclusions, offers, preview on real data (phase 11)          |
-| Scoring Models | Formula in plain text, weights and versions; runs, comparison and calibration (phase 11)                       |
-| Datasets       | Datasets with their latest snapshot (version, rows, capture time)                                              |
-| Jobs           | The runs of every engine with progress and cancel                                                              |
-| System         | Full diagnostics from phase 01, with refresh and worker restart                                                |
-| Settings       | Theme, density, language, workspace paths, stored preferences                                                  |
-| Exports, Logs  | Title, purpose, "not configured" and the phase that delivers them                                              |
+| Screen         | What it shows                                                                                                                                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Overview       | Live subsystem states, the screens that work, and the pipeline status                                                                                                                                               |
+| Businesses     | Real store query: server search, keyset paging, inspector with every value's provenance; empty until phase 04                                                                                                       |
+| Lead Explorer  | Every lead of a score run read window by window: AND/OR filters, search, multi-sort, columns, versioned saved views, bulk actions with preview, export preview, compare; the inspector's eleven sections (phase 12) |
+| Business       | `/businesses/<id>`: the inspector's eleven sections in full, with a list to jump between them (phase 12)                                                                                                            |
+| ICP Builder    | Versioned profiles: criteria, Latino requirement, exclusions, offers, preview on real data (phase 11)                                                                                                               |
+| Scoring Models | Formula in plain text, weights and versions; runs, comparison and calibration (phase 11)                                                                                                                            |
+| Datasets       | Datasets with their latest snapshot (version, rows, capture time)                                                                                                                                                   |
+| Jobs           | The runs of every engine with progress and cancel                                                                                                                                                                   |
+| System         | Full diagnostics from phase 01, with refresh and worker restart                                                                                                                                                     |
+| Settings       | Theme, density, language, workspace paths, stored preferences                                                                                                                                                       |
+| Exports, Logs  | Title, purpose, "not configured" and the phase that delivers them                                                                                                                                                   |

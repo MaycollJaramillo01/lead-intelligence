@@ -40,6 +40,7 @@ from research_engine.discovery.engine import DiscoveryService, DiscoveryStartErr
 from research_engine.handlers import ROUTES, Context, NotAllowedError, health
 from research_engine.latino.engine import LatinoService
 from research_engine.latino.store import LatinoError
+from research_engine.leads import LeadError
 from research_engine.logs import configure_logging, request_id_var
 from research_engine.ollama import OllamaProvider, ProviderError
 from research_engine.repository import (
@@ -346,6 +347,7 @@ class Worker:
             ContactError,
             AiError,
             ScoringError,
+            LeadError,
         ) as exc:
             raise WorkerError(ErrorCode.INVALID_PAYLOAD, str(exc)) from exc
         except ProviderError as exc:

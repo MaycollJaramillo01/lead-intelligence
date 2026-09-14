@@ -38,7 +38,10 @@ import { useLoaded } from "@/lib/useLoaded";
 
 const POLL_MS = 5000;
 const BUSY_POLL_MS = 2000;
-const BENCHMARKED: readonly AiTaskType[] = TASKS.filter((task) => task !== "visual_review");
+// a screenshot has no text case, and a sales brief is worded lead by lead from its own claims
+const BENCHMARKED: readonly AiTaskType[] = TASKS.filter(
+  (task) => task !== "visual_review" && task !== "sales_brief",
+);
 const CELL = "border-b px-2 py-1 text-left align-top";
 
 function Select<T extends string>({

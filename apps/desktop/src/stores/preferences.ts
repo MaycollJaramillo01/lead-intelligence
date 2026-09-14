@@ -1,3 +1,4 @@
+import type { ViewDefinition } from "@lead/shared-types";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -20,6 +21,8 @@ interface PreferencesState {
   inspectorSize: number;
   /** Column visibility per table id, so each table keeps its own layout. */
   columnVisibility: Record<string, Record<string, boolean>>;
+  /** The Lead Explorer's last filters, sort and columns, and the saved view they came from. */
+  explorer: ExplorerLayout;
   setTheme: (theme: ThemePreference) => void;
   setDensity: (density: Density) => void;
   setLanguage: (language: Language) => void;
@@ -27,7 +30,13 @@ interface PreferencesState {
   setSidebarWidth: (width: number) => void;
   setInspectorSize: (size: number) => void;
   setColumnVisibility: (tableId: string, visibility: Record<string, boolean>) => void;
+  setExplorer: (explorer: ExplorerLayout) => void;
   reset: () => void;
+}
+
+export interface ExplorerLayout {
+  definition: ViewDefinition | null;
+  viewId: string | null;
 }
 
 const DEFAULTS = {
@@ -38,6 +47,7 @@ const DEFAULTS = {
   sidebarWidth: 232,
   inspectorSize: 32,
   columnVisibility: {},
+  explorer: { definition: null, viewId: null },
 } satisfies Omit<
   PreferencesState,
   | "setTheme"
@@ -47,6 +57,7 @@ const DEFAULTS = {
   | "setSidebarWidth"
   | "setInspectorSize"
   | "setColumnVisibility"
+  | "setExplorer"
   | "reset"
 >;
 
@@ -67,6 +78,7 @@ export const usePreferences = create<PreferencesState>()(
         set((state) => ({
           columnVisibility: { ...state.columnVisibility, [tableId]: visibility },
         })),
+      setExplorer: (explorer) => set({ explorer }),
       reset: () => set(DEFAULTS),
     }),
     { name: PREFERENCES_STORAGE_KEY, version: 1 },

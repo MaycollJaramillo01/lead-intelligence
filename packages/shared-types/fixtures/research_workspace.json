@@ -1,0 +1,504 @@
+{
+  "business_id": "01900000-0000-7000-8000-000000000090",
+  "project_id": "01900000-0000-7000-8000-000000000001",
+  "display_name": "Synthetic Bakery 0001",
+  "is_synthetic": true,
+  "score_run_id": "01900000-0000-7000-8000-000000001398",
+  "lead_stage": "attempted",
+  "research": {
+    "business_id": "01900000-0000-7000-8000-000000000090",
+    "project_id": "01900000-0000-7000-8000-000000000001",
+    "status": "needs_research",
+    "status_reason": "Find who decides (synthetic test data)",
+    "status_by": "dev-seed",
+    "status_at": "2026-01-01T00:00:00.000Z",
+    "assignee": "Synthetic analyst",
+    "assigned_at": "2026-01-01T00:00:00.000Z",
+    "updated_at": "2026-01-01T00:00:00.000Z"
+  },
+  "can_undo": true,
+  "suppressed": false,
+  "sales_ready": [
+    {
+      "criterion": "not_suppressed",
+      "passed": true,
+      "detail": "Not on the do-not-contact list"
+    },
+    {
+      "criterion": "active_business",
+      "passed": true,
+      "detail": "Business status: candidate"
+    },
+    {
+      "criterion": "scored_recently",
+      "passed": true,
+      "detail": "Scored on facts read 0 days ago"
+    },
+    {
+      "criterion": "qualifying_tier",
+      "passed": true,
+      "detail": "Tier review, total 65.4"
+    },
+    {
+      "criterion": "verified_opportunity",
+      "passed": true,
+      "detail": "Website rebuild addresses website unreachable"
+    },
+    {
+      "criterion": "usable_contact",
+      "passed": true,
+      "detail": "email likely valid"
+    },
+    {
+      "criterion": "contact_conflicts_resolved",
+      "passed": true,
+      "detail": "No disagreement on the contact values"
+    },
+    {
+      "criterion": "checklist_complete",
+      "passed": false,
+      "detail": "6 of 7 required items of 'Sales-ready checklist' done"
+    }
+  ],
+  "sales_ready_allowed": false,
+  "checklist": {
+    "checklist_id": "01900000-0000-7000-8000-000000001633",
+    "checklist_version_id": "01900000-0000-7000-8000-000000001635",
+    "name": "Sales-ready checklist",
+    "version": 1,
+    "matched_by": "default",
+    "items": [
+      {
+        "item": {
+          "key": "scored_recently",
+          "label": "Scored on facts read in the last 90 days",
+          "kind": "automatic",
+          "rule": "scored_recently",
+          "required": true
+        },
+        "done": true,
+        "detail": "Scored on facts read 0 days ago",
+        "decided_by": null,
+        "decided_at": null
+      },
+      {
+        "item": {
+          "key": "qualifying_tier",
+          "label": "Priority or review tier",
+          "kind": "automatic",
+          "rule": "qualifying_tier",
+          "required": true
+        },
+        "done": true,
+        "detail": "Tier review, total 65.4",
+        "decided_by": null,
+        "decided_at": null
+      },
+      {
+        "item": {
+          "key": "verified_opportunity",
+          "label": "An observed problem the recommended offer solves",
+          "kind": "automatic",
+          "rule": "verified_opportunity",
+          "required": true
+        },
+        "done": true,
+        "detail": "Website rebuild addresses website unreachable",
+        "decided_by": null,
+        "decided_at": null
+      },
+      {
+        "item": {
+          "key": "usable_contact",
+          "label": "A usable contact route off the do-not-contact list",
+          "kind": "automatic",
+          "rule": "usable_contact",
+          "required": true
+        },
+        "done": true,
+        "detail": "email likely valid",
+        "decided_by": null,
+        "decided_at": null
+      },
+      {
+        "item": {
+          "key": "contact_conflicts_resolved",
+          "label": "No disagreement on the contact values",
+          "kind": "automatic",
+          "rule": "contact_conflicts_resolved",
+          "required": true
+        },
+        "done": true,
+        "detail": "No disagreement on the contact values",
+        "decided_by": null,
+        "decided_at": null
+      },
+      {
+        "item": {
+          "key": "decision_maker_published",
+          "label": "A decision maker the business published",
+          "kind": "automatic",
+          "rule": "decision_maker_published",
+          "required": false
+        },
+        "done": false,
+        "detail": "No published decision maker",
+        "decided_by": null,
+        "decided_at": null
+      },
+      {
+        "item": {
+          "key": "website_audited",
+          "label": "The website audited, when there is one",
+          "kind": "automatic",
+          "rule": "website_audited",
+          "required": false
+        },
+        "done": true,
+        "detail": "Audit empty of synthetic-bakery-0001.example",
+        "decided_by": null,
+        "decided_at": null
+      },
+      {
+        "item": {
+          "key": "latino_evaluated",
+          "label": "Latino evidence evaluated",
+          "kind": "automatic",
+          "rule": "latino_evaluated",
+          "required": false
+        },
+        "done": true,
+        "detail": "Latino evidence evaluated: unknown",
+        "decided_by": null,
+        "decided_at": null
+      },
+      {
+        "item": {
+          "key": "offer_fit_confirmed",
+          "label": "The recommended offer fits what the business sells",
+          "kind": "manual",
+          "rule": null,
+          "required": true
+        },
+        "done": true,
+        "detail": "Synthetic check",
+        "decided_by": "dev-seed",
+        "decided_at": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "item": {
+          "key": "contact_route_reviewed",
+          "label": "A person reviewed the contact route",
+          "kind": "manual",
+          "rule": null,
+          "required": true
+        },
+        "done": false,
+        "detail": "Not checked yet",
+        "decided_by": null,
+        "decided_at": null
+      }
+    ],
+    "complete": false
+  },
+  "tasks": [
+    {
+      "id": "01900000-0000-7000-8000-000000001665",
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "kind": "checklist",
+      "key": "checklist:contact_route_reviewed",
+      "title": "A person reviewed the contact route",
+      "detail_json": {
+        "detail": "Not checked yet",
+        "item_key": "contact_route_reviewed"
+      },
+      "status": "open",
+      "created_by": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "closed_by": null,
+      "closed_at": null,
+      "close_reason": null
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000001664",
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "kind": "checklist",
+      "key": "checklist:offer_fit_confirmed",
+      "title": "The recommended offer fits what the business sells",
+      "detail_json": {
+        "detail": "Not checked yet",
+        "item_key": "offer_fit_confirmed"
+      },
+      "status": "open",
+      "created_by": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "closed_by": null,
+      "closed_at": null,
+      "close_reason": null
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000001663",
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "kind": "missing_data",
+      "key": "missing:health.trust_signals",
+      "title": "Find out: conversion.trust_signals could not be evaluated",
+      "detail_json": {
+        "component": "BUSINESS_HEALTH",
+        "feature": "health.trust_signals",
+        "weight_share": 0.01
+      },
+      "status": "open",
+      "created_by": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "closed_by": null,
+      "closed_at": null,
+      "close_reason": null
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000001662",
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "kind": "missing_data",
+      "key": "missing:health.site_maintained",
+      "title": "Find out: content.freshness could not be evaluated",
+      "detail_json": {
+        "component": "BUSINESS_HEALTH",
+        "feature": "health.site_maintained",
+        "weight_share": 0.01
+      },
+      "status": "open",
+      "created_by": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "closed_by": null,
+      "closed_at": null,
+      "close_reason": null
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000001661",
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "kind": "missing_data",
+      "key": "missing:intent.site_changed",
+      "title": "Find out: Only one audit of the site: nothing to compare",
+      "detail_json": {
+        "component": "COMMERCIAL_INTENT",
+        "feature": "intent.site_changed",
+        "weight_share": 0.0105
+      },
+      "status": "open",
+      "created_by": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "closed_by": null,
+      "closed_at": null,
+      "close_reason": null
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000001660",
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "kind": "missing_data",
+      "key": "missing:capacity.paid_tools",
+      "title": "Find out: No booking, ecommerce or call tracking tool detected",
+      "detail_json": {
+        "component": "BUYING_CAPACITY",
+        "feature": "capacity.paid_tools",
+        "weight_share": 0.0117
+      },
+      "status": "open",
+      "created_by": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "closed_by": null,
+      "closed_at": null,
+      "close_reason": null
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000001659",
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "kind": "missing_data",
+      "key": "missing:gap.mobile",
+      "title": "Find out: mobile.viewport could not be evaluated",
+      "detail_json": {
+        "component": "DIGITAL_GAP",
+        "feature": "gap.mobile",
+        "weight_share": 0.0197
+      },
+      "status": "open",
+      "created_by": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "closed_by": null,
+      "closed_at": null,
+      "close_reason": null
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000001658",
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "kind": "missing_data",
+      "key": "missing:gap.local_seo",
+      "title": "Find out: No local SEO rule could be evaluated",
+      "detail_json": {
+        "component": "DIGITAL_GAP",
+        "feature": "gap.local_seo",
+        "weight_share": 0.0197
+      },
+      "status": "open",
+      "created_by": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "closed_by": null,
+      "closed_at": null,
+      "close_reason": null
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000001657",
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "kind": "missing_data",
+      "key": "missing:intent.reputation_without_conversion",
+      "title": "Find out: Trust signals or the conversion subscore are unknown",
+      "detail_json": {
+        "component": "COMMERCIAL_INTENT",
+        "feature": "intent.reputation_without_conversion",
+        "weight_share": 0.021
+      },
+      "status": "open",
+      "created_by": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "closed_by": null,
+      "closed_at": null,
+      "close_reason": null
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000001656",
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "kind": "missing_data",
+      "key": "missing:intent.advertising_active",
+      "title": "Find out: No advertising pixel detected (which does not mean none)",
+      "detail_json": {
+        "component": "COMMERCIAL_INTENT",
+        "feature": "intent.advertising_active",
+        "weight_share": 0.021
+      },
+      "status": "open",
+      "created_by": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "closed_by": null,
+      "closed_at": null,
+      "close_reason": null
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000001655",
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "kind": "missing_data",
+      "key": "missing:gap.conversion_path",
+      "title": "Find out: Calls to action and forms could not be evaluated",
+      "detail_json": {
+        "component": "DIGITAL_GAP",
+        "feature": "gap.conversion_path",
+        "weight_share": 0.0295
+      },
+      "status": "open",
+      "created_by": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "closed_by": null,
+      "closed_at": null,
+      "close_reason": null
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000001654",
+      "business_id": "01900000-0000-7000-8000-000000000090",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "kind": "missing_data",
+      "key": "missing:criterion.buying_capacity",
+      "title": "Find out: 0 capacity proxies observed, 1 unknown",
+      "detail_json": {
+        "component": "ICP_MATCH",
+        "feature": "criterion.buying_capacity",
+        "weight_share": 0.0312
+      },
+      "status": "open",
+      "created_by": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "closed_by": null,
+      "closed_at": null,
+      "close_reason": null
+    }
+  ],
+  "pins": [
+    {
+      "pin": {
+        "id": "01900000-0000-7000-8000-000000001652",
+        "business_id": "01900000-0000-7000-8000-000000000090",
+        "ref_kind": "business",
+        "ref": "01900000-0000-7000-8000-000000000090",
+        "label": "Synthetic Bakery 0001",
+        "note": "Synthetic pin",
+        "pinned_by": "dev-seed",
+        "pinned_at": "2026-01-01T00:00:00.000Z",
+        "unpinned_by": null,
+        "unpinned_at": null,
+        "unpin_reason": null
+      },
+      "available": true
+    }
+  ],
+  "notes": [
+    {
+      "id": "01900000-0000-7000-8000-000000001650",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "entity_type": "business",
+      "entity_id": "01900000-0000-7000-8000-000000000090",
+      "body": "Synthetic note: ask when they are open.",
+      "author": "dev-seed",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z",
+      "deleted_at": null,
+      "deleted_reason": null
+    }
+  ],
+  "tags": [
+    "synthetic-shortlist"
+  ],
+  "corrections": [],
+  "decisions": [
+    {
+      "id": "01900000-0000-7000-8000-000000001645",
+      "entity_type": "business",
+      "entity_id": "01900000-0000-7000-8000-000000000090",
+      "decision": "research_assignee",
+      "previous_value": null,
+      "new_value": "Synthetic analyst",
+      "reason": "Assigned",
+      "actor": "dev-seed",
+      "decided_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000001643",
+      "entity_type": "business",
+      "entity_id": "01900000-0000-7000-8000-000000000090",
+      "decision": "research_status",
+      "previous_value": null,
+      "new_value": "needs_research",
+      "reason": "Find who decides (synthetic test data)",
+      "actor": "dev-seed",
+      "decided_at": "2026-01-01T00:00:00.000Z"
+    }
+  ]
+}

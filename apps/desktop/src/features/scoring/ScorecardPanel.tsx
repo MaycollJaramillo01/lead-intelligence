@@ -1,6 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type {
+  AttemptResult,
+  ContactQuality,
+  ContactType,
   LeadAction,
+  LeadOutcome,
   LeadScorecardDetail,
   LeadStage,
   ScoreEvidence,
@@ -14,7 +18,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   ACTION_KEYS,
+  ATTEMPT_RESULTS,
+  ATTEMPT_RESULT_KEYS,
+  CHANNEL_KEYS,
+  CHANNEL_TYPES,
   COMPONENT_KEYS,
+  CONTACT_QUALITIES,
+  CONTACT_QUALITY_KEYS,
   FEATURE_STATE_KEYS,
   GATE_OUTCOME_KEYS,
   LEAD_ACTIONS,
@@ -34,6 +44,28 @@ import { cn } from "@/lib/utils";
 type Loaded = { detail: LeadScorecardDetail | null; error: IpcError | null } | null;
 
 const SELECT = "h-7 w-full rounded-md border bg-transparent px-2 text-xs";
+const CURRENCY = /^[A-Z]{3}$/;
+
+/** How a lead was worked: its channel, result and who answered, and a value when there is one. */
+function WorkLine({ outcome }: { outcome: LeadOutcome }) {
+  const t = useT();
+  const parts = [
+    outcome.channel && t(CHANNEL_KEYS[outcome.channel]),
+    outcome.attempt_result && t(ATTEMPT_RESULT_KEYS[outcome.attempt_result]),
+    outcome.contact_quality && t(CONTACT_QUALITY_KEYS[outcome.contact_quality]),
+    outcome.value_amount !== null &&
+      t("scoring.valueLine", {
+        amount: outcome.value_amount,
+        currency: outcome.value_currency ?? "",
+      }),
+  ].filter(Boolean);
+  if (parts.length === 0 && !outcome.notes) return null;
+  return (
+    <p className="text-[11px] break-words text-muted-foreground">
+      {[...parts, outcome.notes].filter(Boolean).join(" · ")}
+    </p>
+  );
+}
 
 function Evidence({ items }: { items: readonly ScoreEvidence[] }) {
   if (items.length === 0) return null;
@@ -95,6 +127,12 @@ export function ScorecardPanel({
   const [stage, setStage] = useState<LeadStage>("attempted");
   const [lostReason, setLostReason] = useState("");
   const [reason, setReason] = useState("");
+  const [channel, setChannel] = useState<ContactType | "">("");
+  const [result, setResult] = useState<AttemptResult | "">("");
+  const [quality, setQuality] = useState<ContactQuality | "">("");
+  const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("USD");
+  const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -129,14 +167,24 @@ export function ScorecardPanel({
   const card = detail.scorecard;
   const run = detail.score_run;
   const recording = action === "record_outcome";
+  const attempting = action === "record_attempt";
+  const working = recording || attempting;
   const needsLostReason = recording && stage === "lost";
+  const valued = working && amount.trim() !== "";
+  const invalidValue =
+    valued && (!(Number(amount) >= 0) || !CURRENCY.test(currency.trim().toUpperCase()));
+  const incomplete =
+    !reason.trim() ||
+    (needsLostReason && !lostReason.trim()) ||
+    (attempting && (channel === "" || result === "")) ||
+    invalidValue;
   const formulas = card.components.filter(
     (view) => view.component === "OPPORTUNITY_SCORE" || view.component === "FINAL_LEAD_SCORE",
   );
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!reason.trim() || (needsLostReason && !lostReason.trim())) return;
+    if (incomplete) return;
     setBusy(true);
     try {
       const updated = await desktop.actOnLead({
@@ -146,10 +194,19 @@ export function ScorecardPanel({
         stage: recording ? stage : null,
         lost_reason: needsLostReason ? lostReason.trim() : null,
         reason: reason.trim(),
+        channel: working && channel !== "" ? channel : null,
+        attempt_result: working && result !== "" ? result : null,
+        value_amount: valued ? Number(amount) : null,
+        value_currency: valued ? currency.trim().toUpperCase() : null,
+        contact_quality: working && quality !== "" ? quality : null,
+        notes: working && notes.trim() ? notes.trim() : null,
+        occurred_at: null,
       });
       setLoaded({ detail: updated, error: null });
       setReason("");
       setLostReason("");
+      setNotes("");
+      setAmount("");
       toast.success(t("scoring.actionDone"));
     } catch (cause) {
       toast.error(t("scoring.actionFailed"), {
@@ -415,13 +472,21 @@ export function ScorecardPanel({
             {detail.outcomes.map((outcome) => (
               <li key={outcome.id}>
                 <p>
-                  {t("scoring.outcomeLine", {
-                    from: t(STAGE_KEYS[outcome.previous_stage]),
-                    to: t(STAGE_KEYS[outcome.stage]),
-                    actor: outcome.actor,
-                    time: formatDateTime(outcome.occurred_at, language),
-                  })}
+                  {outcome.stage === outcome.previous_stage && outcome.attempt_result
+                    ? t("scoring.attemptLine", {
+                        channel: outcome.channel ? t(CHANNEL_KEYS[outcome.channel]) : "—",
+                        result: t(ATTEMPT_RESULT_KEYS[outcome.attempt_result]),
+                        actor: outcome.actor,
+                        time: formatDateTime(outcome.occurred_at, language),
+                      })
+                    : t("scoring.outcomeLine", {
+                        from: t(STAGE_KEYS[outcome.previous_stage]),
+                        to: t(STAGE_KEYS[outcome.stage]),
+                        actor: outcome.actor,
+                        time: formatDateTime(outcome.occurred_at, language),
+                      })}
                 </p>
+                <WorkLine outcome={outcome} />
                 <p className="text-[11px] break-words text-muted-foreground">
                   {outcome.lost_reason
                     ? `${outcome.lost_reason} · ${outcome.reason}`
@@ -506,6 +571,104 @@ export function ScorecardPanel({
             />
           </>
         )}
+        {working && (
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="space-y-0.5">
+              <Label htmlFor="lead-channel" className="text-xs">
+                {t("scoring.channel")}
+              </Label>
+              <select
+                id="lead-channel"
+                value={channel}
+                required={attempting}
+                onChange={(event) => setChannel(event.target.value as ContactType | "")}
+                className={SELECT}
+              >
+                <option value="">{t("scoring.none")}</option>
+                {CHANNEL_TYPES.map((value) => (
+                  <option key={value} value={value}>
+                    {t(CHANNEL_KEYS[value])}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-0.5">
+              <Label htmlFor="lead-result" className="text-xs">
+                {t("scoring.attemptResult")}
+              </Label>
+              <select
+                id="lead-result"
+                value={result}
+                required={attempting}
+                onChange={(event) => setResult(event.target.value as AttemptResult | "")}
+                className={SELECT}
+              >
+                <option value="">{t("scoring.none")}</option>
+                {ATTEMPT_RESULTS.map((value) => (
+                  <option key={value} value={value}>
+                    {t(ATTEMPT_RESULT_KEYS[value])}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-span-2 space-y-0.5">
+              <Label htmlFor="lead-quality" className="text-xs">
+                {t("scoring.contactQuality")}
+              </Label>
+              <select
+                id="lead-quality"
+                value={quality}
+                onChange={(event) => setQuality(event.target.value as ContactQuality | "")}
+                className={SELECT}
+              >
+                <option value="">{t("scoring.none")}</option>
+                {CONTACT_QUALITIES.map((value) => (
+                  <option key={value} value={value}>
+                    {t(CONTACT_QUALITY_KEYS[value])}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-0.5">
+              <Label htmlFor="lead-value" className="text-xs">
+                {t("scoring.dealValue")}
+              </Label>
+              <input
+                id="lead-value"
+                type="number"
+                min={0}
+                step="any"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+                className={SELECT}
+              />
+            </div>
+            <div className="space-y-0.5">
+              <Label htmlFor="lead-currency" className="text-xs">
+                {t("scoring.currency")}
+              </Label>
+              <input
+                id="lead-currency"
+                value={currency}
+                maxLength={3}
+                onChange={(event) => setCurrency(event.target.value)}
+                className={cn(SELECT, "uppercase")}
+              />
+            </div>
+            <div className="col-span-2 space-y-0.5">
+              <Label htmlFor="lead-notes" className="text-xs">
+                {t("scoring.notes")}
+              </Label>
+              <Textarea
+                id="lead-notes"
+                value={notes}
+                maxLength={4000}
+                onChange={(event) => setNotes(event.target.value)}
+                className="min-h-10 text-xs"
+              />
+            </div>
+          </div>
+        )}
         <Label htmlFor="lead-reason" className="text-xs">
           {t("scoring.reason")}
         </Label>
@@ -517,12 +680,7 @@ export function ScorecardPanel({
           onChange={(event) => setReason(event.target.value)}
           className="min-h-12 text-xs"
         />
-        <Button
-          type="submit"
-          size="sm"
-          className="h-7"
-          disabled={busy || !reason.trim() || (needsLostReason && !lostReason.trim())}
-        >
+        <Button type="submit" size="sm" className="h-7" disabled={busy || incomplete}>
           {t("scoring.submit")}
         </Button>
       </form>

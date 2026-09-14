@@ -15,6 +15,7 @@ from uuid import uuid4
 import pytest
 
 from research_engine.contracts import DATA_CONTRACT_VERSION, MAX_LINE_BYTES, PROTOCOL_VERSION
+from research_engine.domain import ResearchActionRequest
 
 Frame = dict[str, Any]
 
@@ -274,3 +275,58 @@ def test_development_seed_creates_openable_synthetic_data(dev_worker: WorkerProc
     (dataset,) = datasets["payload"]["items"]
     assert dataset["dataset"]["id"] == created["dataset_id"]
     assert dataset["latest_snapshot"]["row_count"] == 38
+
+
+_EXPLORE: dict[str, Any] = {
+    "score_run_id": None,
+    "filters": {"kind": "group", "join": "and", "negate": False, "children": []},
+    "search": None,
+    "sort": [],
+    "offset": 0,
+    "limit": 50,
+    "with_total": True,
+}
+
+
+def test_research_work_survives_a_worker_crash(tmp_path: Path) -> None:
+    first = WorkerProcess(tmp_path, LEAD_DEV_TOOLS="1")
+    try:
+        _ready(first)
+        assert first.request("dev.seed_synthetic")["error"] is None
+        page = first.request("leads.explore", _EXPLORE)["payload"]
+        assert page["total"] == 38
+        lead = page["rows"][0]["business_id"]
+        action = dict.fromkeys(ResearchActionRequest.model_fields) | {
+            "business_id": lead,
+            "action": "set_status",
+            "status": "disqualified",
+            "reason": "Out of the service area (test)",
+            "scopes": [],
+        }
+        workspace = first.request("research.act", action)["payload"]
+        assert workspace["research"]["status"] == "disqualified"
+        catalog = first.request("leads.catalog", {"scope": "lead_explorer"})["payload"]
+        view = {
+            "view_id": None,
+            "scope": "lead_explorer",
+            "name": "Disqualified (test)",
+            "description": None,
+            "definition": catalog["default_view"],
+        }
+        assert first.request("views.save", view)["error"] is None
+    finally:
+        _stop(first)  # killed, as a crash would
+    second = WorkerProcess(tmp_path, LEAD_DEV_TOOLS="1")
+    try:
+        _ready(second)
+        again = second.request("research.get", {"business_id": lead})["payload"]
+        assert again["research"]["status"] == "disqualified"
+        views = second.request("views.list", {"scope": "lead_explorer", "include_archived": False})
+        assert "Disqualified (test)" in [item["view"]["name"] for item in views["payload"]["items"]]
+        status = {"kind": "condition", "field": "research_status", "operator": "eq",
+                  "value": "disqualified"}  # fmt: skip
+        filters = {**_EXPLORE["filters"], "children": [status]}
+        filtered = second.request("leads.explore", {**_EXPLORE, "filters": filters})["payload"]
+        assert [row["business_id"] for row in filtered["rows"]] == [lead]
+    finally:
+        _stop(second)

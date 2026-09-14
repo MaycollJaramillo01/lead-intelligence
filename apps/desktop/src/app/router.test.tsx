@@ -2,14 +2,15 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DiagnosticsReport, SourceCatalog } from "@lead/shared-types";
+import type { DiagnosticsReport, ExplorerCatalog, SourceCatalog } from "@lead/shared-types";
 import reportFixture from "@lead/shared-types/fixtures/diagnostics_report.json";
+import explorerFixture from "@lead/shared-types/fixtures/explorer_catalog.json";
 import catalogFixture from "@lead/shared-types/fixtures/source_catalog.json";
 import { createTestRouter } from "@/app/router";
 import { NAV_ITEMS } from "@/app/navigation";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDiagnosticsStore } from "@/features/diagnostics/store";
-import type { desktop } from "@/lib/ipc";
+import { IpcError, type desktop } from "@/lib/ipc";
 import { preferenceDefaults, usePreferences } from "@/stores/preferences";
 import { useUiStore } from "@/stores/ui";
 
@@ -31,7 +32,10 @@ const mocks = vi.hoisted(() => ({
   listContactRuns: vi.fn<typeof desktop.listContactRuns>(),
   listAiRuns: vi.fn<typeof desktop.listAiRuns>(),
   listScoreRuns: vi.fn<typeof desktop.listScoreRuns>(),
-  listLeadScores: vi.fn<typeof desktop.listLeadScores>(),
+  getExplorerCatalog: vi.fn<typeof desktop.getExplorerCatalog>(),
+  exploreLeads: vi.fn<typeof desktop.exploreLeads>(),
+  getBusiness: vi.fn<typeof desktop.getBusiness>(),
+  getSalesBrief: vi.fn<typeof desktop.getSalesBrief>(),
 }));
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
@@ -70,11 +74,13 @@ describe("application shell", () => {
     mocks.listContactRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
     mocks.listAiRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
     mocks.listScoreRuns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
-    mocks.listLeadScores.mockResolvedValue({
+    mocks.getExplorerCatalog.mockResolvedValue(explorerFixture as ExplorerCatalog);
+    mocks.exploreLeads.mockResolvedValue({
       score_run: null,
-      items: [],
-      next_cursor: null,
+      offset: 0,
+      rows: [],
       total: 0,
+      generated_at: "2026-01-01T00:00:00.000Z",
     });
   });
 
@@ -118,6 +124,15 @@ describe("application shell", () => {
     expect(await screen.findByText("This module is not configured yet")).toBeTruthy();
     expect(screen.getByText("Planned for phase 13")).toBeTruthy();
     expect(screen.getAllByText("Not configured").length).toBeGreaterThan(0);
+  });
+
+  it("opens a business in full from a deep link, under its module", async () => {
+    mocks.getBusiness.mockRejectedValue(new IpcError("not_found", "no such business"));
+    mocks.getSalesBrief.mockRejectedValue(new IpcError("not_found", "no such business"));
+    renderApp("/businesses/01900000-0000-7000-8000-000000000999");
+    expect(await screen.findByText("This business is no longer available")).toBeTruthy();
+    const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(breadcrumb.textContent).toContain("Businesses");
   });
 
   it("lands on a not-found page for unknown routes", async () => {

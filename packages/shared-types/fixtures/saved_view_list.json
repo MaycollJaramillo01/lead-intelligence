@@ -1,0 +1,803 @@
+{
+  "items": [
+    {
+      "view": {
+        "id": "01900000-0000-7000-8000-000000001641",
+        "scope": "lead_explorer",
+        "name": "Synthetic view saved with schema 1",
+        "description": "Synthetic test data",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "archived_at": null
+      },
+      "versions": [
+        {
+          "id": "01900000-0000-7000-8000-000000001642",
+          "view_id": "01900000-0000-7000-8000-000000001641",
+          "version": 1,
+          "definition_json": {
+            "columns": [
+              "rank",
+              "name",
+              "tier",
+              "total_score"
+            ],
+            "conditions": [
+              {
+                "field": "tier",
+                "operator": "eq",
+                "value": "low"
+              }
+            ],
+            "schema_version": 1,
+            "score_run_id": null,
+            "search": null,
+            "sort": {
+              "direction": "desc",
+              "field": "total_score"
+            }
+          },
+          "schema_version": 1,
+          "created_by": "dev-seed",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "definition": {
+        "schema_version": 2,
+        "score_run_id": null,
+        "filters": {
+          "kind": "group",
+          "join": "and",
+          "negate": false,
+          "children": [
+            {
+              "kind": "condition",
+              "field": "tier",
+              "operator": "eq",
+              "value": "low"
+            }
+          ]
+        },
+        "search": null,
+        "sort": [
+          {
+            "field": "total_score",
+            "direction": "desc"
+          }
+        ],
+        "columns": [
+          {
+            "field": "rank",
+            "visible": true,
+            "pinned": true,
+            "width": null
+          },
+          {
+            "field": "name",
+            "visible": true,
+            "pinned": true,
+            "width": null
+          },
+          {
+            "field": "tier",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "total_score",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "locality",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "region",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "category",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "domain",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "lead_stage",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "research_status",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "assignee",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "tag",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "confidence",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "data_coverage",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "icp_match",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "opportunity_score",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "digital_gap",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "business_health",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "buying_capacity",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "contactability",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "commercial_intent",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "data_confidence",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "latino_status",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "latino_confidence",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "main_channel",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "channel_status",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "usable_channels",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "problem",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "top_problem",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "offer",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "facts_age_days",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "audit_status",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "conflicts",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "suppressed",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "stale",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "partial",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          }
+        ]
+      },
+      "upgraded_from": 1
+    },
+    {
+      "view": {
+        "id": "01900000-0000-7000-8000-000000001637",
+        "scope": "lead_explorer",
+        "name": "Synthetic view: priority and review leads",
+        "description": "Synthetic test data",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "archived_at": null
+      },
+      "versions": [
+        {
+          "id": "01900000-0000-7000-8000-000000001639",
+          "view_id": "01900000-0000-7000-8000-000000001637",
+          "version": 1,
+          "definition_json": {
+            "columns": [
+              {
+                "field": "rank",
+                "pinned": true,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "name",
+                "pinned": true,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "tier",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "total_score",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "confidence",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "research_status",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "lead_stage",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "opportunity_score",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "digital_gap",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "contactability",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "main_channel",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "latino_status",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "top_problem",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "offer",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "facts_age_days",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "locality",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "region",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "category",
+                "pinned": false,
+                "visible": true,
+                "width": null
+              },
+              {
+                "field": "domain",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "assignee",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "tag",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "data_coverage",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "icp_match",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "business_health",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "buying_capacity",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "commercial_intent",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "data_confidence",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "latino_confidence",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "channel_status",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "usable_channels",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "problem",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "audit_status",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "conflicts",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "suppressed",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "stale",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              },
+              {
+                "field": "partial",
+                "pinned": false,
+                "visible": false,
+                "width": null
+              }
+            ],
+            "filters": {
+              "children": [
+                {
+                  "field": "tier",
+                  "kind": "condition",
+                  "operator": "in",
+                  "value": [
+                    "priority",
+                    "review"
+                  ]
+                }
+              ],
+              "join": "and",
+              "kind": "group",
+              "negate": false
+            },
+            "schema_version": 2,
+            "score_run_id": null,
+            "search": null,
+            "sort": [
+              {
+                "direction": "desc",
+                "field": "total_score"
+              }
+            ]
+          },
+          "schema_version": 2,
+          "created_by": "dev-seed",
+          "created_at": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "definition": {
+        "schema_version": 2,
+        "score_run_id": null,
+        "filters": {
+          "kind": "group",
+          "join": "and",
+          "negate": false,
+          "children": [
+            {
+              "kind": "condition",
+              "field": "tier",
+              "operator": "in",
+              "value": [
+                "priority",
+                "review"
+              ]
+            }
+          ]
+        },
+        "search": null,
+        "sort": [
+          {
+            "field": "total_score",
+            "direction": "desc"
+          }
+        ],
+        "columns": [
+          {
+            "field": "rank",
+            "visible": true,
+            "pinned": true,
+            "width": null
+          },
+          {
+            "field": "name",
+            "visible": true,
+            "pinned": true,
+            "width": null
+          },
+          {
+            "field": "tier",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "total_score",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "confidence",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "research_status",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "lead_stage",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "opportunity_score",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "digital_gap",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "contactability",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "main_channel",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "latino_status",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "top_problem",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "offer",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "facts_age_days",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "locality",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "region",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "category",
+            "visible": true,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "domain",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "assignee",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "tag",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "data_coverage",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "icp_match",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "business_health",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "buying_capacity",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "commercial_intent",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "data_confidence",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "latino_confidence",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "channel_status",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "usable_channels",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "problem",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "audit_status",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "conflicts",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "suppressed",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "stale",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          },
+          {
+            "field": "partial",
+            "visible": false,
+            "pinned": false,
+            "width": null
+          }
+        ]
+      },
+      "upgraded_from": null
+    }
+  ],
+  "schema_version": 2
+}

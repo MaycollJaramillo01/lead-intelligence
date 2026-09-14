@@ -13,29 +13,35 @@ use crate::config::Environment;
 use crate::data::{
     AiBenchmarkRequest, AiConfigureRequest, AiInferenceDetail, AiInferenceListQuery,
     AiInferencePage, AiInferenceQuery, AiModelChangeRequest, AiReviewRequest, AiRun,
-    AiRunListQuery, AiRunPage, AiStartRequest, AiStatus, AiStatusQuery, BusinessDetail,
-    BusinessDetailQuery, BusinessListQuery, BusinessPage, CalibrationQuery, CalibrationReport,
-    CampaignListQuery, CampaignPage, CampaignSaveRequest, CampaignSaved, CandidateDetail,
-    CandidateDetailQuery, CandidateListQuery, CandidatePage, CanonicalChoiceRequest,
-    ContactActionRequest, ContactDetail, ContactDetailQuery, ContactListQuery, ContactPage,
-    ContactRun, ContactRunListQuery, ContactRunPage, ContactStartRequest, ContactSuppression,
-    CrawlRun, CrawlRunListQuery, CrawlRunPage, CrawlStartRequest, CrawlUrlDetail,
-    CrawlUrlDetailQuery, CrawlUrlListQuery, CrawlUrlPage, CriteriaCheck, CriteriaCheckQuery,
-    DatasetListQuery, DatasetPage, DecisionMakerItem, DecisionMakerListQuery, DecisionMakerPage,
-    DecisionMakerReviewRequest, DiscoveryControlRequest, DiscoveryRun, DiscoveryRunListQuery,
-    DiscoveryRunPage, DiscoveryStartRequest, IcpProfileView, IcpSaveRequest, ImportPreview,
+    AiRunListQuery, AiRunPage, AiStartRequest, AiStatus, AiStatusQuery, BulkRequest, BulkResult,
+    BusinessDetail, BusinessDetailQuery, BusinessListQuery, BusinessPage, CalibrationQuery,
+    CalibrationReport, CampaignListQuery, CampaignPage, CampaignSaveRequest, CampaignSaved,
+    CandidateDetail, CandidateDetailQuery, CandidateListQuery, CandidatePage,
+    CanonicalChoiceRequest, ChecklistCatalog, ChecklistCatalogQuery, ChecklistChangeRequest,
+    ChecklistSaveRequest, ContactActionRequest, ContactDetail, ContactDetailQuery,
+    ContactListQuery, ContactPage, ContactRun, ContactRunListQuery, ContactRunPage,
+    ContactStartRequest, ContactSuppression, CrawlRun, CrawlRunListQuery, CrawlRunPage,
+    CrawlStartRequest, CrawlUrlDetail, CrawlUrlDetailQuery, CrawlUrlListQuery, CrawlUrlPage,
+    CriteriaCheck, CriteriaCheckQuery, DatasetListQuery, DatasetPage, DecisionMakerItem,
+    DecisionMakerListQuery, DecisionMakerPage, DecisionMakerReviewRequest, DiscoveryControlRequest,
+    DiscoveryRun, DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest, EvidenceDetail,
+    EvidenceQuery, ExplorerCatalog, ExplorerCatalogQuery, ExplorerPage, ExplorerQuery,
+    ExportPreview, ExportPreviewRequest, IcpProfileView, IcpSaveRequest, ImportPreview,
     ImportPreviewRequest, LatinoDetail, LatinoDetailQuery, LatinoReviewRequest, LatinoRun,
-    LatinoRunListQuery, LatinoRunPage, LatinoStartRequest, LeadActionRequest, LeadScorePage,
-    LeadScoreQuery, LeadScorecardDetail, MatchActionRequest, MatchDetail, MatchDetailQuery,
-    MatchListQuery, MatchPage, ResolutionRun, ResolutionRunListQuery, ResolutionRunPage,
-    ResolutionStartRequest, ScoreCompareQuery, ScoreComparison, ScoreRunItem, ScoreRunListQuery,
-    ScoreRunPage, ScorecardQuery, ScoringCatalog, ScoringCatalogQuery, ScoringChangeRequest,
-    ScoringModelSaveRequest, ScoringModelView, ScoringSimulation, ScoringSimulationRequest,
-    ScoringStartRequest, SourceCatalog, SourceCatalogQuery, SuppressionChangeRequest,
-    SuppressionExport, SuppressionExportRequest, SuppressionImportRequest, SuppressionImportResult,
-    SuppressionListQuery, SuppressionPage, SyntheticSeedResult, WebsiteAuditDetail,
-    WebsiteAuditListQuery, WebsiteAuditPage, WebsiteAuditQuery, WebsiteRun, WebsiteRunListQuery,
-    WebsiteRunPage, WebsiteStartRequest,
+    LatinoRunListQuery, LatinoRunPage, LatinoStartRequest, LeadActionRequest, LeadCompareQuery,
+    LeadComparison, LeadScorePage, LeadScoreQuery, LeadScorecardDetail, MatchActionRequest,
+    MatchDetail, MatchDetailQuery, MatchListQuery, MatchPage, ResearchActionRequest,
+    ResearchWorkspace, ResearchWorkspaceQuery, ResolutionRun, ResolutionRunListQuery,
+    ResolutionRunPage, ResolutionStartRequest, SalesBrief, SalesBriefQuery, SavedViewChangeRequest,
+    SavedViewItem, SavedViewList, SavedViewQuery, SavedViewSaveRequest, ScoreCompareQuery,
+    ScoreComparison, ScoreRunItem, ScoreRunListQuery, ScoreRunPage, ScorecardQuery, ScoringCatalog,
+    ScoringCatalogQuery, ScoringChangeRequest, ScoringModelSaveRequest, ScoringModelView,
+    ScoringSimulation, ScoringSimulationRequest, ScoringStartRequest, SourceCatalog,
+    SourceCatalogQuery, SuppressionChangeRequest, SuppressionExport, SuppressionExportRequest,
+    SuppressionImportRequest, SuppressionImportResult, SuppressionListQuery, SuppressionPage,
+    SyntheticSeedResult, TimelinePage, TimelineQuery, WebsiteAuditDetail, WebsiteAuditListQuery,
+    WebsiteAuditPage, WebsiteAuditQuery, WebsiteRun, WebsiteRunListQuery, WebsiteRunPage,
+    WebsiteStartRequest,
 };
 use crate::error::AppError;
 use crate::protocol::{
@@ -43,21 +49,24 @@ use crate::protocol::{
 };
 use crate::worker::{
     AI_BENCHMARK, AI_CONFIGURE, AI_CONTROL, AI_INFERENCE, AI_INFERENCES, AI_MODEL_CHANGE,
-    AI_REVIEW, AI_RUNS, AI_START, AI_STATUS, AI_TIMEOUT, BUSINESSES_CHOOSE_VALUE, BUSINESSES_GET,
-    BUSINESSES_LIST, CAMPAIGNS_LIST, CAMPAIGNS_SAVE, CAMPAIGNS_VALIDATE, CONTACTS_ACT,
-    CONTACTS_CONTROL, CONTACTS_GET, CONTACTS_LIST, CONTACTS_RUNS, CONTACTS_START, CONTACTS_TIMEOUT,
-    CRAWL_CONTROL, CRAWL_RUNS, CRAWL_START, CRAWL_URL, CRAWL_URLS, DATA_TIMEOUT, DATASETS_LIST,
-    DECISION_MAKERS_LIST, DECISION_MAKERS_REVIEW, DEV_SEED_SYNTHETIC, DIAGNOSTICS,
+    AI_REVIEW, AI_RUNS, AI_START, AI_STATUS, AI_TIMEOUT, BULK_TIMEOUT, BUSINESSES_CHOOSE_VALUE,
+    BUSINESSES_GET, BUSINESSES_LIST, CAMPAIGNS_LIST, CAMPAIGNS_SAVE, CAMPAIGNS_VALIDATE,
+    CONTACTS_ACT, CONTACTS_CONTROL, CONTACTS_GET, CONTACTS_LIST, CONTACTS_RUNS, CONTACTS_START,
+    CONTACTS_TIMEOUT, CRAWL_CONTROL, CRAWL_RUNS, CRAWL_START, CRAWL_URL, CRAWL_URLS, DATA_TIMEOUT,
+    DATASETS_LIST, DECISION_MAKERS_LIST, DECISION_MAKERS_REVIEW, DEV_SEED_SYNTHETIC, DIAGNOSTICS,
     DIAGNOSTICS_TIMEOUT, DISCOVERY_CANDIDATE, DISCOVERY_CANDIDATES, DISCOVERY_CONTROL,
     DISCOVERY_RUNS, DISCOVERY_START, DISCOVERY_TIMEOUT, IMPORT_TIMEOUT, LATINO_CONTROL, LATINO_GET,
-    LATINO_REVIEW, LATINO_RUNS, LATINO_START, MATCHES_ACT, MATCHES_GET, MATCHES_LIST,
+    LATINO_REVIEW, LATINO_RUNS, LATINO_START, LEADS_BULK, LEADS_CATALOG, LEADS_COMPARE,
+    LEADS_EXPLORE, LEADS_EXPORT_PREVIEW, LEADS_TIMEOUT, MATCHES_ACT, MATCHES_GET, MATCHES_LIST,
+    RESEARCH_ACT, RESEARCH_BRIEF, RESEARCH_CHANGE_CHECKLIST, RESEARCH_CHECKLISTS,
+    RESEARCH_EVIDENCE, RESEARCH_GET, RESEARCH_SAVE_CHECKLIST, RESEARCH_TIMELINE,
     RESOLUTION_CONTROL, RESOLUTION_RUNS, RESOLUTION_START, RESOLUTION_TIMEOUT, SCORING_ACT,
     SCORING_CALIBRATION, SCORING_CATALOG, SCORING_CHANGE, SCORING_COMPARE, SCORING_CONTROL,
     SCORING_LEADS, SCORING_RUNS, SCORING_SAVE_ICP, SCORING_SAVE_MODEL, SCORING_SCORECARD,
     SCORING_SIMULATE, SCORING_START, SCORING_TIMEOUT, SEED_TIMEOUT, SOURCES_LIST,
     SOURCES_PREVIEW_IMPORT, SUPPRESSIONS_CHANGE, SUPPRESSIONS_EXPORT, SUPPRESSIONS_IMPORT,
-    SUPPRESSIONS_LIST, WEBSITE_AUDIT, WEBSITE_AUDITS, WEBSITE_CONTROL, WEBSITE_RUNS, WEBSITE_START,
-    WorkerSupervisor,
+    SUPPRESSIONS_LIST, VIEWS_CHANGE, VIEWS_LIST, VIEWS_SAVE, WEBSITE_AUDIT, WEBSITE_AUDITS,
+    WEBSITE_CONTROL, WEBSITE_RUNS, WEBSITE_START, WorkerSupervisor,
 };
 
 pub struct AppState {
@@ -1569,6 +1578,311 @@ pub async fn act_on_lead(
         Ok(detail)
     }
     .instrument(ipc_span("act_on_lead"))
+    .await
+}
+
+/// What the Lead Explorer can filter, sort and show, with its limits and default view.
+#[tauri::command]
+pub async fn get_explorer_catalog(
+    state: State<'_, AppState>,
+    query: ExplorerCatalogQuery,
+) -> Result<ExplorerCatalog, AppError> {
+    async {
+        let catalog: ExplorerCatalog = state
+            .supervisor
+            .request_with(LEADS_CATALOG, &query, DATA_TIMEOUT)
+            .await?;
+        catalog.validate().map_err(AppError::Protocol)?;
+        Ok(catalog)
+    }
+    .instrument(ipc_span("get_explorer_catalog"))
+    .await
+}
+
+/// One window of a run's leads: filters, a quick search, sort keys and an offset.
+#[tauri::command]
+pub async fn explore_leads(
+    state: State<'_, AppState>,
+    query: ExplorerQuery,
+) -> Result<ExplorerPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: ExplorerPage = state
+            .supervisor
+            .request_with(LEADS_EXPLORE, &query, LEADS_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("explore_leads"))
+    .await
+}
+
+/// What an export of a query would hold, with a sample; nothing is written.
+#[tauri::command]
+pub async fn preview_lead_export(
+    state: State<'_, AppState>,
+    request: ExportPreviewRequest,
+) -> Result<ExportPreview, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let preview: ExportPreview = state
+            .supervisor
+            .request_with(LEADS_EXPORT_PREVIEW, &request, LEADS_TIMEOUT)
+            .await?;
+        preview.validate(&request).map_err(AppError::Protocol)?;
+        Ok(preview)
+    }
+    .instrument(ipc_span("preview_lead_export"))
+    .await
+}
+
+/// A safe action over many leads, previewed first and applied with a reason, lead by lead.
+#[tauri::command]
+pub async fn bulk_leads(
+    state: State<'_, AppState>,
+    request: BulkRequest,
+) -> Result<BulkResult, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let result: BulkResult = state
+            .supervisor
+            .request_with(LEADS_BULK, &request, BULK_TIMEOUT)
+            .await?;
+        result.validate(&request).map_err(AppError::Protocol)?;
+        Ok(result)
+    }
+    .instrument(ipc_span("bulk_leads"))
+    .await
+}
+
+/// Two to four leads side by side, each with its scorecard.
+#[tauri::command]
+pub async fn compare_leads(
+    state: State<'_, AppState>,
+    query: LeadCompareQuery,
+) -> Result<LeadComparison, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let comparison: LeadComparison = state
+            .supervisor
+            .request_with(LEADS_COMPARE, &query, CONTACTS_TIMEOUT)
+            .await?;
+        comparison.validate(&query).map_err(AppError::Protocol)?;
+        Ok(comparison)
+    }
+    .instrument(ipc_span("compare_leads"))
+    .await
+}
+
+#[tauri::command]
+pub async fn list_saved_views(
+    state: State<'_, AppState>,
+    query: SavedViewQuery,
+) -> Result<SavedViewList, AppError> {
+    async {
+        let list: SavedViewList = state
+            .supervisor
+            .request_with(VIEWS_LIST, &query, DATA_TIMEOUT)
+            .await?;
+        list.validate(&query).map_err(AppError::Protocol)?;
+        Ok(list)
+    }
+    .instrument(ipc_span("list_saved_views"))
+    .await
+}
+
+/// Saves a view, or a new version of it when its definition changed.
+#[tauri::command]
+pub async fn save_saved_view(
+    state: State<'_, AppState>,
+    request: SavedViewSaveRequest,
+) -> Result<SavedViewItem, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let item: SavedViewItem = state
+            .supervisor
+            .request_with(VIEWS_SAVE, &request, DATA_TIMEOUT)
+            .await?;
+        item.validate().map_err(AppError::Protocol)?;
+        Ok(item)
+    }
+    .instrument(ipc_span("save_saved_view"))
+    .await
+}
+
+/// Archives or restores a view, with a reason.
+#[tauri::command]
+pub async fn change_saved_view(
+    state: State<'_, AppState>,
+    request: SavedViewChangeRequest,
+) -> Result<SavedViewItem, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let item: SavedViewItem = state
+            .supervisor
+            .request_with(VIEWS_CHANGE, &request, DATA_TIMEOUT)
+            .await?;
+        item.validate().map_err(AppError::Protocol)?;
+        Ok(item)
+    }
+    .instrument(ipc_span("change_saved_view"))
+    .await
+}
+
+/// A lead's research: criteria, checklist, tasks, pins, notes, corrections and decisions.
+#[tauri::command]
+pub async fn get_research_workspace(
+    state: State<'_, AppState>,
+    query: ResearchWorkspaceQuery,
+) -> Result<ResearchWorkspace, AppError> {
+    async {
+        let workspace: ResearchWorkspace = state
+            .supervisor
+            .request_with(RESEARCH_GET, &query, CONTACTS_TIMEOUT)
+            .await?;
+        workspace.validate().map_err(AppError::Protocol)?;
+        Ok(workspace)
+    }
+    .instrument(ipc_span("get_research_workspace"))
+    .await
+}
+
+/// One audited change to a lead's research; a refresh starts the engines' jobs.
+#[tauri::command]
+pub async fn act_on_research(
+    state: State<'_, AppState>,
+    request: ResearchActionRequest,
+) -> Result<ResearchWorkspace, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let workspace: ResearchWorkspace = state
+            .supervisor
+            .request_with(RESEARCH_ACT, &request, LEADS_TIMEOUT)
+            .await?;
+        workspace.validate().map_err(AppError::Protocol)?;
+        Ok(workspace)
+    }
+    .instrument(ipc_span("act_on_research"))
+    .await
+}
+
+/// What happened to a lead, newest first.
+#[tauri::command]
+pub async fn get_lead_timeline(
+    state: State<'_, AppState>,
+    query: TimelineQuery,
+) -> Result<TimelinePage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: TimelinePage = state
+            .supervisor
+            .request_with(RESEARCH_TIMELINE, &query, CONTACTS_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("get_lead_timeline"))
+    .await
+}
+
+/// One stored row behind a claim, within the lead it belongs to.
+#[tauri::command]
+pub async fn get_evidence_detail(
+    state: State<'_, AppState>,
+    query: EvidenceQuery,
+) -> Result<EvidenceDetail, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let detail: EvidenceDetail = state
+            .supervisor
+            .request_with(RESEARCH_EVIDENCE, &query, DATA_TIMEOUT)
+            .await?;
+        detail.validate(&query).map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("get_evidence_detail"))
+    .await
+}
+
+#[tauri::command]
+pub async fn list_research_checklists(
+    state: State<'_, AppState>,
+    query: ChecklistCatalogQuery,
+) -> Result<ChecklistCatalog, AppError> {
+    async {
+        let catalog: ChecklistCatalog = state
+            .supervisor
+            .request_with(RESEARCH_CHECKLISTS, &query, DATA_TIMEOUT)
+            .await?;
+        catalog.validate(&query).map_err(AppError::Protocol)?;
+        Ok(catalog)
+    }
+    .instrument(ipc_span("list_research_checklists"))
+    .await
+}
+
+/// Saves a checklist, or a new version of it activated later with a reason.
+#[tauri::command]
+pub async fn save_research_checklist(
+    state: State<'_, AppState>,
+    request: ChecklistSaveRequest,
+) -> Result<ChecklistCatalog, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let catalog: ChecklistCatalog = state
+            .supervisor
+            .request_with(RESEARCH_SAVE_CHECKLIST, &request, CONTACTS_TIMEOUT)
+            .await?;
+        catalog
+            .validate(&ChecklistCatalogQuery {
+                include_archived: true,
+            })
+            .map_err(AppError::Protocol)?;
+        Ok(catalog)
+    }
+    .instrument(ipc_span("save_research_checklist"))
+    .await
+}
+
+/// Activates a checklist version, or archives or restores a checklist, with a reason.
+#[tauri::command]
+pub async fn change_research_checklist(
+    state: State<'_, AppState>,
+    request: ChecklistChangeRequest,
+) -> Result<ChecklistCatalog, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let catalog: ChecklistCatalog = state
+            .supervisor
+            .request_with(RESEARCH_CHANGE_CHECKLIST, &request, CONTACTS_TIMEOUT)
+            .await?;
+        catalog
+            .validate(&ChecklistCatalogQuery {
+                include_archived: true,
+            })
+            .map_err(AppError::Protocol)?;
+        Ok(catalog)
+    }
+    .instrument(ipc_span("change_research_checklist"))
+    .await
+}
+
+/// A lead's sales brief: claims restated from stored rows, and a model's checked wording.
+#[tauri::command]
+pub async fn get_sales_brief(
+    state: State<'_, AppState>,
+    query: SalesBriefQuery,
+) -> Result<SalesBrief, AppError> {
+    async {
+        let brief: SalesBrief = state
+            .supervisor
+            .request_with(RESEARCH_BRIEF, &query, CONTACTS_TIMEOUT)
+            .await?;
+        brief.validate(&query).map_err(AppError::Protocol)?;
+        Ok(brief)
+    }
+    .instrument(ipc_span("get_sales_brief"))
     .await
 }
 

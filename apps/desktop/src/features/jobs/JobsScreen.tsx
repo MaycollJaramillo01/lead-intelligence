@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { PageScroll, PageShell, Section } from "@/components/layout/page-chrome";
-import { StateBlock } from "@/components/states/StateBlock";
+import { InlineNotice, StateBlock } from "@/components/states/StateBlock";
 import { JobProgress, type JobSummary } from "@/components/domain/JobProgress";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, useLanguage, useT, type TranslationKey } from "@/lib/i18n";
 import { desktop, toIpcError } from "@/lib/ipc";
+import { scoreRunPath } from "@/lib/links";
 import { useLoaded } from "@/lib/useLoaded";
+import { cn } from "@/lib/utils";
 
 const POLL_MS = 2000;
 const LISTED = 25;
@@ -21,6 +23,8 @@ interface Listed {
   summary: Omit<JobSummary, "name">;
   label: string;
   detail: string;
+  /** A scoring job's run, which opens in the Lead Explorer. */
+  run?: string;
 }
 
 const MODULE: Record<JobKind, { path: string; name: TranslationKey }> = {
@@ -186,6 +190,7 @@ export function JobsScreen() {
       ...scores.items.map((run) => ({
         kind: "scoring" as const,
         requestedAt: run.requested_at,
+        run: run.score_run_id,
         label: `${run.project_name} · ${run.icp_profile_name} v${run.icp_profile_version}`,
         detail: t("jobs.scoringDetail", {
           businesses: run.stats.businesses,
@@ -207,6 +212,15 @@ export function JobsScreen() {
   }, [t]);
   const { data, error, reload } = useLoaded(fetchJobs, "list_jobs");
   const jobs = data ?? [];
+  const [params] = useSearchParams();
+  const linked = params.get("job");
+  const listed = linked === null || jobs.some((job) => job.summary.id === linked);
+
+  // a `?job=` link brings its job into view once the list is read
+  useEffect(() => {
+    if (linked && data)
+      document.getElementById(`job-${linked}`)?.scrollIntoView({ block: "center" });
+  }, [linked, data]);
 
   const active = jobs.some(
     (job) => job.summary.state === "queued" || job.summary.state === "running",
@@ -262,25 +276,41 @@ export function JobsScreen() {
           ) : jobs.length === 0 ? (
             <StateBlock variant="empty" title={t("jobs.emptyTitle")} body={t("jobs.emptyBody")} />
           ) : (
-            <ul className="space-y-2">
-              {jobs.map((job) => (
-                <li key={job.summary.id} className="space-y-1">
-                  <JobProgress
-                    job={{
-                      ...job.summary,
-                      name: `${t(`jobs.kind.${job.kind}`)} · ${job.label} · ${formatDateTime(job.requestedAt, language)}`,
-                    }}
-                    onCancel={busy ? undefined : () => void cancel(job)}
-                  />
-                  <p className="flex flex-wrap gap-2 px-1 text-[11px] text-muted-foreground">
-                    <span>{job.detail}</span>
-                    <Link to={MODULE[job.kind].path} className="text-primary hover:underline">
-                      {t(MODULE[job.kind].name)}
-                    </Link>
-                  </p>
-                </li>
-              ))}
-            </ul>
+            <div className="space-y-2">
+              {!listed && <InlineNotice variant="partial">{t("jobs.notListed")}</InlineNotice>}
+              <ul className="space-y-2">
+                {jobs.map((job) => (
+                  <li
+                    key={job.summary.id}
+                    id={`job-${job.summary.id}`}
+                    aria-current={job.summary.id === linked ? "true" : undefined}
+                    className={cn(
+                      "space-y-1",
+                      job.summary.id === linked && "rounded-md ring-2 ring-primary/60",
+                    )}
+                  >
+                    <JobProgress
+                      job={{
+                        ...job.summary,
+                        name: `${t(`jobs.kind.${job.kind}`)} · ${job.label} · ${formatDateTime(job.requestedAt, language)}`,
+                      }}
+                      onCancel={busy ? undefined : () => void cancel(job)}
+                    />
+                    <p className="flex flex-wrap gap-2 px-1 text-[11px] text-muted-foreground">
+                      <span>{job.detail}</span>
+                      <Link to={MODULE[job.kind].path} className="text-primary hover:underline">
+                        {t(MODULE[job.kind].name)}
+                      </Link>
+                      {job.run && (
+                        <Link to={scoreRunPath(job.run)} className="text-primary hover:underline">
+                          {t("nav.lead_explorer")}
+                        </Link>
+                      )}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </Section>
       </PageScroll>

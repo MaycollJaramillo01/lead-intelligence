@@ -88,6 +88,7 @@ from research_engine.domain import (
     new_id,
     utc_now,
 )
+from research_engine.leads import index as lead_index
 from research_engine.scoring import facts as fact_store
 from research_engine.scoring import model
 from research_engine.scoring.model import ScoringError
@@ -775,6 +776,7 @@ def write_scores(
                     for component in card.components
                 ),
             )
+            repository.insert(conn, lead_index.project(run, facts, card))
             written += 1
     return written
 
@@ -785,6 +787,7 @@ def finish_run(conn: sqlite3.Connection, score_run_id: str, now: datetime) -> No
             "UPDATE score_runs SET finished_at = ? WHERE id = ? AND finished_at IS NULL",
             (format_ts(now), score_run_id),
         )
+        lead_index.rank_run(conn, score_run_id)
 
 
 def tier_stats(conn: sqlite3.Connection, score_run_id: str) -> dict[str, int]:
@@ -1100,7 +1103,8 @@ def get_scorecard(conn: sqlite3.Connection, query: ScorecardQuery) -> LeadScorec
 
 
 def act(conn: sqlite3.Connection, request: LeadActionRequest, *, actor: str) -> None:
-    """A person's review of a score, or an outcome of working the lead. Neither changes a score."""
+    """A person's review of a score, or how the lead was worked: an outcome that moves its stage,
+    or an attempt that keeps it (phase 12). None of them changes a score or its facts."""
     root = _root(conn, request.business_id)
     if not conn.execute(
         "SELECT 1 FROM business_scores WHERE score_run_id = ? AND business_id = ?",
@@ -1108,49 +1112,89 @@ def act(conn: sqlite3.Connection, request: LeadActionRequest, *, actor: str) -> 
     ).fetchone():
         raise repository.NotFoundError(f"score run {request.score_run_id} did not score {root}")
     now = utc_now()
-    if request.action is not LeadAction.RECORD_OUTCOME:
-        if request.stage is not None or request.lost_reason is not None:
-            raise ScoringError("a review records no stage and no lost reason")
-        with repository.atomic(conn):
-            repository.insert(
-                conn,
-                ReviewDecision(
-                    id=new_id(),
-                    entity_type=EntityType.BUSINESS,
-                    entity_id=root,
-                    decision=REVIEW_DECISIONS[request.action],
-                    previous_value=None,
-                    new_value=request.score_run_id,
-                    reason=request.reason,
-                    actor=actor,
-                    decided_at=now,
-                ),
-            )
+    worked = (
+        request.stage, request.lost_reason, request.channel, request.attempt_result,
+        request.value_amount, request.value_currency, request.contact_quality, request.notes,
+        request.occurred_at,
+    )  # fmt: skip
+    if request.action in (LeadAction.RECORD_OUTCOME, LeadAction.RECORD_ATTEMPT):
+        _record_work(conn, request, root, now, actor=actor)
         return
-    if request.stage is None:
+    if any(value is not None for value in worked):
+        raise ScoringError("a review records no stage, attempt or outcome")
+    with repository.atomic(conn):
+        repository.insert(
+            conn,
+            ReviewDecision(
+                id=new_id(),
+                entity_type=EntityType.BUSINESS,
+                entity_id=root,
+                decision=REVIEW_DECISIONS[request.action],
+                previous_value=None,
+                new_value=request.score_run_id,
+                reason=request.reason,
+                actor=actor,
+                decided_at=now,
+            ),
+        )
+
+
+def _record_work(
+    conn: sqlite3.Connection, request: LeadActionRequest, root: str, now: datetime, *, actor: str
+) -> None:
+    """An outcome moves the lead's stage along its machine; an attempt keeps it. The history stays
+    in order: nothing is recorded in the future or before the lead's latest recorded outcome."""
+    occurred = request.occurred_at or now
+    target = request.stage
+    if occurred > now:
+        raise ScoringError("an outcome cannot be recorded in the future")
+    if (request.value_amount is None) != (request.value_currency is None):
+        raise ScoringError("a value needs its currency, and a currency its value")
+    if request.action is LeadAction.RECORD_ATTEMPT:
+        if target is not None or request.lost_reason is not None:
+            raise ScoringError("an attempt keeps the stage: record an outcome to change it")
+        if request.channel is None or request.attempt_result is None:
+            raise ScoringError("an attempt needs the channel used and its result")
+    elif target is None:
         raise ScoringError("choose the stage the lead reached")
-    if (request.stage is LeadStage.LOST) != (request.lost_reason is not None):
+    elif (target is LeadStage.LOST) != (request.lost_reason is not None):
         raise ScoringError("a lost lead needs a lost reason, and only a lost lead has one")
     with repository.atomic(conn):
         business = repository.get(conn, Business, root)
-        if business.lead_stage is request.stage:
-            raise ScoringError(f"the lead is already at '{request.stage.value}'")
-        repository.change_status(
-            conn, Business, root, request.stage, actor=actor, reason=request.reason
-        )
+        (latest,) = conn.execute(
+            "SELECT max(occurred_at) FROM lead_outcomes WHERE business_id = ?", (root,)
+        ).fetchone()
+        if latest is not None and format_ts(occurred) < latest:
+            raise ScoringError(
+                "record it after the lead's latest outcome: its history stays in order"
+            )
+        stage = business.lead_stage
+        if target is not None:
+            if business.lead_stage is target:
+                raise ScoringError(f"the lead is already at '{target.value}'")
+            repository.change_status(
+                conn, Business, root, target, actor=actor, reason=request.reason
+            )
+            stage = target
         repository.insert(
             conn,
             LeadOutcome(
                 id=new_id(),
                 business_id=root,
                 score_run_id=request.score_run_id,
-                stage=request.stage,
+                stage=stage,
                 previous_stage=business.lead_stage,
                 lost_reason=request.lost_reason,
                 reason=request.reason,
                 actor=actor,
-                occurred_at=now,
+                occurred_at=occurred,
                 created_at=now,
+                channel=request.channel,
+                attempt_result=request.attempt_result,
+                value_amount=request.value_amount,
+                value_currency=request.value_currency,
+                contact_quality=request.contact_quality,
+                notes=request.notes,
             ),
         )
 

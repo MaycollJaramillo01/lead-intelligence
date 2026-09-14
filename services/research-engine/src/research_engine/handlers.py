@@ -44,6 +44,8 @@ from research_engine.domain import (
     AiStartRequest,
     AiStatus,
     AiStatusQuery,
+    BulkRequest,
+    BulkResult,
     BusinessDetail,
     BusinessDetailQuery,
     BusinessListQuery,
@@ -59,6 +61,10 @@ from research_engine.domain import (
     CandidateListQuery,
     CandidatePage,
     CanonicalChoiceRequest,
+    ChecklistCatalog,
+    ChecklistCatalogQuery,
+    ChecklistChangeRequest,
+    ChecklistSaveRequest,
     ContactActionRequest,
     ContactDetail,
     ContactDetailQuery,
@@ -90,6 +96,14 @@ from research_engine.domain import (
     DiscoveryRunListQuery,
     DiscoveryRunPage,
     DiscoveryStartRequest,
+    EvidenceDetail,
+    EvidenceQuery,
+    ExplorerCatalog,
+    ExplorerCatalogQuery,
+    ExplorerPage,
+    ExplorerQuery,
+    ExportPreview,
+    ExportPreviewRequest,
     IcpProfileView,
     IcpSaveRequest,
     ImportPreview,
@@ -102,6 +116,8 @@ from research_engine.domain import (
     LatinoRunPage,
     LatinoStartRequest,
     LeadActionRequest,
+    LeadCompareQuery,
+    LeadComparison,
     LeadScorecardDetail,
     LeadScorePage,
     LeadScoreQuery,
@@ -110,10 +126,21 @@ from research_engine.domain import (
     MatchDetailQuery,
     MatchListQuery,
     MatchPage,
+    RefreshScope,
+    ResearchActionRequest,
+    ResearchWorkspace,
+    ResearchWorkspaceQuery,
     ResolutionRun,
     ResolutionRunListQuery,
     ResolutionRunPage,
     ResolutionStartRequest,
+    SalesBrief,
+    SalesBriefQuery,
+    SavedViewChangeRequest,
+    SavedViewItem,
+    SavedViewList,
+    SavedViewQuery,
+    SavedViewSaveRequest,
     ScorecardQuery,
     ScoreCompareQuery,
     ScoreComparison,
@@ -139,6 +166,8 @@ from research_engine.domain import (
     SuppressionListQuery,
     SuppressionPage,
     SyntheticSeedResult,
+    TimelinePage,
+    TimelineQuery,
     WebsiteAuditDetail,
     WebsiteAuditListQuery,
     WebsiteAuditPage,
@@ -147,11 +176,14 @@ from research_engine.domain import (
     WebsiteRunListQuery,
     WebsiteRunPage,
     WebsiteStartRequest,
+    default_crawl_settings,
     utc_now,
 )
 from research_engine.gpu import probe_gpu
 from research_engine.latino import store as latino
 from research_engine.latino.engine import LatinoService
+from research_engine.leads import brief as sales_brief
+from research_engine.leads import explorer, research, views
 from research_engine.ollama import probe_ollama
 from research_engine.resolution import store as resolution
 from research_engine.resolution.engine import ResolutionService
@@ -632,6 +664,115 @@ async def _scoring_act(ctx: Context, request: LeadActionRequest) -> LeadScorecar
     return await _with_store(ctx, act)
 
 
+# ---- lead explorer, research workspace and sales briefs (phase 12) ------------------------------
+
+
+async def _leads_catalog(_ctx: Context, _: ExplorerCatalogQuery) -> ExplorerCatalog:
+    return explorer.catalog()
+
+
+async def _leads_explore(ctx: Context, query: ExplorerQuery) -> ExplorerPage:
+    return await _with_store(ctx, lambda conn: explorer.explore(conn, query, utc_now()))
+
+
+async def _leads_export_preview(ctx: Context, request: ExportPreviewRequest) -> ExportPreview:
+    return await _with_store(ctx, lambda conn: explorer.export_preview(conn, request, utc_now()))
+
+
+async def _leads_bulk(ctx: Context, request: BulkRequest) -> BulkResult:
+    return await _with_store(
+        ctx, lambda conn: research.bulk(conn, request, utc_now(), actor=ACTOR_UI)
+    )
+
+
+async def _leads_compare(ctx: Context, query: LeadCompareQuery) -> LeadComparison:
+    return await _with_store(ctx, lambda conn: explorer.compare(conn, query, utc_now()))
+
+
+async def _views_list(ctx: Context, query: SavedViewQuery) -> SavedViewList:
+    return await _with_store(ctx, lambda conn: views.list_views(conn, query))
+
+
+async def _views_save(ctx: Context, request: SavedViewSaveRequest) -> SavedViewItem:
+    return await _with_store(ctx, lambda conn: views.save_view(conn, request, actor=ACTOR_UI))
+
+
+async def _views_change(ctx: Context, request: SavedViewChangeRequest) -> SavedViewItem:
+    return await _with_store(ctx, lambda conn: views.change_view(conn, request, actor=ACTOR_UI))
+
+
+async def _research_get(ctx: Context, query: ResearchWorkspaceQuery) -> ResearchWorkspace:
+    return await _with_store(
+        ctx, lambda conn: research.workspace(conn, query.business_id, utc_now())
+    )
+
+
+async def _refresh(ctx: Context, plan: research.RefreshPlan) -> list[str]:
+    """Starts the engine job a refresh asks for. Nothing reaches the business."""
+    project_id = plan.project_id
+    if plan.scope is RefreshScope.PAGES:
+        crawl = CrawlStartRequest(
+            project_id=project_id, campaign_id=None, urls=list(plan.urls),
+            settings=default_crawl_settings(),
+        )  # fmt: skip
+        return [(await ctx.crawl.start(crawl)).job_id]
+    if plan.scope is RefreshScope.CONTACTS:
+        checks = ContactStartRequest(project_id=project_id, check_mail_domains=False)
+        return [run.job_id for run in (await ctx.contacts.start(checks)).items]
+    evaluation = LatinoStartRequest(project_id=project_id)
+    return [run.job_id for run in (await ctx.latino.start(evaluation)).items]
+
+
+async def _research_act(ctx: Context, request: ResearchActionRequest) -> ResearchWorkspace:
+    plans = await _with_store(
+        ctx, lambda conn: research.act(conn, request, utc_now(), actor=ACTOR_UI)
+    )
+    started = [(plan.task_id, await _refresh(ctx, plan)) for plan in plans]
+
+    def read(conn: sqlite3.Connection) -> ResearchWorkspace:
+        for task_id, job_ids in started:
+            research.attach_jobs(conn, task_id, job_ids)
+        return research.workspace(conn, request.business_id, utc_now())
+
+    return await _with_store(ctx, read)
+
+
+async def _research_timeline(ctx: Context, query: TimelineQuery) -> TimelinePage:
+    return await _with_store(ctx, lambda conn: research.timeline(conn, query))
+
+
+async def _research_evidence(ctx: Context, query: EvidenceQuery) -> EvidenceDetail:
+    return await _with_store(ctx, lambda conn: research.evidence_detail(conn, query, utc_now()))
+
+
+async def _research_checklists(ctx: Context, query: ChecklistCatalogQuery) -> ChecklistCatalog:
+    return await _with_store(ctx, lambda conn: research.checklist_catalog(conn, query))
+
+
+async def _research_save_checklist(ctx: Context, request: ChecklistSaveRequest) -> ChecklistCatalog:
+    def save(conn: sqlite3.Connection) -> ChecklistCatalog:
+        research.save_checklist(conn, request, actor=ACTOR_UI)
+        return research.checklist_catalog(conn, ChecklistCatalogQuery(include_archived=True))
+
+    return await _with_store(ctx, save)
+
+
+async def _research_change_checklist(
+    ctx: Context, request: ChecklistChangeRequest
+) -> ChecklistCatalog:
+    def change(conn: sqlite3.Connection) -> ChecklistCatalog:
+        research.change_checklist(conn, request, actor=ACTOR_UI)
+        return research.checklist_catalog(conn, ChecklistCatalogQuery(include_archived=True))
+
+    return await _with_store(ctx, change)
+
+
+async def _research_brief(ctx: Context, query: SalesBriefQuery) -> SalesBrief:
+    return await _with_store(
+        ctx, lambda conn: sales_brief.build(conn, query.business_id, query.score_run_id, utc_now())
+    )
+
+
 ROUTES: dict[str, Route] = {
     MessageType.HEALTH: Route(EmptyPayload, _health, timeout_s=2.0),
     MessageType.DIAGNOSTICS: Route(EmptyPayload, _diagnostics, timeout_s=20.0),
@@ -739,5 +880,32 @@ ROUTES: dict[str, Route] = {
     MessageType.SCORING_COMPARE: Route(ScoreCompareQuery, _scoring_compare, timeout_s=30.0),
     MessageType.SCORING_CALIBRATION: Route(CalibrationQuery, _scoring_calibration, timeout_s=30.0),
     MessageType.SCORING_ACT: Route(LeadActionRequest, _scoring_act, timeout_s=15.0),
+    MessageType.LEADS_CATALOG: Route(ExplorerCatalogQuery, _leads_catalog, timeout_s=5.0),
+    # the first page of a run scored before phase 12 projects its lead index (leads.index)
+    MessageType.LEADS_EXPLORE: Route(ExplorerQuery, _leads_explore, timeout_s=60.0),
+    MessageType.LEADS_EXPORT_PREVIEW: Route(
+        ExportPreviewRequest, _leads_export_preview, timeout_s=60.0
+    ),
+    # up to BULK_MAX_MATCHING leads, each change audited
+    MessageType.LEADS_BULK: Route(BulkRequest, _leads_bulk, timeout_s=120.0),
+    MessageType.LEADS_COMPARE: Route(LeadCompareQuery, _leads_compare, timeout_s=15.0),
+    MessageType.VIEWS_LIST: Route(SavedViewQuery, _views_list, timeout_s=10.0),
+    MessageType.VIEWS_SAVE: Route(SavedViewSaveRequest, _views_save, timeout_s=10.0),
+    MessageType.VIEWS_CHANGE: Route(SavedViewChangeRequest, _views_change, timeout_s=10.0),
+    MessageType.RESEARCH_GET: Route(ResearchWorkspaceQuery, _research_get, timeout_s=15.0),
+    # a correction recomputes the canonical values of the business; a refresh starts jobs
+    MessageType.RESEARCH_ACT: Route(ResearchActionRequest, _research_act, timeout_s=60.0),
+    MessageType.RESEARCH_TIMELINE: Route(TimelineQuery, _research_timeline, timeout_s=15.0),
+    MessageType.RESEARCH_EVIDENCE: Route(EvidenceQuery, _research_evidence, timeout_s=10.0),
+    MessageType.RESEARCH_CHECKLISTS: Route(
+        ChecklistCatalogQuery, _research_checklists, timeout_s=10.0
+    ),
+    MessageType.RESEARCH_SAVE_CHECKLIST: Route(
+        ChecklistSaveRequest, _research_save_checklist, timeout_s=15.0
+    ),
+    MessageType.RESEARCH_CHANGE_CHECKLIST: Route(
+        ChecklistChangeRequest, _research_change_checklist, timeout_s=15.0
+    ),
+    MessageType.RESEARCH_BRIEF: Route(SalesBriefQuery, _research_brief, timeout_s=15.0),
     MessageType.DEV_SEED_SYNTHETIC: Route(EmptyPayload, _dev_seed_synthetic, timeout_s=60.0),
 }

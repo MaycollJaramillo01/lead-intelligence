@@ -201,8 +201,9 @@ export function navItemsBySection(section: NavSectionId): NavItem[] {
   return NAV_ITEMS.filter((item) => item.section === section);
 }
 
+/** The module a path belongs to: its own page, or a page under it (`/businesses/<id>`). */
 export function findNavItemByPath(pathname: string): NavItem | undefined {
-  return NAV_ITEMS.find((item) => item.path === pathname);
+  return NAV_ITEMS.find((item) => item.path === pathname || pathname.startsWith(`${item.path}/`));
 }
 
 export function findNavItem(id: string): NavItem | undefined {

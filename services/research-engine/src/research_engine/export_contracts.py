@@ -83,6 +83,9 @@ from research_engine.domain import (
     AiStatusQuery,
     AiTaskChange,
     AiTaskType,
+    BulkAction,
+    BulkMode,
+    BulkRequest,
     BusinessListQuery,
     BusinessSort,
     CalibrationQuery,
@@ -91,6 +94,9 @@ from research_engine.domain import (
     CandidateListQuery,
     CanonicalChoiceRequest,
     CanonicalField,
+    ChecklistCatalogQuery,
+    ChecklistChangeRequest,
+    ChecklistSaveRequest,
     ContactAction,
     ContactActionRequest,
     ContactListQuery,
@@ -111,6 +117,13 @@ from research_engine.domain import (
     DecisionMakerReviewRequest,
     DiscoveryRunListQuery,
     DiscoveryStartRequest,
+    EvidenceQuery,
+    EvidenceRefKind,
+    ExplorerCatalogQuery,
+    ExplorerField,
+    ExplorerQuery,
+    ExplorerSort,
+    ExportPreviewRequest,
     IcpSaveRequest,
     ImportPreviewRequest,
     InferenceStatus,
@@ -121,6 +134,7 @@ from research_engine.domain import (
     LatinoStatus,
     LeadAction,
     LeadActionRequest,
+    LeadCompareQuery,
     LeadScoreQuery,
     LeadStage,
     LlmFitModel,
@@ -130,8 +144,17 @@ from research_engine.domain import (
     MatchListQuery,
     MatchStatus,
     ProblemSeverity,
+    ResearchAction,
+    ResearchActionRequest,
+    ResearchStatus,
+    ResearchWorkspaceQuery,
     ResolutionRunListQuery,
     ResolutionStartRequest,
+    SalesBriefQuery,
+    SavedViewAction,
+    SavedViewChangeRequest,
+    SavedViewQuery,
+    SavedViewSaveRequest,
     ScorecardQuery,
     ScoreCompareQuery,
     ScoreRunListQuery,
@@ -143,6 +166,7 @@ from research_engine.domain import (
     ScoringSimulationRequest,
     ScoringStartRequest,
     ScoringTarget,
+    SortDirection,
     SourceCatalog,
     SourceEstimate,
     SourceHealth,
@@ -154,14 +178,20 @@ from research_engine.domain import (
     SuppressionKind,
     SuppressionListQuery,
     SyntheticSeedResult,
+    TimelineQuery,
     WebsiteAuditListQuery,
     WebsiteAuditQuery,
     WebsiteRunListQuery,
     WebsiteStartRequest,
     default_crawl_settings,
+    no_filters,
 )
 from research_engine.latino import engine as latino_engine
 from research_engine.latino import store as latino_store
+from research_engine.leads import brief as leads_brief
+from research_engine.leads import explorer as leads_explorer
+from research_engine.leads import research as leads_research
+from research_engine.leads import views as leads_views
 from research_engine.resolution import store as resolution_store
 from research_engine.scoring import engine as scoring_engine
 from research_engine.scoring import model as scoring_model
@@ -181,6 +211,7 @@ from research_engine.testdata import (
     seed_crawl,
     seed_discovery,
     seed_latino,
+    seed_leads,
     seed_resolution,
     seed_scoring,
     seed_website,
@@ -479,6 +510,9 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
             scoring = build_scoring_fixtures(
                 conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids)
             )
+            leads = build_lead_fixtures(
+                conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids)
+            )
         finally:
             conn.close()
     return {
@@ -503,7 +537,96 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
         **contacts,
         **ai,
         **scoring,
+        **leads,
     }
+
+
+def build_lead_fixtures(conn: Any, context: SyntheticContext) -> dict[str, dict[str, Any]]:
+    """Lead Explorer, research workspace and sales brief shapes over the scored synthetic project,
+    with fixture ids and a fixed clock: the seeded views and research work on the lead the scoring
+    fixtures worked, read back through the real queries (phase 12)."""
+    business_id, score_run_id = conn.execute(
+        "SELECT business_id, score_run_id FROM lead_outcomes ORDER BY occurred_at, id LIMIT 1"
+    ).fetchone()
+    with ExitStack() as stack:
+        modules = (leads_research, leads_views, scoring_store, repository, testdata_module)
+        for module in modules:
+            stack.enter_context(patch.object(module, "new_id", context.ids))
+            stack.enter_context(patch.object(module, "utc_now", lambda: _T0))
+        seeded = seed_leads(conn, context, business_id, score_run_id)
+        explore = ExplorerQuery(
+            score_run_id=None, filters=no_filters(), search=None,
+            sort=[ExplorerSort(field=ExplorerField.TOTAL_SCORE, direction=SortDirection.DESC)],
+            offset=0, limit=5, with_total=True,
+        )  # fmt: skip
+        page = leads_explorer.explore(conn, explore, _T0)
+        pair = [row.business_id for row in page.rows[:2]]
+        export = ExportPreviewRequest(
+            query=explore, include_suppressed=False, sample_size=3,
+            columns=[ExplorerField.NAME, ExplorerField.TIER, ExplorerField.TOTAL_SCORE],
+        )  # fmt: skip
+        bulk = BulkRequest(
+            mode=BulkMode.PREVIEW, action=BulkAction.ADD_TAG, business_ids=pair, query=None,
+            expected=None, tag="synthetic-shortlist", assignee=None, reason=None,
+        )  # fmt: skip
+        compare = LeadCompareQuery(business_ids=pair, score_run_id=None)
+        views_query = SavedViewQuery(scope="lead_explorer", include_archived=False)
+        view_list = leads_views.list_views(conn, views_query)
+        saved = next(item for item in view_list.items if item.view.id == seeded.view_id)
+        timeline = TimelineQuery(business_id=business_id, kinds=[], limit=20, cursor=None)
+        evidence = EvidenceQuery(
+            business_id=business_id, kind=EvidenceRefKind.BUSINESS, ref=business_id
+        )
+        checklists = ChecklistCatalogQuery(include_archived=False)
+        catalog = leads_research.checklist_catalog(conn, checklists)
+        default = catalog.checklists[0]
+        action = ResearchActionRequest.model_validate(
+            dict.fromkeys(ResearchActionRequest.model_fields)
+            | {"business_id": business_id, "action": ResearchAction.SET_STATUS,
+               "status": ResearchStatus.DISQUALIFIED, "reason": "Synthetic fixture", "scopes": []}
+        )  # fmt: skip
+        brief_query = SalesBriefQuery(business_id=business_id, score_run_id=None)
+        return {
+            "explorer_catalog_query.json": _dump(ExplorerCatalogQuery(scope="lead_explorer")),
+            "explorer_catalog.json": _dump(leads_explorer.catalog()),
+            "explorer_query.json": _dump(explore),
+            "explorer_page.json": _dump(page),
+            "export_preview_request.json": _dump(export),
+            "export_preview.json": _dump(leads_explorer.export_preview(conn, export, _T0)),
+            "bulk_request.json": _dump(bulk),
+            "bulk_result.json": _dump(leads_research.bulk(conn, bulk, _T0, actor="fixture")),
+            "lead_compare_query.json": _dump(compare),
+            "lead_comparison.json": _dump(leads_explorer.compare(conn, compare, _T0)),
+            "saved_view_query.json": _dump(views_query),
+            "saved_view_list.json": _dump(view_list),
+            "saved_view_save_request.json": _dump(SavedViewSaveRequest(
+                view_id=seeded.view_id, scope="lead_explorer", name=saved.view.name,
+                description=saved.view.description, definition=saved.definition,
+            )),
+            "saved_view_item.json": _dump(saved),
+            "saved_view_change_request.json": _dump(SavedViewChangeRequest(
+                view_id=seeded.view_id, action=SavedViewAction.ARCHIVE, reason="Synthetic fixture",
+            )),
+            "research_workspace_query.json": _dump(ResearchWorkspaceQuery(business_id=business_id)),
+            "research_workspace.json": _dump(leads_research.workspace(conn, business_id, _T0)),
+            "research_action_request.json": _dump(action),
+            "timeline_query.json": _dump(timeline),
+            "timeline_page.json": _dump(leads_research.timeline(conn, timeline)),
+            "evidence_query.json": _dump(evidence),
+            "evidence_detail.json": _dump(leads_research.evidence_detail(conn, evidence, _T0)),
+            "checklist_catalog_query.json": _dump(checklists),
+            "checklist_catalog.json": _dump(catalog),
+            "checklist_save_request.json": _dump(ChecklistSaveRequest(
+                checklist_id=default.checklist.id, name=default.checklist.name,
+                description=default.checklist.description, definition=catalog.template,
+            )),
+            "checklist_change_request.json": _dump(ChecklistChangeRequest(
+                checklist_id=default.checklist.id, action=ScoringChangeAction.ACTIVATE,
+                version_id=default.versions[0].id, reason="Synthetic fixture",
+            )),
+            "sales_brief_query.json": _dump(brief_query),
+            "sales_brief.json": _dump(leads_brief.build(conn, business_id, None, _T0)),
+        }  # fmt: skip
 
 
 def build_scoring_fixtures(conn: Any, context: SyntheticContext) -> dict[str, dict[str, Any]]:
@@ -570,7 +693,8 @@ def build_scoring_fixtures(conn: Any, context: SyntheticContext) -> dict[str, di
             "lead_action_request.json": _dump(LeadActionRequest(
                 score_run_id=first, business_id=seeded.business_id,
                 action=LeadAction.RECORD_OUTCOME, stage=LeadStage.CONNECTED, lost_reason=None,
-                reason="Synthetic fixture",
+                reason="Synthetic fixture", channel=None, attempt_result=None, value_amount=None,
+                value_currency=None, contact_quality=None, notes=None, occurred_at=None,
             )),
         }  # fmt: skip
 

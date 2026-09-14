@@ -1,4 +1,6 @@
 import type {
+  AttemptResult,
+  ContactQuality,
   ContactType,
   CriterionImportance,
   DigitalMaturity,
@@ -144,6 +146,7 @@ export const LEAD_ACTIONS: readonly LeadAction[] = [
   "confirm",
   "dismiss",
   "reset",
+  "record_attempt",
   "record_outcome",
 ];
 export const ACTION_KEYS: Record<LeadAction, TranslationKey> = {
@@ -151,6 +154,49 @@ export const ACTION_KEYS: Record<LeadAction, TranslationKey> = {
   dismiss: "scoring.action.dismiss",
   reset: "scoring.action.reset",
   record_outcome: "scoring.action.record_outcome",
+  record_attempt: "scoring.action.record_attempt",
+};
+
+export const ATTEMPT_RESULTS: readonly AttemptResult[] = [
+  "no_answer",
+  "left_message",
+  "reached",
+  "replied",
+  "bounced",
+  "wrong_contact",
+  "call_back_later",
+  "meeting_set",
+  "proposal_sent",
+  "won",
+  "lost",
+];
+export const ATTEMPT_RESULT_KEYS: Record<AttemptResult, TranslationKey> = {
+  no_answer: "scoring.attempt.no_answer",
+  left_message: "scoring.attempt.left_message",
+  reached: "scoring.attempt.reached",
+  replied: "scoring.attempt.replied",
+  bounced: "scoring.attempt.bounced",
+  wrong_contact: "scoring.attempt.wrong_contact",
+  call_back_later: "scoring.attempt.call_back_later",
+  meeting_set: "scoring.attempt.meeting_set",
+  proposal_sent: "scoring.attempt.proposal_sent",
+  won: "scoring.attempt.won",
+  lost: "scoring.attempt.lost",
+};
+
+export const CONTACT_QUALITIES: readonly ContactQuality[] = [
+  "decision_maker",
+  "gatekeeper",
+  "wrong_person",
+  "unreachable",
+  "unknown",
+];
+export const CONTACT_QUALITY_KEYS: Record<ContactQuality, TranslationKey> = {
+  decision_maker: "scoring.quality.decision_maker",
+  gatekeeper: "scoring.quality.gatekeeper",
+  wrong_person: "scoring.quality.wrong_person",
+  unreachable: "scoring.quality.unreachable",
+  unknown: "scoring.quality.unknown",
 };
 
 /** A code the engine names (a gate, criterion, feature, risk, warning or decision): its label when

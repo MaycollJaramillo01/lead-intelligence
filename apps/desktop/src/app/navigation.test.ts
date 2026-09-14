@@ -59,6 +59,10 @@ describe("navigation registry", () => {
   it("looks modules up by id and by path", () => {
     expect(findNavItem("system")?.path).toBe("/system");
     expect(findNavItemByPath("/lead-explorer")?.id).toBe("lead-explorer");
+    expect(findNavItemByPath("/businesses/01900000-0000-7000-8000-000000000001")?.id).toBe(
+      "businesses",
+    );
     expect(findNavItemByPath("/nope")).toBeUndefined();
+    expect(findNavItemByPath("/businessesque")).toBeUndefined();
   });
 });
