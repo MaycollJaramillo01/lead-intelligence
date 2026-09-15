@@ -61,7 +61,7 @@ from research_engine.domain import (
 )
 
 KEY: Final = "overture.places"
-VERSION: Final = "1.0.0"
+VERSION: Final = "1.1.0"
 STAC_URL: Final = "https://stac.overturemaps.org/catalog.json"
 NOMINATIM_URL: Final = "https://nominatim.openstreetmap.org/search"
 #: The public release. Tests point it at a local Parquet file.
@@ -80,11 +80,14 @@ _COLUMNS: Final = (
     "emails, websites, socials, addresses, basic_category, taxonomy.primary AS category, "
     "taxonomy.hierarchy AS category_path, confidence, operating_status, sources"
 )
-#: One campaign term against the name, the taxonomy and the basic category.
-_TERM: Final = (
-    "(names.primary ILIKE ? OR taxonomy.primary ILIKE ? OR basic_category ILIKE ? "
-    "OR array_to_string(taxonomy.hierarchy, ' ') ILIKE ?)"
+#: A category or service: whole words of the taxonomy, so `spa` finds `day_spa` but never `space`,
+#: `spanish_restaurant` or a business whose name merely contains the letters.
+_CATEGORY: Final = (
+    "regexp_matches(concat_ws(' ', taxonomy.primary, basic_category, "
+    "array_to_string(taxonomy.hierarchy, ' ')), ?)"
 )
+#: A keyword: part of the business name.
+_KEYWORD: Final = "names.primary ILIKE ?"
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,8 +194,13 @@ def _pattern(term: str) -> str:
     return "%" + "_".join(term.replace("%", " ").split()) + "%"
 
 
+def category_pattern(term: str) -> str:
+    """The term as whole words of the taxonomy: `Hair Salon` becomes `hair_salon`."""
+    return r"(^|[ _])" + re.escape("_".join(term.casefold().split())) + r"([ _]|$)"
+
+
 def build_filter(boxes: list[Box], criteria: DiscoveryCriteria) -> tuple[str, list[object]]:
-    """The WHERE clause and its values: in a box, reachable, open, any of the campaign's terms."""
+    """The WHERE clause and its values: in a box, reachable, open, of a type, named as asked."""
     params: list[object] = []
     places: list[str] = []
     for box in boxes:
@@ -210,11 +218,13 @@ def build_filter(boxes: list[Box], criteria: DiscoveryCriteria) -> tuple[str, li
         "(len(phones) > 0 OR len(emails) > 0)",
         "operating_status IS DISTINCT FROM 'permanently_closed'",
     ]
-    terms = [*criteria.categories, *criteria.services, *criteria.keywords]
-    if terms:
-        where.append(f"({' OR '.join(_TERM for _ in terms)})")
-        for term in terms:
-            params += [_pattern(term)] * 4
+    categories = [*criteria.categories, *criteria.services]
+    if categories:
+        where.append(f"({' OR '.join(_CATEGORY for _ in categories)})")
+        params += [category_pattern(term) for term in categories]
+    if criteria.keywords:
+        where.append(f"({' OR '.join(_KEYWORD for _ in criteria.keywords)})")
+        params += [_pattern(term) for term in criteria.keywords]
     return " AND ".join(where), params
 
 
@@ -224,7 +234,8 @@ def cache_name(criteria: DiscoveryCriteria, release: str, cap: int) -> str:
         "version": VERSION,
         "release": release,
         "geography": [scope.model_dump(mode="json") for scope in criteria.geography],
-        "terms": [*criteria.categories, *criteria.services, *criteria.keywords],
+        "categories": [*criteria.categories, *criteria.services],
+        "keywords": criteria.keywords,
         "cap": cap,
     }
     digest = hashlib.sha256(orjson.dumps(spec, option=orjson.OPT_SORT_KEYS)).hexdigest()

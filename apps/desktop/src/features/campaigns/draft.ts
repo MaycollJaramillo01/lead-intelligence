@@ -11,7 +11,19 @@ export interface CampaignDraft {
 }
 
 export function newDraft(): CampaignDraft {
-  return { campaignId: null, projectId: null, name: "", objective: "", criteria: emptyCriteria() };
+  const criteria = emptyCriteria();
+  // one place ready to fill in: most campaigns search one US state or city
+  criteria.geography = [
+    {
+      country_code: "US",
+      region: null,
+      metro: null,
+      locality: null,
+      postal_code: null,
+      radius_km: null,
+    },
+  ];
+  return { campaignId: null, projectId: null, name: "", objective: "", criteria };
 }
 
 export function draftFrom(campaign: CampaignListItem): CampaignDraft {

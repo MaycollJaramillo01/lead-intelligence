@@ -78,6 +78,33 @@ describe("CampaignsScreen", () => {
     expect(request.name).toBe("Hialeah builders");
   });
 
+  it("picks types of business and a state by name instead of codes", async () => {
+    const user = userEvent.setup();
+    render(<CampaignsScreen />);
+    await user.click(await screen.findByRole("button", { name: /New campaign/ }));
+    const lastCriteria = () => first(mocks.validateCriteria.mock.calls.slice(-1))[0].criteria;
+
+    await user.click(screen.getByRole("button", { name: "Type of business" }));
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: "Plumbing" }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "HVAC" }));
+    await user.keyboard("{Escape}");
+    await user.selectOptions(screen.getByRole("combobox", { name: "State" }), "TX");
+    await waitFor(() => {
+      const criteria = lastCriteria();
+      expect(criteria.categories).toEqual(["plumbing", "hvac"]);
+      expect(criteria.verticals).toEqual(["238220"]);
+      expect(criteria.geography[0]?.region).toBe("TX");
+    });
+
+    // dropping plumbing keeps the NAICS code HVAC still needs
+    await user.click(screen.getByRole("button", { name: "Type of business" }));
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: "Plumbing" }));
+    await waitFor(() => {
+      expect(lastCriteria().categories).toEqual(["hvac"]);
+      expect(lastCriteria().verticals).toEqual(["238220"]);
+    });
+  });
+
   it("edits an existing campaign in place and duplicates it as a new one", async () => {
     const user = userEvent.setup();
     render(<CampaignsScreen />);

@@ -175,9 +175,12 @@ with a phone, 48 % with a website, 23 % with an email.
    second. A radius or a ZIP becomes a square around its centre; a ZIP also filters the postcode.
 3. One DuckDB query over the public Parquet on S3 (anonymous, `httpfs`, which DuckDB installs on first
    use) writes the matching places to `overture/<hash>.parquet` in the data directory: a phone or an
-   email, not permanently closed, any category, service or keyword term in the name or the taxonomy,
-   at most the source's record cap (or the campaign's candidate limit). It took 3 to 10 s for a city,
-   or for a whole state with a category.
+   email, not permanently closed, a category or service as whole words of Overture's taxonomy (`spa`
+   finds `day_spa`, never `space`), a keyword in the name, at most the source's record cap (or the
+   campaign's candidate limit). It took 3 to 10 s for a city, or for a whole state with a category.
+   The campaign builder offers types of business by name
+   ([`businessTypes.ts`](../apps/desktop/src/features/campaigns/businessTypes.ts)): each fills in its
+   taxonomy words and NAICS codes, and states are picked by name.
 4. Pages are windows of that file, so paging and resuming never query S3 again.
 
 The payload holds `phone`, `email`, `website`, `address`, `latitude` and `longitude` next to the lists

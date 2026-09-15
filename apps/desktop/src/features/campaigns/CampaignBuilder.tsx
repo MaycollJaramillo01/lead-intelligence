@@ -7,14 +7,29 @@ import type {
   GeoScope,
   SourceInfo,
 } from "@lead/shared-types";
-import { CircleAlert, Plus, TriangleAlert, X } from "lucide-react";
+import { ChevronDown, CircleAlert, Plus, TriangleAlert, X } from "lucide-react";
 import { toast } from "sonner";
 import { Section } from "@/components/layout/page-chrome";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  BUSINESS_GROUPS,
+  BUSINESS_TYPES,
+  hasBusinessType,
+  US_STATES,
+  withBusinessType,
+} from "@/features/campaigns/businessTypes";
 import type { CampaignDraft } from "@/features/campaigns/draft";
 import {
   fromCommas,
@@ -83,14 +98,32 @@ function GeographyEditor({
             maxLength={2}
             className="h-7 w-16 text-xs"
           />
-          <Input
-            value={scope.region ?? ""}
-            onChange={(event) => update(index, { region: blank(event.target.value.toUpperCase()) })}
-            aria-label={t("builder.region")}
-            placeholder={t("builder.region")}
-            maxLength={2}
-            className="h-7 w-16 text-xs"
-          />
+          {scope.country_code === "US" ? (
+            <select
+              value={scope.region ?? ""}
+              onChange={(event) => update(index, { region: blank(event.target.value) })}
+              aria-label={t("builder.region")}
+              className="h-7 w-44 rounded-md border bg-transparent px-2 text-xs"
+            >
+              <option value="">{t("builder.anyState")}</option>
+              {US_STATES.map(([code, name]) => (
+                <option key={code} value={code}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <Input
+              value={scope.region ?? ""}
+              onChange={(event) =>
+                update(index, { region: blank(event.target.value.toUpperCase()) })
+              }
+              aria-label={t("builder.region")}
+              placeholder={t("builder.region")}
+              maxLength={2}
+              className="h-7 w-16 text-xs"
+            />
+          )}
           <Input
             value={scope.locality ?? ""}
             onChange={(event) => update(index, { locality: blank(event.target.value) })}
@@ -102,8 +135,8 @@ function GeographyEditor({
             value={scope.postal_code ?? ""}
             onChange={(event) => update(index, { postal_code: blank(event.target.value) })}
             aria-label={t("builder.postalCode")}
-            placeholder={t("builder.postalCode")}
-            className="h-7 w-24 text-xs"
+            placeholder={t("builder.postalCodeOptional")}
+            className="h-7 w-28 text-xs"
           />
           <Button
             variant="ghost"
@@ -125,6 +158,67 @@ function GeographyEditor({
         <Plus aria-hidden="true" />
         {t("builder.addPlace")}
       </Button>
+    </div>
+  );
+}
+
+/** Types of business by name: each one fills in the taxonomy words and NAICS codes behind it. */
+function BusinessTypePicker({
+  criteria,
+  onChange,
+}: {
+  criteria: DiscoveryCriteria;
+  onChange: (criteria: DiscoveryCriteria) => void;
+}) {
+  const t = useT();
+  const picked = BUSINESS_TYPES.filter((type) => hasBusinessType(criteria, type));
+  return (
+    <div className="space-y-1">
+      <span id="business-types" className="text-xs font-medium">
+        {t("builder.businessTypes")}
+      </span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            aria-labelledby="business-types"
+            className="h-8 w-full justify-between text-xs font-normal"
+          >
+            <span className="truncate">
+              {picked.length > 0
+                ? picked.map((type) => t(type.label)).join(", ")
+                : t("builder.businessTypesNone")}
+            </span>
+            <ChevronDown aria-hidden="true" className="size-3.5 opacity-60" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="max-h-80 w-72 overflow-y-auto">
+          {BUSINESS_GROUPS.map((group) => (
+            <DropdownMenuGroup key={group}>
+              <DropdownMenuLabel className="text-[10px] tracking-wider text-muted-foreground uppercase">
+                {t(`businessGroup.${group}`)}
+              </DropdownMenuLabel>
+              {BUSINESS_TYPES.filter((type) => type.group === group).map((type) => (
+                <DropdownMenuCheckboxItem
+                  key={type.id}
+                  checked={hasBusinessType(criteria, type)}
+                  // keeps the menu open, so several types can be ticked in one go
+                  onSelect={(event) => event.preventDefault()}
+                  onCheckedChange={(checked) =>
+                    onChange(withBusinessType(criteria, type, checked === true))
+                  }
+                  className="text-xs"
+                >
+                  {t(type.label)}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuGroup>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <span className="block text-[11px] text-muted-foreground">
+        {t("builder.businessTypesHelp")}
+      </span>
     </div>
   );
 }
@@ -378,35 +472,8 @@ export function CampaignBuilder({ draft, sources, onSaved, onCancel }: CampaignB
 
       <Section title={t("builder.whatTitle")} description={t("builder.whatHelp")}>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label={t("builder.verticals")} help={t("builder.verticalsHelp")}>
-            <Input
-              value={criteria.verticals.join(", ")}
-              onChange={(event) =>
-                setCriteria({ ...criteria, verticals: fromCommas(event.target.value) })
-              }
-              className="h-8 text-xs"
-              placeholder="23, 722"
-            />
-          </Field>
-          <Field label={t("builder.categories")}>
-            <Input
-              value={criteria.categories.join(", ")}
-              onChange={(event) =>
-                setCriteria({ ...criteria, categories: fromCommas(event.target.value) })
-              }
-              className="h-8 text-xs"
-            />
-          </Field>
-          <Field label={t("builder.services")}>
-            <Input
-              value={criteria.services.join(", ")}
-              onChange={(event) =>
-                setCriteria({ ...criteria, services: fromCommas(event.target.value) })
-              }
-              className="h-8 text-xs"
-            />
-          </Field>
-          <Field label={t("builder.keywords")}>
+          <BusinessTypePicker criteria={criteria} onChange={setCriteria} />
+          <Field label={t("builder.keywords")} help={t("builder.keywordsHelp")}>
             <Input
               value={criteria.keywords.join(", ")}
               onChange={(event) =>
@@ -415,39 +482,75 @@ export function CampaignBuilder({ draft, sources, onSaved, onCancel }: CampaignB
               className="h-8 text-xs"
             />
           </Field>
-          <Field label={t("builder.languages")} help={t("builder.languagesHelp")}>
-            <Input
-              value={criteria.market_languages.join(", ")}
-              onChange={(event) =>
-                setCriteria({ ...criteria, market_languages: fromCommas(event.target.value) })
-              }
-              className="h-8 text-xs"
-              placeholder="es"
-            />
-          </Field>
-          <Field label={t("builder.freshness")} help={t("builder.freshnessHelp")}>
-            <Input
-              type="date"
-              value={criteria.freshness_since ?? ""}
-              onChange={(event) =>
-                setCriteria({ ...criteria, freshness_since: blank(event.target.value) })
-              }
-              className="h-8 text-xs"
-            />
-          </Field>
         </div>
-        <div className="mt-3 flex items-center gap-2">
-          <Checkbox
-            id="strategy-narrow"
-            checked={criteria.strategy === "narrow"}
-            onCheckedChange={(checked) =>
-              setCriteria({ ...criteria, strategy: checked === true ? "narrow" : "broad" })
-            }
-          />
-          <Label htmlFor="strategy-narrow" className="text-xs">
-            {t("builder.narrow")}
-          </Label>
-        </div>
+        <details className="mt-3">
+          <summary className="cursor-pointer text-xs text-muted-foreground">
+            {t("builder.advanced")}
+          </summary>
+          <p className="mt-1 text-[11px] text-muted-foreground">{t("builder.advancedHelp")}</p>
+          <div className="mt-2 grid gap-3 sm:grid-cols-2">
+            <Field label={t("builder.verticals")} help={t("builder.verticalsHelp")}>
+              <Input
+                value={criteria.verticals.join(", ")}
+                onChange={(event) =>
+                  setCriteria({ ...criteria, verticals: fromCommas(event.target.value) })
+                }
+                className="h-8 text-xs"
+                placeholder="23, 722"
+              />
+            </Field>
+            <Field label={t("builder.categories")}>
+              <Input
+                value={criteria.categories.join(", ")}
+                onChange={(event) =>
+                  setCriteria({ ...criteria, categories: fromCommas(event.target.value) })
+                }
+                className="h-8 text-xs"
+              />
+            </Field>
+            <Field label={t("builder.services")}>
+              <Input
+                value={criteria.services.join(", ")}
+                onChange={(event) =>
+                  setCriteria({ ...criteria, services: fromCommas(event.target.value) })
+                }
+                className="h-8 text-xs"
+              />
+            </Field>
+            <Field label={t("builder.languages")} help={t("builder.languagesHelp")}>
+              <Input
+                value={criteria.market_languages.join(", ")}
+                onChange={(event) =>
+                  setCriteria({ ...criteria, market_languages: fromCommas(event.target.value) })
+                }
+                className="h-8 text-xs"
+                placeholder="es"
+              />
+            </Field>
+            <Field label={t("builder.freshness")} help={t("builder.freshnessHelp")}>
+              <Input
+                type="date"
+                value={criteria.freshness_since ?? ""}
+                onChange={(event) =>
+                  setCriteria({ ...criteria, freshness_since: blank(event.target.value) })
+                }
+                className="h-8 text-xs"
+              />
+            </Field>
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <Checkbox
+              id="strategy-narrow"
+              checked={criteria.strategy === "narrow"}
+              onCheckedChange={(checked) =>
+                setCriteria({ ...criteria, strategy: checked === true ? "narrow" : "broad" })
+              }
+            />
+            <Label htmlFor="strategy-narrow" className="text-xs">
+              {t("builder.narrow")}
+            </Label>
+          </div>
+        </details>
       </Section>
 
       <Section title={t("builder.excludeTitle")} description={t("builder.excludeHelp")}>

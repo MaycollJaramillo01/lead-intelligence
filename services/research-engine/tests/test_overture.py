@@ -176,3 +176,24 @@ async def test_reachable_places_become_candidates_whose_phone_and_email_reach_co
         ContactType.PHONE: "+18327040000",
         ContactType.EMAIL: "ventas@techoseguro.com",
     }
+
+
+@pytest.mark.parametrize(
+    ("taxonomy", "term", "expected"),
+    [
+        ("day_spa", "spa", True),
+        ("event_space", "spa", False),
+        ("spanish_restaurant", "spa", False),
+        ("hair_salon", "Hair Salon", True),
+        ("home_service ceiling_and_roofing_repair_and_service roofing", "roofing", True),
+    ],
+)
+def test_a_category_matches_whole_words_of_the_taxonomy(
+    taxonomy: str, term: str, *, expected: bool
+) -> None:
+    duck = duckdb.connect()
+    row = duck.execute(
+        "SELECT regexp_matches(?, ?)", [taxonomy, overture.category_pattern(term)]
+    ).fetchone()
+    duck.close()
+    assert row == (expected,)
