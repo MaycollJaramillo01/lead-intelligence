@@ -189,7 +189,7 @@ export const en = {
 
   "datasets.emptyTitle": "No datasets yet",
   "datasets.emptyBody":
-    "A dataset is a reproducible snapshot of businesses, stored in DuckDB and as Parquet together with its lineage. Snapshots are produced by jobs (phase 13).",
+    "A dataset is a reproducible snapshot of businesses, stored in DuckDB and as Parquet together with its lineage. Snapshots are taken from this panel or when a pipeline in Jobs finishes.",
   "datasets.errorTitle": "Datasets could not be loaded",
   "datasets.column.name": "Dataset",
   "datasets.column.snapshots": "Snapshots",
@@ -366,7 +366,7 @@ export const en = {
 
   "export.title": "Export preview",
   "export.help":
-    "What an export of this query would hold, with a sample. Nothing is written; exports arrive in phase 13.",
+    "What an export of this query would hold, with a sample. Nothing is written here: “Export to file…” opens the wizard that saves the file.",
   "export.includeSuppressed": "Include leads on the do-not-contact list",
   "export.counts":
     "{matching} match · {excluded} left out as do-not-contact · {exported} in the export",

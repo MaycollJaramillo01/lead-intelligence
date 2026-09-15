@@ -188,7 +188,7 @@ export const es: Partial<Record<TranslationKey, string>> = {
 
   "datasets.emptyTitle": "Todavía no hay datasets",
   "datasets.emptyBody":
-    "Un dataset es un snapshot reproducible de negocios, guardado en DuckDB y como Parquet junto con su lineage. Los snapshots los producen los trabajos (fase 13).",
+    "Un dataset es un snapshot reproducible de negocios, guardado en DuckDB y como Parquet junto con su lineage. Los snapshots se crean desde este panel o al terminar un pipeline en Trabajos.",
   "datasets.errorTitle": "No se pudieron cargar los datasets",
   "datasets.column.name": "Dataset",
   "datasets.column.snapshots": "Snapshots",
@@ -366,7 +366,7 @@ export const es: Partial<Record<TranslationKey, string>> = {
 
   "export.title": "Vista previa de exportación",
   "export.help":
-    "Lo que contendría una exportación de esta consulta, con una muestra. No se escribe nada; las exportaciones llegan en la fase 13.",
+    "Lo que contendría una exportación de esta consulta, con una muestra. Aquí no se escribe nada: «Exportar a fichero…» abre el asistente que guarda el archivo.",
   "export.includeSuppressed": "Incluir leads de la lista de no contactar",
   "export.counts":
     "{matching} coinciden · {excluded} fuera por no contactar · {exported} en la exportación",

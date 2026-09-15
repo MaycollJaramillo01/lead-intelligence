@@ -323,7 +323,7 @@ export function ExportWizard({ source, suggestedName, onOpenChange }: ExportWiza
           </div>
         ) : (
           <div className="grid gap-4 text-xs md:grid-cols-2">
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-0.5">
                   <Label htmlFor="export-preset" className="text-xs">
@@ -434,7 +434,7 @@ export function ExportWizard({ source, suggestedName, onOpenChange }: ExportWiza
                 </Button>
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <label className="flex items-center gap-1.5">
                 <input
                   type="checkbox"

@@ -57,7 +57,8 @@ export function ExportPreviewDialog({
           <DialogTitle>{t("export.title")}</DialogTitle>
           <DialogDescription>{t("export.help")}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-2 text-xs">
+        {/* min-w-0: a wide sample scrolls inside its box instead of widening the dialog */}
+        <div className="min-w-0 space-y-2 text-xs">
           <div className="flex items-center justify-between gap-2">
             <label className="flex items-center gap-2">
               <input
