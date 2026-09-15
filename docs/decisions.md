@@ -1291,3 +1291,17 @@ copy. Places are located with Nominatim, one lookup a second. Details in
 **Trade-off.** Overture's `confidence` is kept, not filtered: about 40 % of central Houston's places
 score near 0.2 and most of them have a phone. A radius is searched as a square. DuckDB downloads
 `httpfs` on the first run on each machine.
+
+## D-094 · The app starts Ollama with itself and stops the server it started (after phase 15)
+
+**Context.** Local AI needs `ollama serve` running. The operator had to start it by hand, and a
+server left running kept models in memory after the app closed.
+
+**Decision.** At startup the core probes the configured loopback address. If nothing answers and
+`ollama.exe` is found (`%LOCALAPPDATA%\Programs\Ollama`, then `PATH`), it starts `ollama serve`
+hidden, with `OLLAMA_HOST` set to that address. On exit it stops that process and its model runners
+(`taskkill /T`). A runtime that was already answering is used and never stopped.
+
+**Trade-off.** If the app crashes, the server it started keeps running: the crate forbids `unsafe`,
+so no Job Object ties it to the core. Ollama's own sign-in shortcut still starts it with Windows
+unless the operator removes it.

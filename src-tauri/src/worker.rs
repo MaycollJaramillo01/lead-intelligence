@@ -183,7 +183,7 @@ const STDERR_TAIL_LINES: usize = 40;
 const STDERR_LINE_CHARS: usize = 400;
 const MAX_STDERR_LINE_BYTES: usize = 64 * 1024;
 #[cfg(windows)]
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+pub(crate) const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 #[derive(Debug, Clone)]
 pub struct WorkerLaunch {

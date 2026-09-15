@@ -48,6 +48,11 @@ The runtime URL must be on loopback (`127.0.0.1`, `localhost`, `::1`). Models ar
 assumed: every profile starts without a model. Thinking models (`thinking` capability, e.g. qwen3) are
 asked with `think: false`: a structured answer needs no reasoning trace.
 
+The desktop app starts Ollama with itself: when `ollama.exe` is installed and nothing answers on the
+configured address, it runs `ollama serve` hidden, with `OLLAMA_HOST` set to that address, and stops
+that server and its model runners when the app exits (D-094). An Ollama that was already running (its
+tray app, another tool) is used and left alone.
+
 ## 4. Tasks
 
 | Task                      | Reads (refs)                                                                | Answers                                                                                      | Limits (refs · chars/ref · total) | Timeout | Temp. | Batchable |

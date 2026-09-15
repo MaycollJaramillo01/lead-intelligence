@@ -5,6 +5,7 @@ pub mod config;
 pub mod data;
 pub mod error;
 pub mod logging;
+pub mod ollama;
 pub mod protocol;
 pub mod worker;
 
@@ -170,6 +171,9 @@ pub fn run() {
             && let Some(state) = app.try_state::<AppState>()
         {
             tauri::async_runtime::block_on(state.supervisor.stop());
+            if let Some(ollama) = app.try_state::<ollama::OllamaServer>() {
+                ollama.stop();
+            }
             info!("desktop core exited");
             // flush buffered log lines before the process ends
             drop(
@@ -251,6 +255,8 @@ fn bootstrap<R: Runtime>(
     for warning in &loaded.warnings {
         warn!(%warning, "configuration warning");
     }
+    // the local AI runtime lives as long as the app does (D-094)
+    app.manage(ollama::OllamaServer::start(&loaded.config.ollama.base_url));
 
     let launch = resolve_worker_launch(
         &loaded.config,

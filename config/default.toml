@@ -28,6 +28,7 @@ args = []
 startup_timeout_ms = 20000
 
 [ollama]
-# Local Ollama API. It is only detected and queried; nothing is downloaded automatically.
+# Local Ollama API. When Ollama is installed and nothing answers here, the app starts `ollama serve`
+# on this address and stops that server when it exits. Nothing is downloaded automatically.
 base_url = "http://127.0.0.1:11434"
 timeout_ms = 2000
