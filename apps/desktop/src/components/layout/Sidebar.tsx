@@ -1,7 +1,7 @@
 import { useCallback, type KeyboardEvent, type PointerEvent } from "react";
 import { NavLink } from "react-router";
 import { PanelLeft } from "lucide-react";
-import { NAV_SECTIONS, navItemsBySection, type NavItem } from "@/app/navigation";
+import { NAV_SECTIONS, visibleSidebarItems, type NavItem } from "@/app/navigation";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useDiagnosticsStore } from "@/features/diagnostics/store";
 import { workerRowState } from "@/features/diagnostics/model";
@@ -139,6 +139,8 @@ export function Sidebar() {
   const collapsed = usePreferences((state) => state.sidebarCollapsed);
   const width = usePreferences((state) => state.sidebarWidth);
   const toggleSidebar = usePreferences((state) => state.toggleSidebar);
+  const showAdvancedTools = usePreferences((state) => state.showAdvancedTools);
+  const visibleItems = visibleSidebarItems(showAdvancedTools);
 
   return (
     <div className="flex h-full shrink-0">
@@ -169,7 +171,7 @@ export function Sidebar() {
 
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
           {NAV_SECTIONS.map((section) => {
-            const items = navItemsBySection(section.id);
+            const items = visibleItems.filter((item) => item.section === section.id);
             if (items.length === 0) return null;
             return (
               <div key={section.id} className="mb-2">

@@ -1305,3 +1305,25 @@ hidden, with `OLLAMA_HOST` set to that address. On exit it stops that process an
 **Trade-off.** If the app crashes, the server it started keeps running: the crate forbids `unsafe`,
 so no Job Object ties it to the core. Ollama's own sign-in shortcut still starts it with Windows
 unless the operator removes it.
+
+## D-095 · «Buscar clientes» compone los comandos existentes (phase 16)
+
+**Contexto.** Crear una lista exigía conocer y coordinar campañas, perfiles, activación y procesos.
+Ese vocabulario describía la implementación en vez del objetivo comercial.
+
+**Decisión.** La nueva portada compone, desde el frontend y en orden, `list_campaigns` /
+`save_campaign`, `get_scoring_catalog` / `save_icp_profile` / `change_scoring` y `start_pipeline`.
+No se añade ningún mensaje al worker. Los nombres estables «Buscar clientes · …» y «Mi oferta» hacen
+que una búsqueda repetida cree una versión sobre los mismos objetos; la clave idempotente protege el
+arranque. La barra simple solo muestra Buscar clientes y Ajustes; una preferencia persistida revela
+intacta la navegación anterior y la paleta nunca la filtra.
+
+La cantidad solicitada se multiplica por doce antes del descubrimiento: la evidencia observable, la
+compatibilidad entre problema y oferta, la contactabilidad y las supresiones reducen el universo.
+Los mensajes de progreso solo agregan contadores de trabajos reales. No se intenta una transacción
+distribuida: si falla un paso, los borradores versionados quedan reutilizables y volver a pulsar
+continúa sin proliferación de objetos.
+
+**Consecuencia.** La secuencia no es atómica, pero no necesita ampliar el protocolo Rust/Python y
+conserva su validación y auditoría. La pantalla explica un fallo en el último paso y permite repetir;
+una operación ya iniciada sigue protegida por la clave idempotente del orquestador.

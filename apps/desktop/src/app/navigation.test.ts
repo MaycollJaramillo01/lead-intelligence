@@ -1,10 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { NAV_ITEMS, NAV_SECTIONS, findNavItem, findNavItemByPath } from "@/app/navigation";
+import {
+  NAV_ITEMS,
+  NAV_SECTIONS,
+  findNavItem,
+  findNavItemByPath,
+  visibleSidebarItems,
+} from "@/app/navigation";
 import { en } from "@/lib/locales/en";
 import { es } from "@/lib/locales/es";
 
 /** The 16 modules the product promises, in the order the prompt defines them. */
 const EXPECTED_MODULES = [
+  "client-search",
   "overview",
   "discovery",
   "campaigns",
@@ -64,5 +71,13 @@ describe("navigation registry", () => {
     );
     expect(findNavItemByPath("/nope")).toBeUndefined();
     expect(findNavItemByPath("/businessesque")).toBeUndefined();
+  });
+
+  it("hides advanced screens by default and restores all of them on request", () => {
+    expect(visibleSidebarItems(false).map((item) => item.id)).toEqual([
+      "client-search",
+      "settings",
+    ]);
+    expect(visibleSidebarItems(true)).toEqual(NAV_ITEMS);
   });
 });

@@ -1,5 +1,19 @@
 # Lead Intelligence
 
+## Cómo se usa en un minuto
+
+1. Abre **Buscar clientes**: es la primera pantalla y no requiere herramientas avanzadas.
+2. Elige qué vendes, un tipo de negocio, estado y ciudad, y si quieres 25, 50 o 100 clientes.
+3. Pulsa **Buscar clientes**. La app consulta Overture Maps, reúne evidencia y contactos, elimina
+   duplicados y ordena oportunidades; no llama ni envía mensajes por ti.
+4. Puedes pausar y continuar, incluso después de cerrar la aplicación. Cuando termine, abre **Tu
+   lista de clientes** para revisar por qué llamar y qué ofrecer.
+5. Descarga el CSV desde la lista. Los contactos marcados **No contactar** se excluyen siempre.
+
+En **Ajustes** puedes activar **Mostrar herramientas avanzadas** para recuperar toda la navegación
+técnica anterior. Los resultados son evidencia publicada; una redacción de IA es una sugerencia, no
+un hecho, y la afinidad latina nunca se deduce de apellidos o idioma.
+
 Local desktop application for Windows 11 that discovers, researches, enriches, classifies and
 prioritises US businesses for high-quality B2B prospecting. It may look at many businesses, but its
 product is a **small list of leads backed by verifiable evidence**, with a usable contact, a concrete

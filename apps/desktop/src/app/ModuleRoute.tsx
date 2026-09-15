@@ -18,9 +18,11 @@ import { ScoringModelsScreen } from "@/features/scoring/ScoringModelsScreen";
 import { ResearchCenterScreen } from "@/features/research/ResearchCenterScreen";
 import { ModuleNotConfigured } from "@/features/placeholder/ModuleNotConfigured";
 import { SettingsScreen } from "@/features/settings/SettingsScreen";
+import { ClientSearchScreen } from "@/features/client-search/ClientSearchScreen";
 
 /** Modules that exist today. Everything else renders its honest "not configured" page. */
 const SCREENS: Record<string, ComponentType> = {
+  "client-search": ClientSearchScreen,
   overview: OverviewScreen,
   discovery: DiscoveryScreen,
   campaigns: CampaignsScreen,
