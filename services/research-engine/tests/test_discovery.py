@@ -192,6 +192,7 @@ def test_every_registered_source_satisfies_the_contract() -> None:
         "file.import",
         "manual.seeds",
         usaspending.KEY,
+        "overture.places",
         "directory.api_template",
     }
     for key, source in registry.SOURCES.items():

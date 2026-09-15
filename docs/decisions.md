@@ -1264,3 +1264,30 @@ triaged in the phase report (Linux-only, build-time only or unmaintained without
 
 **Trade-off.** `quick-xml` 0.38 (two denial-of-service advisories, fixed in 0.41) stays until `plist`
 and Tauri move: it only parses the build's own configuration, never input.
+
+## D-093 · Phones and emails come from Overture's open places; keyed directories stay out (after phase 15)
+
+**Context.** Discovery shipped with one remote source, USAspending, whose recipients carry no phone,
+email or website: contact intelligence (phase 09) had nothing to read and the crawler nothing to
+visit. The operator needs a phone above all, and emails.
+
+**Decision.** `overture.places` reads the open places of the Overture Maps Foundation (about 74
+million): no account, no key, and licences that allow keeping the data (CDLA Permissive 2.0, Apache
+2.0 or CC0 by contributor). Measured on 2026-09-15 over central Houston: 87 % with a phone, 48 % with
+a website, 23 % with an email. One DuckDB query per run over the public Parquet (anonymous S3) keeps
+places with a phone or an email and writes them to the data directory; pages are windows of that
+copy. Places are located with Nominatim, one lookup a second. Details in
+[discovery.md](discovery.md#overture-maps-places-phones-websites-and-emails).
+
+**Considered and not built.**
+
+| Source                     | Why not                                                                                                   |
+| -------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Google Places, Yelp Fusion | Paid keys, and their terms forbid storing phones and addresses beyond short caches, which a lead store is |
+| SBA Small Business Search  | Owners' emails and phones, but no public API: its site's `/_api/v2/search` answered HTTP 500 from outside |
+| Foursquare OS Places       | Same fields and an open licence, but now behind a portal account and token; Foursquare feeds Overture     |
+| OpenStreetMap (Overpass)   | Free and keyless; its US phone coverage was not measured. The next candidate if Overture falls short      |
+
+**Trade-off.** Overture's `confidence` is kept, not filtered: about 40 % of central Houston's places
+score near 0.2 and most of them have a phone. A radius is searched as a square. DuckDB downloads
+`httpfs` on the first run on each machine.

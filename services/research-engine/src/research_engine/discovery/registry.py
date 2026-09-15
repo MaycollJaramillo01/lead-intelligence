@@ -16,7 +16,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Final
 
-from research_engine.discovery.sources import api_template, file_import, seeds, usaspending
+from research_engine.discovery.sources import (
+    api_template,
+    file_import,
+    overture,
+    seeds,
+    usaspending,
+)
 from research_engine.discovery.sources.base import DiscoverySource
 from research_engine.domain import (
     MAX_SOURCES,
@@ -40,7 +46,13 @@ from research_engine.repository import atomic, from_row, insert
 #: Every adapter this build ships, in the order the catalogue shows them.
 SOURCES: Final[dict[str, DiscoverySource]] = {
     source.metadata.key: source
-    for source in (file_import.SOURCE, seeds.SOURCE, usaspending.SOURCE, api_template.SOURCE)
+    for source in (
+        file_import.SOURCE,
+        seeds.SOURCE,
+        usaspending.SOURCE,
+        overture.SOURCE,
+        api_template.SOURCE,
+    )
 }
 
 DEFAULT_MAX_CONCURRENCY: Final = 1

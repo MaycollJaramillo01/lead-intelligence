@@ -154,12 +154,37 @@ Anything else - a pause, a cancellation, the worker stopping - leaves it resumab
 
 ## 8. The sources this build ships
 
-| Key                      | Kind         | Needs a key | Notes                                                                                              |
-| ------------------------ | ------------ | ----------- | -------------------------------------------------------------------------------------------------- |
-| `file.import`            | file import  | no          | CSV, TSV, JSON, JSONL supplied by the operator; column mapping + preview                           |
-| `manual.seeds`           | manual seeds | no          | URLs, domains or names, one per line                                                               |
-| `usaspending.recipients` | official API | no          | US federal award recipients: public domain, paginated, filters by state, city, ZIP, NAICS and date |
-| `directory.api_template` | directory    | yes         | A template, disabled on purpose: it shows what a keyed connector declares and refuses to run       |
+| Key                      | Kind           | Needs a key | Notes                                                                                                 |
+| ------------------------ | -------------- | ----------- | ----------------------------------------------------------------------------------------------------- |
+| `file.import`            | file import    | no          | CSV, TSV, JSON, JSONL supplied by the operator; column mapping + preview                              |
+| `manual.seeds`           | manual seeds   | no          | URLs, domains or names, one per line                                                                  |
+| `usaspending.recipients` | official API   | no          | US federal award recipients: public domain, paginated, filters by state, city, ZIP, NAICS and date    |
+| `overture.places`        | public dataset | no          | Overture Maps places with a phone or an email: filters by state, city, ZIP, radius and category terms |
+| `directory.api_template` | directory      | yes         | A template, disabled on purpose: it shows what a keyed connector declares and refuses to run          |
+
+### Overture Maps places: phones, websites and emails
+
+USAspending recipients carry no phone, email or website, so the contact engines had nothing to work
+on. `overture.places` reads the open places of the
+[Overture Maps Foundation](https://docs.overturemaps.org/guides/places/): about 74 million, from Meta,
+Microsoft, Foursquare and others. Measured on 2026-09-15 over central Houston: 23 260 places, 87 %
+with a phone, 48 % with a website, 23 % with an email.
+
+1. The release comes from the STAC catalogue (`latest`) and travels in the cursor (`<release>:<row>`).
+2. Each place of the campaign becomes a bounding box through OpenStreetMap's Nominatim, one lookup a
+   second. A radius or a ZIP becomes a square around its centre; a ZIP also filters the postcode.
+3. One DuckDB query over the public Parquet on S3 (anonymous, `httpfs`, which DuckDB installs on first
+   use) writes the matching places to `overture/<hash>.parquet` in the data directory: a phone or an
+   email, not permanently closed, any category, service or keyword term in the name or the taxonomy,
+   at most the source's record cap (or the campaign's candidate limit). It took 3 to 10 s for a city,
+   or for a whole state with a category.
+4. Pages are windows of that file, so paging and resuming never query S3 again.
+
+The payload holds `phone`, `email`, `website`, `address`, `latitude` and `longitude` next to the lists
+Overture publishes, so entity resolution turns them into contact points and a location, and the
+website is what the crawler visits for more emails. NAICS codes, freshness and size proxies are not
+honoured, and the builder says so. Terms: CDLA Permissive 2.0 or Apache 2.0 by contributor; each
+record's `sources` names its dataset and license. Sources considered and not built: D-093.
 
 XLSX import is **not** implemented: it is a zip of XML, not text, and nothing here would parse it
 honestly today. The interface says so and asks for a CSV export.
