@@ -20,11 +20,19 @@
         "row_count": 3,
         "duckdb_table": "business_snapshot_rows",
         "parquet_path": "datasets/01900000-0000-7000-8000-000000000031/01900000-0000-7000-8000-000000000032",
-        "schema_version": 1,
+        "schema_version": 2,
         "filters_json": {
           "project_id": "01900000-0000-7000-8000-000000000001"
         },
-        "created_at": "2026-01-01T00:00:00.000Z"
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "query_json": {
+          "project_id": "01900000-0000-7000-8000-000000000001"
+        },
+        "cutoff_at": "2026-01-01T00:00:00.000Z",
+        "pipeline_versions_json": {
+          "snapshot_schema": "2"
+        },
+        "quality_json": null
       }
     }
   ],

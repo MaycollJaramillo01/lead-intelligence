@@ -17,25 +17,32 @@ use lead_intelligence_lib::data::{
     ContactDetail, ContactListQuery, ContactOrigin, ContactPage, ContactRunListQuery,
     ContactRunPage, ContactStartRequest, CrawlRunListQuery, CrawlRunPage, CrawlStartRequest,
     CrawlUrlDetail, CrawlUrlListQuery, CrawlUrlPage, CrawlUrlStatus, CriteriaCheck,
-    DatasetListQuery, DatasetPage, DecisionMakerListQuery, DecisionMakerPage, DecisionMakerReview,
-    DecisionMakerReviewRequest, DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest,
-    EvidenceDetail, EvidenceQuery, EvidenceStatus, ExplorerCatalog, ExplorerCatalogQuery,
-    ExplorerPage, ExplorerQuery, ExportPreview, ExportPreviewRequest, IcpProfileView,
-    IcpSaveRequest, Id, ImportPreview, LatinoDetail, LatinoReviewFilter, LatinoReviewRequest,
-    LatinoRunListQuery, LatinoRunPage, LatinoStartRequest, LatinoStatus, LeadActionRequest,
-    LeadCompareQuery, LeadComparison, LeadScorePage, LeadScoreQuery, LeadScorecardDetail, LeadTier,
-    MatchActionRequest, MatchDetail, MatchListQuery, MatchPage, MatchStatus, ResearchActionRequest,
-    ResearchWorkspace, ResearchWorkspaceQuery, ResolutionRunListQuery, ResolutionRunPage,
-    ResolutionStartRequest, SalesBrief, SalesBriefQuery, SavedViewChangeRequest, SavedViewItem,
-    SavedViewList, SavedViewQuery, SavedViewSaveRequest, ScoreCompareQuery, ScoreComparison,
-    ScoreRunListQuery, ScoreRunPage, ScorecardQuery, ScoringCatalog, ScoringCatalogQuery,
-    ScoringChangeRequest, ScoringModelSaveRequest, ScoringModelView, ScoringSimulation,
-    ScoringSimulationRequest, ScoringStartRequest, SourceCatalog, SourceHealth,
-    SuppressionChangeRequest, SuppressionExport, SuppressionExportRequest,
-    SuppressionImportRequest, SuppressionImportResult, SuppressionListQuery, SuppressionPage,
-    SyntheticSeedResult, TimelinePage, TimelineQuery, ValidationStatus, WebsiteAuditDetail,
-    WebsiteAuditListQuery, WebsiteAuditPage, WebsiteAuditQuery, WebsiteAuditStatus,
-    WebsiteFindingResult, WebsiteRunListQuery, WebsiteRunPage, WebsiteStartRequest,
+    DatasetCleanupRequest, DatasetCleanupResult, DatasetDiff, DatasetDiffQuery, DatasetListQuery,
+    DatasetPage, DatasetSnapshotDetail, DatasetSnapshotListQuery, DatasetSnapshotPage,
+    DatasetSnapshotQuery, DatasetSnapshotRequest, DeadLetterRequest, DecisionMakerListQuery,
+    DecisionMakerPage, DecisionMakerReview, DecisionMakerReviewRequest, DiscoveryControlRequest,
+    DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest, EventCleanupRequest,
+    EventCleanupResult, EvidenceDetail, EvidenceQuery, EvidenceStatus, ExplorerCatalog,
+    ExplorerCatalogQuery, ExplorerPage, ExplorerQuery, ExportCancelRequest, ExportCatalog,
+    ExportCatalogQuery, ExportDraft, ExportItem, ExportListQuery, ExportPage,
+    ExportPresetSaveRequest, ExportPreview, ExportPreviewRequest, ExportPreviewResult,
+    ExportStartRequest, IcpProfileView, IcpSaveRequest, Id, ImportPreview, JobEventPage,
+    JobEventQuery, LatinoDetail, LatinoReviewFilter, LatinoReviewRequest, LatinoRunListQuery,
+    LatinoRunPage, LatinoStartRequest, LatinoStatus, LeadActionRequest, LeadCompareQuery,
+    LeadComparison, LeadScorePage, LeadScoreQuery, LeadScorecardDetail, LeadTier,
+    MatchActionRequest, MatchDetail, MatchListQuery, MatchPage, MatchStatus, PipelineListQuery,
+    PipelinePage, PipelineRun, PipelineStartRequest, ResearchActionRequest, ResearchWorkspace,
+    ResearchWorkspaceQuery, ResolutionRunListQuery, ResolutionRunPage, ResolutionStartRequest,
+    SalesBrief, SalesBriefQuery, SavedViewChangeRequest, SavedViewItem, SavedViewList,
+    SavedViewQuery, SavedViewSaveRequest, ScoreCompareQuery, ScoreComparison, ScoreRunListQuery,
+    ScoreRunPage, ScorecardQuery, ScoringCatalog, ScoringCatalogQuery, ScoringChangeRequest,
+    ScoringModelSaveRequest, ScoringModelView, ScoringSimulation, ScoringSimulationRequest,
+    ScoringStartRequest, SourceCatalog, SourceHealth, SuppressionChangeRequest, SuppressionExport,
+    SuppressionExportRequest, SuppressionImportRequest, SuppressionImportResult,
+    SuppressionListQuery, SuppressionPage, SyntheticSeedResult, TimelinePage, TimelineQuery,
+    ValidationStatus, WebsiteAuditDetail, WebsiteAuditListQuery, WebsiteAuditPage,
+    WebsiteAuditQuery, WebsiteAuditStatus, WebsiteFindingResult, WebsiteRunListQuery,
+    WebsiteRunPage, WebsiteStartRequest,
 };
 use lead_intelligence_lib::protocol::{
     DATA_CONTRACT_VERSION, DiagnosticsReport, DiagnosticsResult, Envelope, HealthResult,
@@ -1095,6 +1102,264 @@ fn scoring_payloads_that_claim_too_much_are_rejected() {
 }
 
 #[test]
+fn operations_fixtures_round_trip_and_pass_validation() {
+    round_trip::<PipelineStartRequest>("pipeline_start_request.json")
+        .validate()
+        .expect("fixture pipeline request is valid");
+    round_trip::<DiscoveryControlRequest>("pipeline_control_request.json");
+    round_trip::<DeadLetterRequest>("dead_letter_request.json")
+        .validate()
+        .expect("fixture dead letter request is valid");
+    round_trip::<PipelineRun>("pipeline_run.json")
+        .validate()
+        .expect("fixture pipeline adds up");
+    let pipelines: PipelineListQuery = round_trip("pipeline_list_query.json");
+    round_trip::<PipelinePage>("pipeline_page.json")
+        .validate(&pipelines)
+        .expect("fixture pipeline page matches its query");
+
+    let events: JobEventQuery = round_trip("job_event_query.json");
+    round_trip::<JobEventPage>("job_event_page.json")
+        .validate(&events)
+        .expect("fixture event page matches its query");
+    let cleanup: EventCleanupRequest = round_trip("event_cleanup_request.json");
+    cleanup.validate().expect("fixture event cleanup is valid");
+    round_trip::<EventCleanupResult>("event_cleanup_result.json")
+        .validate(&cleanup)
+        .expect("fixture event cleanup adds up");
+
+    round_trip::<DatasetSnapshotRequest>("dataset_snapshot_request.json")
+        .validate()
+        .expect("fixture snapshot request is valid");
+    let detail: DatasetSnapshotDetail = round_trip("dataset_snapshot_detail.json");
+    let snapshot: DatasetSnapshotQuery = round_trip("dataset_snapshot_query.json");
+    detail
+        .validate(&snapshot.snapshot_id)
+        .expect("fixture snapshot detail adds up");
+    let snapshots: DatasetSnapshotListQuery = round_trip("dataset_snapshot_list_query.json");
+    round_trip::<DatasetSnapshotPage>("dataset_snapshot_page.json")
+        .validate(&snapshots)
+        .expect("fixture snapshot page matches its query");
+    let diff: DatasetDiffQuery = round_trip("dataset_diff_query.json");
+    diff.validate().expect("fixture diff query is valid");
+    round_trip::<DatasetDiff>("dataset_diff.json")
+        .validate(&diff)
+        .expect("fixture diff adds up");
+    let retention: DatasetCleanupRequest = round_trip("dataset_cleanup_request.json");
+    retention.validate().expect("fixture retention is valid");
+    round_trip::<DatasetCleanupResult>("dataset_cleanup_result.json")
+        .validate(&retention)
+        .expect("fixture retention keeps the newest");
+
+    round_trip::<ExportCatalogQuery>("export_catalog_query.json");
+    round_trip::<ExportCatalog>("export_catalog.json")
+        .validate()
+        .expect("fixture export catalogue is complete");
+    round_trip::<ExportPresetSaveRequest>("export_preset_save_request.json")
+        .validate()
+        .expect("fixture preset is valid");
+    let draft: ExportDraft = round_trip("export_draft.json");
+    draft.validate().expect("fixture draft is valid");
+    round_trip::<ExportPreviewResult>("export_preview_result.json")
+        .validate(&draft)
+        .expect("fixture preview matches its draft");
+    let start: ExportStartRequest = round_trip("export_start_request.json");
+    assert_eq!(
+        ExportStartRequest::from_draft(draft, start.destination.clone()),
+        start
+    );
+    round_trip::<ExportItem>("export_item.json")
+        .validate()
+        .expect("fixture export is valid");
+    round_trip::<ExportCancelRequest>("export_cancel_request.json");
+    let exports: ExportListQuery = round_trip("export_list_query.json");
+    round_trip::<ExportPage>("export_page.json")
+        .validate(&exports)
+        .expect("fixture export page matches its query");
+}
+
+#[test]
+fn operations_payloads_that_do_not_add_up_are_rejected() {
+    let draft: ExportDraft = parsed("export_draft.json");
+    let diff: DatasetDiffQuery = parsed("dataset_diff_query.json");
+    let retention: DatasetCleanupRequest = parsed("dataset_cleanup_request.json");
+    let cleanup: EventCleanupRequest = parsed("event_cleanup_request.json");
+    let events: JobEventQuery = parsed("job_event_query.json");
+    let snapshot: DatasetSnapshotQuery = parsed("dataset_snapshot_query.json");
+
+    let pipeline: [Mutation; 4] = [
+        ("stages out of order", |v| {
+            v["stages"].as_array_mut().expect("stages").swap(0, 1)
+        }),
+        ("counts that do not add up", |v| {
+            v["counts"]["queued"] = (v["counts"]["queued"].as_u64().expect("count") + 1).into();
+        }),
+        ("controls its status does not allow", |v| {
+            v["actions"] = json!(["resume", "pause"])
+        }),
+        ("an open dead letter on a pipeline still running", |v| {
+            v["status"] = "running".into();
+            v["actions"] = json!(["pause", "cancel"]);
+            v["dead_letters"] = json!([{
+                "id": "01900000-0000-7000-8000-00000000f001",
+                "task_id": v["stages"][0]["task_id"], "stage": "discovery", "attempt": 1,
+                "error_code": "boom", "error_message": "boom", "retryable": false,
+                "review_status": "open", "created_at": "2026-01-01T00:00:00.000Z",
+                "resolved_at": null, "resolved_by": null, "resolution_reason": null
+            }]);
+        }),
+    ];
+    for (label, mutate) in pipeline {
+        assert!(
+            refused::<PipelineRun>(fixture_changed("pipeline_run.json", mutate), |run| run
+                .validate()),
+            "accepted a pipeline with {label}"
+        );
+    }
+
+    assert!(refused::<PipelineStartRequest>(
+        fixture_changed("pipeline_start_request.json", |v| v["idempotency_key"] =
+            "short".into()),
+        |request| request.validate()
+    ));
+    assert!(refused::<DeadLetterRequest>(
+        fixture_changed("dead_letter_request.json", |v| v["reason"] = "  ".into()),
+        |request| request.validate()
+    ));
+    assert!(
+        refused::<EventCleanupRequest>(
+            fixture_changed("event_cleanup_request.json", |v| v["levels"] =
+                json!(["error"])),
+            |request| request.validate()
+        ),
+        "error events are never cleaned up"
+    );
+    assert!(refused::<EventCleanupResult>(
+        fixture_changed("event_cleanup_result.json", |v| v["deleted"] = 1.into()),
+        |result| result.validate(&cleanup)
+    ));
+    assert!(
+        refused::<JobEventPage>(
+            fixture_changed("job_event_page.json", |v| {
+                v["items"][0]["event"]["level"] = "error".into();
+                v["items"][0]["event"]["error_code"] = Value::Null;
+            }),
+            |page| page.validate(&events)
+        ),
+        "an error event without its code"
+    );
+
+    assert!(refused::<DatasetSnapshotDetail>(
+        fixture_changed("dataset_snapshot_detail.json", |v| {
+            v["quality"]["rows"] = (v["quality"]["rows"].as_u64().expect("rows") + 1).into();
+        }),
+        |detail| detail.validate(&snapshot.snapshot_id)
+    ));
+    assert!(
+        refused::<DatasetDiffQuery>(
+            fixture_changed("dataset_diff_query.json", |v| {
+                v["after_snapshot_id"] = v["before_snapshot_id"].clone();
+            }),
+            |query| query.validate()
+        ),
+        "a snapshot compared with itself"
+    );
+    let diffs: [Mutation; 2] = [
+        ("a wrong truncation flag", |v| v["truncated"] = true.into()),
+        ("a change naming no column", |v| {
+            v["changed"][0]["fields"] = json!(["business_id"])
+        }),
+    ];
+    for (label, mutate) in diffs {
+        assert!(
+            refused::<DatasetDiff>(fixture_changed("dataset_diff.json", mutate), |d| d
+                .validate(&diff)),
+            "accepted a diff with {label}"
+        );
+    }
+    let retained: [Mutation; 2] = [
+        ("freed space the deleted versions did not hold", |v| {
+            v["freed_bytes"] = 1.into()
+        }),
+        ("the newest version deleted", |v| {
+            let kept = v["kept"][0].take();
+            let deleted = v["deleted"][0].take();
+            v["kept"][0] = deleted;
+            v["kept"][0]["kept_because"] = "latest".into();
+            v["deleted"][0] = kept;
+            v["deleted"][0]["kept_because"] = Value::Null;
+            v["freed_bytes"] = v["deleted"][0]["bytes"].clone();
+        }),
+    ];
+    for (label, mutate) in retained {
+        assert!(
+            refused::<DatasetCleanupResult>(
+                fixture_changed("dataset_cleanup_result.json", mutate),
+                |result| result.validate(&retention)
+            ),
+            "accepted a retention with {label}"
+        );
+    }
+
+    let drafts: [Mutation; 3] = [
+        ("do-not-contact leads included without a reason", |v| {
+            v["include_suppressed"] = true.into()
+        }),
+        ("a query export without its query", |v| {
+            v["query"] = Value::Null
+        }),
+        ("a column twice", |v| {
+            v["columns"][1] = v["columns"][0].clone()
+        }),
+    ];
+    for (label, mutate) in drafts {
+        assert!(
+            refused::<ExportDraft>(fixture_changed("export_draft.json", mutate), |d| d
+                .validate()),
+            "accepted a draft with {label}"
+        );
+    }
+    let previews: [Mutation; 3] = [
+        ("a cell a spreadsheet would run", |v| {
+            v["sample"][0][0] = "=HYPERLINK(\"http://x\")".into()
+        }),
+        ("counts that do not add up", |v| v["exported"] = 20.into()),
+        ("a do-not-contact lead left in", |v| {
+            v["sample"][0][12] = true.into()
+        }),
+    ];
+    for (label, mutate) in previews {
+        assert!(
+            refused::<ExportPreviewResult>(
+                fixture_changed("export_preview_result.json", mutate),
+                |preview| preview.validate(&draft)
+            ),
+            "accepted a preview with {label}"
+        );
+    }
+    assert!(
+        refused::<ExportItem>(
+            fixture_changed("export_item.json", |v| v["export"]["status"] =
+                "succeeded".into()),
+            |item| item.validate()
+        ),
+        "a written export without its hash"
+    );
+    assert!(
+        refused::<ExportCatalog>(
+            fixture_changed("export_catalog.json", |v| {
+                v["presets"]
+                    .as_array_mut()
+                    .expect("presets")
+                    .retain(|view| view["preset"]["key"] != "contact_review");
+            }),
+            |catalog| catalog.validate()
+        ),
+        "a catalogue without a built-in preset"
+    );
+}
+
+#[test]
 fn every_fixture_is_covered() {
     let dir = common::repo_root().join("packages/shared-types/fixtures");
     let mut names: Vec<String> = fs::read_dir(dir)
@@ -1158,8 +1423,18 @@ fn every_fixture_is_covered() {
             "crawl_url_list_query.json",
             "crawl_url_page.json",
             "criteria_check.json",
+            "dataset_cleanup_request.json",
+            "dataset_cleanup_result.json",
+            "dataset_diff.json",
+            "dataset_diff_query.json",
             "dataset_list_query.json",
             "dataset_page.json",
+            "dataset_snapshot_detail.json",
+            "dataset_snapshot_list_query.json",
+            "dataset_snapshot_page.json",
+            "dataset_snapshot_query.json",
+            "dataset_snapshot_request.json",
+            "dead_letter_request.json",
             "decision_maker_list_query.json",
             "decision_maker_page.json",
             "decision_maker_review_request.json",
@@ -1172,17 +1447,31 @@ fn every_fixture_is_covered() {
             "envelope.request.health.json",
             "envelope.result.diagnostics.json",
             "envelope.result.error.json",
+            "event_cleanup_request.json",
+            "event_cleanup_result.json",
             "evidence_detail.json",
             "evidence_query.json",
             "explorer_catalog.json",
             "explorer_catalog_query.json",
             "explorer_page.json",
             "explorer_query.json",
+            "export_cancel_request.json",
+            "export_catalog.json",
+            "export_catalog_query.json",
+            "export_draft.json",
+            "export_item.json",
+            "export_list_query.json",
+            "export_page.json",
+            "export_preset_save_request.json",
             "export_preview.json",
             "export_preview_request.json",
+            "export_preview_result.json",
+            "export_start_request.json",
             "icp_profile_view.json",
             "icp_save_request.json",
             "import_preview.json",
+            "job_event_page.json",
+            "job_event_query.json",
             "latino_business_list_query.json",
             "latino_business_page.json",
             "latino_detail.json",
@@ -1200,6 +1489,11 @@ fn every_fixture_is_covered() {
             "match_detail.json",
             "match_list_query.json",
             "match_page.json",
+            "pipeline_control_request.json",
+            "pipeline_list_query.json",
+            "pipeline_page.json",
+            "pipeline_run.json",
+            "pipeline_start_request.json",
             "research_action_request.json",
             "research_workspace.json",
             "research_workspace_query.json",

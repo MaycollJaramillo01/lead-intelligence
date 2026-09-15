@@ -1,0 +1,6 @@
+{
+  "job_id": "01900000-0000-7000-8000-000000001670",
+  "task_id": "01900000-0000-7000-8000-000000001675",
+  "action": "retry",
+  "reason": "Synthetic fixture: the rules were fixed"
+}

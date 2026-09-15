@@ -1,0 +1,7 @@
+{
+  "project_id": "01900000-0000-7000-8000-000000000001",
+  "campaign_id": null,
+  "check_mail_domains": false,
+  "priority": 0,
+  "idempotency_key": "synthetic-fixture-pipeline"
+}

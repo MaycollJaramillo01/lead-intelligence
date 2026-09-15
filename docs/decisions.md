@@ -1124,3 +1124,143 @@ The grid:
 - A filtered query always reads the covering index, even when its filter matches most leads and a walk
   would have stopped sooner.
 - A sort may hold about 100 bytes per lead in memory.
+
+## D-083 · A pipeline is a job that drives the engines' own jobs, never a second scheduler (phase 13)
+
+**Context.** Phase 13 asks for a durable DAG from discovery to export eligibility with retries,
+checkpoints, cancellation, resource limits and backpressure. Every engine already runs resumable jobs
+with its own checkpoints, limits and cancellation (D-027, `jobs.BackgroundJobs`).
+
+**Decision.** A pipeline is a `jobs` row of kind `pipeline` whose `job_tasks` are its ten stages.
+When it is queued, each stage's version, inputs, outputs, retry policy and resources are written to
+`pipeline_stage_specs` and `pipeline_stage_dependencies` and never change (triggers). A stage claims
+atomically when its dependencies succeeded, no other pipeline of the project runs a stage, a slot is
+free for every resource it uses and there is no RAM or disk pressure. An attempt attaches the engine
+job already open for the project or starts one, and records it in `task_attempt_jobs` before waiting,
+so a restart resumes that job instead of starting another. Pause, resume and cancel are passed on to
+the engine job. Idempotency: `pipeline:<key>` is the job's unique idempotency key.
+
+**Trade-off.** Stages of one project run one at a time even where they could overlap; the engines'
+own per-project work is the unit, so a stage is as fine-grained as its engine.
+
+## D-084 · Retry recoverable causes; a refusal becomes a dead letter a person resolves (phase 13)
+
+**Decision.** `timeout`, `rate_limited`, `network`, `store_busy`, `store_unavailable` and
+`worker_interrupted` retry with exponential backoff (at most 60 s) up to the stage's attempts. A
+refusal by an engine (`configuration`, a `ValueError` or `LookupError`), an engine job cancelled
+outside the pipeline and anything unexpected write a `dead_letter_tasks` row and fail the pipeline.
+A person retries (one more attempt) or skips (the stage counts as done with nothing produced), always
+with a reason; the dead letter keeps its failure.
+
+**Trade-off.** An unexpected exception that a retry would have cleared waits for a person.
+
+## D-085 · A snapshot is one moment with its quality report; retention never breaks lineage (phase 13)
+
+**Decision.** A snapshot reads every row, the version and the lineage inside one SQLite read
+transaction (its cut-off), writes DuckDB rows and Parquet partitioned by region with explicit types,
+and registers `query_json`, `cutoff_at`, `pipeline_versions_json` and a quality report measured from
+the Parquet copy (rows, duplicates, coverage and unknowns per field, statuses, tiers, score bands,
+unscored, suppressed, stale rows, freshness). Schema 2 adds the score run, tier, total and
+do-not-contact flag per row. A diff reads both Parquet copies and reports added, removed and changed
+rows with the fields that changed. Retention keeps the newest N versions, every version an export was
+written from and every version a kept one derives from; it is previewed, then applied with a reason.
+
+**Trade-off.** Snapshots copy every business of the project: their size grows with the project, not
+with a query.
+
+## D-086 · Exports are local files written atomically with a manifest; the page never names a path (phase 13)
+
+**Decision.**
+
+- The desktop core opens the native save dialog and gives the page a one-time grant; `start_export`
+  exchanges it for the path. The worker still checks the path: absolute, local, an existing folder,
+  the format's extension, and not inside the app's data folder (except `exports/`).
+- Rows stream in batches of 500 into `<file>.partial` (CSV with optional BOM, JSON, JSONL, XLSX
+  written as a streamed zip, Parquet through DuckDB with explicit types), flushed, hashed with SHA-256,
+  then renamed; the manifest is written the same way. A cancel, a failure or a restart removes the
+  partial files.
+- Do-not-contact leads are excluded unless the draft includes them with a reason (flagged per row);
+  pattern hypotheses are never exported. Every row carries `exported_at` and its versions and
+  freshness columns.
+- CSV/XLSX cells starting with `=`, `+`, `-`, `@`, tab or carriage return get a leading `'`; control
+  characters are dropped; cells are cut at 32 767 characters and XLSX refuses more than 1 048 575 rows.
+- The history (`exports`) records who, what, where, the configuration, the preset and the hash; nothing
+  is sent anywhere.
+
+**Trade-off.** A query export reads the leads matching at write time; only a snapshot export is
+reproducible byte for byte (the manifest says which).
+
+## D-087 · Five built-in export presets, versioned and cloned, never rewritten (phase 13)
+
+**Decision.** `sales_ready_concise` (CSV), `full_evidence_audit`, `contact_review` and
+`website_opportunity_report` (XLSX) over explorer queries, and `dataset_analytical` (Parquet) over
+snapshots. Saving a preset writes its next version and marks the previous one superseded; a built-in
+preset is cloned under a new key. Every column in the catalogue carries its description, shown in the
+wizard, so a preset never hides what a field means.
+
+**Trade-off.** Presets are shared by everyone using the store; there is no per-user preset.
+
+## D-088 · The worker ships as a PyInstaller one-folder build next to the app (phase 14)
+
+**Context.** The release app needs the Python worker without a Python installation. PyInstaller and
+Nuitka were both tried on this machine with the same entry point (numbers in
+[packaging.md](packaging.md#3-the-sidecar-pyinstaller-or-nuitka)).
+
+**Decision.** PyInstaller 6.22.3, one folder, from the locked `packaging` dependency group
+(`services/research-engine/packaging/research-engine.spec`): the worker's SQL migrations and prompts
+as data, development tools excluded, a console program the core starts without a window. The Tauri
+bundle copies it to `<install dir>/research-engine/` through `src-tauri/tauri.bundle.conf.json`, which
+only `pnpm build` merges, so development and test builds need no sidecar. The core looks for
+`research-engine/research-engine.exe` beside the app, then a bare `research-engine.exe`.
+
+**Trade-off.** Nuitka could not build here (Python 3.12 needs MSVC 14.3; Visual Studio 2019 has 14.2)
+and would only add compiled code, which protects no secret in this worker. The folder weighs 188 MiB,
+102 of them Playwright's driver.
+
+## D-089 · A per-user NSIS installer that refuses downgrades and keeps the analyst's data (phase 14)
+
+**Decision.** NSIS in `currentUser` mode (no administrator rights), English and Spanish,
+`allowDowngrades: false` because a store migrated by a newer build cannot be opened by an older one.
+Uninstalling removes the program and keeps data, logs and configuration unless the uninstaller's
+"delete the application data" option is ticked. Nothing is signed and no update endpoint is
+configured: neither a certificate nor a server exists, so both are documented processes
+([packaging.md](packaging.md#7-signing)), never faked.
+
+**Trade-off.** Unsigned installers trigger SmartScreen; every update is a manual reinstall until a
+signed update feed exists.
+
+## D-090 · One instance, and a window that may only listen (phase 14)
+
+**Decision.** `tauri-plugin-single-instance` is the first plugin: a second launch focuses the running
+window instead of opening the stores again (two instances fought over DuckDB's lock). The `default`
+capability grants only `core:event:allow-listen` and `core:event:allow-unlisten`: the interface uses
+nothing else from Tauri; the app's own commands validate payloads in Rust and the save dialog is
+opened by the core. The credential store D-005 foresaw for secrets is not needed: the app stores
+no secret (sources needing credentials stay disabled).
+
+**Trade-off.** The app's commands are not listed one by one in an app manifest; CSP and never rendering
+fetched HTML keep a script in the page unlikely.
+
+## D-091 · The data folder is bounded so no path passes Windows' 260 characters (phase 14)
+
+**Context.** Seeding a store in a folder 157 characters deep failed: an artifact's temporary name
+(64-character hash, extension, a 36-character id) passed 260 characters, and Python on Windows without
+long-path support could not open it.
+
+**Decision.** Temporary artifact names are short (16 hash characters and 8 random ones). The core
+refuses a data folder longer than 140 characters before starting the worker, with the reason: the
+deepest file the worker writes, a snapshot partition, adds 108 characters.
+
+**Trade-off.** A folder deeper than 140 characters cannot hold the data even on machines with long
+paths enabled.
+
+## D-092 · Releases carry an SBOM and a dependency scan; flagged crates are updated or triaged (phase 14)
+
+**Decision.** `pnpm run build:sbom` writes CycloneDX 1.5 files of what ships (`cargo tree` over normal
+and build dependencies for Windows x64, `uv export --no-dev`, `pnpm sbom --prod`). Before a release:
+`pnpm audit --prod`, `pip-audit` over the exported requirements and an OSV query over `Cargo.lock`.
+Flagged crates with a compatible fix are updated (`time` 0.3.55, `serde_with` 3.23.0); the rest are
+triaged in the phase report (Linux-only, build-time only or unmaintained without a fix).
+
+**Trade-off.** `quick-xml` 0.38 (two denial-of-service advisories, fixed in 0.41) stays until `plist`
+and Tauri move: it only parses the build's own configuration, never input.

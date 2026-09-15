@@ -29,6 +29,19 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
+    "publisher": "Lead Intelligence",
+    "copyright": "© 2026 Lead Intelligence",
+    "category": "Business",
+    "shortDescription": "Local B2B lead research backed by evidence",
+    "longDescription": "Discovers, researches and prioritises US businesses on this computer. No cloud service is required; local AI through Ollama is optional.",
+    "windows": {
+      "allowDowngrades": false,
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["English", "Spanish"],
+        "displayLanguageSelector": false
+      }
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

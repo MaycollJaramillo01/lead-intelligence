@@ -1,0 +1,22 @@
+{
+  "mode": "preview",
+  "deleted": [
+    {
+      "snapshot_id": "01900000-0000-7000-8000-000000001715",
+      "version": 1,
+      "row_count": 20,
+      "bytes": 19648,
+      "kept_because": null
+    }
+  ],
+  "kept": [
+    {
+      "snapshot_id": "01900000-0000-7000-8000-000000001728",
+      "version": 2,
+      "row_count": 20,
+      "bytes": 19651,
+      "kept_because": "latest"
+    }
+  ],
+  "freed_bytes": 19648
+}

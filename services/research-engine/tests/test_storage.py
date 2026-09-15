@@ -303,3 +303,24 @@ def test_data_paths_are_portable(tmp_path: Path) -> None:
     target = data_path(tmp_path, "datasets/abc/snapshot")
     assert target == (tmp_path / "datasets" / "abc" / "snapshot").resolve()
     assert relative_data_path(tmp_path, target) == "datasets/abc/snapshot"
+
+
+@pytest.mark.parametrize(
+    "relative",
+    [
+        "../outside.sqlite3",
+        "datasets/../../outside",
+        "/etc/passwd",
+        "C:/Windows/win.ini",
+        r"a\..\b",
+        "",
+    ],
+)
+def test_a_stored_path_never_leaves_the_data_directory(tmp_path: Path, relative: str) -> None:
+    from research_engine.storage import data_path
+
+    with pytest.raises(ValueError, match="path"):
+        data_path(tmp_path, relative)
+    assert (
+        data_path(tmp_path, "datasets/a/b.parquet") == (tmp_path / "datasets/a/b.parquet").resolve()
+    )

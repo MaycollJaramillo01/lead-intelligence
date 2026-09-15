@@ -7,7 +7,13 @@ commercial need, ICP fit and an explanation of why each one is worth contacting.
 
 Everything runs on this machine. No cloud service or LLM API is required.
 
-> **Status: Phase 12 — Lead Explorer and commercial research.** Discovery (phase 04) finds candidate references, the
+> **Status: Phase 14 — production, security, performance and Windows packaging.** Phase 13 chains the
+> engines into durable pipelines, freezes datasets as snapshots with quality reports and diffs, and
+> writes local exports with manifests; phase 14 packages the app and its worker as a per-user NSIS
+> installer ([packaging](docs/packaging.md), [security](docs/security.md),
+> [performance](docs/performance.md)).
+>
+> **Before:** phase 12 — Lead Explorer and commercial research. Discovery (phase 04) finds candidate references, the
 > Research Center (phase 05) crawls their websites, entity resolution (phase 06) merges records of the
 > same business, Latino evidence (phase 07) keeps explicitly evidenced ownership apart from
 > Spanish-speaking market affinity, and website intelligence (phase 08) audits every crawled site
@@ -51,18 +57,19 @@ Everything runs on this machine. No cloud service or LLM API is required.
 Run from the repository root. `pnpm run setup` must be spelled with `run` (`pnpm setup` is a
 built-in pnpm command).
 
-| Command                                           | What it does                                                                   |
-| ------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `pnpm run setup`                                  | Install JS dependencies (frozen lockfile) and the Python worker (uv, locked)   |
-| `pnpm dev`                                        | Run the desktop app with hot reload (Vite dev server + Tauri)                  |
-| `pnpm check`                                      | Contracts drift check, lint + format check, typecheck and every test suite     |
-| `pnpm test` · `test:ts` · `test:rust` · `test:py` | Test suites (Rust and Python tests start the real worker)                      |
-| `pnpm lint` · `pnpm format`                       | Lint / auto-format TypeScript, Rust and Python                                 |
-| `pnpm typecheck`                                  | `tsc` for the TS packages and `mypy --strict` for the worker                   |
-| `pnpm contracts`                                  | Regenerate JSON Schema, fixtures and TS types from the Pydantic contracts      |
-| `pnpm build:app`                                  | Release build of the desktop binary, no installer                              |
-| `pnpm build`                                      | Release build plus NSIS installer (the Python sidecar is packaged in phase 14) |
-| `pnpm clean`                                      | Delete build outputs and tool caches only — never `data/`, `logs/` or deps     |
+| Command                                           | What it does                                                                 |
+| ------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `pnpm run setup`                                  | Install JS dependencies (frozen lockfile) and the Python worker (uv, locked) |
+| `pnpm dev`                                        | Run the desktop app with hot reload (Vite dev server + Tauri)                |
+| `pnpm check`                                      | Contracts drift check, lint + format check, typecheck and every test suite   |
+| `pnpm test` · `test:ts` · `test:rust` · `test:py` | Test suites (Rust and Python tests start the real worker)                    |
+| `pnpm lint` · `pnpm format`                       | Lint / auto-format TypeScript, Rust and Python                               |
+| `pnpm typecheck`                                  | `tsc` for the TS packages and `mypy --strict` for the worker                 |
+| `pnpm contracts`                                  | Regenerate JSON Schema, fixtures and TS types from the Pydantic contracts    |
+| `pnpm build:app`                                  | Release build of the desktop binary, no installer                            |
+| `pnpm build`                                      | Release build: worker sidecar (PyInstaller) plus NSIS installer              |
+| `pnpm run build:sbom`                             | CycloneDX SBOMs of what ships, under `dist/sbom/`                            |
+| `pnpm clean`                                      | Delete build outputs and tool caches only — never `data/`, `logs/` or deps   |
 
 ## Layout
 

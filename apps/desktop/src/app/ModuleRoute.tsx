@@ -9,7 +9,9 @@ import { DiscoveryScreen } from "@/features/discovery/DiscoveryScreen";
 import { SourcesScreen } from "@/features/sources/SourcesScreen";
 import { LeadExplorerScreen } from "@/features/leads/LeadExplorerScreen";
 import { DatasetsScreen } from "@/features/datasets/DatasetsScreen";
+import { ExportsScreen } from "@/features/exports/ExportsScreen";
 import { JobsScreen } from "@/features/jobs/JobsScreen";
+import { LogsScreen } from "@/features/logs/LogsScreen";
 import { OverviewScreen } from "@/features/overview/OverviewScreen";
 import { IcpBuilderScreen } from "@/features/scoring/IcpBuilderScreen";
 import { ScoringModelsScreen } from "@/features/scoring/ScoringModelsScreen";
@@ -31,7 +33,9 @@ const SCREENS: Record<string, ComponentType> = {
   "ai-models": AiModelsScreen,
   jobs: JobsScreen,
   datasets: DatasetsScreen,
+  exports: ExportsScreen,
   system: SystemScreen,
+  logs: LogsScreen,
   settings: SettingsScreen,
 };
 

@@ -36,6 +36,9 @@ const mocks = vi.hoisted(() => ({
   exploreLeads: vi.fn<typeof desktop.exploreLeads>(),
   getBusiness: vi.fn<typeof desktop.getBusiness>(),
   getSalesBrief: vi.fn<typeof desktop.getSalesBrief>(),
+  listExports: vi.fn<typeof desktop.listExports>(),
+  getExportCatalog: vi.fn<typeof desktop.getExportCatalog>(),
+  listJobEvents: vi.fn<typeof desktop.listJobEvents>(),
 }));
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
@@ -119,11 +122,20 @@ describe("application shell", () => {
     expect(mocks.listSources).toHaveBeenCalledWith({ project_id: null });
   });
 
-  it("says clearly when a module is not configured yet", async () => {
+  it("opens the exports and the event log, the last modules of phase 13", async () => {
+    mocks.listExports.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
+    mocks.getExportCatalog.mockRejectedValue(new IpcError("worker_unavailable", "stopped"));
+    mocks.listJobEvents.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
     renderApp("/exports");
-    expect(await screen.findByText("This module is not configured yet")).toBeTruthy();
-    expect(screen.getByText("Planned for phase 13")).toBeTruthy();
-    expect(screen.getAllByText("Not configured").length).toBeGreaterThan(0);
+    expect(await screen.findByText("Nothing exported yet")).toBeTruthy();
+    expect(screen.queryByText("This module is not configured yet")).toBeNull();
+  });
+
+  it("opens the event log", async () => {
+    mocks.listJobEvents.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
+    renderApp("/logs");
+    expect(await screen.findByText("No events")).toBeTruthy();
+    expect(screen.queryByText("This module is not configured yet")).toBeNull();
   });
 
   it("opens a business in full from a deep link, under its module", async () => {

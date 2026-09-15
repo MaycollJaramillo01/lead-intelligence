@@ -1,0 +1,61 @@
+{
+  "key": null,
+  "clone_from": "sales_ready_concise",
+  "name": "Synthetic sales-ready (JSONL)",
+  "description": "Synthetic fixture",
+  "definition": {
+    "source_kind": "query",
+    "format": "jsonl",
+    "columns": [
+      {
+        "key": "name",
+        "header": "Business"
+      },
+      {
+        "key": "locality",
+        "header": "City"
+      },
+      {
+        "key": "region",
+        "header": "State"
+      },
+      {
+        "key": "category",
+        "header": "Category"
+      },
+      {
+        "key": "domain",
+        "header": "Website"
+      },
+      {
+        "key": "tier",
+        "header": "Tier"
+      },
+      {
+        "key": "total_score",
+        "header": "Lead score"
+      },
+      {
+        "key": "main_channel",
+        "header": "Channel"
+      },
+      {
+        "key": "channel_status",
+        "header": "Channel status"
+      },
+      {
+        "key": "top_problem",
+        "header": "Top problem"
+      },
+      {
+        "key": "offer",
+        "header": "Offer"
+      },
+      {
+        "key": "research_status",
+        "header": "Research status"
+      }
+    ],
+    "bom": true
+  }
+}

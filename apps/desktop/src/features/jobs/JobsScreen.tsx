@@ -5,6 +5,7 @@ import { PageScroll, PageShell, Section } from "@/components/layout/page-chrome"
 import { InlineNotice, StateBlock } from "@/components/states/StateBlock";
 import { JobProgress, type JobSummary } from "@/components/domain/JobProgress";
 import { Button } from "@/components/ui/button";
+import { PipelinesPanel } from "@/features/jobs/PipelinesPanel";
 import { formatDateTime, useLanguage, useT, type TranslationKey } from "@/lib/i18n";
 import { desktop, toIpcError } from "@/lib/ipc";
 import { scoreRunPath } from "@/lib/links";
@@ -259,6 +260,7 @@ export function JobsScreen() {
   return (
     <PageShell>
       <PageScroll>
+        <PipelinesPanel />
         <Section title={t("nav.jobs")} description={t("desc.jobs")}>
           {error ? (
             <StateBlock

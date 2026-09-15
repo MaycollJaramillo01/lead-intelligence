@@ -150,6 +150,35 @@ import {
   type WebsiteRunPage,
   type WebsiteStartRequest,
   type WorkerStatus,
+  type DatasetCleanupRequest,
+  type DatasetCleanupResult,
+  type DatasetDiff,
+  type DatasetDiffQuery,
+  type DatasetSnapshotDetail,
+  type DatasetSnapshotListQuery,
+  type DatasetSnapshotPage,
+  type DatasetSnapshotQuery,
+  type DatasetSnapshotRequest,
+  type DeadLetterRequest,
+  type EventCleanupRequest,
+  type EventCleanupResult,
+  type ExportCancelRequest,
+  type ExportCatalog,
+  type ExportCatalogQuery,
+  type ExportDestination,
+  type ExportDraft,
+  type ExportFormat,
+  type ExportItem,
+  type ExportListQuery,
+  type ExportPage,
+  type ExportPresetSaveRequest,
+  type ExportPreviewResult,
+  type JobEventPage,
+  type JobEventQuery,
+  type PipelineListQuery,
+  type PipelinePage,
+  type PipelineRun,
+  type PipelineStartRequest,
 } from "@lead/shared-types";
 
 export type IpcErrorCode = CommandError["code"] | "desktop_unavailable" | "ipc_failure";
@@ -331,6 +360,39 @@ export const desktop = {
   changeResearchChecklist: (request: ChecklistChangeRequest) =>
     call<ChecklistCatalog>("change_research_checklist", { request }),
   getSalesBrief: (query: SalesBriefQuery) => call<SalesBrief>("get_sales_brief", { query }),
+  startPipeline: (request: PipelineStartRequest) =>
+    call<PipelineRun>("start_pipeline", { request }),
+  controlPipeline: (request: DiscoveryControlRequest) =>
+    call<PipelineRun>("control_pipeline", { request }),
+  resolveDeadLetter: (request: DeadLetterRequest) =>
+    call<PipelineRun>("resolve_dead_letter", { request }),
+  listPipelines: (query: PipelineListQuery) => call<PipelinePage>("list_pipelines", { query }),
+  listJobEvents: (query: JobEventQuery) => call<JobEventPage>("list_job_events", { query }),
+  cleanupJobEvents: (request: EventCleanupRequest) =>
+    call<EventCleanupResult>("cleanup_job_events", { request }),
+  createDatasetSnapshot: (request: DatasetSnapshotRequest) =>
+    call<DatasetSnapshotDetail>("create_dataset_snapshot", { request }),
+  listDatasetSnapshots: (query: DatasetSnapshotListQuery) =>
+    call<DatasetSnapshotPage>("list_dataset_snapshots", { query }),
+  getDatasetSnapshot: (query: DatasetSnapshotQuery) =>
+    call<DatasetSnapshotDetail>("get_dataset_snapshot", { query }),
+  diffDatasetSnapshots: (query: DatasetDiffQuery) =>
+    call<DatasetDiff>("diff_dataset_snapshots", { query }),
+  cleanupDataset: (request: DatasetCleanupRequest) =>
+    call<DatasetCleanupResult>("cleanup_dataset", { request }),
+  getExportCatalog: (query: ExportCatalogQuery) =>
+    call<ExportCatalog>("get_export_catalog", { query }),
+  saveExportPreset: (request: ExportPresetSaveRequest) =>
+    call<ExportCatalog>("save_export_preset", { request }),
+  previewExport: (draft: ExportDraft) => call<ExportPreviewResult>("preview_export", { draft }),
+  /** Opens the native save dialog; null when it is closed. The page never sees or sends a path. */
+  chooseExportDestination: (format: ExportFormat, suggestedName: string) =>
+    call<ExportDestination | null>("choose_export_destination", { format, suggestedName }),
+  /** Starts the export to the destination a one-time grant from the save dialog stands for. */
+  startExport: (draft: ExportDraft, grantId: string) =>
+    call<ExportItem>("start_export", { draft, grantId }),
+  cancelExport: (request: ExportCancelRequest) => call<ExportItem>("cancel_export", { request }),
+  listExports: (query: ExportListQuery) => call<ExportPage>("list_exports", { query }),
   /** Development builds only; the desktop core refuses it in release builds. */
   seedSyntheticData: () => call<SyntheticSeedResult>("seed_synthetic_data"),
   onWorkerStatus: async (handler: (status: WorkerStatus) => void): Promise<UnlistenFn> => {

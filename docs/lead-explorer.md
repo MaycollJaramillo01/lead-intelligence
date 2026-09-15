@@ -156,7 +156,8 @@ found are skipped as `not_found`.
 
 ### Export preview
 
-What an export of the query would hold, before anything is written (exports arrive in phase 13):
+What an export of the query would hold, before anything is written. **Export to a file…** opens the
+export wizard of phase 13 ([operations.md](operations.md#exports)):
 
 - **Counts:** matching, left out as do-not-contact (unless included on purpose) and exported.
 - **A real sample:** up to 50 rows, in the chosen columns.
@@ -314,13 +315,13 @@ rewritten.
   stale, partial, conflicting and test leads are labelled in words, and estimates say so.
 - **Deep links.**
 
-| Link                                | Opens                                                        | Linked from                                                    |
-| ----------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------- |
-| `/businesses/<id>`                  | The business in full                                         | The inspector                                                  |
-| `/lead-explorer?run=<score run id>` | The explorer on that run, a score version                    | Timeline, Jobs (scoring runs)                                  |
-| `/jobs?job=<job id>`                | Jobs with that job marked, or a notice when it is not listed | Timeline                                                       |
-| `/sources?source=<connector key>`   | Sources with that source marked, or a notice                 | Timeline, the inspector's summary                              |
-| `/datasets?dataset=<dataset id>`    | Datasets with that dataset marked                            | Nothing yet: a business records no dataset snapshot (phase 13) |
+| Link                                | Opens                                                        | Linked from                                                        |
+| ----------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `/businesses/<id>`                  | The business in full                                         | The inspector                                                      |
+| `/lead-explorer?run=<score run id>` | The explorer on that run, a score version                    | Timeline, Jobs (scoring runs)                                      |
+| `/jobs?job=<job id>`                | Jobs with that job marked, or a notice when it is not listed | Timeline                                                           |
+| `/sources?source=<connector key>`   | Sources with that source marked, or a notice                 | Timeline, the inspector's summary                                  |
+| `/datasets?dataset=<dataset id>`    | Datasets with that dataset marked                            | Pipelines, the export history (`?snapshot=<id>` opens its dataset) |
 
 ## 10. Limits
 
@@ -330,7 +331,7 @@ rewritten.
 | A bulk action over a query takes at most 5 000 leads, and 1 000 by id                            | Narrow the query first                                                 |
 | A refresh of contacts or evidence covers the lead's whole project: those engines run per project | Longer jobs on large projects                                          |
 | Brief phrases, hooks and the model's wording are in English                                      | Translate before use                                                   |
-| The export preview writes nothing                                                                | Exports arrive in phase 13                                             |
+| The export preview writes nothing                                                                | The export wizard writes the file (phase 13)                           |
 | The selection is kept for the session only, and the layout on this machine only                  | A restart restores the layout, not the selection                       |
 | Actors are local names; there is no multi-user locking                                           | One analyst per store                                                  |
 | Each run's index costs about 930 bytes a lead on disk, and writing a million rows took 5 minutes | Section 11                                                             |

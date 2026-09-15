@@ -116,6 +116,23 @@ pub const RESEARCH_CHECKLISTS: &str = "research.checklists";
 pub const RESEARCH_SAVE_CHECKLIST: &str = "research.save_checklist";
 pub const RESEARCH_CHANGE_CHECKLIST: &str = "research.change_checklist";
 pub const RESEARCH_BRIEF: &str = "research.brief";
+pub const PIPELINES_START: &str = "pipelines.start";
+pub const PIPELINES_CONTROL: &str = "pipelines.control";
+pub const PIPELINES_DEAD_LETTER: &str = "pipelines.dead_letter";
+pub const PIPELINES_LIST: &str = "pipelines.list";
+pub const JOBS_EVENTS: &str = "jobs.events";
+pub const JOBS_CLEANUP_EVENTS: &str = "jobs.cleanup_events";
+pub const DATASETS_SNAPSHOT: &str = "datasets.snapshot";
+pub const DATASETS_SNAPSHOTS: &str = "datasets.snapshots";
+pub const DATASETS_GET_SNAPSHOT: &str = "datasets.get_snapshot";
+pub const DATASETS_DIFF: &str = "datasets.diff";
+pub const DATASETS_CLEANUP: &str = "datasets.cleanup";
+pub const EXPORTS_CATALOG: &str = "exports.catalog";
+pub const EXPORTS_SAVE_PRESET: &str = "exports.save_preset";
+pub const EXPORTS_PREVIEW: &str = "exports.preview";
+pub const EXPORTS_START: &str = "exports.start";
+pub const EXPORTS_CANCEL: &str = "exports.cancel";
+pub const EXPORTS_LIST: &str = "exports.list";
 pub const DEV_SEED_SYNTHETIC: &str = "dev.seed_synthetic";
 const SHUTDOWN: &str = "shutdown";
 
@@ -145,6 +162,18 @@ pub const SCORING_TIMEOUT: Duration = Duration::from_secs(70);
 pub const LEADS_TIMEOUT: Duration = Duration::from_secs(70);
 /// A bulk action writes one audited change per lead, up to 5 000; the worker bounds it at 120 s.
 pub const BULK_TIMEOUT: Duration = Duration::from_secs(130);
+/// Reads of the event log, snapshot lists and export catalogues; the worker bounds them at 15 s.
+pub const OPERATIONS_READ_TIMEOUT: Duration = Duration::from_secs(25);
+/// Starting a pipeline, resolving a dead letter, listing pipelines and cancelling an export; the
+/// worker bounds them at 30 s.
+pub const OPERATIONS_TIMEOUT: Duration = Duration::from_secs(40);
+/// Pausing a pipeline waits for its engine job, and an export preview or start counts its whole
+/// query; the worker bounds them at 60 s.
+pub const LONG_OPERATION_TIMEOUT: Duration = Duration::from_secs(70);
+/// A snapshot reads every business of a project and writes its Parquet copy (300 s at the worker).
+pub const SNAPSHOT_TIMEOUT: Duration = Duration::from_secs(310);
+/// A comparison or a cleanup of snapshots reads their Parquet copies (120 s at the worker).
+pub const SNAPSHOT_COMPARE_TIMEOUT: Duration = Duration::from_secs(130);
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 const READER_DRAIN_TIMEOUT: Duration = Duration::from_secs(2);
 const HEALTH_FAILURES_BEFORE_RESTART: u32 = 2;

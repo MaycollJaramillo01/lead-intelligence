@@ -341,14 +341,15 @@ with the worker's message.
 
 ## Paths
 
-| What        | Development                | Release (Windows)                                    |
-| ----------- | -------------------------- | ---------------------------------------------------- |
-| Data        | `<repo>/data`              | `%LOCALAPPDATA%\com.leadintelligence.desktop\data`   |
-| Backups     | `<data>/backups`           | same, under the data directory                       |
-| Datasets    | `<data>/datasets`          | same, under the data directory                       |
-| Logs        | `<repo>/logs`              | `%LOCALAPPDATA%\com.leadintelligence.desktop\logs`   |
-| User config | `<repo>/config/local.toml` | `%APPDATA%\com.leadintelligence.desktop\config.toml` |
-| Worker      | uv virtualenv python       | `research-engine.exe` next to the app (phase 14)     |
+| What                                | Development                | Release (Windows)                                    |
+| ----------------------------------- | -------------------------- | ---------------------------------------------------- |
+| Data                                | `<repo>/data`              | `%LOCALAPPDATA%\com.leadintelligence.desktop\data`   |
+| Backups                             | `<data>/backups`           | same, under the data directory                       |
+| Datasets                            | `<data>/datasets`          | same, under the data directory                       |
+| Logs                                | `<repo>/logs`              | `%LOCALAPPDATA%\com.leadintelligence.desktop\logs`   |
+| User config                         | `<repo>/config/local.toml` | `%APPDATA%\com.leadintelligence.desktop\config.toml` |
+| Worker                              | uv virtualenv python       | `research-engine                                     |
+| esearch-engine.exe` next to the app |
 
 Nothing is hardcoded: paths come from Tauri's path resolver or `CARGO_MANIFEST_DIR` (debug builds
 only) and can be overridden in configuration.

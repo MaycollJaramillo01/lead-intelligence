@@ -36,13 +36,16 @@ from research_engine.contracts import (
     MessageType,
 )
 from research_engine.crawl.engine import CrawlerSettings, CrawlService, CrawlStartError
+from research_engine.datasets import DatasetError
 from research_engine.discovery.engine import DiscoveryService, DiscoveryStartError, EngineSettings
+from research_engine.exports import ExportError, ExportService
 from research_engine.handlers import ROUTES, Context, NotAllowedError, health
 from research_engine.latino.engine import LatinoService
 from research_engine.latino.store import LatinoError
 from research_engine.leads import LeadError
 from research_engine.logs import configure_logging, request_id_var
 from research_engine.ollama import OllamaProvider, ProviderError
+from research_engine.operations import OperationsError, PipelineService, ServiceEngines
 from research_engine.repository import (
     InvalidCursorError,
     InvalidTransitionError,
@@ -132,6 +135,23 @@ class Worker:
             downloads_allowed=not settings.discovery_offline,
         )
         self._scoring = ScoringService(lambda: connect(settings.data_dir))
+        self._exports = ExportService(settings.data_dir, lambda: connect(settings.data_dir))
+        self._pipelines = PipelineService(
+            settings.data_dir,
+            lambda: connect(settings.data_dir),
+            ServiceEngines(
+                discovery=self._discovery,
+                crawl=self._crawl,
+                resolution=self._resolution,
+                latino=self._latino,
+                website=self._website,
+                contacts=self._contacts,
+                ai=self._ai,
+                scoring=self._scoring,
+            ),
+            monitor,
+            browsers=self._crawl.active_renders,
+        )
         self._ctx = Context(
             settings,
             datetime.now(UTC),
@@ -144,6 +164,8 @@ class Worker:
             self._contacts,
             self._ai,
             self._scoring,
+            self._pipelines,
+            self._exports,
         )
 
     async def run(self) -> None:
@@ -166,7 +188,9 @@ class Worker:
                 | WebsiteService
                 | ContactService
                 | AiService
-                | ScoringService,
+                | ScoringService
+                | PipelineService
+                | ExportService,
             ],
             ...,
         ] = (
@@ -178,6 +202,8 @@ class Worker:
             ("contacts", self._contacts),
             ("ai", self._ai),
             ("scoring", self._scoring),
+            ("pipelines", self._pipelines),
+            ("exports", self._exports),
         )
         for name, engine in engines:
             try:
@@ -213,6 +239,8 @@ class Worker:
         finally:
             stop_wait.cancel()
             self._stopping = True
+            await self._pipelines.shutdown()
+            await self._exports.shutdown()
             await self._discovery.shutdown()
             await self._crawl.shutdown()
             await self._resolution.shutdown()
@@ -348,6 +376,9 @@ class Worker:
             AiError,
             ScoringError,
             LeadError,
+            OperationsError,
+            ExportError,
+            DatasetError,
         ) as exc:
             raise WorkerError(ErrorCode.INVALID_PAYLOAD, str(exc)) from exc
         except ProviderError as exc:

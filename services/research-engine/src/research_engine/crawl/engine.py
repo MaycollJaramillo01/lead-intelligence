@@ -319,6 +319,10 @@ class CrawlService:
 
     # ---- public surface ------------------------------------------------------------------
 
+    def active_renders(self) -> int | None:
+        """Pages Chromium renders now; None when this crawler has no browser."""
+        return None if self._browser is None else self._browser.rendering
+
     async def start(self, request: CrawlStartRequest) -> CrawlRun:
         manual: list[str] = []
         for given in request.urls:
@@ -1291,7 +1295,8 @@ def store_artifact(data_dir: Path, data: bytes, suffix: str) -> tuple[str, str]:
     target = data_dir / ARTIFACT_DIR / digest[:2] / f"{digest}{suffix}"
     if not target.exists():
         target.parent.mkdir(parents=True, exist_ok=True)
-        partial = target.with_name(f"{target.name}.{new_id()}.partial")
+        # short on purpose: Windows paths stop at 260 characters (the core bounds the data dir)
+        partial = target.with_name(f"{digest[:16]}.{new_id()[-8:]}.partial")
         partial.write_bytes(data)
         partial.replace(target)
     return relative_data_path(data_dir, target), digest

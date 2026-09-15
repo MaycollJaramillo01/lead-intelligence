@@ -116,6 +116,24 @@ pub fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Build
         commands::save_research_checklist,
         commands::change_research_checklist,
         commands::get_sales_brief,
+        commands::start_pipeline,
+        commands::control_pipeline,
+        commands::resolve_dead_letter,
+        commands::list_pipelines,
+        commands::list_job_events,
+        commands::cleanup_job_events,
+        commands::create_dataset_snapshot,
+        commands::list_dataset_snapshots,
+        commands::get_dataset_snapshot,
+        commands::diff_dataset_snapshots,
+        commands::cleanup_dataset,
+        commands::get_export_catalog,
+        commands::save_export_preset,
+        commands::preview_export,
+        commands::choose_export_destination,
+        commands::start_export,
+        commands::cancel_export,
+        commands::list_exports,
         commands::seed_synthetic_data
     ])
 }
@@ -123,6 +141,16 @@ pub fn register_commands<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Build
 pub fn run() {
     let started_at = Utc::now();
     let app = register_commands(tauri::Builder::default())
+        // registered first: a second launch focuses this window instead of opening the stores again
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main")
+                && let Err(error) = window.unminimize().and_then(|()| window.set_focus())
+            {
+                warn!(%error, "could not focus the running window");
+            }
+        }))
+        .plugin(tauri_plugin_dialog::init())
+        .manage(commands::ExportGrants::default())
         .setup(move |app| {
             let state = bootstrap(app.handle(), started_at)?;
             let supervisor = state.supervisor.clone();
@@ -272,6 +300,10 @@ pub fn dev_python(repo_root: &Path) -> PathBuf {
     }
 }
 
+/// Longest data directory the worker can use without long-path support: its deepest file is a
+/// snapshot partition (`datasets/<id>/<id>/region=XX/data_0.parquet`, about 110 characters).
+pub const MAX_DATA_DIR_CHARS: usize = 140;
+
 /// Chooses how to launch the worker: explicit configuration, the development virtualenv, or the
 /// sidecar executable placed next to the application binary by the installer.
 pub fn resolve_worker_launch(
@@ -280,6 +312,14 @@ pub fn resolve_worker_launch(
     repo_root: Option<&Path>,
     data_dir: &Path,
 ) -> Result<WorkerLaunch, String> {
+    let length = data_dir.as_os_str().len();
+    if length > MAX_DATA_DIR_CHARS {
+        return Err(format!(
+            "the data folder path has {length} characters ({}); Windows stops paths at 260 and the \
+             worker's deepest files add about 110: choose a folder of at most {MAX_DATA_DIR_CHARS}",
+            data_dir.display()
+        ));
+    }
     let (program, args) = if !config.worker.program.is_empty() {
         (
             PathBuf::from(&config.worker.program),
@@ -293,8 +333,14 @@ pub fn resolve_worker_launch(
     } else {
         let exe = std::env::current_exe()
             .map_err(|e| format!("cannot locate the application executable: {e}"))?;
-        let sidecar =
-            exe.with_file_name(format!("research-engine{}", std::env::consts::EXE_SUFFIX));
+        let name = format!("research-engine{}", std::env::consts::EXE_SUFFIX);
+        // the installer places the one-folder sidecar under `research-engine/` (D-088)
+        let bundled = exe.with_file_name("research-engine").join(&name);
+        let sidecar = if bundled.is_file() {
+            bundled
+        } else {
+            exe.with_file_name(&name)
+        };
         (sidecar, config.worker.args.clone())
     };
     if !program.is_file() {
@@ -381,5 +427,14 @@ mod tests {
             resolve_worker_launch(&config, Environment::Production, None, Path::new("data"))
                 .unwrap_err();
         assert!(error.contains("not found"), "{error}");
+    }
+
+    #[test]
+    fn a_data_folder_too_deep_for_windows_paths_is_refused_before_launch() {
+        let config = config::load(Path::new("missing.toml"), &|_| None).config;
+        let deep = PathBuf::from("C:/").join("d".repeat(MAX_DATA_DIR_CHARS));
+        let error =
+            resolve_worker_launch(&config, Environment::Production, None, &deep).unwrap_err();
+        assert!(error.contains("at most 140"), "{error}");
     }
 }

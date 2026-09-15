@@ -1,0 +1,273 @@
+{
+  "items": [
+    {
+      "event": {
+        "id": "01900000-0000-7000-8000-000000001711",
+        "job_id": "01900000-0000-7000-8000-000000001670",
+        "task_id": "01900000-0000-7000-8000-000000001675",
+        "level": "info",
+        "event": "stage_started",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "attempt": 2,
+          "stage": "latino_evidence"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "job_kind": "pipeline",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "stage": "latino_evidence"
+    },
+    {
+      "event": {
+        "id": "01900000-0000-7000-8000-000000001708",
+        "job_id": "01900000-0000-7000-8000-000000001670",
+        "task_id": "01900000-0000-7000-8000-000000001675",
+        "level": "info",
+        "event": "dead_letter_retried",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "by": "fixture",
+          "reason": "Synthetic fixture: the rules were fixed",
+          "stage": "latino_evidence"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "job_kind": "pipeline",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "stage": "latino_evidence"
+    },
+    {
+      "event": {
+        "id": "01900000-0000-7000-8000-000000001706",
+        "job_id": "01900000-0000-7000-8000-000000001670",
+        "task_id": null,
+        "level": "error",
+        "event": "pipeline_failed",
+        "error_code": "configuration",
+        "retryable": false,
+        "detail_json": {
+          "message": "synthetic fixture: the evidence rules could not load",
+          "stage": "latino_evidence"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "job_kind": "pipeline",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "stage": null
+    },
+    {
+      "event": {
+        "id": "01900000-0000-7000-8000-000000001703",
+        "job_id": "01900000-0000-7000-8000-000000001670",
+        "task_id": "01900000-0000-7000-8000-000000001675",
+        "level": "error",
+        "event": "stage_failed",
+        "error_code": "configuration",
+        "retryable": false,
+        "detail_json": {
+          "attempt": 1,
+          "message": "synthetic fixture: the evidence rules could not load",
+          "stage": "latino_evidence"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "job_kind": "pipeline",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "stage": "latino_evidence"
+    },
+    {
+      "event": {
+        "id": "01900000-0000-7000-8000-000000001702",
+        "job_id": "01900000-0000-7000-8000-000000001670",
+        "task_id": "01900000-0000-7000-8000-000000001675",
+        "level": "info",
+        "event": "stage_started",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "attempt": 1,
+          "stage": "latino_evidence"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "job_kind": "pipeline",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "stage": "latino_evidence"
+    },
+    {
+      "event": {
+        "id": "01900000-0000-7000-8000-000000001700",
+        "job_id": "01900000-0000-7000-8000-000000001670",
+        "task_id": "01900000-0000-7000-8000-000000001674",
+        "level": "info",
+        "event": "stage_succeeded",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "stage": "entity_resolution"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "job_kind": "pipeline",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "stage": "entity_resolution"
+    },
+    {
+      "event": {
+        "id": "01900000-0000-7000-8000-000000001698",
+        "job_id": "01900000-0000-7000-8000-000000001670",
+        "task_id": "01900000-0000-7000-8000-000000001674",
+        "level": "info",
+        "event": "stage_started",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "attempt": 1,
+          "stage": "entity_resolution"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "job_kind": "pipeline",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "stage": "entity_resolution"
+    },
+    {
+      "event": {
+        "id": "01900000-0000-7000-8000-000000001696",
+        "job_id": "01900000-0000-7000-8000-000000001670",
+        "task_id": "01900000-0000-7000-8000-000000001673",
+        "level": "info",
+        "event": "stage_succeeded",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "stage": "normalization"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "job_kind": "pipeline",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "stage": "normalization"
+    },
+    {
+      "event": {
+        "id": "01900000-0000-7000-8000-000000001694",
+        "job_id": "01900000-0000-7000-8000-000000001670",
+        "task_id": "01900000-0000-7000-8000-000000001673",
+        "level": "info",
+        "event": "stage_started",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "attempt": 1,
+          "stage": "normalization"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "job_kind": "pipeline",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "stage": "normalization"
+    },
+    {
+      "event": {
+        "id": "01900000-0000-7000-8000-000000001691",
+        "job_id": "01900000-0000-7000-8000-000000001670",
+        "task_id": "01900000-0000-7000-8000-000000001672",
+        "level": "info",
+        "event": "stage_skipped",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "reason": "no_campaign",
+          "stage": "acquisition"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "job_kind": "pipeline",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "stage": "acquisition"
+    },
+    {
+      "event": {
+        "id": "01900000-0000-7000-8000-000000001689",
+        "job_id": "01900000-0000-7000-8000-000000001670",
+        "task_id": "01900000-0000-7000-8000-000000001672",
+        "level": "info",
+        "event": "stage_started",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "attempt": 1,
+          "stage": "acquisition"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "job_kind": "pipeline",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "stage": "acquisition"
+    },
+    {
+      "event": {
+        "id": "01900000-0000-7000-8000-000000001687",
+        "job_id": "01900000-0000-7000-8000-000000001670",
+        "task_id": "01900000-0000-7000-8000-000000001671",
+        "level": "info",
+        "event": "stage_skipped",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "reason": "no_campaign",
+          "stage": "discovery"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "job_kind": "pipeline",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "stage": "discovery"
+    },
+    {
+      "event": {
+        "id": "01900000-0000-7000-8000-000000001685",
+        "job_id": "01900000-0000-7000-8000-000000001670",
+        "task_id": "01900000-0000-7000-8000-000000001671",
+        "level": "info",
+        "event": "stage_started",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "attempt": 1,
+          "stage": "discovery"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "job_kind": "pipeline",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "stage": "discovery"
+    },
+    {
+      "event": {
+        "id": "01900000-0000-7000-8000-000000001681",
+        "job_id": "01900000-0000-7000-8000-000000001670",
+        "task_id": null,
+        "level": "info",
+        "event": "pipeline_queued",
+        "error_code": null,
+        "retryable": null,
+        "detail_json": {
+          "campaign_id": null,
+          "request_id": "01900000-0000-7000-8000-000000000001",
+          "stages": 10
+        },
+        "created_at": "2026-01-01T00:00:00.000Z"
+      },
+      "job_kind": "pipeline",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "stage": null
+    }
+  ],
+  "next_cursor": null,
+  "total": 14
+}

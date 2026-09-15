@@ -140,7 +140,8 @@ export type EntityType =
   | "match_candidate"
   | "contact_suppression"
   | "saved_view"
-  | "research_checklist";
+  | "research_checklist"
+  | "export_preset";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "AiModelChangeAction".
@@ -767,6 +768,48 @@ export type SalesReadyCriterion =
   | "checklist_complete";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LineageKind".
+ */
+export type LineageKind = "source_run" | "score_run" | "parent_snapshot";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportStatus".
+ */
+export type ExportStatus = "pending" | "running" | "succeeded" | "failed" | "cancelled";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportFormat".
+ */
+export type ExportFormat = "csv" | "xlsx" | "json" | "jsonl" | "parquet";
+/**
+ * The stages of a campaign pipeline, in order. Each runs the engine job of its phase.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "PipelineStage".
+ */
+export type PipelineStage =
+  | "discovery"
+  | "acquisition"
+  | "normalization"
+  | "entity_resolution"
+  | "latino_evidence"
+  | "website_intelligence"
+  | "contact_intelligence"
+  | "local_ai"
+  | "scoring"
+  | "review_export_eligibility";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DeadLetterStatus".
+ */
+export type DeadLetterStatus = "open" | "retried" | "skipped";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DeadLetterAction".
+ */
+export type DeadLetterAction = "retry" | "skip";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "DecisionMakerDecision".
  */
 export type DecisionMakerDecision = "confirm" | "reject" | "reset";
@@ -817,14 +860,14 @@ export type EvidenceRole = "supports" | "contradicts" | "context";
 export type ExplorerFieldType = "text" | "number" | "enum" | "flag" | "set";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ExportStatus".
+ * via the `definition` "ExportSourceKind".
  */
-export type ExportStatus = "pending" | "running" | "succeeded" | "failed" | "cancelled";
+export type ExportSourceKind = "query" | "snapshot";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "ExportFormat".
+ * via the `definition` "ExportColumnType".
  */
-export type ExportFormat = "csv" | "xlsx" | "json" | "jsonl" | "parquet";
+export type ExportColumnType = "text" | "number" | "flag" | "timestamp" | "list";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "FieldAgreement".
@@ -907,6 +950,11 @@ export type ReasonDirection = "for" | "against" | "rule";
  */
 export type OpportunityInput =
   "DIGITAL_GAP" | "BUSINESS_HEALTH" | "BUYING_CAPACITY" | "COMMERCIAL_INTENT";
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "PipelineResource".
+ */
+export type PipelineResource = "http" | "browser" | "cpu" | "ram" | "disk" | "gpu";
 /**
  * What a refresh asks the engines for: the website pages (a crawl), the published contacts, or
  * the Latino evidence. Each one starts its job; nothing is sent to the business.
@@ -2907,6 +2955,15 @@ export interface CategoryCriterion {
   excluded_terms: string[];
 }
 /**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ChangedRow".
+ */
+export interface ChangedRow {
+  business_id: string;
+  display_name: string;
+  fields: string[];
+}
+/**
  * At least one usable published channel of these types, and a published decision maker when
  * asked for.
  *
@@ -3044,6 +3101,27 @@ export interface ChecklistState {
   complete: boolean;
 }
 /**
+ * An engine job a stage started, or attached because it was already open for the project.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ChildJob".
+ */
+export interface ChildJob {
+  job_id: string;
+  kind: string;
+  status: JobStatus;
+  reused: boolean;
+  progress_done: number;
+  progress_total: number | null;
+  started_at: string | null;
+  finished_at: string | null;
+  rate_per_minute: number | null;
+  eta_seconds: number | null;
+  stats: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+}
+/**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "CitedPoint".
  */
@@ -3062,6 +3140,17 @@ export interface CitedPoint {
     | [string, string, string, string, string, string]
     | [string, string, string, string, string, string, string]
     | [string, string, string, string, string, string, string, string];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "CleanupSnapshot".
+ */
+export interface CleanupSnapshot {
+  snapshot_id: string;
+  version: number;
+  row_count: number;
+  bytes: number;
+  kept_because: string | null;
 }
 /**
  * Which column of an imported file feeds which candidate field. Unmapped fields stay empty.
@@ -4047,14 +4136,56 @@ export interface Dataset {
   deleted_reason: string | null;
 }
 /**
+ * Deletes old snapshot versions of a dataset, keeping the newest `keep_latest` and whatever
+ * lineage or exports still need. Preview first; applying needs a reason.
+ *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "DatasetListItem".
+ * via the `definition` "DatasetCleanupRequest".
  */
-export interface DatasetListItem {
-  dataset: Dataset;
+export interface DatasetCleanupRequest {
+  dataset_id: string;
+  keep_latest: number;
+  mode: BulkMode;
+  reason: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetCleanupResult".
+ */
+export interface DatasetCleanupResult {
+  mode: BulkMode;
+  deleted: CleanupSnapshot[];
+  kept: CleanupSnapshot[];
+  freed_bytes: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetDiff".
+ */
+export interface DatasetDiff {
+  before: DatasetSnapshotItem;
+  after: DatasetSnapshotItem;
+  added_count: number;
+  removed_count: number;
+  changed_count: number;
+  unchanged_count: number;
+  added: DiffRow[];
+  removed: DiffRow[];
+  changed: ChangedRow[];
+  compared_fields: string[];
+  truncated: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetSnapshotItem".
+ */
+export interface DatasetSnapshotItem {
+  snapshot: DatasetSnapshot;
+  dataset_name: string;
+  project_id: string;
+  lineage_count: number;
+  export_count: number;
   is_synthetic: boolean;
-  snapshot_count: number;
-  latest_snapshot: DatasetSnapshot | null;
 }
 /**
  * Immutable, reproducible rows in DuckDB plus a partitioned Parquet copy.
@@ -4074,6 +4205,43 @@ export interface DatasetSnapshot {
     [k: string]: JsonValue | undefined;
   };
   created_at: string;
+  query_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  cutoff_at: string | null;
+  pipeline_versions_json: {
+    [k: string]: string | undefined;
+  };
+  quality_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DiffRow".
+ */
+export interface DiffRow {
+  business_id: string;
+  display_name: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetDiffQuery".
+ */
+export interface DatasetDiffQuery {
+  before_snapshot_id: string;
+  after_snapshot_id: string;
+  limit: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetListItem".
+ */
+export interface DatasetListItem {
+  dataset: Dataset;
+  is_synthetic: boolean;
+  snapshot_count: number;
+  latest_snapshot: DatasetSnapshot | null;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -4094,6 +4262,138 @@ export interface DatasetPage {
   total: number;
 }
 /**
+ * Computed from the snapshot's Parquet copy when it is written; never estimated.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetQuality".
+ */
+export interface DatasetQuality {
+  schema_version: number;
+  rows: number;
+  duplicates: number;
+  coverage: FieldCoverage[];
+  statuses: ValueCount[];
+  tiers: ValueCount[];
+  score_bins: number[];
+  unscored: number;
+  suppressed: number;
+  oldest_seen_at: string | null;
+  newest_seen_at: string | null;
+  stale_rows: number;
+  errors: string[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "FieldCoverage".
+ */
+export interface FieldCoverage {
+  field: string;
+  known: number;
+  unknown: number;
+  share: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ValueCount".
+ */
+export interface ValueCount {
+  value: string;
+  count: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetSnapshotDetail".
+ */
+export interface DatasetSnapshotDetail {
+  item: DatasetSnapshotItem;
+  quality: DatasetQuality;
+  lineage: LineageItem[];
+  exports: Export[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LineageItem".
+ */
+export interface LineageItem {
+  kind: LineageKind;
+  id: string;
+  label: string;
+  at: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "Export".
+ */
+export interface Export {
+  id: string;
+  project_id: string;
+  dataset_snapshot_id: string | null;
+  status: ExportStatus;
+  format: ExportFormat;
+  file_name: string | null;
+  row_count: number | null;
+  file_sha256: string | null;
+  manifest_json: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  requested_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+  job_id: string | null;
+  destination: string | null;
+  columns_json: {
+    [k: string]: string | undefined;
+  }[];
+  config_json: {
+    [k: string]: JsonValue | undefined;
+  };
+  actor: string;
+  preset_key: string | null;
+  preset_version: number | null;
+  error_code: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetSnapshotListQuery".
+ */
+export interface DatasetSnapshotListQuery {
+  dataset_id: string;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetSnapshotPage".
+ */
+export interface DatasetSnapshotPage {
+  items: DatasetSnapshotItem[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetSnapshotQuery".
+ */
+export interface DatasetSnapshotQuery {
+  snapshot_id: string;
+}
+/**
+ * Captures a project as the next version of a dataset: a consistent read at one moment. The
+ * rows carry the tiers and scores of `score_run_id`, or of the newest finished run when null.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DatasetSnapshotRequest".
+ */
+export interface DatasetSnapshotRequest {
+  project_id: string;
+  dataset_name: string;
+  description: string | null;
+  score_run_id: string | null;
+}
+/**
  * Lineage of a snapshot: exactly one of a source run, a score run or a parent snapshot.
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -4106,6 +4406,34 @@ export interface DatasetSnapshotSource {
   score_run_id: string | null;
   parent_snapshot_id: string | null;
   created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DeadLetter".
+ */
+export interface DeadLetter {
+  id: string;
+  task_id: string;
+  stage: PipelineStage;
+  attempt: number;
+  error_code: string;
+  error_message: string;
+  retryable: boolean;
+  review_status: DeadLetterStatus;
+  created_at: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  resolution_reason: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "DeadLetterRequest".
+ */
+export interface DeadLetterRequest {
+  job_id: string;
+  task_id: string;
+  action: DeadLetterAction;
+  reason: string;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -4347,6 +4675,38 @@ export interface ErrorInfo {
   retryable: boolean;
 }
 /**
+ * Deletes old events of finished jobs. Errors are never deleted: they are the root causes.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EventCleanupRequest".
+ */
+export interface EventCleanupRequest {
+  mode: BulkMode;
+  older_than_days: number;
+  levels: EventLevel[];
+  reason: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "EventCleanupResult".
+ */
+export interface EventCleanupResult {
+  mode: BulkMode;
+  cutoff: string;
+  matched: number;
+  deleted: number;
+  by_level: LevelCount[];
+  kept_errors: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "LevelCount".
+ */
+export interface LevelCount {
+  level: EventLevel;
+  count: number;
+}
+/**
  * One stored row behind a claim, looked up only within the business it belongs to.
  *
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -4470,26 +4830,166 @@ export interface ExplorerPage {
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
- * via the `definition` "Export".
+ * via the `definition` "ExportCancelRequest".
  */
-export interface Export {
+export interface ExportCancelRequest {
+  export_id: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportCatalog".
+ */
+export interface ExportCatalog {
+  presets: ExportPresetView[];
+  columns: ExportColumnInfo[];
+  appended: ExportColumnInfo[];
+  formats: ExportFormat[];
+  xlsx_max_rows: number;
+  max_columns: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportPresetView".
+ */
+export interface ExportPresetView {
+  preset: ExportPreset;
+  definition: ExportDefinition;
+  versions: number[];
+  cloned_from_key: string | null;
+}
+/**
+ * One immutable version of an export preset (built in, or cloned and saved by a person).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportPreset".
+ */
+export interface ExportPreset {
   id: string;
-  project_id: string;
-  dataset_snapshot_id: string | null;
-  status: ExportStatus;
-  format: ExportFormat;
-  file_name: string | null;
-  row_count: number | null;
-  file_sha256: string | null;
-  manifest_json: {
+  key: string;
+  version: number;
+  name: string;
+  description: string | null;
+  definition_json: {
     [k: string]: JsonValue | undefined;
-  } | null;
-  requested_at: string;
-  started_at: string | null;
-  finished_at: string | null;
-  error_message: string | null;
+  };
+  built_in: boolean;
+  cloned_from_id: string | null;
+  created_by: string;
   created_at: string;
-  updated_at: string;
+  superseded_at: string | null;
+}
+/**
+ * What a preset fixes: the source kind, the format, the columns and their headers.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportDefinition".
+ */
+export interface ExportDefinition {
+  source_kind: ExportSourceKind;
+  format: ExportFormat;
+  columns: ExportColumn[];
+  bom: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportColumn".
+ */
+export interface ExportColumn {
+  key: string;
+  header: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportColumnInfo".
+ */
+export interface ExportColumnInfo {
+  source_kind: ExportSourceKind;
+  key: string;
+  type: ExportColumnType;
+  description: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportCatalogQuery".
+ */
+export interface ExportCatalogQuery {
+  include_superseded: boolean;
+}
+/**
+ * What the desktop core's save dialog returned: a one-time grant the interface passes back to
+ * start the export, and the file name and folder to show. The path never reaches the page.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportDestination".
+ */
+export interface ExportDestination {
+  grant_id: string;
+  file_name: string;
+  folder: string;
+  format: ExportFormat;
+}
+/**
+ * Everything an export needs but its destination, which the desktop core adds from the save
+ * dialog: the interface never names a path.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportDraft".
+ */
+export interface ExportDraft {
+  source_kind: ExportSourceKind;
+  query: ExplorerQuery | null;
+  view_id: string | null;
+  snapshot_id: string | null;
+  format: ExportFormat;
+  columns: ExportColumn[];
+  bom: boolean;
+  include_suppressed: boolean;
+  suppressed_reason: string | null;
+  preset_key: string | null;
+  preset_version: number | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportItem".
+ */
+export interface ExportItem {
+  export: Export;
+  job_status: JobStatus | null;
+  rows_written: number;
+  rows_total: number | null;
+  is_synthetic: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportListQuery".
+ */
+export interface ExportListQuery {
+  project_id: string | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportPage".
+ */
+export interface ExportPage {
+  items: ExportItem[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * A new preset (cloned from `clone_from`, or from nothing) or the next version of a saved one.
+ * Built-in presets are cloned, never changed.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportPresetSaveRequest".
+ */
+export interface ExportPresetSaveRequest {
+  key: string | null;
+  clone_from: string | null;
+  name: string;
+  description: string | null;
+  definition: ExportDefinition;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -4516,6 +5016,39 @@ export interface ExportPreviewRequest {
   columns: ExplorerField[];
   include_suppressed: boolean;
   sample_size: number;
+}
+/**
+ * The first rows exactly as the file would hold them, with the counts and warnings.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportPreviewResult".
+ */
+export interface ExportPreviewResult {
+  matching: number;
+  excluded_suppressed: number;
+  exported: number;
+  headers: string[];
+  sample: JsonValue[][];
+  warnings: string[];
+  generated_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ExportStartRequest".
+ */
+export interface ExportStartRequest {
+  source_kind: ExportSourceKind;
+  query: ExplorerQuery | null;
+  view_id: string | null;
+  snapshot_id: string | null;
+  format: ExportFormat;
+  columns: ExportColumn[];
+  bom: boolean;
+  include_suppressed: boolean;
+  suppressed_reason: string | null;
+  preset_key: string | null;
+  preset_version: number | null;
+  destination: string;
 }
 /**
  * One extractor pass over a raw record; every observed value points at one.
@@ -4895,6 +5428,40 @@ export interface JobEvent {
     [k: string]: JsonValue | undefined;
   } | null;
   created_at: string;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "JobEventItem".
+ */
+export interface JobEventItem {
+  event: JobEvent;
+  job_kind: string;
+  project_id: string;
+  stage: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "JobEventPage".
+ */
+export interface JobEventPage {
+  items: JobEventItem[];
+  next_cursor: string | null;
+  total: number;
+}
+/**
+ * The persisted log. A pipeline's events include those of its engine jobs.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "JobEventQuery".
+ */
+export interface JobEventQuery {
+  job_id: string | null;
+  task_id: string | null;
+  business_id: string | null;
+  request_id: string | null;
+  levels: EventLevel[];
+  limit: number;
+  cursor: string | null;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
@@ -5509,6 +6076,142 @@ export interface OpportunityWeight {
 export interface PinView {
   pin: EvidencePin;
   available: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "PipelineAttempt".
+ */
+export interface PipelineAttempt {
+  attempt: number;
+  status: JobStatus;
+  started_at: string;
+  finished_at: string | null;
+  error_code: string | null;
+  error_message: string | null;
+  retryable: boolean | null;
+  jobs: ChildJob[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "PipelineListQuery".
+ */
+export interface PipelineListQuery {
+  project_id: string | null;
+  limit: number;
+  cursor: string | null;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "PipelinePage".
+ */
+export interface PipelinePage {
+  items: PipelineRun[];
+  next_cursor: string | null;
+  total: number;
+  resources: ResourceUsage;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "PipelineRun".
+ */
+export interface PipelineRun {
+  job_id: string;
+  project_id: string;
+  project_name: string;
+  campaign_id: string | null;
+  campaign_name: string | null;
+  status: JobStatus;
+  priority: number;
+  check_mail_domains: boolean;
+  progress_done: number;
+  progress_total: number;
+  counts: StageCounts;
+  requested_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  stages: PipelineStageView[];
+  dead_letters: DeadLetter[];
+  score_run_id: string | null;
+  eligible_leads: number | null;
+  snapshot_id: string | null;
+  actions: RunControlAction[];
+  is_synthetic: boolean;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "StageCounts".
+ */
+export interface StageCounts {
+  queued: number;
+  running: number;
+  paused: number;
+  succeeded: number;
+  skipped: number;
+  failed: number;
+  cancelled: number;
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "PipelineStageView".
+ */
+export interface PipelineStageView {
+  task_id: string;
+  stage: PipelineStage;
+  ordinal: number;
+  version: string;
+  inputs: string[];
+  outputs: string[];
+  depends_on: PipelineStage[];
+  resources: PipelineResource[];
+  max_attempts: number;
+  retryable_codes: string[];
+  status: JobStatus;
+  skipped: string | null;
+  attempts: PipelineAttempt[];
+  events: RunEvent[];
+}
+/**
+ * This machine now, as the orchestrator sees it. Null means the OS did not say.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResourceUsage".
+ */
+export interface ResourceUsage {
+  sampled_at: string;
+  cpu_count: number;
+  cpu_percent: number | null;
+  ram_total_mib: number | null;
+  ram_free_mib: number | null;
+  vram_total_mib: number | null;
+  vram_free_mib: number | null;
+  disk_total_mib: number | null;
+  disk_free_mib: number | null;
+  active_browsers: number | null;
+  slots: ResourceSlot[];
+  pressure: string[];
+}
+/**
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "ResourceSlot".
+ */
+export interface ResourceSlot {
+  resource: PipelineResource;
+  running: number;
+  limit: number;
+}
+/**
+ * Runs every stage over one project; a campaign adds discovery and acquisition. A repeated key
+ * (a double click, a retry after a timeout) returns the pipeline it already started.
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "PipelineStartRequest".
+ */
+export interface PipelineStartRequest {
+  project_id: string;
+  campaign_id: string | null;
+  check_mail_domains: boolean;
+  priority: number;
+  idempotency_key: string;
 }
 /**
  * A local workspace. Synthetic projects hold test data only.

@@ -1,0 +1,1265 @@
+{
+  "presets": [
+    {
+      "preset": {
+        "id": "01900000-0000-7000-8000-000000001739",
+        "key": "contact_review",
+        "version": 1,
+        "name": "Contact review",
+        "description": "The route to each lead and how far it was verified, to review contacts before any outreach.",
+        "definition_json": {
+          "bom": false,
+          "columns": [
+            {
+              "header": "Business",
+              "key": "name"
+            },
+            {
+              "header": "Website",
+              "key": "domain"
+            },
+            {
+              "header": "Channel",
+              "key": "main_channel"
+            },
+            {
+              "header": "Channel status",
+              "key": "channel_status"
+            },
+            {
+              "header": "Usable channels",
+              "key": "usable_channels"
+            },
+            {
+              "header": "Conflicting fields",
+              "key": "conflicts"
+            },
+            {
+              "header": "Research status",
+              "key": "research_status"
+            },
+            {
+              "header": "Assignee",
+              "key": "assignee"
+            },
+            {
+              "header": "Lead stage",
+              "key": "lead_stage"
+            }
+          ],
+          "format": "xlsx",
+          "source_kind": "query"
+        },
+        "built_in": true,
+        "cloned_from_id": null,
+        "created_by": "export-engine",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      },
+      "definition": {
+        "source_kind": "query",
+        "format": "xlsx",
+        "columns": [
+          {
+            "key": "name",
+            "header": "Business"
+          },
+          {
+            "key": "domain",
+            "header": "Website"
+          },
+          {
+            "key": "main_channel",
+            "header": "Channel"
+          },
+          {
+            "key": "channel_status",
+            "header": "Channel status"
+          },
+          {
+            "key": "usable_channels",
+            "header": "Usable channels"
+          },
+          {
+            "key": "conflicts",
+            "header": "Conflicting fields"
+          },
+          {
+            "key": "research_status",
+            "header": "Research status"
+          },
+          {
+            "key": "assignee",
+            "header": "Assignee"
+          },
+          {
+            "key": "lead_stage",
+            "header": "Lead stage"
+          }
+        ],
+        "bom": false
+      },
+      "versions": [
+        1
+      ],
+      "cloned_from_key": null
+    },
+    {
+      "preset": {
+        "id": "01900000-0000-7000-8000-000000001743",
+        "key": "dataset_analytical",
+        "version": 1,
+        "name": "Dataset analytical",
+        "description": "The rows of a dataset snapshot as they were at its cut-off, typed for analysis.",
+        "definition_json": {
+          "bom": false,
+          "columns": [
+            {
+              "header": "project_id",
+              "key": "project_id"
+            },
+            {
+              "header": "display_name",
+              "key": "display_name"
+            },
+            {
+              "header": "status",
+              "key": "status"
+            },
+            {
+              "header": "lead_stage",
+              "key": "lead_stage"
+            },
+            {
+              "header": "locality",
+              "key": "locality"
+            },
+            {
+              "header": "region",
+              "key": "region"
+            },
+            {
+              "header": "postal_code",
+              "key": "postal_code"
+            },
+            {
+              "header": "primary_domain",
+              "key": "primary_domain"
+            },
+            {
+              "header": "primary_phone",
+              "key": "primary_phone"
+            },
+            {
+              "header": "primary_category",
+              "key": "primary_category"
+            },
+            {
+              "header": "source_count",
+              "key": "source_count"
+            },
+            {
+              "header": "evidence_count",
+              "key": "evidence_count"
+            },
+            {
+              "header": "first_seen_at",
+              "key": "first_seen_at"
+            },
+            {
+              "header": "last_seen_at",
+              "key": "last_seen_at"
+            },
+            {
+              "header": "score_run_id",
+              "key": "score_run_id"
+            },
+            {
+              "header": "tier",
+              "key": "tier"
+            },
+            {
+              "header": "total_score",
+              "key": "total_score"
+            },
+            {
+              "header": "suppressed",
+              "key": "suppressed"
+            }
+          ],
+          "format": "parquet",
+          "source_kind": "snapshot"
+        },
+        "built_in": true,
+        "cloned_from_id": null,
+        "created_by": "export-engine",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      },
+      "definition": {
+        "source_kind": "snapshot",
+        "format": "parquet",
+        "columns": [
+          {
+            "key": "project_id",
+            "header": "project_id"
+          },
+          {
+            "key": "display_name",
+            "header": "display_name"
+          },
+          {
+            "key": "status",
+            "header": "status"
+          },
+          {
+            "key": "lead_stage",
+            "header": "lead_stage"
+          },
+          {
+            "key": "locality",
+            "header": "locality"
+          },
+          {
+            "key": "region",
+            "header": "region"
+          },
+          {
+            "key": "postal_code",
+            "header": "postal_code"
+          },
+          {
+            "key": "primary_domain",
+            "header": "primary_domain"
+          },
+          {
+            "key": "primary_phone",
+            "header": "primary_phone"
+          },
+          {
+            "key": "primary_category",
+            "header": "primary_category"
+          },
+          {
+            "key": "source_count",
+            "header": "source_count"
+          },
+          {
+            "key": "evidence_count",
+            "header": "evidence_count"
+          },
+          {
+            "key": "first_seen_at",
+            "header": "first_seen_at"
+          },
+          {
+            "key": "last_seen_at",
+            "header": "last_seen_at"
+          },
+          {
+            "key": "score_run_id",
+            "header": "score_run_id"
+          },
+          {
+            "key": "tier",
+            "header": "tier"
+          },
+          {
+            "key": "total_score",
+            "header": "total_score"
+          },
+          {
+            "key": "suppressed",
+            "header": "suppressed"
+          }
+        ],
+        "bom": false
+      },
+      "versions": [
+        1
+      ],
+      "cloned_from_key": null
+    },
+    {
+      "preset": {
+        "id": "01900000-0000-7000-8000-000000001737",
+        "key": "full_evidence_audit",
+        "version": 1,
+        "name": "Full evidence audit",
+        "description": "Every explorer field, to audit why each lead scored as it did.",
+        "definition_json": {
+          "bom": false,
+          "columns": [
+            {
+              "header": "name",
+              "key": "name"
+            },
+            {
+              "header": "locality",
+              "key": "locality"
+            },
+            {
+              "header": "region",
+              "key": "region"
+            },
+            {
+              "header": "category",
+              "key": "category"
+            },
+            {
+              "header": "domain",
+              "key": "domain"
+            },
+            {
+              "header": "lead_stage",
+              "key": "lead_stage"
+            },
+            {
+              "header": "research_status",
+              "key": "research_status"
+            },
+            {
+              "header": "assignee",
+              "key": "assignee"
+            },
+            {
+              "header": "tag",
+              "key": "tag"
+            },
+            {
+              "header": "tier",
+              "key": "tier"
+            },
+            {
+              "header": "rank",
+              "key": "rank"
+            },
+            {
+              "header": "total_score",
+              "key": "total_score"
+            },
+            {
+              "header": "confidence",
+              "key": "confidence"
+            },
+            {
+              "header": "data_coverage",
+              "key": "data_coverage"
+            },
+            {
+              "header": "icp_match",
+              "key": "icp_match"
+            },
+            {
+              "header": "opportunity_score",
+              "key": "opportunity_score"
+            },
+            {
+              "header": "digital_gap",
+              "key": "digital_gap"
+            },
+            {
+              "header": "business_health",
+              "key": "business_health"
+            },
+            {
+              "header": "buying_capacity",
+              "key": "buying_capacity"
+            },
+            {
+              "header": "contactability",
+              "key": "contactability"
+            },
+            {
+              "header": "commercial_intent",
+              "key": "commercial_intent"
+            },
+            {
+              "header": "data_confidence",
+              "key": "data_confidence"
+            },
+            {
+              "header": "latino_status",
+              "key": "latino_status"
+            },
+            {
+              "header": "latino_confidence",
+              "key": "latino_confidence"
+            },
+            {
+              "header": "main_channel",
+              "key": "main_channel"
+            },
+            {
+              "header": "channel_status",
+              "key": "channel_status"
+            },
+            {
+              "header": "usable_channels",
+              "key": "usable_channels"
+            },
+            {
+              "header": "problem",
+              "key": "problem"
+            },
+            {
+              "header": "top_problem",
+              "key": "top_problem"
+            },
+            {
+              "header": "offer",
+              "key": "offer"
+            },
+            {
+              "header": "facts_age_days",
+              "key": "facts_age_days"
+            },
+            {
+              "header": "audit_status",
+              "key": "audit_status"
+            },
+            {
+              "header": "conflicts",
+              "key": "conflicts"
+            },
+            {
+              "header": "suppressed",
+              "key": "suppressed"
+            },
+            {
+              "header": "stale",
+              "key": "stale"
+            },
+            {
+              "header": "partial",
+              "key": "partial"
+            }
+          ],
+          "format": "xlsx",
+          "source_kind": "query"
+        },
+        "built_in": true,
+        "cloned_from_id": null,
+        "created_by": "export-engine",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      },
+      "definition": {
+        "source_kind": "query",
+        "format": "xlsx",
+        "columns": [
+          {
+            "key": "name",
+            "header": "name"
+          },
+          {
+            "key": "locality",
+            "header": "locality"
+          },
+          {
+            "key": "region",
+            "header": "region"
+          },
+          {
+            "key": "category",
+            "header": "category"
+          },
+          {
+            "key": "domain",
+            "header": "domain"
+          },
+          {
+            "key": "lead_stage",
+            "header": "lead_stage"
+          },
+          {
+            "key": "research_status",
+            "header": "research_status"
+          },
+          {
+            "key": "assignee",
+            "header": "assignee"
+          },
+          {
+            "key": "tag",
+            "header": "tag"
+          },
+          {
+            "key": "tier",
+            "header": "tier"
+          },
+          {
+            "key": "rank",
+            "header": "rank"
+          },
+          {
+            "key": "total_score",
+            "header": "total_score"
+          },
+          {
+            "key": "confidence",
+            "header": "confidence"
+          },
+          {
+            "key": "data_coverage",
+            "header": "data_coverage"
+          },
+          {
+            "key": "icp_match",
+            "header": "icp_match"
+          },
+          {
+            "key": "opportunity_score",
+            "header": "opportunity_score"
+          },
+          {
+            "key": "digital_gap",
+            "header": "digital_gap"
+          },
+          {
+            "key": "business_health",
+            "header": "business_health"
+          },
+          {
+            "key": "buying_capacity",
+            "header": "buying_capacity"
+          },
+          {
+            "key": "contactability",
+            "header": "contactability"
+          },
+          {
+            "key": "commercial_intent",
+            "header": "commercial_intent"
+          },
+          {
+            "key": "data_confidence",
+            "header": "data_confidence"
+          },
+          {
+            "key": "latino_status",
+            "header": "latino_status"
+          },
+          {
+            "key": "latino_confidence",
+            "header": "latino_confidence"
+          },
+          {
+            "key": "main_channel",
+            "header": "main_channel"
+          },
+          {
+            "key": "channel_status",
+            "header": "channel_status"
+          },
+          {
+            "key": "usable_channels",
+            "header": "usable_channels"
+          },
+          {
+            "key": "problem",
+            "header": "problem"
+          },
+          {
+            "key": "top_problem",
+            "header": "top_problem"
+          },
+          {
+            "key": "offer",
+            "header": "offer"
+          },
+          {
+            "key": "facts_age_days",
+            "header": "facts_age_days"
+          },
+          {
+            "key": "audit_status",
+            "header": "audit_status"
+          },
+          {
+            "key": "conflicts",
+            "header": "conflicts"
+          },
+          {
+            "key": "suppressed",
+            "header": "suppressed"
+          },
+          {
+            "key": "stale",
+            "header": "stale"
+          },
+          {
+            "key": "partial",
+            "header": "partial"
+          }
+        ],
+        "bom": false
+      },
+      "versions": [
+        1
+      ],
+      "cloned_from_key": null
+    },
+    {
+      "preset": {
+        "id": "01900000-0000-7000-8000-000000001735",
+        "key": "sales_ready_concise",
+        "version": 1,
+        "name": "Sales-ready concise",
+        "description": "One row per lead with what a first contact needs: who and where, the score, the route and the offer. Leads on the do-not-contact list stay out.",
+        "definition_json": {
+          "bom": true,
+          "columns": [
+            {
+              "header": "Business",
+              "key": "name"
+            },
+            {
+              "header": "City",
+              "key": "locality"
+            },
+            {
+              "header": "State",
+              "key": "region"
+            },
+            {
+              "header": "Category",
+              "key": "category"
+            },
+            {
+              "header": "Website",
+              "key": "domain"
+            },
+            {
+              "header": "Tier",
+              "key": "tier"
+            },
+            {
+              "header": "Lead score",
+              "key": "total_score"
+            },
+            {
+              "header": "Channel",
+              "key": "main_channel"
+            },
+            {
+              "header": "Channel status",
+              "key": "channel_status"
+            },
+            {
+              "header": "Top problem",
+              "key": "top_problem"
+            },
+            {
+              "header": "Offer",
+              "key": "offer"
+            },
+            {
+              "header": "Research status",
+              "key": "research_status"
+            }
+          ],
+          "format": "csv",
+          "source_kind": "query"
+        },
+        "built_in": true,
+        "cloned_from_id": null,
+        "created_by": "export-engine",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      },
+      "definition": {
+        "source_kind": "query",
+        "format": "csv",
+        "columns": [
+          {
+            "key": "name",
+            "header": "Business"
+          },
+          {
+            "key": "locality",
+            "header": "City"
+          },
+          {
+            "key": "region",
+            "header": "State"
+          },
+          {
+            "key": "category",
+            "header": "Category"
+          },
+          {
+            "key": "domain",
+            "header": "Website"
+          },
+          {
+            "key": "tier",
+            "header": "Tier"
+          },
+          {
+            "key": "total_score",
+            "header": "Lead score"
+          },
+          {
+            "key": "main_channel",
+            "header": "Channel"
+          },
+          {
+            "key": "channel_status",
+            "header": "Channel status"
+          },
+          {
+            "key": "top_problem",
+            "header": "Top problem"
+          },
+          {
+            "key": "offer",
+            "header": "Offer"
+          },
+          {
+            "key": "research_status",
+            "header": "Research status"
+          }
+        ],
+        "bom": true
+      },
+      "versions": [
+        1
+      ],
+      "cloned_from_key": null
+    },
+    {
+      "preset": {
+        "id": "01900000-0000-7000-8000-000000001741",
+        "key": "website_opportunity_report",
+        "version": 1,
+        "name": "Website opportunity report",
+        "description": "The digital gap, the audit status and the problems each site shows, with the offer that answers them.",
+        "definition_json": {
+          "bom": false,
+          "columns": [
+            {
+              "header": "Business",
+              "key": "name"
+            },
+            {
+              "header": "Website",
+              "key": "domain"
+            },
+            {
+              "header": "Category",
+              "key": "category"
+            },
+            {
+              "header": "State",
+              "key": "region"
+            },
+            {
+              "header": "Digital gap",
+              "key": "digital_gap"
+            },
+            {
+              "header": "Audit status",
+              "key": "audit_status"
+            },
+            {
+              "header": "Problems",
+              "key": "problem"
+            },
+            {
+              "header": "Top problem",
+              "key": "top_problem"
+            },
+            {
+              "header": "Offer",
+              "key": "offer"
+            },
+            {
+              "header": "Lead score",
+              "key": "total_score"
+            }
+          ],
+          "format": "xlsx",
+          "source_kind": "query"
+        },
+        "built_in": true,
+        "cloned_from_id": null,
+        "created_by": "export-engine",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "superseded_at": null
+      },
+      "definition": {
+        "source_kind": "query",
+        "format": "xlsx",
+        "columns": [
+          {
+            "key": "name",
+            "header": "Business"
+          },
+          {
+            "key": "domain",
+            "header": "Website"
+          },
+          {
+            "key": "category",
+            "header": "Category"
+          },
+          {
+            "key": "region",
+            "header": "State"
+          },
+          {
+            "key": "digital_gap",
+            "header": "Digital gap"
+          },
+          {
+            "key": "audit_status",
+            "header": "Audit status"
+          },
+          {
+            "key": "problem",
+            "header": "Problems"
+          },
+          {
+            "key": "top_problem",
+            "header": "Top problem"
+          },
+          {
+            "key": "offer",
+            "header": "Offer"
+          },
+          {
+            "key": "total_score",
+            "header": "Lead score"
+          }
+        ],
+        "bom": false
+      },
+      "versions": [
+        1
+      ],
+      "cloned_from_key": null
+    }
+  ],
+  "columns": [
+    {
+      "source_kind": "query",
+      "key": "name",
+      "type": "text",
+      "description": "The name the business shows (chosen among its records)."
+    },
+    {
+      "source_kind": "query",
+      "key": "locality",
+      "type": "text",
+      "description": "City of the location the business shows."
+    },
+    {
+      "source_kind": "query",
+      "key": "region",
+      "type": "text",
+      "description": "State of that location."
+    },
+    {
+      "source_kind": "query",
+      "key": "category",
+      "type": "text",
+      "description": "Category the business shows."
+    },
+    {
+      "source_kind": "query",
+      "key": "domain",
+      "type": "text",
+      "description": "Registrable domain of its website."
+    },
+    {
+      "source_kind": "query",
+      "key": "lead_stage",
+      "type": "text",
+      "description": "Funnel stage now (recorded by hand)."
+    },
+    {
+      "source_kind": "query",
+      "key": "research_status",
+      "type": "text",
+      "description": "Research status now: sales_ready, needs_research or disqualified, each set with a reason."
+    },
+    {
+      "source_kind": "query",
+      "key": "assignee",
+      "type": "text",
+      "description": "Who researches the lead now."
+    },
+    {
+      "source_kind": "query",
+      "key": "tag",
+      "type": "list",
+      "description": "Project tags on the business now."
+    },
+    {
+      "source_kind": "query",
+      "key": "tier",
+      "type": "text",
+      "description": "Tier in the score run: priority, review, low, insufficient_data or excluded."
+    },
+    {
+      "source_kind": "query",
+      "key": "rank",
+      "type": "number",
+      "description": "Place in the whole finished run, whatever the filters."
+    },
+    {
+      "source_kind": "query",
+      "key": "total_score",
+      "type": "number",
+      "description": "Final lead score, 0 to 100; empty when excluded."
+    },
+    {
+      "source_kind": "query",
+      "key": "confidence",
+      "type": "number",
+      "description": "Certainty of the score, 0 to 1: data confidence times the share of the formula that was known."
+    },
+    {
+      "source_kind": "query",
+      "key": "data_coverage",
+      "type": "number",
+      "description": "Share of the final formula's weight that was known, 0 to 1."
+    },
+    {
+      "source_kind": "query",
+      "key": "icp_match",
+      "type": "number",
+      "description": "ICP_MATCH component, 0 to 100."
+    },
+    {
+      "source_kind": "query",
+      "key": "opportunity_score",
+      "type": "number",
+      "description": "OPPORTUNITY_SCORE component, 0 to 100."
+    },
+    {
+      "source_kind": "query",
+      "key": "digital_gap",
+      "type": "number",
+      "description": "DIGITAL_GAP component, 0 to 100: problems observed on the website."
+    },
+    {
+      "source_kind": "query",
+      "key": "business_health",
+      "type": "number",
+      "description": "BUSINESS_HEALTH component, 0 to 100: an estimate from explicit proxies."
+    },
+    {
+      "source_kind": "query",
+      "key": "buying_capacity",
+      "type": "number",
+      "description": "BUYING_CAPACITY component, 0 to 100: an estimate from explicit proxies, never a financial claim."
+    },
+    {
+      "source_kind": "query",
+      "key": "contactability",
+      "type": "number",
+      "description": "CONTACTABILITY component, 0 to 100."
+    },
+    {
+      "source_kind": "query",
+      "key": "commercial_intent",
+      "type": "number",
+      "description": "COMMERCIAL_INTENT component, 0 to 100."
+    },
+    {
+      "source_kind": "query",
+      "key": "data_confidence",
+      "type": "number",
+      "description": "DATA_CONFIDENCE component, 0 to 100."
+    },
+    {
+      "source_kind": "query",
+      "key": "latino_status",
+      "type": "text",
+      "description": "Latino evidence status: verified, high confidence and probable ownership need ownership evidence; market affinity never means ownership."
+    },
+    {
+      "source_kind": "query",
+      "key": "latino_confidence",
+      "type": "number",
+      "description": "Confidence of that status, 0 to 1."
+    },
+    {
+      "source_kind": "query",
+      "key": "main_channel",
+      "type": "text",
+      "description": "The channel the lead shows first: phone, email or a form the business published. Never an address guessed from a pattern."
+    },
+    {
+      "source_kind": "query",
+      "key": "channel_status",
+      "type": "text",
+      "description": "How far that channel was validated (phase 09 statuses: observed, structurally_valid, domain_valid, likely_valid...)."
+    },
+    {
+      "source_kind": "query",
+      "key": "usable_channels",
+      "type": "number",
+      "description": "Published channels counted as reachable."
+    },
+    {
+      "source_kind": "query",
+      "key": "problem",
+      "type": "list",
+      "description": "Problems observed on the business's website."
+    },
+    {
+      "source_kind": "query",
+      "key": "top_problem",
+      "type": "text",
+      "description": "The problem that weighed most."
+    },
+    {
+      "source_kind": "query",
+      "key": "offer",
+      "type": "text",
+      "description": "The offer the scorecard recommends for the observed problems."
+    },
+    {
+      "source_kind": "query",
+      "key": "facts_age_days",
+      "type": "number",
+      "description": "Days since the facts behind the score were read."
+    },
+    {
+      "source_kind": "query",
+      "key": "audit_status",
+      "type": "text",
+      "description": "Status of the newest website audit: complete, partial or empty."
+    },
+    {
+      "source_kind": "query",
+      "key": "conflicts",
+      "type": "number",
+      "description": "Fields whose records disagree."
+    },
+    {
+      "source_kind": "query",
+      "key": "suppressed",
+      "type": "flag",
+      "description": "On the do-not-contact list now."
+    },
+    {
+      "source_kind": "query",
+      "key": "stale",
+      "type": "flag",
+      "description": "Facts read more than 90 days ago."
+    },
+    {
+      "source_kind": "query",
+      "key": "partial",
+      "type": "flag",
+      "description": "The score could not read everything."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "project_id",
+      "type": "text",
+      "description": "Identifier of its project."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "display_name",
+      "type": "text",
+      "description": "The name the business showed at the cut-off."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "status",
+      "type": "text",
+      "description": "Business status at the cut-off: candidate, active or closed."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "lead_stage",
+      "type": "text",
+      "description": "Funnel stage at the cut-off."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "locality",
+      "type": "text",
+      "description": "City at the cut-off."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "region",
+      "type": "text",
+      "description": "State at the cut-off."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "postal_code",
+      "type": "text",
+      "description": "Postal code at the cut-off."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "primary_domain",
+      "type": "text",
+      "description": "Website domain at the cut-off."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "primary_phone",
+      "type": "text",
+      "description": "Phone the business showed; empty when suppressed or a hypothesis."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "primary_category",
+      "type": "text",
+      "description": "Category at the cut-off."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "source_count",
+      "type": "number",
+      "description": "Raw records the business was built from."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "evidence_count",
+      "type": "number",
+      "description": "Active evidence items at the cut-off."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "first_seen_at",
+      "type": "timestamp",
+      "description": "When a source first showed the business (UTC)."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "last_seen_at",
+      "type": "timestamp",
+      "description": "When a source last showed it (UTC)."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "score_run_id",
+      "type": "text",
+      "description": "The score run the snapshot carried (schema 2)."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "tier",
+      "type": "text",
+      "description": "Tier in that run (schema 2)."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "total_score",
+      "type": "number",
+      "description": "Final lead score in that run, 0 to 100 (schema 2)."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "suppressed",
+      "type": "flag",
+      "description": "On the do-not-contact list at the cut-off (schema 2)."
+    }
+  ],
+  "appended": [
+    {
+      "source_kind": "query",
+      "key": "business_id",
+      "type": "text",
+      "description": "Identifier of the canonical business: the same in every export."
+    },
+    {
+      "source_kind": "query",
+      "key": "score_run_id",
+      "type": "text",
+      "description": "The score run the leads were read from; its versions are in the manifest."
+    },
+    {
+      "source_kind": "query",
+      "key": "exported_at",
+      "type": "timestamp",
+      "description": "When this file was written (UTC)."
+    },
+    {
+      "source_kind": "query",
+      "key": "facts_collected_at",
+      "type": "timestamp",
+      "description": "When the facts behind the score were read (UTC)."
+    },
+    {
+      "source_kind": "query",
+      "key": "facts_age_days",
+      "type": "number",
+      "description": "Days between reading those facts and writing this file."
+    },
+    {
+      "source_kind": "query",
+      "key": "stale",
+      "type": "flag",
+      "description": "Facts read more than 90 days ago."
+    },
+    {
+      "source_kind": "query",
+      "key": "partial",
+      "type": "flag",
+      "description": "The score could not read everything: insufficient data, or a partial or empty website audit."
+    },
+    {
+      "source_kind": "query",
+      "key": "contact_unverified",
+      "type": "flag",
+      "description": "The main channel was published but not verified: neither a working mail domain nor confirmed by a person."
+    },
+    {
+      "source_kind": "query",
+      "key": "do_not_contact",
+      "type": "flag",
+      "description": "On the do-not-contact list when the file was written; true only in an export that includes those leads on purpose."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "business_id",
+      "type": "text",
+      "description": "Identifier of the canonical business: the same in every export."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "snapshot_id",
+      "type": "text",
+      "description": "The dataset snapshot the rows come from."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "snapshot_version",
+      "type": "number",
+      "description": "Its version in the dataset."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "cutoff_at",
+      "type": "timestamp",
+      "description": "The moment its rows were read (UTC)."
+    },
+    {
+      "source_kind": "snapshot",
+      "key": "do_not_contact",
+      "type": "flag",
+      "description": "On the do-not-contact list when this file was written, checked again rather than as the snapshot saw it."
+    }
+  ],
+  "formats": [
+    "csv",
+    "xlsx",
+    "json",
+    "jsonl",
+    "parquet"
+  ],
+  "xlsx_max_rows": 1048575,
+  "max_columns": 36
+}

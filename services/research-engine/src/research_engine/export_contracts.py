@@ -27,7 +27,7 @@ from uuid import UUID
 from pydantic import BaseModel
 from pydantic.json_schema import models_json_schema
 
-from research_engine import jobs, repository
+from research_engine import datasets, exports, jobs, operations, repository
 from research_engine import testdata as testdata_module
 from research_engine.ai import engine as ai_engine
 from research_engine.ai import resources as ai_resources
@@ -109,24 +109,46 @@ from research_engine.domain import (
     CriteriaCheck,
     CriteriaProblem,
     Dataset,
+    DatasetCleanupRequest,
+    DatasetDiffQuery,
     DatasetListQuery,
     DatasetSnapshot,
+    DatasetSnapshotListQuery,
+    DatasetSnapshotQuery,
+    DatasetSnapshotRequest,
+    DeadLetterAction,
+    DeadLetterRequest,
     DecisionMakerDecision,
     DecisionMakerListQuery,
     DecisionMakerReview,
     DecisionMakerReviewRequest,
+    DiscoveryControlRequest,
     DiscoveryRunListQuery,
     DiscoveryStartRequest,
+    EventCleanupRequest,
+    EventLevel,
     EvidenceQuery,
     EvidenceRefKind,
     ExplorerCatalogQuery,
     ExplorerField,
     ExplorerQuery,
     ExplorerSort,
+    ExportCancelRequest,
+    ExportCatalogQuery,
+    ExportColumn,
+    ExportDraft,
+    ExportFormat,
+    ExportListQuery,
+    ExportPresetSaveRequest,
     ExportPreviewRequest,
+    ExportSourceKind,
+    ExportStartRequest,
     IcpSaveRequest,
     ImportPreviewRequest,
     InferenceStatus,
+    Job,
+    JobEventQuery,
+    JobStatus,
     LatinoReviewFilter,
     LatinoReviewRequest,
     LatinoRunListQuery,
@@ -143,6 +165,11 @@ from research_engine.domain import (
     MatchActionRequest,
     MatchListQuery,
     MatchStatus,
+    PipelineListQuery,
+    PipelinePage,
+    PipelineResource,
+    PipelineStage,
+    PipelineStartRequest,
     ProblemSeverity,
     ResearchAction,
     ResearchActionRequest,
@@ -150,6 +177,9 @@ from research_engine.domain import (
     ResearchWorkspaceQuery,
     ResolutionRunListQuery,
     ResolutionStartRequest,
+    ResourceSlot,
+    ResourceUsage,
+    RunControlAction,
     SalesBriefQuery,
     SavedViewAction,
     SavedViewChangeRequest,
@@ -196,7 +226,7 @@ from research_engine.resolution import store as resolution_store
 from research_engine.scoring import engine as scoring_engine
 from research_engine.scoring import model as scoring_model
 from research_engine.scoring import store as scoring_store
-from research_engine.storage import check_sqlite
+from research_engine.storage import check_duckdb, check_sqlite
 from research_engine.testdata import (
     CONTACT_SITES,
     SYNTHETIC_DATASET_NAME,
@@ -454,6 +484,7 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         data_dir = Path(tmp)
         check_sqlite(data_dir)
+        check_duckdb(data_dir)
         conn = repository.connect(data_dir)
         try:
             project = synthetic_project(_T0, ids)
@@ -482,6 +513,10 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
                 schema_version=SNAPSHOT_SCHEMA_VERSION,
                 filters_json={"project_id": project.id},
                 created_at=_T0,
+                query_json={"project_id": project.id},
+                cutoff_at=_T0,
+                pipeline_versions_json={"snapshot_schema": str(SNAPSHOT_SCHEMA_VERSION)},
+                quality_json=None,
             )
             repository.insert(conn, dataset, snapshot)
             dataset_query = DatasetListQuery(project_id=project.id, limit=50, cursor=None)
@@ -513,6 +548,9 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
             leads = build_lead_fixtures(
                 conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids)
             )
+            operation_fixtures = build_operations_fixtures(
+                conn, SyntheticContext(project.id, connector.id, run.id, _T0, ids), data_dir
+            )
         finally:
             conn.close()
     return {
@@ -538,7 +576,192 @@ def build_data_fixtures() -> dict[str, dict[str, Any]]:
         **ai,
         **scoring,
         **leads,
+        **operation_fixtures,
     }
+
+
+def build_operations_fixtures(
+    conn: Any, context: SyntheticContext, data_dir: Path
+) -> dict[str, dict[str, Any]]:
+    """Pipeline, event log, dataset and export shapes over the synthetic project, with fixture ids
+    and a fixed clock (phase 13): a pipeline driven stage by stage through the store (its engine
+    jobs are synthetic rows, and one stage fails into a dead letter a person retries), two dataset
+    versions with a business put on the do-not-contact list between them, the export catalogue, a
+    preview and a queued export, read back through the real queries."""
+    project_id = context.project_id
+    usage = ResourceUsage(
+        sampled_at=_T0, cpu_count=8, cpu_percent=12.5, ram_total_mib=16_384, ram_free_mib=9_000,
+        vram_total_mib=8_192, vram_free_mib=7_100, disk_total_mib=512_000, disk_free_mib=256_000,
+        active_browsers=0,
+        slots=[ResourceSlot(resource=resource, running=int(resource is PipelineResource.CPU),
+                            limit=2) for resource in PipelineResource],
+        pressure=[],
+    )  # fmt: skip
+    with ExitStack() as stack:
+        for module in (operations, datasets, exports, jobs, repository, contacts_store):
+            stack.enter_context(patch.object(module, "new_id", context.ids))
+            stack.enter_context(patch.object(module, "utc_now", lambda: _T0))
+        stack.enter_context(
+            patch.object(exports, "check_destination", lambda _dir, where, _format: Path(where))
+        )
+
+        start = PipelineStartRequest(
+            project_id=project_id, campaign_id=None, check_mail_domains=False, priority=0,
+            idempotency_key="synthetic-fixture-pipeline",
+        )  # fmt: skip
+        job_id, _ = operations.plan_pipeline(
+            conn, start, actor="fixture", request_id="01900000-0000-7000-8000-000000000001"
+        )
+        jobs.mark_running(conn, job_id, "fixture")
+        limits = dict.fromkeys(PipelineResource, 2)
+
+        def claim() -> tuple[Any, Any]:
+            claimed = operations.claim_next_task(conn, job_id, limits)
+            if not isinstance(claimed, tuple):
+                raise TypeError(f"no stage to claim: {claimed}")
+            return claimed
+
+        def engine_job(kind: str, status: JobStatus, done: int) -> str:
+            job = Job(
+                id=context.ids(), project_id=project_id, kind=kind, status=status, priority=0,
+                params_json={"project_id": project_id}, idempotency_key=None, progress_done=done,
+                progress_total=38, requested_at=_T0, started_at=_T0,
+                finished_at=_T0 if status is JobStatus.SUCCEEDED else None, created_at=_T0,
+                updated_at=_T0,
+            )  # fmt: skip
+            repository.insert(conn, job)
+            return job.id
+
+        for _stage in (PipelineStage.DISCOVERY, PipelineStage.ACQUISITION):
+            task, _ = claim()
+            operations.finish_task(conn, task.id, {"skipped": "no_campaign"})
+        resolution = engine_job("resolution", JobStatus.SUCCEEDED, 38)
+        for reused in (False, True):
+            task, attempt = claim()
+            operations.attach(conn, attempt.id, [resolution], reused=reused)
+            operations.finish_task(conn, task.id, {"jobs": [resolution]})
+        task, _ = claim()
+        failure = operations.StageFailure(
+            "configuration", "synthetic fixture: the evidence rules could not load", False
+        )
+        operations.fail_task(conn, task.id, failure)
+        retry = DeadLetterRequest(job_id=job_id, task_id=task.id, action=DeadLetterAction.RETRY,
+                                  reason="Synthetic fixture: the rules were fixed")  # fmt: skip
+        operations.resolve_dead_letter(conn, retry, actor="fixture")
+        jobs.mark_running(conn, job_id, "fixture")
+        task, attempt = claim()
+        operations.attach(conn, attempt.id, [engine_job("latino_evidence", JobStatus.RUNNING, 12)],
+                          reused=False)  # fmt: skip
+        run = operations.pipeline_view(conn, job_id, _T0)
+        listing = PipelineListQuery(project_id=project_id, limit=25, cursor=None)
+        events_query = JobEventQuery(job_id=job_id, task_id=None, business_id=None,
+                                     request_id=None, levels=[], limit=50, cursor=None)  # fmt: skip
+        cleanup_events = EventCleanupRequest(mode=BulkMode.PREVIEW, older_than_days=30,
+                                             levels=[EventLevel.DEBUG, EventLevel.INFO],
+                                             reason=None)  # fmt: skip
+
+        snapshot_request = DatasetSnapshotRequest(
+            project_id=project_id, dataset_name="Synthetic fixture dataset",
+            description="Synthetic test data", score_run_id=None,
+        )  # fmt: skip
+
+        def capture() -> Any:
+            return datasets.snapshot_businesses(
+                conn, data_dir, project_id=project_id, dataset_name=snapshot_request.dataset_name,
+                actor="fixture", description=snapshot_request.description, score_run_id=None,
+            )  # fmt: skip
+
+        first = capture()
+        leads = leads_explorer.run_of(conn, None)
+        if leads is None:
+            raise TypeError("the synthetic project has no finished score run")
+        (listed,) = conn.execute(
+            "SELECT business_id FROM lead_index WHERE score_run_id = ? ORDER BY rank LIMIT 1",
+            (leads.id,),
+        ).fetchone()
+        if listed not in leads_explorer.suppressed_roots(conn):
+            contacts_store.change_suppression(conn, SuppressionChangeRequest(
+                suppression_id=None, kind=SuppressionKind.BUSINESS, value=listed,
+                reason="Synthetic fixture: asked to be left alone"), actor="fixture")  # fmt: skip
+        second = capture()
+        snapshots_query = DatasetSnapshotListQuery(
+            dataset_id=second.dataset_id, limit=25, cursor=None
+        )
+        diff_query = DatasetDiffQuery(before_snapshot_id=first.id, after_snapshot_id=second.id,
+                                      limit=50)  # fmt: skip
+        dataset_cleanup = DatasetCleanupRequest(dataset_id=second.dataset_id, keep_latest=1,
+                                                mode=BulkMode.PREVIEW, reason=None)  # fmt: skip
+
+        catalog_query = ExportCatalogQuery(include_superseded=False)
+        catalog = exports.catalog(conn, catalog_query)
+        concise = next(view for view in catalog.presets if view.preset.key == "sales_ready_concise")
+        preset = ExportPresetSaveRequest(
+            key=None, clone_from="sales_ready_concise", name="Synthetic sales-ready (JSONL)",
+            description="Synthetic fixture",
+            definition=concise.definition.model_copy(update={"format": ExportFormat.JSONL}),
+        )  # fmt: skip
+        draft = ExportDraft(
+            source_kind=ExportSourceKind.QUERY,
+            query=ExplorerQuery(
+                score_run_id=None, filters=no_filters(), search=None,
+                sort=[ExplorerSort(field=ExplorerField.TOTAL_SCORE, direction=SortDirection.DESC)],
+                offset=0, limit=100, with_total=False,
+            ),
+            view_id=None, snapshot_id=None, format=ExportFormat.CSV,
+            columns=[ExportColumn(key="name", header="Business"),
+                     ExportColumn(key="tier", header="Tier"),
+                     ExportColumn(key="total_score", header="Lead score"),
+                     ExportColumn(key="main_channel", header="Channel")],
+            bom=True, include_suppressed=False, suppressed_reason=None, preset_key=None,
+            preset_version=None,
+        )  # fmt: skip
+        preview = exports.preview(conn, data_dir, draft, _T0)
+        export_start = ExportStartRequest.model_validate(
+            draft.model_dump() | {"destination": "C:/synthetic/exports/leads.csv"}
+        )
+        export_id = exports.plan_export(conn, data_dir, export_start, actor="fixture",
+                                        request_id=None, now=_T0)  # fmt: skip
+        exports_query = ExportListQuery(project_id=project_id, limit=25, cursor=None)
+        fixtures = {
+            "pipeline_start_request.json": _dump(start),
+            "pipeline_control_request.json": _dump(
+                DiscoveryControlRequest(job_id=job_id, action=RunControlAction.PAUSE)
+            ),
+            "dead_letter_request.json": _dump(retry),
+            "pipeline_list_query.json": _dump(listing),
+            "pipeline_run.json": _dump(run),
+            "pipeline_page.json": _dump(
+                PipelinePage(items=[run], next_cursor=None, total=1, resources=usage)
+            ),
+            "job_event_query.json": _dump(events_query),
+            "job_event_page.json": _dump(operations.list_events(conn, events_query)),
+            "event_cleanup_request.json": _dump(cleanup_events),
+            "event_cleanup_result.json": _dump(
+                operations.cleanup_events(conn, cleanup_events, _T0)
+            ),
+            "dataset_snapshot_request.json": _dump(snapshot_request),
+            "dataset_snapshot_detail.json": _dump(datasets.snapshot_detail(conn, data_dir, second.id)),  # noqa: E501
+            "dataset_snapshot_list_query.json": _dump(snapshots_query),
+            "dataset_snapshot_page.json": _dump(datasets.list_snapshots(conn, snapshots_query)),
+            "dataset_snapshot_query.json": _dump(DatasetSnapshotQuery(snapshot_id=second.id)),
+            "dataset_diff_query.json": _dump(diff_query),
+            "dataset_diff.json": _dump(datasets.diff(conn, data_dir, diff_query)),
+            "dataset_cleanup_request.json": _dump(dataset_cleanup),
+            "dataset_cleanup_result.json": _dump(
+                datasets.cleanup(conn, data_dir, dataset_cleanup, actor="fixture")
+            ),
+            "export_catalog_query.json": _dump(catalog_query),
+            "export_catalog.json": _dump(catalog),
+            "export_preset_save_request.json": _dump(preset),
+            "export_draft.json": _dump(draft),
+            "export_preview_result.json": _dump(preview),
+            "export_start_request.json": _dump(export_start),
+            "export_item.json": _dump(exports.export_item(conn, export_id)),
+            "export_list_query.json": _dump(exports_query),
+            "export_page.json": _dump(exports.list_exports(conn, exports_query)),
+            "export_cancel_request.json": _dump(ExportCancelRequest(export_id=export_id)),
+        }  # fmt: skip
+    return fixtures
 
 
 def build_lead_fixtures(conn: Any, context: SyntheticContext) -> dict[str, dict[str, Any]]:

@@ -73,6 +73,38 @@ def vram() -> tuple[int, int] | None:
     )
 
 
+_cpu_lock = threading.Lock()
+_cpu_last: list[int] = []  # idle, total in 100-ns ticks at the previous call
+
+
+def cpu_percent() -> float | None:
+    """The busy share of every CPU since the previous call, 0 to 100. None on the first call and
+    wherever the OS does not say (only Windows is read: `GetSystemTimes`)."""
+    if sys.platform != "win32":
+        return None
+    import ctypes
+    from ctypes import wintypes
+
+    idle, kernel, user = wintypes.FILETIME(), wintypes.FILETIME(), wintypes.FILETIME()
+    if not ctypes.windll.kernel32.GetSystemTimes(
+        ctypes.byref(idle), ctypes.byref(kernel), ctypes.byref(user)
+    ):
+        return None
+
+    def ticks(value: wintypes.FILETIME) -> int:
+        return (value.dwHighDateTime << 32) | value.dwLowDateTime
+
+    # the kernel time includes the idle time
+    now_idle, now_total = ticks(idle), ticks(kernel) + ticks(user)
+    with _cpu_lock:
+        previous = list(_cpu_last)
+        _cpu_last[:] = [now_idle, now_total]
+    if not previous or now_total <= previous[1]:
+        return None
+    busy = 1 - (now_idle - previous[0]) / (now_total - previous[1])
+    return round(min(100.0, max(0.0, busy * 100)), 1)
+
+
 @dataclass(frozen=True, slots=True)
 class Sample:
     ram_total_mib: int | None

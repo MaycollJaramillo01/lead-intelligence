@@ -78,45 +78,45 @@ directory deleted afterwards): `uv run --directory services/research-engine pyth
 
 ## Troubleshooting
 
-| Symptom                                                              | Cause / fix                                                                                                                                                                                                    |
-| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Python Worker: `worker executable not found`                         | Development virtualenv missing: `pnpm run setup`.                                                                                                                                                              |
-| Python Worker: `Failed` with a traceback                             | Read the stderr tail on the diagnostics screen and the `worker` records in the log.                                                                                                                            |
-| Python Worker: `automatic restarts exhausted`                        | The worker crashed 3 times in 5 minutes; fix the cause, then press **Restart worker**.                                                                                                                         |
-| Ollama: `installed but not running`                                  | Start Ollama (tray app or `ollama serve`). Nothing is downloaded automatically.                                                                                                                                |
-| AI Models: a task says `No model assigned to its profile`            | By design no model is assumed: pick an installed model for the profile in **Profiles and tasks** and save. Run a benchmark to see which one to choose.                                                         |
-| AI Models: `Paused: the runtime kept failing`                        | Three runtime failures in a row opened the breaker; it retries by itself after 30 s (doubling up to 5 min). AI jobs pause instead of looping: resume them in Jobs.                                             |
-| AI: an inference fails with `insufficient_vram`                      | The model does not fit in the free VRAM even at 2 048 tokens and its profile does not allow the CPU. Allow the CPU, use a smaller model, or close what is using the GPU.                                       |
-| AI: answers end as `invalid_output`                                  | The model's answer broke the schema or cited inputs it was not given, twice. Open it in the history to see why; a benchmark shows which installed model answers validly.                                       |
-| AI: crawling slows down while AI runs                                | Free RAM or VRAM is under the limits in **Profiles and tasks**: each URL waits up to 120 s. Lower the limits or let the AI work finish.                                                                        |
-| GPU: `nvidia-smi not found`                                          | No NVIDIA driver; local AI will use the CPU.                                                                                                                                                                   |
-| DuckDB: `could not set lock on file`                                 | Another app instance (or tool) has the database open. Close it (single-instance lock: phase 14).                                                                                                               |
-| SQLite: `degraded · recovered from backup …`                         | The store was damaged and replaced by the named backup; the damaged file is kept as `lead.sqlite3.corrupt-<utc>`. Changes after that backup are lost.                                                          |
-| SQLite: `… is damaged … and no usable backup exists`                 | Follow **Recover a damaged database** below.                                                                                                                                                                   |
-| SQLite/DuckDB: `… is at schema vN, this build needs vM`              | A migration failed at startup (see the error on System and in the log). The store is unchanged and a backup was taken before the attempt.                                                                      |
-| Businesses: `the cursor does not belong to …`                        | The list was paged with a cursor from another sort or a stale build; reload the screen.                                                                                                                        |
-| Research Center: sites fail with `Private or local address refused`  | The address resolves to this machine or the local network; the crawler only visits public internet addresses, by design.                                                                                       |
-| Research Center: `No browser available`                              | Neither Playwright's Chromium, Edge nor Chrome could start, or free memory is under 2 GiB; pages stay as fetched over HTTP.                                                                                    |
-| Research Center: `robots.txt unreadable: nothing allowed`            | The site's robots.txt answered 5xx or 429, or did not answer; RFC 9309 says to fetch nothing. Try again later.                                                                                                 |
-| Businesses: `a resolution run is working on this project`            | Review decisions and value choices wait while a resolution run is queued or running on that project. Let it finish, or pause it in Jobs.                                                                       |
-| Businesses: `an evaluation is already open for this project`         | A Latino evidence evaluation is queued, running or paused for that project. Resume or cancel it in Jobs before starting another.                                                                               |
-| Latino review: `an ownership status needs active ownership evidence` | By design: a person can only choose a status the evidence can support (market affinity needs market signals, verified needs strong ownership evidence).                                                        |
-| Latino evidence: everything stays `Unknown`                          | Expected without explicit declarations: names, Spanish and places never count. Crawl the websites (Research Center) and resolve before evaluating.                                                             |
-| Website intelligence: `this project has no finished crawl yet`       | Audits read what a crawl stored. Crawl the websites in Research Center ▸ Acquisition first.                                                                                                                    |
-| Website intelligence: an audit is `Partial` or `Empty`               | Pages the crawl failed, left queued, or whose stored HTML is missing cannot be analyzed; the rules that need them are unknown, not failed. Crawl the site again, then audit.                                   |
-| Website intelligence: auditing again changes nothing                 | By design: a crawl already audited with the same rules writes nothing. Crawl the site again to read fresh pages.                                                                                               |
-| Website intelligence: analytics `not detected`                       | Tags loaded by a tag manager or a consent tool leave no trace in the HTML; not detected never means absent.                                                                                                    |
-| Contacts: every email stays `Well-formed only`                       | Mail domains are looked up only when **Look up mail domains (DNS)** is ticked and the worker is not offline. A DNS timeout keeps an address well formed; it never invalidates it.                              |
-| Contacts: a hypothesis cannot be confirmed or shown                  | By design: an address built from a pattern is never a contact. Crawl a page where the business publishes it, or mark it invalid.                                                                               |
-| Contacts: `this value is already on the do-not-contact list`         | A live entry covers the value after normalisation (lower-case address, E.164 number, registrable domain). Lift it first to add it again with another reason.                                                   |
-| Contacts: a do-not-contact import reports problems                   | Each problem names its line: the header needs `kind` and `value`, kinds are email, phone, domain or business, and at most 5 000 rows are read.                                                                 |
-| Contacts: `there are no businesses to check yet`                     | Discover or import businesses and resolve them first; crawl their websites to read the channels they publish.                                                                                                  |
-| Scoring: `a scoring run is already open for this project`            | A score run is queued, running or paused for that project. Resume or cancel it in Jobs before starting another.                                                                                                |
-| Scoring: `these versions cannot run` or `cannot be activated`        | The ICP or scoring version has errors (for example `no_offers`, `empty_must_have`, `features_mismatch`), listed in ICP Builder and Scoring Models. Fix them and save a new version.                            |
-| Scoring: most leads are `Insufficient data`                          | A gate is undecided or less than 60 % of the final weight is known (site not crawled or audited, contacts not checked, Latino evidence not evaluated). The scorecard's missing data says what would help most. |
-| Scoring: a preview says the project has more than 5000 businesses    | A preview over facts read now reads every business at once. Run a score job, then preview over its stored facts.                                                                                               |
-| `uv` fails with `os error 1921` when run from a packaged app         | Cache entries created inside an MSIX-virtualised process. Retry with `uv --no-cache …` or clear the affected entries with `uv cache clean <package>`.                                                          |
-| `git` reports _dubious ownership_                                    | The `.git` directory belongs to another Windows account; use `git -c safe.directory=<repo> …` or add the exception yourself.                                                                                   |
+| Symptom                                                              | Cause / fix                                                                                                                                                                                                      |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Python Worker: `worker executable not found`                         | Development virtualenv missing: `pnpm run setup`.                                                                                                                                                                |
+| Python Worker: `Failed` with a traceback                             | Read the stderr tail on the diagnostics screen and the `worker` records in the log.                                                                                                                              |
+| Python Worker: `automatic restarts exhausted`                        | The worker crashed 3 times in 5 minutes; fix the cause, then press **Restart worker**.                                                                                                                           |
+| Ollama: `installed but not running`                                  | Start Ollama (tray app or `ollama serve`). Nothing is downloaded automatically.                                                                                                                                  |
+| AI Models: a task says `No model assigned to its profile`            | By design no model is assumed: pick an installed model for the profile in **Profiles and tasks** and save. Run a benchmark to see which one to choose.                                                           |
+| AI Models: `Paused: the runtime kept failing`                        | Three runtime failures in a row opened the breaker; it retries by itself after 30 s (doubling up to 5 min). AI jobs pause instead of looping: resume them in Jobs.                                               |
+| AI: an inference fails with `insufficient_vram`                      | The model does not fit in the free VRAM even at 2 048 tokens and its profile does not allow the CPU. Allow the CPU, use a smaller model, or close what is using the GPU.                                         |
+| AI: answers end as `invalid_output`                                  | The model's answer broke the schema or cited inputs it was not given, twice. Open it in the history to see why; a benchmark shows which installed model answers validly.                                         |
+| AI: crawling slows down while AI runs                                | Free RAM or VRAM is under the limits in **Profiles and tasks**: each URL waits up to 120 s. Lower the limits or let the AI work finish.                                                                          |
+| GPU: `nvidia-smi not found`                                          | No NVIDIA driver; local AI will use the CPU.                                                                                                                                                                     |
+| DuckDB: `could not set lock on file`                                 | Another app instance (or tool) has the database open. Close it. A second launch of the app only focuses the first window (single instance, phase 14), so this is another tool or a crashed worker still exiting. |
+| SQLite: `degraded · recovered from backup …`                         | The store was damaged and replaced by the named backup; the damaged file is kept as `lead.sqlite3.corrupt-<utc>`. Changes after that backup are lost.                                                            |
+| SQLite: `… is damaged … and no usable backup exists`                 | Follow **Recover a damaged database** below.                                                                                                                                                                     |
+| SQLite/DuckDB: `… is at schema vN, this build needs vM`              | A migration failed at startup (see the error on System and in the log). The store is unchanged and a backup was taken before the attempt.                                                                        |
+| Businesses: `the cursor does not belong to …`                        | The list was paged with a cursor from another sort or a stale build; reload the screen.                                                                                                                          |
+| Research Center: sites fail with `Private or local address refused`  | The address resolves to this machine or the local network; the crawler only visits public internet addresses, by design.                                                                                         |
+| Research Center: `No browser available`                              | Neither Playwright's Chromium, Edge nor Chrome could start, or free memory is under 2 GiB; pages stay as fetched over HTTP.                                                                                      |
+| Research Center: `robots.txt unreadable: nothing allowed`            | The site's robots.txt answered 5xx or 429, or did not answer; RFC 9309 says to fetch nothing. Try again later.                                                                                                   |
+| Businesses: `a resolution run is working on this project`            | Review decisions and value choices wait while a resolution run is queued or running on that project. Let it finish, or pause it in Jobs.                                                                         |
+| Businesses: `an evaluation is already open for this project`         | A Latino evidence evaluation is queued, running or paused for that project. Resume or cancel it in Jobs before starting another.                                                                                 |
+| Latino review: `an ownership status needs active ownership evidence` | By design: a person can only choose a status the evidence can support (market affinity needs market signals, verified needs strong ownership evidence).                                                          |
+| Latino evidence: everything stays `Unknown`                          | Expected without explicit declarations: names, Spanish and places never count. Crawl the websites (Research Center) and resolve before evaluating.                                                               |
+| Website intelligence: `this project has no finished crawl yet`       | Audits read what a crawl stored. Crawl the websites in Research Center ▸ Acquisition first.                                                                                                                      |
+| Website intelligence: an audit is `Partial` or `Empty`               | Pages the crawl failed, left queued, or whose stored HTML is missing cannot be analyzed; the rules that need them are unknown, not failed. Crawl the site again, then audit.                                     |
+| Website intelligence: auditing again changes nothing                 | By design: a crawl already audited with the same rules writes nothing. Crawl the site again to read fresh pages.                                                                                                 |
+| Website intelligence: analytics `not detected`                       | Tags loaded by a tag manager or a consent tool leave no trace in the HTML; not detected never means absent.                                                                                                      |
+| Contacts: every email stays `Well-formed only`                       | Mail domains are looked up only when **Look up mail domains (DNS)** is ticked and the worker is not offline. A DNS timeout keeps an address well formed; it never invalidates it.                                |
+| Contacts: a hypothesis cannot be confirmed or shown                  | By design: an address built from a pattern is never a contact. Crawl a page where the business publishes it, or mark it invalid.                                                                                 |
+| Contacts: `this value is already on the do-not-contact list`         | A live entry covers the value after normalisation (lower-case address, E.164 number, registrable domain). Lift it first to add it again with another reason.                                                     |
+| Contacts: a do-not-contact import reports problems                   | Each problem names its line: the header needs `kind` and `value`, kinds are email, phone, domain or business, and at most 5 000 rows are read.                                                                   |
+| Contacts: `there are no businesses to check yet`                     | Discover or import businesses and resolve them first; crawl their websites to read the channels they publish.                                                                                                    |
+| Scoring: `a scoring run is already open for this project`            | A score run is queued, running or paused for that project. Resume or cancel it in Jobs before starting another.                                                                                                  |
+| Scoring: `these versions cannot run` or `cannot be activated`        | The ICP or scoring version has errors (for example `no_offers`, `empty_must_have`, `features_mismatch`), listed in ICP Builder and Scoring Models. Fix them and save a new version.                              |
+| Scoring: most leads are `Insufficient data`                          | A gate is undecided or less than 60 % of the final weight is known (site not crawled or audited, contacts not checked, Latino evidence not evaluated). The scorecard's missing data says what would help most.   |
+| Scoring: a preview says the project has more than 5000 businesses    | A preview over facts read now reads every business at once. Run a score job, then preview over its stored facts.                                                                                                 |
+| `uv` fails with `os error 1921` when run from a packaged app         | Cache entries created inside an MSIX-virtualised process. Retry with `uv --no-cache …` or clear the affected entries with `uv cache clean <package>`.                                                            |
+| `git` reports _dubious ownership_                                    | The `.git` directory belongs to another Windows account; use `git -c safe.directory=<repo> …` or add the exception yourself.                                                                                     |
 
 ## Data, backups and recovery
 
@@ -144,6 +144,59 @@ Details in [data-model.md](data-model.md). In short:
 
 Integrity of any copy can be checked with
 `uv run --directory services/research-engine python -c "from pathlib import Path; from research_engine.storage import sqlite_problems; print(sqlite_problems(Path('<file>')) or 'ok')"`.
+
+## Operational runbook (phase 13)
+
+Pipelines, dataset snapshots and exports are driven from **Jobs**, **Datasets**, **Exports** and
+**Logs**. Decisions D-083 to D-087 in [decisions.md](decisions.md).
+
+### Pipelines
+
+A pipeline chains the engines' own jobs over one project, in this order: discovery → acquisition →
+normalization → entity resolution → (latino evidence · website intelligence · contact intelligence)
+→ local AI → scoring → export eligibility. Discovery and acquisition need a campaign; the other
+stages skip, with a reason, when they have nothing to work on.
+
+| Situation                               | What to do                                                                                                                                                                    |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Start                                   | **Jobs ▸ Pipelines**: choose the project or campaign, **Start pipeline**. A retry after a timeout reuses the same key and returns the pipeline already started                |
+| A stage waits                           | The log shows `pipeline_waiting` with `project_busy` (another pipeline of the project runs a stage), `slot_<resource>` (the resource limit is used) or `low_ram` / `low_disk` |
+| Pause, resume, cancel                   | Buttons on the pipeline; they reach the engine job of the running stage. Cancel also cancels the engine jobs the pipeline started                                             |
+| The app or the machine stopped          | Reopen the app: the pipeline is paused (D-027). **Resume** continues the engine jobs its stages had started, never starting them twice                                        |
+| A stage failed with a recoverable cause | Nothing: `timeout`, `rate_limited`, `network`, `store_busy`, `store_unavailable` and `worker_interrupted` retry with backoff up to the stage's attempts                       |
+| A stage failed for good (dead letter)   | Read the cause in **Events** (the log link), fix it (an ICP or scoring version to activate, a campaign, the network), then **Retry stage** or **Skip stage** with a reason    |
+| Scoring fails with `configuration`      | Activate an ICP version for the project in **ICP Builder** and a scoring version in **Scoring Models**, then retry the stage                                                  |
+
+### Datasets and snapshots
+
+- **New snapshot** (Datasets, a dataset open) copies the project's businesses as of now, with the
+  newest finished score run, into DuckDB and Parquet under `data/datasets/<dataset>/<snapshot>/`,
+  and stores its quality report. The export eligibility stage of a pipeline writes one too.
+- **Compare** shows rows added, removed and changed (with the fields) against the version before.
+- **Retention**: choose how many versions to keep, **Preview**, then **Delete old versions** with a
+  reason. A version an export was written from, or one a kept version derives from, is always kept.
+
+### Exports
+
+- Start from the **Lead Explorer** (export preview ▸ **Export to a file…**) or from a snapshot
+  (**Export…**). Choose a preset or columns and headers, **Preview**, **Choose where to save…** (the
+  system dialog; the page never sees or sends a path), then **Export**.
+- The file is written to `<name>.partial` and renamed when complete; `<name>.manifest.json` beside
+  it holds the query or snapshot, columns, counts, versions and the file's SHA-256.
+- Do-not-contact leads are left out unless included with a reason; guessed addresses never leave
+  the store. CSV and XLSX cells that a spreadsheet would run as a formula are prefixed with `'`.
+- Cancel removes the partial files. An export a crash interrupted is marked `failed` with
+  `interrupted` at the next start, its partial files removed: export again.
+- Errors: `disk_full` (free space), `permission_denied` (choose another folder; exports are refused
+  inside the app's data folder except its `exports/`), `io_error`, `too_many_rows` (a worksheet holds 1 048 575 rows: use CSV, JSONL or Parquet).
+- Verify a file: compare `Get-FileHash <file> -Algorithm SHA256` with the manifest's `sha256`.
+
+### Event log
+
+- **Logs** filters the persisted events by job (a pipeline includes its engine jobs), task, business,
+  request and level. Links from a pipeline open it filtered.
+- **Clean up** deletes debug, info or warning events older than N days of finished jobs, previewed
+  first and applied with a reason. Error events are never deleted.
 
 ## Synthetic test data (development only)
 

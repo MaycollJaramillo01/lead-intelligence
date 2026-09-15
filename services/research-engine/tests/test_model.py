@@ -56,8 +56,8 @@ def _column(name: str, annotation: Any) -> tuple[str, bool]:
     while typing.get_origin(annotation) is typing.Annotated:
         annotation = typing.get_args(annotation)[0]
     if name.endswith("_json"):
-        # JsonValue itself admits null; objects are nullable only when declared optional
-        return "TEXT", nullable or typing.get_origin(annotation) is not dict
+        # JsonValue itself admits null; objects and arrays are nullable only when declared optional
+        return "TEXT", nullable or typing.get_origin(annotation) not in (dict, list)
     if isinstance(annotation, type) and issubclass(annotation, StrEnum):
         return "TEXT", nullable
     return _SQL_TYPES[annotation], nullable

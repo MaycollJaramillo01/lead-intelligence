@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import type { ExplorerField, ExplorerQuery } from "@lead/shared-types";
 import { InlineNotice, StateBlock } from "@/components/states/StateBlock";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,8 @@ interface ExportPreviewDialogProps {
   query: ExplorerQuery;
   /** The visible columns, in order; memoised by the caller. */
   columns: readonly ExplorerField[];
+  /** Opens the export wizard that writes the file (phase 13). */
+  onExportToFile?: () => void;
 }
 
 /**
@@ -27,7 +30,12 @@ interface ExportPreviewDialogProps {
  * sample, before anything is written. Leads on the do-not-contact list stay out unless the analyst
  * includes them, and the preview says so.
  */
-export function ExportPreviewDialog({ onOpenChange, query, columns }: ExportPreviewDialogProps) {
+export function ExportPreviewDialog({
+  onOpenChange,
+  query,
+  columns,
+  onExportToFile,
+}: ExportPreviewDialogProps) {
   const t = useT();
   const [includeSuppressed, setIncludeSuppressed] = useState(false);
   const load = useCallback(
@@ -50,14 +58,21 @@ export function ExportPreviewDialog({ onOpenChange, query, columns }: ExportPrev
           <DialogDescription>{t("export.help")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-2 text-xs">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={includeSuppressed}
-              onChange={(event) => setIncludeSuppressed(event.target.checked)}
-            />
-            {t("export.includeSuppressed")}
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={includeSuppressed}
+                onChange={(event) => setIncludeSuppressed(event.target.checked)}
+              />
+              {t("export.includeSuppressed")}
+            </label>
+            {onExportToFile && (
+              <Button size="sm" className="h-7" onClick={onExportToFile}>
+                {t("export.toFile")}
+              </Button>
+            )}
+          </div>
           {error ? (
             <StateBlock
               variant={error.code === "desktop_unavailable" ? "offline" : "error"}

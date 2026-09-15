@@ -11,8 +11,10 @@
   "scripts": {
     "setup": "pnpm install --frozen-lockfile && uv sync --directory services/research-engine --locked",
     "dev": "tauri dev",
-    "build": "pnpm contracts:check && tauri build",
+    "build": "pnpm contracts:check && pnpm build:sidecar && tauri build --config src-tauri/tauri.bundle.conf.json",
     "build:app": "tauri build --no-bundle",
+    "build:sidecar": "uv run --directory services/research-engine --group packaging pyinstaller --noconfirm --clean --distpath dist --workpath dist/pyinstaller-work packaging/research-engine.spec",
+    "build:sbom": "uv run --directory services/research-engine python ../../scripts/sbom.py",
     "lint": "pnpm lint:ts && pnpm lint:rust && pnpm lint:py",
     "lint:ts": "pnpm -r lint && prettier --check .",
     "lint:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",

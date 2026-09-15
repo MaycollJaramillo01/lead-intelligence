@@ -220,6 +220,10 @@ const SNAPSHOT_KEYS = {
   schema_version: true,
   filters_json: true,
   created_at: true,
+  query_json: true,
+  cutoff_at: true,
+  pipeline_versions_json: true,
+  quality_json: true,
 } satisfies Record<keyof DatasetSnapshot, true>;
 
 const keys = (value: object) => Object.keys(value).sort();

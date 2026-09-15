@@ -200,7 +200,15 @@ export const EVIDENCE_KIND_KEYS: Record<EvidenceRefKind, TranslationKey> = {
  * when this build has one, else the code itself, never hidden. */
 export function codeText(
   t: Translator,
-  prefix: "brief.reason" | "bulk.skip" | "export.warning" | "research.matchedBy",
+  prefix:
+    | "brief.reason"
+    | "bulk.skip"
+    | "export.warning"
+    | "research.matchedBy"
+    | "pipeline.skipped"
+    | "pipeline.pressure"
+    | "snapshot.kept"
+    | "snapshot.qualityError",
   code: string,
 ): string {
   const key = `${prefix}.${code}`;

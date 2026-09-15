@@ -8,10 +8,12 @@ import type {
   CrawlRunPage,
   DiscoveryRunPage,
   LatinoRunPage,
+  PipelinePage,
   ResolutionRunPage,
   ScoreRunPage,
   WebsiteRunPage,
 } from "@lead/shared-types";
+import pipelineFixture from "@lead/shared-types/fixtures/pipeline_page.json";
 import aiFixture from "@lead/shared-types/fixtures/ai_run_page.json";
 import contactFixture from "@lead/shared-types/fixtures/contact_run_page.json";
 import crawlFixture from "@lead/shared-types/fixtures/crawl_run_page.json";
@@ -41,6 +43,9 @@ const mocks = vi.hoisted(() => ({
   controlAi: vi.fn<typeof desktop.controlAi>(),
   listScoreRuns: vi.fn<typeof desktop.listScoreRuns>(),
   controlScoring: vi.fn<typeof desktop.controlScoring>(),
+  listPipelines: vi.fn<typeof desktop.listPipelines>(),
+  listCampaigns: vi.fn<typeof desktop.listCampaigns>(),
+  listDatasets: vi.fn<typeof desktop.listDatasets>(),
 }));
 const NO_RESOLUTION: ResolutionRunPage = { items: [], next_cursor: null, total: 0 };
 const NO_EVALUATION: LatinoRunPage = { items: [], next_cursor: null, total: 0 };
@@ -56,6 +61,7 @@ vi.mock("@/lib/ipc", async (importOriginal) => ({
 const crawls = crawlFixture as CrawlRunPage;
 const discovery = discoveryFixture as DiscoveryRunPage;
 const scores = scoreFixture as ScoreRunPage;
+const pipelines = pipelineFixture as PipelinePage;
 
 function renderJobs(path = "/jobs") {
   render(
@@ -77,6 +83,9 @@ describe("JobsScreen", () => {
     mocks.listContactRuns.mockResolvedValue(contactFixture as ContactRunPage);
     mocks.listAiRuns.mockResolvedValue(aiFixture as AiRunPage);
     mocks.listScoreRuns.mockResolvedValue(scores);
+    mocks.listPipelines.mockResolvedValue({ ...pipelines, items: [], total: 0 });
+    mocks.listCampaigns.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
+    mocks.listDatasets.mockResolvedValue({ items: [], next_cursor: null, total: 0 });
   });
 
   it("lists the runs of every engine together, from real queries", async () => {

@@ -10,7 +10,7 @@ compares leads side by side.
 
 import sqlite3
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from datetime import datetime, timedelta
 from typing import Final
 
@@ -117,6 +117,16 @@ _SEARCH: Final = (
 _PARTIAL_AUDITS: Final = (WebsiteAuditStatus.PARTIAL, WebsiteAuditStatus.EMPTY)
 
 Sql = tuple[str, list[object], set[str]]
+
+
+def suppressed_roots(conn: sqlite3.Connection) -> set[str]:
+    """Every business on the do-not-contact list now, as the business its records merged into."""
+    return {str(row[0]) for row in conn.execute(_SUPPRESSED_ROOTS)}
+
+
+def unsuppressed_clause() -> str:
+    """A condition over `lead_index li` leaving out the leads on the do-not-contact list now."""
+    return f"NOT (li.business_id IN ({_SUPPRESSED_ROOTS}))"
 
 
 def suppressed_sql(column: str) -> str:
@@ -483,6 +493,41 @@ def _window(
         )
     }
     return [found[business_id] for business_id in ids], total
+
+
+def rows_for(
+    conn: sqlite3.Connection, run: ScoreRun, ids: Sequence[str], now: datetime
+) -> list[ExplorerRow]:
+    """Explorer rows of these leads of a run, in the order given (leads the run lacks are left
+    out)."""
+    if not ids:
+        return []
+    found = {
+        row["business_id"]: repository.from_row(LeadIndexRow, row)
+        for row in conn.execute(
+            f"SELECT * FROM lead_index WHERE score_run_id = ? AND business_id IN ({_marks(ids)})",  # noqa: S608
+            [run.id, *ids],
+        )
+    }
+    return rows_of(conn, [found[business_id] for business_id in ids if business_id in found], now)
+
+
+def stream_ids(
+    conn: sqlite3.Connection, query: ExplorerQuery, run: ScoreRun, now: datetime, batch: int
+) -> Iterator[list[str]]:
+    """Every lead a query matches, in its order, in batches: one pass over the indexes, never a
+    window at a deep offset (an export of a whole run)."""
+    finished = run.finished_at is not None
+    where, params, joins, narrowed = _where(run.id, query.filters, query.search, now)
+    order, order_params, order_joins = _order(query.sort, now, finished)
+    scan = narrowed or not _walked(query.sort, finished)
+    cursor = conn.execute(
+        f"SELECT li.business_id {_source(joins | order_joins, scan)} WHERE {where} "
+        f"ORDER BY {order}",
+        [*params, *order_params],
+    )
+    while rows := cursor.fetchmany(batch):
+        yield [str(row[0]) for row in rows]
 
 
 def explore(conn: sqlite3.Connection, query: ExplorerQuery, now: datetime) -> ExplorerPage:

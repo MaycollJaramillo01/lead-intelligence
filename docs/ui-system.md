@@ -52,9 +52,9 @@ Six sections, sixteen modules. Status is what the module actually is today.
 | Intelligence | AI Models       | `/ai-models`       | available |
 | Operations   | Jobs            | `/jobs`            | available |
 | Operations   | Datasets        | `/datasets`        | available |
-| Operations   | Exports         | `/exports`         | phase 13  |
+| Operations   | Exports         | `/exports`         | available |
 | System       | System          | `/system`          | available |
-| System       | Logs            | `/logs`            | phase 13  |
+| System       | Logs            | `/logs`            | available |
 | System       | Settings        | `/settings`        | available |
 
 The registry (`src/app/navigation.ts`) is the single source: sidebar, breadcrumbs, command palette,

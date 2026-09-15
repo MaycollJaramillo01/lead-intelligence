@@ -1,0 +1,9 @@
+{
+  "mode": "preview",
+  "older_than_days": 30,
+  "levels": [
+    "debug",
+    "info"
+  ],
+  "reason": null
+}

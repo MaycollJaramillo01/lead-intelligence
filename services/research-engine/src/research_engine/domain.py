@@ -345,6 +345,7 @@ class EntityType(StrEnum):
     CONTACT_SUPPRESSION = "contact_suppression"
     SAVED_VIEW = "saved_view"
     RESEARCH_CHECKLIST = "research_checklist"
+    EXPORT_PRESET = "export_preset"
 
 
 class AuditAction(StrEnum):
@@ -738,7 +739,8 @@ TRANSITIONS: dict[type[StrEnum], dict[str, frozenset[str]]] = {
             "not_interested": ("not_contacted",),
         },
         ExportStatus: {
-            "pending": ("running", "cancelled"),
+            # an export may fail before it writes (a destination refused, nothing to write)
+            "pending": ("running", "failed", "cancelled"),
             "running": ("succeeded", "failed", "cancelled"),
             "failed": ("pending",),
             "succeeded": (),
@@ -1866,6 +1868,12 @@ class DatasetSnapshot(Record):
     schema_version: Annotated[int, Field(ge=1)]
     filters_json: JsonObject
     created_at: UtcTimestamp
+    #: Phase 13: what was asked for (project, score run), the moment the rows were read, the
+    #: versions of what produced them and the quality report. Schema 1 snapshots have none of it.
+    query_json: JsonObject
+    cutoff_at: UtcTimestamp | None
+    pipeline_versions_json: dict[str, str]
+    quality_json: JsonObject | None
 
 
 class DatasetSnapshotSource(Record):
@@ -1898,6 +1906,34 @@ class Export(Record):
     error_message: str | None
     created_at: UtcTimestamp
     updated_at: UtcTimestamp
+    #: Phase 13: the job that writes it, where the save dialog put it (history only), the columns
+    #: as written, what was exported and how, who asked, the preset used and why it failed.
+    job_id: Id | None
+    destination: str | None
+    columns_json: list[dict[str, str]]
+    config_json: JsonObject
+    actor: Label
+    preset_key: Code | None
+    preset_version: Annotated[int, Field(ge=1)] | None
+    error_code: Code | None
+
+
+class ExportPreset(Record):
+    """One immutable version of an export preset (built in, or cloned and saved by a person)."""
+
+    TABLE = "export_presets"
+    ENTITY = EntityType.EXPORT_PRESET
+    id: Id
+    key: Code
+    version: Annotated[int, Field(ge=1)]
+    name: Annotated[str, Field(min_length=1, max_length=120)]
+    description: Annotated[str, Field(max_length=2000)] | None
+    definition_json: JsonObject
+    built_in: bool
+    cloned_from_id: Id | None
+    created_by: Label
+    created_at: UtcTimestamp
+    superseded_at: UtcTimestamp | None
 
 
 class Tag(Record):
@@ -2102,6 +2138,7 @@ RECORDS: tuple[type[Record], ...] = (
     DatasetSnapshot,
     DatasetSnapshotSource,
     Export,
+    ExportPreset,
     Tag,
     EntityTag,
     Note,
@@ -6405,8 +6442,608 @@ class SalesBriefOutput(Contract):
     sections: Annotated[list[SalesBriefSectionOutput], Field(max_length=10)]
 
 
+# ---- operations: pipelines, events, datasets and exports (phase 13) -----------------------------
+
+
+class PipelineStage(StrEnum):
+    """The stages of a campaign pipeline, in order. Each runs the engine job of its phase."""
+
+    DISCOVERY = "discovery"
+    ACQUISITION = "acquisition"
+    NORMALIZATION = "normalization"
+    ENTITY_RESOLUTION = "entity_resolution"
+    LATINO_EVIDENCE = "latino_evidence"
+    WEBSITE_INTELLIGENCE = "website_intelligence"
+    CONTACT_INTELLIGENCE = "contact_intelligence"
+    LOCAL_AI = "local_ai"
+    SCORING = "scoring"
+    EXPORT_ELIGIBILITY = "review_export_eligibility"
+
+
+class PipelineResource(StrEnum):
+    HTTP = "http"
+    BROWSER = "browser"
+    CPU = "cpu"
+    RAM = "ram"
+    DISK = "disk"
+    GPU = "gpu"
+
+
+IdempotencyKey = Annotated[str, Field(min_length=8, max_length=120, pattern=r"^[A-Za-z0-9_.:-]+$")]
+
+
+class PipelineStartRequest(Contract):
+    """Runs every stage over one project; a campaign adds discovery and acquisition. A repeated key
+    (a double click, a retry after a timeout) returns the pipeline it already started."""
+
+    project_id: Id
+    campaign_id: Id | None
+    check_mail_domains: bool
+    priority: Annotated[int, Field(ge=-100, le=100)]
+    idempotency_key: IdempotencyKey
+
+
+class DeadLetterAction(StrEnum):
+    #: Queue the stage again as a new attempt.
+    RETRY = "retry"
+    #: Go on without it: the stage counts as done with nothing produced.
+    SKIP = "skip"
+
+
+class DeadLetterRequest(Contract):
+    job_id: Id
+    task_id: Id
+    action: DeadLetterAction
+    reason: ReviewReason
+
+
+class PipelineListQuery(Contract):
+    project_id: Id | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class ChildJob(Contract):
+    """An engine job a stage started, or attached because it was already open for the project."""
+
+    job_id: Id
+    kind: Code
+    status: JobStatus
+    reused: bool
+    progress_done: NonNegative
+    progress_total: NonNegative | None
+    started_at: UtcTimestamp | None
+    finished_at: UtcTimestamp | None
+    #: Items per minute since it started: an estimate, null until there is progress.
+    rate_per_minute: Annotated[float, Field(ge=0)] | None
+    #: Seconds left at that rate: an estimate, null when unknown.
+    eta_seconds: NonNegative | None
+    #: The stats the engine wrote with its last checkpoint.
+    stats: JsonObject | None
+
+
+class PipelineAttempt(Contract):
+    attempt: Annotated[int, Field(ge=1)]
+    status: JobStatus
+    started_at: UtcTimestamp
+    finished_at: UtcTimestamp | None
+    error_code: Code | None
+    error_message: str | None
+    retryable: bool | None
+    jobs: list[ChildJob]
+
+
+class PipelineStageView(Contract):
+    task_id: Id
+    stage: PipelineStage
+    ordinal: NonNegative
+    version: Label
+    inputs: list[Code]
+    outputs: list[Code]
+    depends_on: list[PipelineStage]
+    resources: list[PipelineResource]
+    max_attempts: Annotated[int, Field(ge=1)]
+    retryable_codes: list[Code]
+    status: JobStatus
+    #: Why the stage had nothing to do (`no_campaign`, `no_businesses`...); it counts as done.
+    skipped: Code | None
+    attempts: list[PipelineAttempt]
+    #: Warnings and errors of its engine jobs, newest first (at most 20).
+    events: list[RunEvent]
+
+
+class DeadLetterStatus(StrEnum):
+    OPEN = "open"
+    RETRIED = "retried"
+    SKIPPED = "skipped"
+
+
+class DeadLetter(Contract):
+    id: Id
+    task_id: Id
+    stage: PipelineStage
+    attempt: Annotated[int, Field(ge=1)]
+    error_code: Code
+    error_message: str
+    retryable: bool
+    review_status: DeadLetterStatus
+    created_at: UtcTimestamp
+    resolved_at: UtcTimestamp | None
+    resolved_by: str | None
+    resolution_reason: str | None
+
+
+class StageCounts(Contract):
+    queued: NonNegative
+    running: NonNegative
+    paused: NonNegative
+    succeeded: NonNegative
+    skipped: NonNegative
+    failed: NonNegative
+    cancelled: NonNegative
+
+
+class PipelineRun(Contract):
+    job_id: Id
+    project_id: Id
+    project_name: Label
+    campaign_id: Id | None
+    campaign_name: Label | None
+    status: JobStatus
+    priority: int
+    check_mail_domains: bool
+    #: Stages done (succeeded or skipped) out of every stage.
+    progress_done: NonNegative
+    progress_total: NonNegative
+    counts: StageCounts
+    requested_at: UtcTimestamp
+    started_at: UtcTimestamp | None
+    finished_at: UtcTimestamp | None
+    stages: list[PipelineStageView]
+    dead_letters: list[DeadLetter]
+    #: What the eligibility stage produced: the score run read, the leads eligible to export
+    #: (priority or review, not on the do-not-contact list) and the snapshot written.
+    score_run_id: Id | None
+    eligible_leads: NonNegative | None
+    snapshot_id: Id | None
+    #: The controls the pipeline's status allows now.
+    actions: list[RunControlAction]
+    is_synthetic: bool
+
+
+class ResourceSlot(Contract):
+    resource: PipelineResource
+    running: NonNegative
+    limit: NonNegative
+
+
+class ResourceUsage(Contract):
+    """This machine now, as the orchestrator sees it. Null means the OS did not say."""
+
+    sampled_at: UtcTimestamp
+    cpu_count: NonNegative
+    cpu_percent: Annotated[float, Field(ge=0, le=100)] | None
+    ram_total_mib: NonNegative | None
+    ram_free_mib: NonNegative | None
+    vram_total_mib: NonNegative | None
+    vram_free_mib: NonNegative | None
+    disk_total_mib: NonNegative | None
+    disk_free_mib: NonNegative | None
+    active_browsers: NonNegative | None
+    slots: list[ResourceSlot]
+    #: `low_ram`, `low_vram`, `low_disk`: stages that need the resource wait until it clears.
+    pressure: list[Code]
+
+
+class PipelinePage(Contract):
+    items: list[PipelineRun]
+    next_cursor: Cursor | None
+    total: NonNegative
+    resources: ResourceUsage
+
+
+class JobEventQuery(Contract):
+    """The persisted log. A pipeline's events include those of its engine jobs."""
+
+    job_id: Id | None
+    task_id: Id | None
+    business_id: Id | None
+    request_id: Id | None
+    levels: Annotated[list[EventLevel], _between(0, len(EventLevel))]
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class JobEventItem(Contract):
+    event: JobEvent
+    job_kind: Code
+    project_id: Id
+    stage: Code | None
+
+
+class JobEventPage(Contract):
+    items: list[JobEventItem]
+    next_cursor: Cursor | None
+    total: NonNegative
+
+
+class LevelCount(Contract):
+    level: EventLevel
+    count: NonNegative
+
+
+class EventCleanupRequest(Contract):
+    """Deletes old events of finished jobs. Errors are never deleted: they are the root causes."""
+
+    mode: BulkMode
+    older_than_days: Annotated[int, Field(ge=1, le=3650)]
+    levels: Annotated[list[EventLevel], _between(1, 3)]
+    reason: ReviewReason | None
+
+    @model_validator(mode="after")
+    def _safe(self) -> Self:
+        if EventLevel.ERROR in self.levels:
+            raise ValueError("error events are kept: they explain what failed")
+        if len(set(self.levels)) != len(self.levels):
+            raise ValueError("a level appears twice")
+        if self.mode is BulkMode.APPLY and self.reason is None:
+            raise ValueError("deleting events needs a reason")
+        return self
+
+
+class EventCleanupResult(Contract):
+    mode: BulkMode
+    cutoff: UtcTimestamp
+    matched: NonNegative
+    deleted: NonNegative
+    by_level: list[LevelCount]
+    kept_errors: NonNegative
+
+
+class DatasetSnapshotRequest(Contract):
+    """Captures a project as the next version of a dataset: a consistent read at one moment. The
+    rows carry the tiers and scores of `score_run_id`, or of the newest finished run when null."""
+
+    project_id: Id
+    dataset_name: Annotated[str, Field(min_length=1, max_length=300)]
+    description: Annotated[str, Field(max_length=2000)] | None
+    score_run_id: Id | None
+
+
+class FieldCoverage(Contract):
+    field: Code
+    known: NonNegative
+    unknown: NonNegative
+    share: Confidence
+
+
+class ValueCount(Contract):
+    value: str
+    count: NonNegative
+
+
+class DatasetQuality(Contract):
+    """Computed from the snapshot's Parquet copy when it is written; never estimated."""
+
+    schema_version: Annotated[int, Field(ge=1)]
+    rows: NonNegative
+    duplicates: NonNegative
+    coverage: list[FieldCoverage]
+    statuses: list[ValueCount]
+    tiers: list[ValueCount]
+    #: Leads per total score band (0-9, 10-19 ... 90-100); unscored rows are counted apart.
+    score_bins: list[NonNegative]
+    unscored: NonNegative
+    suppressed: NonNegative
+    oldest_seen_at: UtcTimestamp | None
+    newest_seen_at: UtcTimestamp | None
+    #: Rows last seen more than STALE_AFTER_DAYS before the cut-off.
+    stale_rows: NonNegative
+    errors: list[str]
+
+
+class LineageKind(StrEnum):
+    SOURCE_RUN = "source_run"
+    SCORE_RUN = "score_run"
+    PARENT_SNAPSHOT = "parent_snapshot"
+
+
+class LineageItem(Contract):
+    kind: LineageKind
+    id: Id
+    label: str
+    at: UtcTimestamp | None
+
+
+class DatasetSnapshotItem(Contract):
+    snapshot: DatasetSnapshot
+    dataset_name: Label
+    project_id: Id
+    lineage_count: NonNegative
+    export_count: NonNegative
+    is_synthetic: bool
+
+
+class DatasetSnapshotListQuery(Contract):
+    dataset_id: Id
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class DatasetSnapshotPage(Contract):
+    items: list[DatasetSnapshotItem]
+    next_cursor: Cursor | None
+    total: NonNegative
+
+
+class DatasetSnapshotQuery(Contract):
+    snapshot_id: Id
+
+
+class DatasetSnapshotDetail(Contract):
+    item: DatasetSnapshotItem
+    #: Schema 1 snapshots have no stored report; theirs is computed from the Parquet copy.
+    quality: DatasetQuality
+    lineage: list[LineageItem]
+    #: The newest 20 exports of this snapshot.
+    exports: list[Export]
+
+
+class DatasetDiffQuery(Contract):
+    before_snapshot_id: Id
+    after_snapshot_id: Id
+    limit: Annotated[int, Field(ge=1, le=500)]
+
+    @model_validator(mode="after")
+    def _two(self) -> Self:
+        if self.before_snapshot_id == self.after_snapshot_id:
+            raise ValueError("compare two different snapshots")
+        return self
+
+
+class DiffRow(Contract):
+    business_id: Id
+    display_name: str
+
+
+class ChangedRow(Contract):
+    business_id: Id
+    display_name: str
+    #: The compared columns whose values differ: the reason the row changed.
+    fields: list[Code]
+
+
+class DatasetDiff(Contract):
+    before: DatasetSnapshotItem
+    after: DatasetSnapshotItem
+    added_count: NonNegative
+    removed_count: NonNegative
+    changed_count: NonNegative
+    unchanged_count: NonNegative
+    #: The first `limit` rows of each list, by business id.
+    added: list[DiffRow]
+    removed: list[DiffRow]
+    changed: list[ChangedRow]
+    #: The columns both snapshots hold, compared value by value.
+    compared_fields: list[Code]
+    truncated: bool
+
+
+class DatasetCleanupRequest(Contract):
+    """Deletes old snapshot versions of a dataset, keeping the newest `keep_latest` and whatever
+    lineage or exports still need. Preview first; applying needs a reason."""
+
+    dataset_id: Id
+    keep_latest: Annotated[int, Field(ge=1, le=100)]
+    mode: BulkMode
+    reason: ReviewReason | None
+
+    @model_validator(mode="after")
+    def _reason(self) -> Self:
+        if self.mode is BulkMode.APPLY and self.reason is None:
+            raise ValueError("deleting snapshots needs a reason")
+        return self
+
+
+class CleanupSnapshot(Contract):
+    snapshot_id: Id
+    version: Annotated[int, Field(ge=1)]
+    row_count: NonNegative
+    bytes: NonNegative
+    #: Why a snapshot is kept: `latest`, `parent_of_kept`, `exported`.
+    kept_because: Code | None
+
+
+class DatasetCleanupResult(Contract):
+    mode: BulkMode
+    deleted: list[CleanupSnapshot]
+    kept: list[CleanupSnapshot]
+    freed_bytes: NonNegative
+
+
+class ExportSourceKind(StrEnum):
+    #: The leads a Lead Explorer query matches now.
+    QUERY = "query"
+    #: The rows of a dataset snapshot, as they were at its cut-off.
+    SNAPSHOT = "snapshot"
+
+
+class ExportColumn(Contract):
+    #: An explorer field for a query export, a snapshot column for a snapshot export.
+    key: Code
+    header: Annotated[str, Field(min_length=1, max_length=64)]
+
+
+MAX_EXPORT_COLUMNS = 64
+
+
+def _unique_columns(columns: list[ExportColumn]) -> None:
+    if len({column.key for column in columns}) != len(columns):
+        raise ValueError("a column appears twice")
+    if len({column.header.casefold() for column in columns}) != len(columns):
+        raise ValueError("two columns have the same header")
+
+
+class ExportDefinition(Contract):
+    """What a preset fixes: the source kind, the format, the columns and their headers."""
+
+    source_kind: ExportSourceKind
+    format: ExportFormat
+    columns: Annotated[list[ExportColumn], _between(1, MAX_EXPORT_COLUMNS)]
+    #: CSV only: start the file with a UTF-8 byte order mark (Excel reads accents with it).
+    bom: bool
+
+    @model_validator(mode="after")
+    def _columns(self) -> Self:
+        _unique_columns(self.columns)
+        return self
+
+
+class ExportDraft(Contract):
+    """Everything an export needs but its destination, which the desktop core adds from the save
+    dialog: the interface never names a path."""
+
+    source_kind: ExportSourceKind
+    query: ExplorerQuery | None
+    #: The saved view the query came from, recorded in the manifest.
+    view_id: Id | None
+    snapshot_id: Id | None
+    format: ExportFormat
+    columns: Annotated[list[ExportColumn], _between(1, MAX_EXPORT_COLUMNS)]
+    bom: bool
+    #: Leads on the do-not-contact list stay out unless included on purpose, with a reason.
+    include_suppressed: bool
+    suppressed_reason: ReviewReason | None
+    preset_key: Code | None
+    preset_version: Annotated[int, Field(ge=1)] | None
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Self:
+        _unique_columns(self.columns)
+        if self.source_kind is ExportSourceKind.QUERY:
+            if self.query is None or self.snapshot_id is not None:
+                raise ValueError("a query export names its query and no snapshot")
+        elif self.snapshot_id is None or self.query is not None or self.view_id is not None:
+            raise ValueError("a snapshot export names its snapshot and no query")
+        if self.include_suppressed != (self.suppressed_reason is not None):
+            raise ValueError("including do-not-contact leads needs a reason, and only then")
+        if (self.preset_key is None) != (self.preset_version is None):
+            raise ValueError("a preset is named with its version")
+        return self
+
+
+class ExportStartRequest(ExportDraft):
+    #: An absolute path the save dialog returned; the worker writes `<destination>.partial` first.
+    destination: Annotated[str, Field(min_length=3, max_length=1024)]
+
+
+class ExportColumnType(StrEnum):
+    TEXT = "text"
+    NUMBER = "number"
+    FLAG = "flag"
+    TIMESTAMP = "timestamp"
+    LIST = "list"
+
+
+class ExportColumnInfo(Contract):
+    source_kind: ExportSourceKind
+    key: Code
+    type: ExportColumnType
+    #: What the value means and where it comes from; shown next to the column when choosing it.
+    description: str
+
+
+class ExportPresetView(Contract):
+    preset: ExportPreset
+    definition: ExportDefinition
+    #: Every version of this key, newest first.
+    versions: list[Annotated[int, Field(ge=1)]]
+    cloned_from_key: Code | None
+
+
+class ExportCatalogQuery(Contract):
+    include_superseded: bool
+
+
+class ExportCatalog(Contract):
+    presets: list[ExportPresetView]
+    columns: list[ExportColumnInfo]
+    #: Columns every export appends after the chosen ones, by source kind.
+    appended: list[ExportColumnInfo]
+    formats: list[ExportFormat]
+    xlsx_max_rows: NonNegative
+    max_columns: NonNegative
+
+
+class ExportPresetSaveRequest(Contract):
+    """A new preset (cloned from `clone_from`, or from nothing) or the next version of a saved one.
+    Built-in presets are cloned, never changed."""
+
+    key: Code | None
+    clone_from: Code | None
+    name: Annotated[str, Field(min_length=1, max_length=120)]
+    description: Annotated[str, Field(max_length=2000)] | None
+    definition: ExportDefinition
+
+    @model_validator(mode="after")
+    def _one(self) -> Self:
+        if self.key is not None and self.clone_from is not None:
+            raise ValueError("save a version of a preset or clone one, not both")
+        return self
+
+
+class ExportPreviewResult(Contract):
+    """The first rows exactly as the file would hold them, with the counts and warnings."""
+
+    matching: NonNegative
+    excluded_suppressed: NonNegative
+    exported: NonNegative
+    headers: list[str]
+    #: Values after spreadsheet sanitising, in header order (at most 20 rows).
+    sample: list[list[JsonValue]]
+    #: `suppressed_included`, `stale_rows`, `partial_rows`, `synthetic_rows`, `too_many_rows`,
+    #: `unverified_channels`, `hypotheses_never_exported`...
+    warnings: list[Code]
+    generated_at: UtcTimestamp
+
+
+class ExportCancelRequest(Contract):
+    export_id: Id
+
+
+class ExportListQuery(Contract):
+    project_id: Id | None
+    limit: PageSize
+    cursor: Cursor | None
+
+
+class ExportItem(Contract):
+    export: Export
+    job_status: JobStatus | None
+    rows_written: NonNegative
+    rows_total: NonNegative | None
+    is_synthetic: bool
+
+
+class ExportPage(Contract):
+    items: list[ExportItem]
+    next_cursor: Cursor | None
+    total: NonNegative
+
+
+class ExportDestination(Contract):
+    """What the desktop core's save dialog returned: a one-time grant the interface passes back to
+    start the export, and the file name and folder to show. The path never reaches the page."""
+
+    grant_id: Id
+    file_name: Annotated[str, Field(min_length=1, max_length=260)]
+    folder: Annotated[str, Field(min_length=1, max_length=1024)]
+    format: ExportFormat
+
+
 DATA_MODELS: tuple[type[Contract], ...] = (
     *RECORDS,
+    ExportDestination,
     Provenance,
     ObservedName,
     ObservedLocation,
@@ -6589,4 +7226,53 @@ DATA_MODELS: tuple[type[Contract], ...] = (
     SalesBrief,
     SalesBriefSectionOutput,
     SalesBriefOutput,
+    PipelineStartRequest,
+    DeadLetterRequest,
+    PipelineListQuery,
+    ChildJob,
+    PipelineAttempt,
+    PipelineStageView,
+    DeadLetter,
+    StageCounts,
+    PipelineRun,
+    ResourceSlot,
+    ResourceUsage,
+    PipelinePage,
+    JobEventQuery,
+    JobEventItem,
+    JobEventPage,
+    LevelCount,
+    EventCleanupRequest,
+    EventCleanupResult,
+    DatasetSnapshotRequest,
+    FieldCoverage,
+    ValueCount,
+    DatasetQuality,
+    LineageItem,
+    DatasetSnapshotItem,
+    DatasetSnapshotListQuery,
+    DatasetSnapshotPage,
+    DatasetSnapshotQuery,
+    DatasetSnapshotDetail,
+    DatasetDiffQuery,
+    DiffRow,
+    ChangedRow,
+    DatasetDiff,
+    DatasetCleanupRequest,
+    CleanupSnapshot,
+    DatasetCleanupResult,
+    ExportColumn,
+    ExportDefinition,
+    ExportDraft,
+    ExportStartRequest,
+    ExportColumnInfo,
+    ExportPresetView,
+    ExportCatalogQuery,
+    ExportCatalog,
+    ExportPresetSaveRequest,
+    ExportPreviewResult,
+    ExportCancelRequest,
+    ExportListQuery,
+    ExportItem,
+    ExportPage,
 )

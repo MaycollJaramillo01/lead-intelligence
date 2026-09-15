@@ -497,6 +497,10 @@ pub struct DatasetSnapshot {
     pub schema_version: u32,
     pub filters_json: Map<String, Value>,
     pub created_at: UtcTimestamp,
+    pub query_json: Map<String, Value>,
+    pub cutoff_at: Option<UtcTimestamp>,
+    pub pipeline_versions_json: Map<String, Value>,
+    pub quality_json: Option<Map<String, Value>>,
 }
 
 // ---- pages and results -------------------------------------------------------------------------
@@ -8884,6 +8888,1454 @@ impl SalesBrief {
                     draft.inference_run_id
                 ));
             }
+        }
+        Ok(())
+    }
+}
+
+// ---- pipelines, the event log, datasets and exports (phase 13) ----------------------------------
+
+const MAX_IDEMPOTENCY_KEY: usize = 120;
+const MAX_DIFF_ROWS: u32 = 500;
+const MAX_KEEP_LATEST: u32 = 100;
+const MAX_RETENTION_DAYS: u32 = 3650;
+const MAX_EXPORT_COLUMNS: usize = 64;
+const MAX_EXPORT_HEADER: usize = 64;
+const EXPORT_SAMPLE_ROWS: usize = 20;
+const MAX_SNAPSHOT_EXPORTS: usize = 20;
+const MAX_STAGE_EVENTS: usize = 20;
+const SCORE_BANDS: usize = 10;
+const BUILT_IN_PRESETS: [&str; 5] = [
+    "sales_ready_concise",
+    "full_evidence_audit",
+    "contact_review",
+    "website_opportunity_report",
+    "dataset_analytical",
+];
+
+contract_enum!(PipelineStage {
+    Discovery,
+    Acquisition,
+    Normalization,
+    EntityResolution,
+    LatinoEvidence,
+    WebsiteIntelligence,
+    ContactIntelligence,
+    LocalAi,
+    Scoring,
+    ReviewExportEligibility,
+});
+contract_enum!(PipelineResource {
+    Http,
+    Browser,
+    Cpu,
+    Ram,
+    Disk,
+    Gpu
+});
+contract_enum!(DeadLetterAction { Retry, Skip });
+contract_enum!(DeadLetterStatus {
+    Open,
+    Retried,
+    Skipped
+});
+contract_enum!(LineageKind {
+    SourceRun,
+    ScoreRun,
+    ParentSnapshot
+});
+contract_enum!(ExportSourceKind { Query, Snapshot });
+contract_enum!(ExportColumnType {
+    Text,
+    Number,
+    Flag,
+    Timestamp,
+    List
+});
+contract_enum!(ExportFormat {
+    Csv,
+    Xlsx,
+    Json,
+    Jsonl,
+    Parquet
+});
+contract_enum!(ExportStatus {
+    Pending,
+    Running,
+    Succeeded,
+    Failed,
+    Cancelled
+});
+
+/// The stages of every pipeline, in order.
+pub const PIPELINE_STAGES: [PipelineStage; 10] = [
+    PipelineStage::Discovery,
+    PipelineStage::Acquisition,
+    PipelineStage::Normalization,
+    PipelineStage::EntityResolution,
+    PipelineStage::LatinoEvidence,
+    PipelineStage::WebsiteIntelligence,
+    PipelineStage::ContactIntelligence,
+    PipelineStage::LocalAi,
+    PipelineStage::Scoring,
+    PipelineStage::ReviewExportEligibility,
+];
+
+impl ExportFormat {
+    pub fn extension(self) -> &'static str {
+        match self {
+            Self::Csv => "csv",
+            Self::Xlsx => "xlsx",
+            Self::Json => "json",
+            Self::Jsonl => "jsonl",
+            Self::Parquet => "parquet",
+        }
+    }
+}
+
+fn check_idempotency_key(key: &str) -> Result<(), String> {
+    let valid = (8..=MAX_IDEMPOTENCY_KEY).contains(&key.len())
+        && key
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'.' | b':' | b'-'));
+    if valid {
+        Ok(())
+    } else {
+        Err("an idempotency key has 8 to 120 letters, digits, '_', '.', ':' or '-'".into())
+    }
+}
+
+fn check_estimate(name: &str, value: Option<f64>) -> Result<(), String> {
+    match value {
+        Some(number) if !number.is_finite() || number < 0.0 => {
+            Err(format!("{name} must be a finite, non-negative estimate"))
+        }
+        _ => Ok(()),
+    }
+}
+
+fn newest_first<'a>(stamps: impl Iterator<Item = &'a UtcTimestamp>) -> bool {
+    let stamps: Vec<&UtcTimestamp> = stamps.collect();
+    stamps.windows(2).all(|pair| pair[0] >= pair[1])
+}
+
+fn is_sha256(text: &str) -> bool {
+    text.len() == 64 && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+}
+
+fn check_apply_reason(mode: BulkMode, reason: &Option<String>) -> Result<(), String> {
+    check_reason(reason)?;
+    if mode == BulkMode::Apply && reason.is_none() {
+        return Err("applying needs a reason".into());
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PipelineStartRequest {
+    pub project_id: Id,
+    pub campaign_id: Option<Id>,
+    pub check_mail_domains: bool,
+    pub priority: i32,
+    pub idempotency_key: String,
+}
+
+impl PipelineStartRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        within("priority", self.priority, -100, 100)?;
+        check_idempotency_key(&self.idempotency_key)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DeadLetterRequest {
+    pub job_id: Id,
+    pub task_id: Id,
+    pub action: DeadLetterAction,
+    pub reason: String,
+}
+
+impl DeadLetterRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        check_text_reason(&self.reason)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PipelineListQuery {
+    pub project_id: Option<Id>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl PipelineListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChildJob {
+    pub job_id: Id,
+    pub kind: String,
+    pub status: JobStatus,
+    pub reused: bool,
+    pub progress_done: u64,
+    pub progress_total: Option<u64>,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+    pub rate_per_minute: Option<f64>,
+    pub eta_seconds: Option<u64>,
+    pub stats: Option<Map<String, Value>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PipelineAttempt {
+    pub attempt: u32,
+    pub status: JobStatus,
+    pub started_at: UtcTimestamp,
+    pub finished_at: Option<UtcTimestamp>,
+    pub error_code: Option<String>,
+    pub error_message: Option<String>,
+    pub retryable: Option<bool>,
+    pub jobs: Vec<ChildJob>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PipelineStageView {
+    pub task_id: Id,
+    pub stage: PipelineStage,
+    pub ordinal: u32,
+    pub version: String,
+    pub inputs: Vec<String>,
+    pub outputs: Vec<String>,
+    pub depends_on: Vec<PipelineStage>,
+    pub resources: Vec<PipelineResource>,
+    pub max_attempts: u32,
+    pub retryable_codes: Vec<String>,
+    pub status: JobStatus,
+    pub skipped: Option<String>,
+    pub attempts: Vec<PipelineAttempt>,
+    pub events: Vec<RunEvent>,
+}
+
+impl PipelineStageView {
+    fn validate(&self) -> Result<(), String> {
+        for (index, attempt) in self.attempts.iter().enumerate() {
+            if attempt.attempt as usize != index + 1 {
+                return Err(format!("{:?}: attempts are numbered in order", self.stage));
+            }
+            for job in &attempt.jobs {
+                check_estimate("rate_per_minute", job.rate_per_minute)?;
+            }
+        }
+        if self.events.len() > MAX_STAGE_EVENTS
+            || self
+                .events
+                .iter()
+                .any(|event| !matches!(event.level, EventLevel::Warning | EventLevel::Error))
+        {
+            return Err(format!(
+                "{:?}: a stage lists up to {MAX_STAGE_EVENTS} warnings and errors",
+                self.stage
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DeadLetter {
+    pub id: Id,
+    pub task_id: Id,
+    pub stage: PipelineStage,
+    pub attempt: u32,
+    pub error_code: String,
+    pub error_message: String,
+    pub retryable: bool,
+    pub review_status: DeadLetterStatus,
+    pub created_at: UtcTimestamp,
+    pub resolved_at: Option<UtcTimestamp>,
+    pub resolved_by: Option<String>,
+    pub resolution_reason: Option<String>,
+}
+
+impl DeadLetter {
+    fn validate(&self) -> Result<(), String> {
+        let open = self.review_status == DeadLetterStatus::Open;
+        if open != self.resolved_at.is_none()
+            || self.resolved_at.is_some() != self.resolved_by.is_some()
+            || self.resolved_at.is_some() != self.resolution_reason.is_some()
+        {
+            return Err("a resolved dead letter says when, by whom and why".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StageCounts {
+    pub queued: u64,
+    pub running: u64,
+    pub paused: u64,
+    pub succeeded: u64,
+    pub skipped: u64,
+    pub failed: u64,
+    pub cancelled: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PipelineRun {
+    pub job_id: Id,
+    pub project_id: Id,
+    pub project_name: String,
+    pub campaign_id: Option<Id>,
+    pub campaign_name: Option<String>,
+    pub status: JobStatus,
+    pub priority: i32,
+    pub check_mail_domains: bool,
+    pub progress_done: u64,
+    pub progress_total: u64,
+    pub counts: StageCounts,
+    pub requested_at: UtcTimestamp,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+    pub stages: Vec<PipelineStageView>,
+    pub dead_letters: Vec<DeadLetter>,
+    pub score_run_id: Option<Id>,
+    pub eligible_leads: Option<u64>,
+    pub snapshot_id: Option<Id>,
+    pub actions: Vec<RunControlAction>,
+    pub is_synthetic: bool,
+}
+
+impl PipelineRun {
+    /// Ten stages in order whose statuses add up, a stage running only after what it depends on,
+    /// an open dead letter only on a stopped pipeline, and the controls its status allows.
+    pub fn validate(&self) -> Result<(), String> {
+        let stages: Vec<PipelineStage> = self.stages.iter().map(|view| view.stage).collect();
+        if stages != PIPELINE_STAGES || self.progress_total != PIPELINE_STAGES.len() as u64 {
+            return Err("a pipeline has its ten stages, in order".into());
+        }
+        let mut counts = StageCounts::default();
+        for (ordinal, view) in self.stages.iter().enumerate() {
+            if view.ordinal as usize != ordinal {
+                return Err(format!("{:?} is out of order", view.stage));
+            }
+            view.validate()?;
+            match (view.status, view.skipped.is_some()) {
+                (JobStatus::Succeeded, true) => counts.skipped += 1,
+                (_, true) => return Err(format!("{:?} is skipped but not done", view.stage)),
+                (JobStatus::Queued, false) => counts.queued += 1,
+                (JobStatus::Running, false) => counts.running += 1,
+                (JobStatus::Paused, false) => counts.paused += 1,
+                (JobStatus::Succeeded, false) => counts.succeeded += 1,
+                (JobStatus::Failed, false) => counts.failed += 1,
+                (JobStatus::Cancelled, false) => counts.cancelled += 1,
+            }
+            if matches!(view.status, JobStatus::Running | JobStatus::Paused) {
+                let waiting = view.depends_on.iter().any(|dependency| {
+                    self.stages.iter().any(|other| {
+                        other.stage == *dependency && other.status != JobStatus::Succeeded
+                    })
+                });
+                if waiting {
+                    return Err(format!("{:?} runs before what it depends on", view.stage));
+                }
+            }
+        }
+        if counts != self.counts || self.progress_done != counts.succeeded + counts.skipped {
+            return Err("the stage counts of a pipeline do not add up".into());
+        }
+        for letter in &self.dead_letters {
+            letter.validate()?;
+            if !self
+                .stages
+                .iter()
+                .any(|view| view.task_id == letter.task_id && view.stage == letter.stage)
+            {
+                return Err("a dead letter of a stage the pipeline does not have".into());
+            }
+        }
+        let open = self
+            .dead_letters
+            .iter()
+            .any(|letter| letter.review_status == DeadLetterStatus::Open);
+        // a stage can dead-letter while its pipeline is being cancelled
+        if open && !matches!(self.status, JobStatus::Failed | JobStatus::Cancelled) {
+            return Err("an open dead letter holds a stopped pipeline".into());
+        }
+        if self.status == JobStatus::Succeeded && counts.succeeded + counts.skipped != 10 {
+            return Err("a finished pipeline has every stage done".into());
+        }
+        let expected = match self.status {
+            JobStatus::Queued => vec![RunControlAction::Cancel],
+            JobStatus::Running => vec![RunControlAction::Pause, RunControlAction::Cancel],
+            JobStatus::Paused => vec![RunControlAction::Resume, RunControlAction::Cancel],
+            _ => Vec::new(),
+        };
+        if self.actions != expected {
+            return Err("the controls do not match the pipeline's status".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResourceSlot {
+    pub resource: PipelineResource,
+    pub running: u64,
+    pub limit: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResourceUsage {
+    pub sampled_at: UtcTimestamp,
+    pub cpu_count: u64,
+    pub cpu_percent: Option<f64>,
+    pub ram_total_mib: Option<u64>,
+    pub ram_free_mib: Option<u64>,
+    pub vram_total_mib: Option<u64>,
+    pub vram_free_mib: Option<u64>,
+    pub disk_total_mib: Option<u64>,
+    pub disk_free_mib: Option<u64>,
+    pub active_browsers: Option<u64>,
+    pub slots: Vec<ResourceSlot>,
+    pub pressure: Vec<String>,
+}
+
+impl ResourceUsage {
+    pub fn validate(&self) -> Result<(), String> {
+        if self
+            .cpu_percent
+            .is_some_and(|percent| !(0.0..=100.0).contains(&percent))
+        {
+            return Err("CPU use is a percentage".into());
+        }
+        for (name, free, total) in [
+            ("RAM", self.ram_free_mib, self.ram_total_mib),
+            ("VRAM", self.vram_free_mib, self.vram_total_mib),
+            ("disk", self.disk_free_mib, self.disk_total_mib),
+        ] {
+            if let (Some(free), Some(total)) = (free, total)
+                && free > total
+            {
+                return Err(format!("more free {name} than there is"));
+            }
+        }
+        let resources: Vec<PipelineResource> =
+            self.slots.iter().map(|slot| slot.resource).collect();
+        check_unique(&resources, "resource")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PipelinePage {
+    pub items: Vec<PipelineRun>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+    pub resources: ResourceUsage,
+}
+
+impl PipelinePage {
+    pub fn validate(&self, query: &PipelineListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        self.resources.validate()?;
+        for item in &self.items {
+            item.validate()?;
+            if query
+                .project_id
+                .as_ref()
+                .is_some_and(|project| *project != item.project_id)
+            {
+                return Err("a pipeline of another project".into());
+            }
+        }
+        if !newest_first(self.items.iter().map(|item| &item.requested_at)) {
+            return Err("pipelines are listed newest first".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct JobEvent {
+    pub id: Id,
+    pub job_id: Id,
+    pub task_id: Option<Id>,
+    pub level: EventLevel,
+    pub event: String,
+    pub error_code: Option<String>,
+    pub retryable: Option<bool>,
+    pub detail_json: Option<Map<String, Value>>,
+    pub created_at: UtcTimestamp,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct JobEventQuery {
+    pub job_id: Option<Id>,
+    pub task_id: Option<Id>,
+    pub business_id: Option<Id>,
+    pub request_id: Option<Id>,
+    pub levels: Vec<EventLevel>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl JobEventQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)?;
+        check_unique(&self.levels, "level")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct JobEventItem {
+    pub event: JobEvent,
+    pub job_kind: String,
+    pub project_id: Id,
+    pub stage: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct JobEventPage {
+    pub items: Vec<JobEventItem>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl JobEventPage {
+    pub fn validate(&self, query: &JobEventQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        for item in &self.items {
+            let event = &item.event;
+            if (event.level == EventLevel::Error) != event.error_code.is_some() {
+                return Err("an error event carries its code, and only an error does".into());
+            }
+            if !query.levels.is_empty() && !query.levels.contains(&event.level) {
+                return Err("an event of a level that was not asked for".into());
+            }
+            if query.task_id.is_some() && event.task_id != query.task_id {
+                return Err("an event of another stage".into());
+            }
+        }
+        if !newest_first(self.items.iter().map(|item| &item.event.created_at)) {
+            return Err("events are listed newest first".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LevelCount {
+    pub level: EventLevel,
+    pub count: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EventCleanupRequest {
+    pub mode: BulkMode,
+    pub older_than_days: u32,
+    pub levels: Vec<EventLevel>,
+    pub reason: Option<String>,
+}
+
+impl EventCleanupRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        within(
+            "older_than_days",
+            self.older_than_days,
+            1,
+            MAX_RETENTION_DAYS,
+        )?;
+        if self.levels.is_empty()
+            || self.levels.len() > 3
+            || self.levels.contains(&EventLevel::Error)
+        {
+            return Err("cleanup deletes debug, info or warning events; errors are kept".into());
+        }
+        check_unique(&self.levels, "level")?;
+        check_apply_reason(self.mode, &self.reason)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EventCleanupResult {
+    pub mode: BulkMode,
+    pub cutoff: UtcTimestamp,
+    pub matched: u64,
+    pub deleted: u64,
+    pub by_level: Vec<LevelCount>,
+    pub kept_errors: u64,
+}
+
+impl EventCleanupResult {
+    pub fn validate(&self, request: &EventCleanupRequest) -> Result<(), String> {
+        let levels: Vec<EventLevel> = self.by_level.iter().map(|count| count.level).collect();
+        if self.mode != request.mode || levels != request.levels {
+            return Err("the cleanup is not the one asked for".into());
+        }
+        let matched: u64 = self.by_level.iter().map(|count| count.count).sum();
+        let deleted_ok = match self.mode {
+            BulkMode::Preview => self.deleted == 0,
+            BulkMode::Apply => self.deleted <= matched,
+        };
+        if matched != self.matched || !deleted_ok {
+            return Err("the cleanup's counts do not add up".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DatasetSnapshotRequest {
+    pub project_id: Id,
+    pub dataset_name: String,
+    pub description: Option<String>,
+    pub score_run_id: Option<Id>,
+}
+
+impl DatasetSnapshotRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        check_label("a dataset name", &self.dataset_name, 300)?;
+        if self
+            .description
+            .as_ref()
+            .is_some_and(|text| text.chars().count() > 2000)
+        {
+            return Err("a description has at most 2000 characters".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FieldCoverage {
+    pub field: String,
+    pub known: u64,
+    pub unknown: u64,
+    pub share: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ValueCount {
+    pub value: String,
+    pub count: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DatasetQuality {
+    pub schema_version: u32,
+    pub rows: u64,
+    pub duplicates: u64,
+    pub coverage: Vec<FieldCoverage>,
+    pub statuses: Vec<ValueCount>,
+    pub tiers: Vec<ValueCount>,
+    pub score_bins: Vec<u64>,
+    pub unscored: u64,
+    pub suppressed: u64,
+    pub oldest_seen_at: Option<UtcTimestamp>,
+    pub newest_seen_at: Option<UtcTimestamp>,
+    pub stale_rows: u64,
+    pub errors: Vec<String>,
+}
+
+impl DatasetQuality {
+    /// Counts of the snapshot's own rows that add up: no estimate passes for a measurement.
+    pub fn validate(&self, row_count: u64) -> Result<(), String> {
+        let rows = self.rows;
+        if rows != row_count
+            || [
+                self.duplicates,
+                self.unscored,
+                self.suppressed,
+                self.stale_rows,
+            ]
+            .iter()
+            .any(|count| *count > rows)
+        {
+            return Err("the quality report counts rows the snapshot does not have".into());
+        }
+        for coverage in &self.coverage {
+            let share = if rows == 0 {
+                0.0
+            } else {
+                coverage.known as f64 / rows as f64
+            };
+            if coverage.known + coverage.unknown != rows || (coverage.share - share).abs() > 1e-6 {
+                return Err(format!(
+                    "the coverage of {} does not add up",
+                    coverage.field
+                ));
+            }
+        }
+        let statuses: u64 = self.statuses.iter().map(|count| count.count).sum();
+        let tiers: u64 = self.tiers.iter().map(|count| count.count).sum();
+        let banded: u64 = self.score_bins.iter().sum();
+        if statuses != rows
+            || tiers > rows
+            || self.score_bins.len() != SCORE_BANDS
+            || banded + self.unscored != rows
+        {
+            return Err("the distributions of the quality report do not add up".into());
+        }
+        if let (Some(oldest), Some(newest)) = (&self.oldest_seen_at, &self.newest_seen_at)
+            && oldest > newest
+        {
+            return Err("the oldest row was seen after the newest".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LineageItem {
+    pub kind: LineageKind,
+    pub id: Id,
+    pub label: String,
+    pub at: Option<UtcTimestamp>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DatasetSnapshotItem {
+    pub snapshot: DatasetSnapshot,
+    pub dataset_name: String,
+    pub project_id: Id,
+    pub lineage_count: u64,
+    pub export_count: u64,
+    pub is_synthetic: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DatasetSnapshotListQuery {
+    pub dataset_id: Id,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl DatasetSnapshotListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DatasetSnapshotPage {
+    pub items: Vec<DatasetSnapshotItem>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl DatasetSnapshotPage {
+    pub fn validate(&self, query: &DatasetSnapshotListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        if self
+            .items
+            .iter()
+            .any(|item| item.snapshot.dataset_id != query.dataset_id)
+        {
+            return Err("a snapshot of another dataset".into());
+        }
+        if !self
+            .items
+            .windows(2)
+            .all(|pair| pair[0].snapshot.version > pair[1].snapshot.version)
+        {
+            return Err("snapshots are listed newest version first".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DatasetSnapshotQuery {
+    pub snapshot_id: Id,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Export {
+    pub id: Id,
+    pub project_id: Id,
+    pub dataset_snapshot_id: Option<Id>,
+    pub status: ExportStatus,
+    pub format: ExportFormat,
+    pub file_name: Option<String>,
+    pub row_count: Option<u64>,
+    pub file_sha256: Option<String>,
+    pub manifest_json: Option<Map<String, Value>>,
+    pub requested_at: UtcTimestamp,
+    pub started_at: Option<UtcTimestamp>,
+    pub finished_at: Option<UtcTimestamp>,
+    pub error_message: Option<String>,
+    pub created_at: UtcTimestamp,
+    pub updated_at: UtcTimestamp,
+    pub job_id: Option<Id>,
+    pub destination: Option<String>,
+    pub columns_json: Vec<Map<String, Value>>,
+    pub config_json: Map<String, Value>,
+    pub actor: String,
+    pub preset_key: Option<String>,
+    pub preset_version: Option<u32>,
+    pub error_code: Option<String>,
+}
+
+impl Export {
+    /// A written export has its rows, its hash and its manifest; one that failed says why.
+    pub fn validate(&self) -> Result<(), String> {
+        if self
+            .file_sha256
+            .as_deref()
+            .is_some_and(|hash| !is_sha256(hash))
+        {
+            return Err("an export hash is 64 lower-case hex digits".into());
+        }
+        match self.status {
+            ExportStatus::Succeeded
+                if self.row_count.is_none()
+                    || self.file_sha256.is_none()
+                    || self.manifest_json.is_none()
+                    || self.finished_at.is_none() =>
+            {
+                Err("a written export has its rows, its hash and its manifest".into())
+            }
+            ExportStatus::Failed | ExportStatus::Cancelled if self.error_code.is_none() => {
+                Err("an export that did not finish says why".into())
+            }
+            _ => Ok(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DatasetSnapshotDetail {
+    pub item: DatasetSnapshotItem,
+    pub quality: DatasetQuality,
+    pub lineage: Vec<LineageItem>,
+    pub exports: Vec<Export>,
+}
+
+impl DatasetSnapshotDetail {
+    pub fn validate(&self, snapshot_id: &Id) -> Result<(), String> {
+        let snapshot = &self.item.snapshot;
+        if snapshot.id != *snapshot_id {
+            return Err("the snapshot is not the one asked for".into());
+        }
+        self.quality.validate(snapshot.row_count)?;
+        if self.lineage.len() as u64 != self.item.lineage_count {
+            return Err("the lineage does not match its count".into());
+        }
+        if self.exports.len() > MAX_SNAPSHOT_EXPORTS
+            || self
+                .exports
+                .iter()
+                .any(|export| export.dataset_snapshot_id.as_ref() != Some(&snapshot.id))
+        {
+            return Err("the exports listed are not of this snapshot".into());
+        }
+        self.exports.iter().try_for_each(Export::validate)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DatasetDiffQuery {
+    pub before_snapshot_id: Id,
+    pub after_snapshot_id: Id,
+    pub limit: u32,
+}
+
+impl DatasetDiffQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        within("limit", self.limit, 1, MAX_DIFF_ROWS)?;
+        if self.before_snapshot_id == self.after_snapshot_id {
+            return Err("compare two different snapshots".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DiffRow {
+    pub business_id: Id,
+    pub display_name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChangedRow {
+    pub business_id: Id,
+    pub display_name: String,
+    pub fields: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DatasetDiff {
+    pub before: DatasetSnapshotItem,
+    pub after: DatasetSnapshotItem,
+    pub added_count: u64,
+    pub removed_count: u64,
+    pub changed_count: u64,
+    pub unchanged_count: u64,
+    pub added: Vec<DiffRow>,
+    pub removed: Vec<DiffRow>,
+    pub changed: Vec<ChangedRow>,
+    pub compared_fields: Vec<String>,
+    pub truncated: bool,
+}
+
+impl DatasetDiff {
+    /// Lists within the limit and their counts, and every change naming the compared columns
+    /// that differ. (Row totals are not checked: a snapshot may hold duplicate businesses.)
+    pub fn validate(&self, query: &DatasetDiffQuery) -> Result<(), String> {
+        if self.before.snapshot.id != query.before_snapshot_id
+            || self.after.snapshot.id != query.after_snapshot_id
+        {
+            return Err("the comparison is not of the snapshots asked for".into());
+        }
+        let limit = u64::from(query.limit);
+        for (count, listed) in [
+            (self.added_count, self.added.len()),
+            (self.removed_count, self.removed.len()),
+            (self.changed_count, self.changed.len()),
+        ] {
+            if listed as u64 > count.min(limit) {
+                return Err("a comparison lists more rows than it counts".into());
+            }
+        }
+        let truncated = [self.added_count, self.removed_count, self.changed_count]
+            .iter()
+            .any(|count| *count > limit);
+        if truncated != self.truncated {
+            return Err(
+                "the comparison says it is truncated when it is not, or the reverse".into(),
+            );
+        }
+        if self.compared_fields.iter().any(|field| {
+            matches!(
+                field.as_str(),
+                "snapshot_id" | "business_id" | "score_run_id"
+            )
+        }) {
+            return Err("identities are never compared".into());
+        }
+        if self.changed.iter().any(|row| {
+            row.fields.is_empty()
+                || row
+                    .fields
+                    .iter()
+                    .any(|field| !self.compared_fields.contains(field))
+        }) {
+            return Err("a changed row names no compared column that differs".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DatasetCleanupRequest {
+    pub dataset_id: Id,
+    pub keep_latest: u32,
+    pub mode: BulkMode,
+    pub reason: Option<String>,
+}
+
+impl DatasetCleanupRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        within("keep_latest", self.keep_latest, 1, MAX_KEEP_LATEST)?;
+        check_apply_reason(self.mode, &self.reason)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CleanupSnapshot {
+    pub snapshot_id: Id,
+    pub version: u32,
+    pub row_count: u64,
+    pub bytes: u64,
+    pub kept_because: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DatasetCleanupResult {
+    pub mode: BulkMode,
+    pub deleted: Vec<CleanupSnapshot>,
+    pub kept: Vec<CleanupSnapshot>,
+    pub freed_bytes: u64,
+}
+
+impl DatasetCleanupResult {
+    /// The newest versions kept, every kept one saying why, nothing newer deleted, and the space
+    /// freed being what the deleted versions held.
+    pub fn validate(&self, request: &DatasetCleanupRequest) -> Result<(), String> {
+        if self.mode != request.mode {
+            return Err("the cleanup is not the one asked for".into());
+        }
+        if self
+            .deleted
+            .iter()
+            .any(|entry| entry.kept_because.is_some())
+            || self.kept.iter().any(|entry| entry.kept_because.is_none())
+        {
+            return Err("a kept version says why, a deleted one does not".into());
+        }
+        let freed: u64 = self.deleted.iter().map(|entry| entry.bytes).sum();
+        if freed != self.freed_bytes {
+            return Err("the space freed is not what the deleted versions held".into());
+        }
+        let latest: Vec<u32> = self
+            .kept
+            .iter()
+            .filter(|entry| entry.kept_because.as_deref() == Some("latest"))
+            .map(|entry| entry.version)
+            .collect();
+        let total = self.kept.len() + self.deleted.len();
+        if latest.len() != total.min(request.keep_latest as usize) {
+            return Err("the newest versions are always kept".into());
+        }
+        if let Some(oldest_latest) = latest.iter().min()
+            && self
+                .deleted
+                .iter()
+                .any(|entry| entry.version > *oldest_latest)
+        {
+            return Err("a version newer than a kept one was deleted".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportColumn {
+    pub key: String,
+    pub header: String,
+}
+
+fn check_export_columns(columns: &[ExportColumn]) -> Result<(), String> {
+    if columns.is_empty() || columns.len() > MAX_EXPORT_COLUMNS {
+        return Err(format!("an export has 1 to {MAX_EXPORT_COLUMNS} columns"));
+    }
+    let mut keys = HashSet::new();
+    let mut headers = HashSet::new();
+    for column in columns {
+        check_label("a column header", &column.header, MAX_EXPORT_HEADER)?;
+        if column.key.is_empty() || column.key.len() > MAX_CODE_CHARS {
+            return Err("a column key is a code".into());
+        }
+        if !keys.insert(column.key.as_str()) {
+            return Err(format!("column {} appears twice", column.key));
+        }
+        if !headers.insert(column.header.to_lowercase()) {
+            return Err(format!("two columns are headed {}", column.header));
+        }
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportDefinition {
+    pub source_kind: ExportSourceKind,
+    pub format: ExportFormat,
+    pub columns: Vec<ExportColumn>,
+    pub bom: bool,
+}
+
+impl ExportDefinition {
+    pub fn validate(&self) -> Result<(), String> {
+        check_export_columns(&self.columns)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportDraft {
+    pub source_kind: ExportSourceKind,
+    pub query: Option<ExplorerQuery>,
+    pub view_id: Option<Id>,
+    pub snapshot_id: Option<Id>,
+    pub format: ExportFormat,
+    pub columns: Vec<ExportColumn>,
+    pub bom: bool,
+    pub include_suppressed: bool,
+    pub suppressed_reason: Option<String>,
+    pub preset_key: Option<String>,
+    pub preset_version: Option<u32>,
+}
+
+impl ExportDraft {
+    pub fn validate(&self) -> Result<(), String> {
+        check_export_columns(&self.columns)?;
+        match (self.source_kind, &self.query) {
+            (ExportSourceKind::Query, Some(query)) if self.snapshot_id.is_none() => {
+                query.validate()?;
+            }
+            (ExportSourceKind::Snapshot, None)
+                if self.snapshot_id.is_some() && self.view_id.is_none() => {}
+            _ => return Err("an export names its query or its snapshot, not both".into()),
+        }
+        if self.include_suppressed != self.suppressed_reason.is_some() {
+            return Err("including do-not-contact leads needs a reason, and only then".into());
+        }
+        check_reason(&self.suppressed_reason)?;
+        if self.preset_key.is_some() != self.preset_version.is_some() {
+            return Err("a preset is named with its version".into());
+        }
+        Ok(())
+    }
+}
+
+/// A draft with the destination the save dialog returned (the core adds it; the page never does).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportStartRequest {
+    pub source_kind: ExportSourceKind,
+    pub query: Option<ExplorerQuery>,
+    pub view_id: Option<Id>,
+    pub snapshot_id: Option<Id>,
+    pub format: ExportFormat,
+    pub columns: Vec<ExportColumn>,
+    pub bom: bool,
+    pub include_suppressed: bool,
+    pub suppressed_reason: Option<String>,
+    pub preset_key: Option<String>,
+    pub preset_version: Option<u32>,
+    pub destination: String,
+}
+
+impl ExportStartRequest {
+    pub fn from_draft(draft: ExportDraft, destination: String) -> Self {
+        Self {
+            source_kind: draft.source_kind,
+            query: draft.query,
+            view_id: draft.view_id,
+            snapshot_id: draft.snapshot_id,
+            format: draft.format,
+            columns: draft.columns,
+            bom: draft.bom,
+            include_suppressed: draft.include_suppressed,
+            suppressed_reason: draft.suppressed_reason,
+            preset_key: draft.preset_key,
+            preset_version: draft.preset_version,
+            destination,
+        }
+    }
+}
+
+/// What the save dialog returned: a one-time grant to start the export with, and the name and
+/// folder to show.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportDestination {
+    pub grant_id: Id,
+    pub file_name: String,
+    pub folder: String,
+    pub format: ExportFormat,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportColumnInfo {
+    pub source_kind: ExportSourceKind,
+    pub key: String,
+    #[serde(rename = "type")]
+    pub kind: ExportColumnType,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportPreset {
+    pub id: Id,
+    pub key: String,
+    pub version: u32,
+    pub name: String,
+    pub description: Option<String>,
+    pub definition_json: Map<String, Value>,
+    pub built_in: bool,
+    pub cloned_from_id: Option<Id>,
+    pub created_by: String,
+    pub created_at: UtcTimestamp,
+    pub superseded_at: Option<UtcTimestamp>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportPresetView {
+    pub preset: ExportPreset,
+    pub definition: ExportDefinition,
+    pub versions: Vec<u32>,
+    pub cloned_from_key: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportCatalogQuery {
+    pub include_superseded: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportCatalog {
+    pub presets: Vec<ExportPresetView>,
+    pub columns: Vec<ExportColumnInfo>,
+    pub appended: Vec<ExportColumnInfo>,
+    pub formats: Vec<ExportFormat>,
+    pub xlsx_max_rows: u64,
+    pub max_columns: u64,
+}
+
+impl ExportCatalog {
+    /// The built-in presets are there, every preset uses columns the catalogue offers for its
+    /// source, and every column says what it means.
+    pub fn validate(&self) -> Result<(), String> {
+        for key in BUILT_IN_PRESETS {
+            if !self
+                .presets
+                .iter()
+                .any(|view| view.preset.key == key && view.preset.built_in)
+            {
+                return Err(format!("the built-in preset {key} is missing"));
+            }
+        }
+        for view in &self.presets {
+            view.definition.validate()?;
+            if !view.versions.contains(&view.preset.version) {
+                return Err(format!("preset {} lists another version", view.preset.key));
+            }
+            let offered = |key: &str| {
+                self.columns.iter().any(|column| {
+                    column.source_kind == view.definition.source_kind && column.key == key
+                })
+            };
+            if view
+                .definition
+                .columns
+                .iter()
+                .any(|column| !offered(&column.key))
+            {
+                return Err(format!(
+                    "preset {} uses a column not offered",
+                    view.preset.key
+                ));
+            }
+        }
+        if self
+            .columns
+            .iter()
+            .chain(&self.appended)
+            .any(|column| column.description.trim().is_empty())
+        {
+            return Err("every column says what it means".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportPresetSaveRequest {
+    pub key: Option<String>,
+    pub clone_from: Option<String>,
+    pub name: String,
+    pub description: Option<String>,
+    pub definition: ExportDefinition,
+}
+
+impl ExportPresetSaveRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.key.is_some() && self.clone_from.is_some() {
+            return Err("save a version of a preset or clone one, not both".into());
+        }
+        check_label("a preset name", &self.name, 120)?;
+        if self
+            .description
+            .as_ref()
+            .is_some_and(|text| text.chars().count() > 2000)
+        {
+            return Err("a description has at most 2000 characters".into());
+        }
+        self.definition.validate()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportPreviewResult {
+    pub matching: u64,
+    pub excluded_suppressed: u64,
+    pub exported: u64,
+    pub headers: Vec<String>,
+    pub sample: Vec<Vec<Value>>,
+    pub warnings: Vec<String>,
+    pub generated_at: UtcTimestamp,
+}
+
+impl ExportPreviewResult {
+    /// Counts that add up, the headers asked for followed by the appended ones, no do-not-contact
+    /// lead unless included, and no spreadsheet cell a spreadsheet would run as a formula.
+    pub fn validate(&self, draft: &ExportDraft) -> Result<(), String> {
+        if self.excluded_suppressed > self.matching
+            || self.exported != self.matching - self.excluded_suppressed
+            || (draft.include_suppressed && self.excluded_suppressed > 0)
+        {
+            return Err("the preview's counts do not add up".into());
+        }
+        let chosen = draft.columns.len();
+        if self.headers.len() <= chosen
+            || self.headers[..chosen]
+                .iter()
+                .zip(&draft.columns)
+                .any(|(header, column)| *header != column.header)
+            || self.headers.last().map(String::as_str) != Some("do_not_contact")
+        {
+            return Err("the preview's headers are not the columns asked for".into());
+        }
+        if self.sample.len() > EXPORT_SAMPLE_ROWS {
+            return Err(format!("a preview shows at most {EXPORT_SAMPLE_ROWS} rows"));
+        }
+        let spreadsheet = matches!(draft.format, ExportFormat::Csv | ExportFormat::Xlsx);
+        let formula = |text: &str| {
+            text.starts_with(|c: char| {
+                matches!(c, '=' | '+' | '-' | '@') || c == char::from(9u8) || c == char::from(13u8)
+            })
+        };
+        for row in &self.sample {
+            if row.len() != self.headers.len() {
+                return Err("a sample row does not have every column".into());
+            }
+            if !draft.include_suppressed && row.last() == Some(&Value::Bool(true)) {
+                return Err("a do-not-contact lead in a preview that leaves them out".into());
+            }
+            if spreadsheet && row.iter().any(|cell| cell.as_str().is_some_and(formula)) {
+                return Err("a cell a spreadsheet would run as a formula".into());
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportCancelRequest {
+    pub export_id: Id,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportListQuery {
+    pub project_id: Option<Id>,
+    pub limit: u32,
+    pub cursor: Option<Cursor>,
+}
+
+impl ExportListQuery {
+    pub fn validate(&self) -> Result<(), String> {
+        check_limit(self.limit)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportItem {
+    pub export: Export,
+    pub job_status: Option<JobStatus>,
+    pub rows_written: u64,
+    pub rows_total: Option<u64>,
+    pub is_synthetic: bool,
+}
+
+impl ExportItem {
+    pub fn validate(&self) -> Result<(), String> {
+        self.export.validate()?;
+        if self
+            .rows_total
+            .is_some_and(|total| self.rows_written > total)
+        {
+            return Err("an export wrote more rows than it had".into());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExportPage {
+    pub items: Vec<ExportItem>,
+    pub next_cursor: Option<Cursor>,
+    pub total: u64,
+}
+
+impl ExportPage {
+    pub fn validate(&self, query: &ExportListQuery) -> Result<(), String> {
+        check_page(
+            self.items.len(),
+            self.total,
+            self.next_cursor.is_some(),
+            query.limit,
+        )?;
+        for item in &self.items {
+            item.validate()?;
+            if query
+                .project_id
+                .as_ref()
+                .is_some_and(|project| *project != item.export.project_id)
+            {
+                return Err("an export of another project".into());
+            }
+        }
+        if !newest_first(self.items.iter().map(|item| &item.export.requested_at)) {
+            return Err("exports are listed newest first".into());
         }
         Ok(())
     }

@@ -18,6 +18,7 @@ import { prefetchBusiness } from "@/features/businesses/prefetch";
 import { BulkDialog } from "@/features/leads/BulkDialog";
 import { ColumnsDialog } from "@/features/leads/ColumnsDialog";
 import { CompareDialog } from "@/features/leads/CompareDialog";
+import { ExportWizard } from "@/features/exports/ExportWizard";
 import { ExportPreviewDialog } from "@/features/leads/ExportPreviewDialog";
 import { FilterBuilder } from "@/features/leads/FilterBuilder";
 import { LeadGrid } from "@/features/leads/LeadGrid";
@@ -47,7 +48,7 @@ import { useUiStore } from "@/stores/ui";
 const SEARCH_DELAY_MS = 300;
 const TOP = { scrollTop: 0, active: 0 };
 
-type DialogName = "filters" | "columns" | "views" | "bulk" | "export" | "compare";
+type DialogName = "filters" | "columns" | "views" | "bulk" | "export" | "export-file" | "compare";
 
 /** The layout the analyst left when its schema is still current, else the catalog's default view. */
 function initialState(catalog: ExplorerCatalog): ExplorerState {
@@ -526,7 +527,19 @@ function Explorer({ catalog }: { catalog: ExplorerCatalog }) {
         />
       )}
       {dialog === "export" && (
-        <ExportPreviewDialog onOpenChange={close} query={query} columns={exportFields} />
+        <ExportPreviewDialog
+          onOpenChange={close}
+          query={query}
+          columns={exportFields}
+          onExportToFile={() => setDialog("export-file")}
+        />
+      )}
+      {dialog === "export-file" && (
+        <ExportWizard
+          onOpenChange={close}
+          source={{ kind: "query", query, viewId: null, columns: exportFields }}
+          suggestedName="leads"
+        />
       )}
       {dialog === "compare" && (
         <CompareDialog

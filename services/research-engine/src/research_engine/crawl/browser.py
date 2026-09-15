@@ -19,6 +19,8 @@ import contextlib
 import logging
 import sys
 import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Final
 from urllib.parse import urlsplit
@@ -127,6 +129,8 @@ class BrowserPool:
         self._user_agent = user_agent
         self._allow_private = allow_private
         self._slots = asyncio.Semaphore(max(1, concurrency))
+        #: Pages rendering now (the Jobs screen shows it).
+        self.rendering = 0
         self._launch_args = launch_args
         self._lock = asyncio.Lock()
         self._playwright: Playwright | None = None
@@ -134,6 +138,14 @@ class BrowserPool:
         self._contained = False
         #: Why no browser could be launched. Kept, so every page does not pay three failed launches.
         self._unavailable: str | None = None
+
+    @asynccontextmanager
+    async def _counted(self) -> AsyncIterator[None]:
+        self.rendering += 1
+        try:
+            yield
+        finally:
+            self.rendering -= 1
 
     async def _ensure(self) -> Browser:
         async with self._lock:
@@ -162,7 +174,7 @@ class BrowserPool:
             raise BrowserUnavailableError(self._unavailable)
 
     async def render(self, url: str, *, screenshot: bool) -> Rendered:
-        async with self._slots:
+        async with self._slots, self._counted():
             browser = await self._ensure()
             started = time.perf_counter()
             blocked = 0

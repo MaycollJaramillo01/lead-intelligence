@@ -1,0 +1,154 @@
+{
+  "items": [
+    {
+      "export": {
+        "id": "01900000-0000-7000-8000-000000001746",
+        "project_id": "01900000-0000-7000-8000-000000000001",
+        "dataset_snapshot_id": null,
+        "status": "pending",
+        "format": "csv",
+        "file_name": "leads.csv",
+        "row_count": null,
+        "file_sha256": null,
+        "manifest_json": null,
+        "requested_at": "2026-01-01T00:00:00.000Z",
+        "started_at": null,
+        "finished_at": null,
+        "error_message": null,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z",
+        "job_id": "01900000-0000-7000-8000-000000001745",
+        "destination": "C:\\synthetic\\exports\\leads.csv",
+        "columns_json": [
+          {
+            "header": "Business",
+            "key": "name",
+            "type": "text"
+          },
+          {
+            "header": "Tier",
+            "key": "tier",
+            "type": "text"
+          },
+          {
+            "header": "Lead score",
+            "key": "total_score",
+            "type": "number"
+          },
+          {
+            "header": "Channel",
+            "key": "main_channel",
+            "type": "text"
+          },
+          {
+            "header": "business_id",
+            "key": "business_id",
+            "type": "text"
+          },
+          {
+            "header": "score_run_id",
+            "key": "score_run_id",
+            "type": "text"
+          },
+          {
+            "header": "exported_at",
+            "key": "exported_at",
+            "type": "timestamp"
+          },
+          {
+            "header": "facts_collected_at",
+            "key": "facts_collected_at",
+            "type": "timestamp"
+          },
+          {
+            "header": "facts_age_days",
+            "key": "facts_age_days",
+            "type": "number"
+          },
+          {
+            "header": "stale",
+            "key": "stale",
+            "type": "flag"
+          },
+          {
+            "header": "partial",
+            "key": "partial",
+            "type": "flag"
+          },
+          {
+            "header": "contact_unverified",
+            "key": "contact_unverified",
+            "type": "flag"
+          },
+          {
+            "header": "do_not_contact",
+            "key": "do_not_contact",
+            "type": "flag"
+          }
+        ],
+        "config_json": {
+          "draft": {
+            "bom": true,
+            "columns": [
+              {
+                "header": "Business",
+                "key": "name"
+              },
+              {
+                "header": "Tier",
+                "key": "tier"
+              },
+              {
+                "header": "Lead score",
+                "key": "total_score"
+              },
+              {
+                "header": "Channel",
+                "key": "main_channel"
+              }
+            ],
+            "destination": "C:/synthetic/exports/leads.csv",
+            "format": "csv",
+            "include_suppressed": false,
+            "preset_key": null,
+            "preset_version": null,
+            "query": {
+              "filters": {
+                "children": [],
+                "join": "and",
+                "kind": "group",
+                "negate": false
+              },
+              "limit": 100,
+              "offset": 0,
+              "score_run_id": null,
+              "search": null,
+              "sort": [
+                {
+                  "direction": "desc",
+                  "field": "total_score"
+                }
+              ],
+              "with_total": false
+            },
+            "snapshot_id": null,
+            "source_kind": "query",
+            "suppressed_reason": null,
+            "view_id": null
+          },
+          "score_run_id": "01900000-0000-7000-8000-000000001398"
+        },
+        "actor": "fixture",
+        "preset_key": null,
+        "preset_version": null,
+        "error_code": null
+      },
+      "job_status": "queued",
+      "rows_written": 0,
+      "rows_total": 19,
+      "is_synthetic": true
+    }
+  ],
+  "next_cursor": null,
+  "total": 1
+}

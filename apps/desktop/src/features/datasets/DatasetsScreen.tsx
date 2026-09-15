@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { DatasetListItem } from "@lead/shared-types";
 import { useSearchParams } from "react-router";
@@ -9,6 +9,7 @@ import { PagedFooter } from "@/components/data/PagedFooter";
 import { PageShell } from "@/components/layout/page-chrome";
 import { StateBlock } from "@/components/states/StateBlock";
 import { Button } from "@/components/ui/button";
+import { SnapshotsPanel } from "@/features/datasets/SnapshotsPanel";
 import { useT, type Translator } from "@/lib/i18n";
 import { desktop } from "@/lib/ipc";
 import { useKeysetPages } from "@/lib/useKeysetPages";
@@ -70,8 +71,28 @@ export function DatasetsScreen() {
     [],
   );
   const pages = useKeysetPages(fetchPage, "list_datasets");
-  // a `?dataset=` link marks its dataset
-  const [params] = useSearchParams();
+  // a `?dataset=` link opens its dataset; a `?snapshot=` link, the dataset of its snapshot
+  const [params, setParams] = useSearchParams();
+  const activeId = params.get("dataset");
+  const linkedSnapshot = params.get("snapshot");
+  const active = pages.items.find((item) => item.dataset.id === activeId) ?? null;
+
+  useEffect(() => {
+    if (linkedSnapshot === null || activeId !== null) return;
+    let stale = false;
+    desktop.getDatasetSnapshot({ snapshot_id: linkedSnapshot }).then(
+      (detail) => {
+        if (!stale) {
+          const next = { dataset: detail.item.snapshot.dataset_id, snapshot: linkedSnapshot };
+          setParams(next, { replace: true });
+        }
+      },
+      () => undefined,
+    );
+    return () => {
+      stale = true;
+    };
+  }, [linkedSnapshot, activeId, setParams]);
 
   return (
     <PageShell>
@@ -85,7 +106,8 @@ export function DatasetsScreen() {
           conditions={conditions}
           onConditionsChange={setConditions}
           pinnedLeft={["name"]}
-          activeRowId={params.get("dataset")}
+          activeRowId={activeId}
+          onActivateRow={(id) => setParams(id === null ? {} : { dataset: id })}
           isLoading={pages.loading && pages.items.length === 0 && !pages.error}
           emptyState={
             pages.error ? (
@@ -116,6 +138,16 @@ export function DatasetsScreen() {
         loading={pages.loading}
         onLoadMore={() => void pages.loadMore()}
       />
+      {active && (
+        <div className="max-h-[55%] min-h-0 overflow-auto border-t">
+          <SnapshotsPanel
+            key={active.dataset.id}
+            dataset={active}
+            linkedSnapshot={linkedSnapshot}
+            onChanged={() => void pages.reload()}
+          />
+        </div>
+      )}
     </PageShell>
   );
 }

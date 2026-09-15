@@ -7,11 +7,12 @@ import sqlite3
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
 
-from research_engine import __version__, repository
+from research_engine import __version__, datasets, exports, operations, repository
 from research_engine.ai import store as ai_store
 from research_engine.ai.engine import AiService
 from research_engine.contacts import store as contacts
@@ -85,8 +86,18 @@ from research_engine.domain import (
     CrawlUrlPage,
     CriteriaCheck,
     CriteriaCheckQuery,
+    DatasetCleanupRequest,
+    DatasetCleanupResult,
+    DatasetDiff,
+    DatasetDiffQuery,
     DatasetListQuery,
     DatasetPage,
+    DatasetSnapshotDetail,
+    DatasetSnapshotListQuery,
+    DatasetSnapshotPage,
+    DatasetSnapshotQuery,
+    DatasetSnapshotRequest,
+    DeadLetterRequest,
     DecisionMakerItem,
     DecisionMakerListQuery,
     DecisionMakerPage,
@@ -96,18 +107,32 @@ from research_engine.domain import (
     DiscoveryRunListQuery,
     DiscoveryRunPage,
     DiscoveryStartRequest,
+    EventCleanupRequest,
+    EventCleanupResult,
     EvidenceDetail,
     EvidenceQuery,
     ExplorerCatalog,
     ExplorerCatalogQuery,
     ExplorerPage,
     ExplorerQuery,
+    ExportCancelRequest,
+    ExportCatalog,
+    ExportCatalogQuery,
+    ExportDraft,
+    ExportItem,
+    ExportListQuery,
+    ExportPage,
+    ExportPresetSaveRequest,
     ExportPreview,
     ExportPreviewRequest,
+    ExportPreviewResult,
+    ExportStartRequest,
     IcpProfileView,
     IcpSaveRequest,
     ImportPreview,
     ImportPreviewRequest,
+    JobEventPage,
+    JobEventQuery,
     LatinoDetail,
     LatinoDetailQuery,
     LatinoReviewRequest,
@@ -126,6 +151,10 @@ from research_engine.domain import (
     MatchDetailQuery,
     MatchListQuery,
     MatchPage,
+    PipelineListQuery,
+    PipelinePage,
+    PipelineRun,
+    PipelineStartRequest,
     RefreshScope,
     ResearchActionRequest,
     ResearchWorkspace,
@@ -184,6 +213,7 @@ from research_engine.latino import store as latino
 from research_engine.latino.engine import LatinoService
 from research_engine.leads import brief as sales_brief
 from research_engine.leads import explorer, research, views
+from research_engine.logs import request_id_var
 from research_engine.ollama import probe_ollama
 from research_engine.resolution import store as resolution
 from research_engine.resolution.engine import ResolutionService
@@ -224,6 +254,10 @@ class Context:
     ai: AiService
     #: Owns the running score jobs; see scoring/engine.py.
     scoring: ScoringService
+    #: Owns the campaign pipelines; see operations.py.
+    pipelines: operations.PipelineService
+    #: Owns the exports being written; see exports.py.
+    exports: exports.ExportService
 
 
 @dataclass(frozen=True, slots=True)
@@ -773,6 +807,110 @@ async def _research_brief(ctx: Context, query: SalesBriefQuery) -> SalesBrief:
     )
 
 
+# ---- pipelines, the event log, datasets and exports (phase 13) ----------------------------------
+
+
+def _data_dir(ctx: Context) -> Path:
+    if ctx.settings.data_dir is None:
+        raise repository.StoreUnavailableError(
+            "the data directory is not configured (LEAD_DATA_DIR)"
+        )
+    return ctx.settings.data_dir
+
+
+async def _pipelines_start(ctx: Context, request: PipelineStartRequest) -> PipelineRun:
+    return await ctx.pipelines.start(request, actor=ACTOR_UI, request_id=request_id_var.get())
+
+
+async def _pipelines_control(ctx: Context, request: DiscoveryControlRequest) -> PipelineRun:
+    return await ctx.pipelines.control(request)
+
+
+async def _pipelines_dead_letter(ctx: Context, request: DeadLetterRequest) -> PipelineRun:
+    return await ctx.pipelines.resolve(request, actor=ACTOR_UI)
+
+
+async def _pipelines_list(ctx: Context, query: PipelineListQuery) -> PipelinePage:
+    return await ctx.pipelines.listing(query)
+
+
+async def _jobs_events(ctx: Context, query: JobEventQuery) -> JobEventPage:
+    return await _with_store(ctx, lambda conn: operations.list_events(conn, query))
+
+
+async def _jobs_cleanup_events(ctx: Context, request: EventCleanupRequest) -> EventCleanupResult:
+    return await _with_store(ctx, lambda conn: operations.cleanup_events(conn, request, utc_now()))
+
+
+async def _datasets_snapshot(
+    ctx: Context, request: DatasetSnapshotRequest
+) -> DatasetSnapshotDetail:
+    data_dir = _data_dir(ctx)
+
+    def capture(conn: sqlite3.Connection) -> DatasetSnapshotDetail:
+        snapshot = datasets.snapshot_businesses(
+            conn, data_dir, project_id=request.project_id, dataset_name=request.dataset_name,
+            actor=ACTOR_UI, description=request.description, score_run_id=request.score_run_id,
+        )  # fmt: skip
+        return datasets.snapshot_detail(conn, data_dir, snapshot.id)
+
+    return await _with_store(ctx, capture)
+
+
+async def _datasets_snapshots(ctx: Context, query: DatasetSnapshotListQuery) -> DatasetSnapshotPage:
+    return await _with_store(ctx, lambda conn: datasets.list_snapshots(conn, query))
+
+
+async def _datasets_get_snapshot(
+    ctx: Context, query: DatasetSnapshotQuery
+) -> DatasetSnapshotDetail:
+    data_dir = _data_dir(ctx)
+    return await _with_store(
+        ctx, lambda conn: datasets.snapshot_detail(conn, data_dir, query.snapshot_id)
+    )
+
+
+async def _datasets_diff(ctx: Context, query: DatasetDiffQuery) -> DatasetDiff:
+    data_dir = _data_dir(ctx)
+    return await _with_store(ctx, lambda conn: datasets.diff(conn, data_dir, query))
+
+
+async def _datasets_cleanup(ctx: Context, request: DatasetCleanupRequest) -> DatasetCleanupResult:
+    data_dir = _data_dir(ctx)
+    return await _with_store(
+        ctx, lambda conn: datasets.cleanup(conn, data_dir, request, actor=ACTOR_UI)
+    )
+
+
+async def _exports_catalog(ctx: Context, query: ExportCatalogQuery) -> ExportCatalog:
+    return await _with_store(ctx, lambda conn: exports.catalog(conn, query))
+
+
+async def _exports_save_preset(ctx: Context, request: ExportPresetSaveRequest) -> ExportCatalog:
+    def save(conn: sqlite3.Connection) -> ExportCatalog:
+        exports.save_preset(conn, request, actor=ACTOR_UI)
+        return exports.catalog(conn, ExportCatalogQuery(include_superseded=False))
+
+    return await _with_store(ctx, save)
+
+
+async def _exports_preview(ctx: Context, draft: ExportDraft) -> ExportPreviewResult:
+    data_dir = _data_dir(ctx)
+    return await _with_store(ctx, lambda conn: exports.preview(conn, data_dir, draft, utc_now()))
+
+
+async def _exports_start(ctx: Context, request: ExportStartRequest) -> ExportItem:
+    return await ctx.exports.start(request, actor=ACTOR_UI, request_id=request_id_var.get())
+
+
+async def _exports_cancel(ctx: Context, request: ExportCancelRequest) -> ExportItem:
+    return await ctx.exports.cancel(request.export_id)
+
+
+async def _exports_list(ctx: Context, query: ExportListQuery) -> ExportPage:
+    return await _with_store(ctx, lambda conn: exports.list_exports(conn, query))
+
+
 ROUTES: dict[str, Route] = {
     MessageType.HEALTH: Route(EmptyPayload, _health, timeout_s=2.0),
     MessageType.DIAGNOSTICS: Route(EmptyPayload, _diagnostics, timeout_s=20.0),
@@ -907,5 +1045,39 @@ ROUTES: dict[str, Route] = {
         ChecklistChangeRequest, _research_change_checklist, timeout_s=15.0
     ),
     MessageType.RESEARCH_BRIEF: Route(SalesBriefQuery, _research_brief, timeout_s=15.0),
+    MessageType.PIPELINES_START: Route(PipelineStartRequest, _pipelines_start, timeout_s=30.0),
+    # a pause waits for the engine job in flight to pause
+    MessageType.PIPELINES_CONTROL: Route(
+        DiscoveryControlRequest, _pipelines_control, timeout_s=60.0
+    ),
+    MessageType.PIPELINES_DEAD_LETTER: Route(
+        DeadLetterRequest, _pipelines_dead_letter, timeout_s=30.0
+    ),
+    MessageType.PIPELINES_LIST: Route(PipelineListQuery, _pipelines_list, timeout_s=30.0),
+    MessageType.JOBS_EVENTS: Route(JobEventQuery, _jobs_events, timeout_s=15.0),
+    MessageType.JOBS_CLEANUP_EVENTS: Route(
+        EventCleanupRequest, _jobs_cleanup_events, timeout_s=60.0
+    ),
+    # a snapshot reads every business of the project and writes its Parquet copy
+    MessageType.DATASETS_SNAPSHOT: Route(
+        DatasetSnapshotRequest, _datasets_snapshot, timeout_s=300.0
+    ),
+    MessageType.DATASETS_SNAPSHOTS: Route(
+        DatasetSnapshotListQuery, _datasets_snapshots, timeout_s=15.0
+    ),
+    MessageType.DATASETS_GET_SNAPSHOT: Route(
+        DatasetSnapshotQuery, _datasets_get_snapshot, timeout_s=60.0
+    ),
+    MessageType.DATASETS_DIFF: Route(DatasetDiffQuery, _datasets_diff, timeout_s=120.0),
+    MessageType.DATASETS_CLEANUP: Route(DatasetCleanupRequest, _datasets_cleanup, timeout_s=120.0),
+    MessageType.EXPORTS_CATALOG: Route(ExportCatalogQuery, _exports_catalog, timeout_s=15.0),
+    MessageType.EXPORTS_SAVE_PRESET: Route(
+        ExportPresetSaveRequest, _exports_save_preset, timeout_s=15.0
+    ),
+    # counts over the whole query and a sample
+    MessageType.EXPORTS_PREVIEW: Route(ExportDraft, _exports_preview, timeout_s=60.0),
+    MessageType.EXPORTS_START: Route(ExportStartRequest, _exports_start, timeout_s=60.0),
+    MessageType.EXPORTS_CANCEL: Route(ExportCancelRequest, _exports_cancel, timeout_s=30.0),
+    MessageType.EXPORTS_LIST: Route(ExportListQuery, _exports_list, timeout_s=15.0),
     MessageType.DEV_SEED_SYNTHETIC: Route(EmptyPayload, _dev_seed_synthetic, timeout_s=60.0),
 }

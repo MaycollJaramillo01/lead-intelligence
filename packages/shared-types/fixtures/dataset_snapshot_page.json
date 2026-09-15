@@ -1,0 +1,266 @@
+{
+  "items": [
+    {
+      "snapshot": {
+        "id": "01900000-0000-7000-8000-000000001728",
+        "dataset_id": "01900000-0000-7000-8000-000000001713",
+        "version": 2,
+        "row_count": 20,
+        "duckdb_table": "business_snapshot_rows",
+        "parquet_path": "datasets/01900000-0000-7000-8000-000000001713/01900000-0000-7000-8000-000000001728",
+        "schema_version": 2,
+        "filters_json": {
+          "project_id": "01900000-0000-7000-8000-000000000001"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "query_json": {
+          "dataset_name": "Synthetic fixture dataset",
+          "project_id": "01900000-0000-7000-8000-000000000001",
+          "score_run_id": "01900000-0000-7000-8000-000000001398"
+        },
+        "cutoff_at": "2026-01-01T00:00:00.000Z",
+        "pipeline_versions_json": {
+          "scoring_engine": "1.0.0",
+          "snapshot_schema": "2",
+          "worker": "0.1.0"
+        },
+        "quality_json": {
+          "coverage": [
+            {
+              "field": "display_name",
+              "known": 20,
+              "share": 1.0,
+              "unknown": 0
+            },
+            {
+              "field": "locality",
+              "known": 20,
+              "share": 1.0,
+              "unknown": 0
+            },
+            {
+              "field": "region",
+              "known": 20,
+              "share": 1.0,
+              "unknown": 0
+            },
+            {
+              "field": "postal_code",
+              "known": 20,
+              "share": 1.0,
+              "unknown": 0
+            },
+            {
+              "field": "primary_domain",
+              "known": 16,
+              "share": 0.8,
+              "unknown": 4
+            },
+            {
+              "field": "primary_phone",
+              "known": 19,
+              "share": 0.95,
+              "unknown": 1
+            },
+            {
+              "field": "primary_category",
+              "known": 9,
+              "share": 0.45,
+              "unknown": 11
+            },
+            {
+              "field": "tier",
+              "known": 20,
+              "share": 1.0,
+              "unknown": 0
+            },
+            {
+              "field": "total_score",
+              "known": 20,
+              "share": 1.0,
+              "unknown": 0
+            }
+          ],
+          "duplicates": 0,
+          "errors": [],
+          "newest_seen_at": "2026-01-02T00:00:00.000Z",
+          "oldest_seen_at": "2025-12-02T00:00:00.000Z",
+          "rows": 20,
+          "schema_version": 2,
+          "score_bins": [
+            0,
+            0,
+            1,
+            8,
+            7,
+            1,
+            2,
+            1,
+            0,
+            0
+          ],
+          "stale_rows": 0,
+          "statuses": [
+            {
+              "count": 20,
+              "value": "candidate"
+            }
+          ],
+          "suppressed": 1,
+          "tiers": [
+            {
+              "count": 10,
+              "value": "insufficient_data"
+            },
+            {
+              "count": 8,
+              "value": "low"
+            },
+            {
+              "count": 2,
+              "value": "review"
+            }
+          ],
+          "unscored": 0
+        }
+      },
+      "dataset_name": "Synthetic fixture dataset",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "lineage_count": 5,
+      "export_count": 0,
+      "is_synthetic": true
+    },
+    {
+      "snapshot": {
+        "id": "01900000-0000-7000-8000-000000001715",
+        "dataset_id": "01900000-0000-7000-8000-000000001713",
+        "version": 1,
+        "row_count": 20,
+        "duckdb_table": "business_snapshot_rows",
+        "parquet_path": "datasets/01900000-0000-7000-8000-000000001713/01900000-0000-7000-8000-000000001715",
+        "schema_version": 2,
+        "filters_json": {
+          "project_id": "01900000-0000-7000-8000-000000000001"
+        },
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "query_json": {
+          "dataset_name": "Synthetic fixture dataset",
+          "project_id": "01900000-0000-7000-8000-000000000001",
+          "score_run_id": "01900000-0000-7000-8000-000000001398"
+        },
+        "cutoff_at": "2026-01-01T00:00:00.000Z",
+        "pipeline_versions_json": {
+          "scoring_engine": "1.0.0",
+          "snapshot_schema": "2",
+          "worker": "0.1.0"
+        },
+        "quality_json": {
+          "coverage": [
+            {
+              "field": "display_name",
+              "known": 20,
+              "share": 1.0,
+              "unknown": 0
+            },
+            {
+              "field": "locality",
+              "known": 20,
+              "share": 1.0,
+              "unknown": 0
+            },
+            {
+              "field": "region",
+              "known": 20,
+              "share": 1.0,
+              "unknown": 0
+            },
+            {
+              "field": "postal_code",
+              "known": 20,
+              "share": 1.0,
+              "unknown": 0
+            },
+            {
+              "field": "primary_domain",
+              "known": 16,
+              "share": 0.8,
+              "unknown": 4
+            },
+            {
+              "field": "primary_phone",
+              "known": 20,
+              "share": 1.0,
+              "unknown": 0
+            },
+            {
+              "field": "primary_category",
+              "known": 9,
+              "share": 0.45,
+              "unknown": 11
+            },
+            {
+              "field": "tier",
+              "known": 20,
+              "share": 1.0,
+              "unknown": 0
+            },
+            {
+              "field": "total_score",
+              "known": 20,
+              "share": 1.0,
+              "unknown": 0
+            }
+          ],
+          "duplicates": 0,
+          "errors": [],
+          "newest_seen_at": "2026-01-02T00:00:00.000Z",
+          "oldest_seen_at": "2025-12-02T00:00:00.000Z",
+          "rows": 20,
+          "schema_version": 2,
+          "score_bins": [
+            0,
+            0,
+            1,
+            8,
+            7,
+            1,
+            2,
+            1,
+            0,
+            0
+          ],
+          "stale_rows": 0,
+          "statuses": [
+            {
+              "count": 20,
+              "value": "candidate"
+            }
+          ],
+          "suppressed": 0,
+          "tiers": [
+            {
+              "count": 10,
+              "value": "insufficient_data"
+            },
+            {
+              "count": 8,
+              "value": "low"
+            },
+            {
+              "count": 2,
+              "value": "review"
+            }
+          ],
+          "unscored": 0
+        }
+      },
+      "dataset_name": "Synthetic fixture dataset",
+      "project_id": "01900000-0000-7000-8000-000000000001",
+      "lineage_count": 5,
+      "export_count": 0,
+      "is_synthetic": true
+    }
+  ],
+  "next_cursor": null,
+  "total": 2
+}

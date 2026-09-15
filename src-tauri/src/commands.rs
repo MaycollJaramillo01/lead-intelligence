@@ -1,10 +1,13 @@
 //! Tauri IPC surface. Commands validate input, log technical detail, and reject with a
 //! `CommandError` whose message the UI can show as-is.
 
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
-use tauri::State;
+use tauri::{AppHandle, Runtime, State};
+use tauri_plugin_dialog::DialogExt;
 use tracing::{Instrument, error, info, info_span, warn};
 use tracing_appender::non_blocking::WorkerGuard;
 use uuid::Uuid;
@@ -22,19 +25,26 @@ use crate::data::{
     ContactListQuery, ContactPage, ContactRun, ContactRunListQuery, ContactRunPage,
     ContactStartRequest, ContactSuppression, CrawlRun, CrawlRunListQuery, CrawlRunPage,
     CrawlStartRequest, CrawlUrlDetail, CrawlUrlDetailQuery, CrawlUrlListQuery, CrawlUrlPage,
-    CriteriaCheck, CriteriaCheckQuery, DatasetListQuery, DatasetPage, DecisionMakerItem,
-    DecisionMakerListQuery, DecisionMakerPage, DecisionMakerReviewRequest, DiscoveryControlRequest,
-    DiscoveryRun, DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest, EvidenceDetail,
-    EvidenceQuery, ExplorerCatalog, ExplorerCatalogQuery, ExplorerPage, ExplorerQuery,
-    ExportPreview, ExportPreviewRequest, IcpProfileView, IcpSaveRequest, ImportPreview,
-    ImportPreviewRequest, LatinoDetail, LatinoDetailQuery, LatinoReviewRequest, LatinoRun,
+    CriteriaCheck, CriteriaCheckQuery, DatasetCleanupRequest, DatasetCleanupResult, DatasetDiff,
+    DatasetDiffQuery, DatasetListQuery, DatasetPage, DatasetSnapshotDetail,
+    DatasetSnapshotListQuery, DatasetSnapshotPage, DatasetSnapshotQuery, DatasetSnapshotRequest,
+    DeadLetterRequest, DeadLetterStatus, DecisionMakerItem, DecisionMakerListQuery,
+    DecisionMakerPage, DecisionMakerReviewRequest, DiscoveryControlRequest, DiscoveryRun,
+    DiscoveryRunListQuery, DiscoveryRunPage, DiscoveryStartRequest, EventCleanupRequest,
+    EventCleanupResult, EvidenceDetail, EvidenceQuery, ExplorerCatalog, ExplorerCatalogQuery,
+    ExplorerPage, ExplorerQuery, ExportCancelRequest, ExportCatalog, ExportCatalogQuery,
+    ExportDestination, ExportDraft, ExportFormat, ExportItem, ExportListQuery, ExportPage,
+    ExportPresetSaveRequest, ExportPreview, ExportPreviewRequest, ExportPreviewResult,
+    ExportStartRequest, IcpProfileView, IcpSaveRequest, Id, ImportPreview, ImportPreviewRequest,
+    JobEventPage, JobEventQuery, LatinoDetail, LatinoDetailQuery, LatinoReviewRequest, LatinoRun,
     LatinoRunListQuery, LatinoRunPage, LatinoStartRequest, LeadActionRequest, LeadCompareQuery,
     LeadComparison, LeadScorePage, LeadScoreQuery, LeadScorecardDetail, MatchActionRequest,
-    MatchDetail, MatchDetailQuery, MatchListQuery, MatchPage, ResearchActionRequest,
-    ResearchWorkspace, ResearchWorkspaceQuery, ResolutionRun, ResolutionRunListQuery,
-    ResolutionRunPage, ResolutionStartRequest, SalesBrief, SalesBriefQuery, SavedViewChangeRequest,
-    SavedViewItem, SavedViewList, SavedViewQuery, SavedViewSaveRequest, ScoreCompareQuery,
-    ScoreComparison, ScoreRunItem, ScoreRunListQuery, ScoreRunPage, ScorecardQuery, ScoringCatalog,
+    MatchDetail, MatchDetailQuery, MatchListQuery, MatchPage, PipelineListQuery, PipelinePage,
+    PipelineRun, PipelineStartRequest, ResearchActionRequest, ResearchWorkspace,
+    ResearchWorkspaceQuery, ResolutionRun, ResolutionRunListQuery, ResolutionRunPage,
+    ResolutionStartRequest, SalesBrief, SalesBriefQuery, SavedViewChangeRequest, SavedViewItem,
+    SavedViewList, SavedViewQuery, SavedViewSaveRequest, ScoreCompareQuery, ScoreComparison,
+    ScoreRunItem, ScoreRunListQuery, ScoreRunPage, ScorecardQuery, ScoringCatalog,
     ScoringCatalogQuery, ScoringChangeRequest, ScoringModelSaveRequest, ScoringModelView,
     ScoringSimulation, ScoringSimulationRequest, ScoringStartRequest, SourceCatalog,
     SourceCatalogQuery, SuppressionChangeRequest, SuppressionExport, SuppressionExportRequest,
@@ -53,20 +63,25 @@ use crate::worker::{
     BUSINESSES_GET, BUSINESSES_LIST, CAMPAIGNS_LIST, CAMPAIGNS_SAVE, CAMPAIGNS_VALIDATE,
     CONTACTS_ACT, CONTACTS_CONTROL, CONTACTS_GET, CONTACTS_LIST, CONTACTS_RUNS, CONTACTS_START,
     CONTACTS_TIMEOUT, CRAWL_CONTROL, CRAWL_RUNS, CRAWL_START, CRAWL_URL, CRAWL_URLS, DATA_TIMEOUT,
-    DATASETS_LIST, DECISION_MAKERS_LIST, DECISION_MAKERS_REVIEW, DEV_SEED_SYNTHETIC, DIAGNOSTICS,
-    DIAGNOSTICS_TIMEOUT, DISCOVERY_CANDIDATE, DISCOVERY_CANDIDATES, DISCOVERY_CONTROL,
-    DISCOVERY_RUNS, DISCOVERY_START, DISCOVERY_TIMEOUT, IMPORT_TIMEOUT, LATINO_CONTROL, LATINO_GET,
-    LATINO_REVIEW, LATINO_RUNS, LATINO_START, LEADS_BULK, LEADS_CATALOG, LEADS_COMPARE,
-    LEADS_EXPLORE, LEADS_EXPORT_PREVIEW, LEADS_TIMEOUT, MATCHES_ACT, MATCHES_GET, MATCHES_LIST,
-    RESEARCH_ACT, RESEARCH_BRIEF, RESEARCH_CHANGE_CHECKLIST, RESEARCH_CHECKLISTS,
-    RESEARCH_EVIDENCE, RESEARCH_GET, RESEARCH_SAVE_CHECKLIST, RESEARCH_TIMELINE,
-    RESOLUTION_CONTROL, RESOLUTION_RUNS, RESOLUTION_START, RESOLUTION_TIMEOUT, SCORING_ACT,
-    SCORING_CALIBRATION, SCORING_CATALOG, SCORING_CHANGE, SCORING_COMPARE, SCORING_CONTROL,
-    SCORING_LEADS, SCORING_RUNS, SCORING_SAVE_ICP, SCORING_SAVE_MODEL, SCORING_SCORECARD,
-    SCORING_SIMULATE, SCORING_START, SCORING_TIMEOUT, SEED_TIMEOUT, SOURCES_LIST,
-    SOURCES_PREVIEW_IMPORT, SUPPRESSIONS_CHANGE, SUPPRESSIONS_EXPORT, SUPPRESSIONS_IMPORT,
-    SUPPRESSIONS_LIST, VIEWS_CHANGE, VIEWS_LIST, VIEWS_SAVE, WEBSITE_AUDIT, WEBSITE_AUDITS,
-    WEBSITE_CONTROL, WEBSITE_RUNS, WEBSITE_START, WorkerSupervisor,
+    DATASETS_CLEANUP, DATASETS_DIFF, DATASETS_GET_SNAPSHOT, DATASETS_LIST, DATASETS_SNAPSHOT,
+    DATASETS_SNAPSHOTS, DECISION_MAKERS_LIST, DECISION_MAKERS_REVIEW, DEV_SEED_SYNTHETIC,
+    DIAGNOSTICS, DIAGNOSTICS_TIMEOUT, DISCOVERY_CANDIDATE, DISCOVERY_CANDIDATES, DISCOVERY_CONTROL,
+    DISCOVERY_RUNS, DISCOVERY_START, DISCOVERY_TIMEOUT, EXPORTS_CANCEL, EXPORTS_CATALOG,
+    EXPORTS_LIST, EXPORTS_PREVIEW, EXPORTS_SAVE_PRESET, EXPORTS_START, IMPORT_TIMEOUT,
+    JOBS_CLEANUP_EVENTS, JOBS_EVENTS, LATINO_CONTROL, LATINO_GET, LATINO_REVIEW, LATINO_RUNS,
+    LATINO_START, LEADS_BULK, LEADS_CATALOG, LEADS_COMPARE, LEADS_EXPLORE, LEADS_EXPORT_PREVIEW,
+    LEADS_TIMEOUT, LONG_OPERATION_TIMEOUT, MATCHES_ACT, MATCHES_GET, MATCHES_LIST,
+    OPERATIONS_READ_TIMEOUT, OPERATIONS_TIMEOUT, PIPELINES_CONTROL, PIPELINES_DEAD_LETTER,
+    PIPELINES_LIST, PIPELINES_START, RESEARCH_ACT, RESEARCH_BRIEF, RESEARCH_CHANGE_CHECKLIST,
+    RESEARCH_CHECKLISTS, RESEARCH_EVIDENCE, RESEARCH_GET, RESEARCH_SAVE_CHECKLIST,
+    RESEARCH_TIMELINE, RESOLUTION_CONTROL, RESOLUTION_RUNS, RESOLUTION_START, RESOLUTION_TIMEOUT,
+    SCORING_ACT, SCORING_CALIBRATION, SCORING_CATALOG, SCORING_CHANGE, SCORING_COMPARE,
+    SCORING_CONTROL, SCORING_LEADS, SCORING_RUNS, SCORING_SAVE_ICP, SCORING_SAVE_MODEL,
+    SCORING_SCORECARD, SCORING_SIMULATE, SCORING_START, SCORING_TIMEOUT, SEED_TIMEOUT,
+    SNAPSHOT_COMPARE_TIMEOUT, SNAPSHOT_TIMEOUT, SOURCES_LIST, SOURCES_PREVIEW_IMPORT,
+    SUPPRESSIONS_CHANGE, SUPPRESSIONS_EXPORT, SUPPRESSIONS_IMPORT, SUPPRESSIONS_LIST, VIEWS_CHANGE,
+    VIEWS_LIST, VIEWS_SAVE, WEBSITE_AUDIT, WEBSITE_AUDITS, WEBSITE_CONTROL, WEBSITE_RUNS,
+    WEBSITE_START, WorkerSupervisor,
 };
 
 pub struct AppState {
@@ -1883,6 +1898,478 @@ pub async fn get_sales_brief(
         Ok(brief)
     }
     .instrument(ipc_span("get_sales_brief"))
+    .await
+}
+
+// ---- pipelines, the event log, datasets and exports (phase 13) ----------------------------------
+
+/// Destinations the save dialog returned, by the one-time grant the page holds. The page never
+/// names a path: it can only start an export with a grant this core issued for its own dialog.
+#[derive(Default)]
+pub struct ExportGrants(Mutex<HashMap<String, (PathBuf, ExportFormat)>>);
+
+impl ExportGrants {
+    /// Issues a grant for a destination (also used by the IPC tests, which open no dialog).
+    pub fn issue(&self, path: PathBuf, format: ExportFormat) -> String {
+        let grant = Uuid::now_v7().to_string();
+        if let Ok(mut grants) = self.0.lock() {
+            grants.insert(grant.clone(), (path, format));
+        }
+        grant
+    }
+
+    fn take(&self, grant: &str) -> Option<(PathBuf, ExportFormat)> {
+        self.0.lock().ok()?.remove(grant)
+    }
+}
+
+fn check_destination(path: &Path, format: ExportFormat) -> Result<(), String> {
+    if !path.is_absolute() {
+        return Err("the destination is not an absolute path".into());
+    }
+    let extension = format.extension();
+    if !path
+        .extension()
+        .and_then(|found| found.to_str())
+        .is_some_and(|found| found.eq_ignore_ascii_case(extension))
+    {
+        return Err(format!("a {extension} export ends in .{extension}"));
+    }
+    if !path.parent().is_some_and(Path::is_dir) {
+        return Err("the folder chosen does not exist".into());
+    }
+    Ok(())
+}
+
+/// Starts (or, for a key already used, returns) the pipeline of a project.
+#[tauri::command]
+pub async fn start_pipeline(
+    state: State<'_, AppState>,
+    request: PipelineStartRequest,
+) -> Result<PipelineRun, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let run: PipelineRun = state
+            .supervisor
+            .request_with(PIPELINES_START, &request, OPERATIONS_TIMEOUT)
+            .await?;
+        run.validate().map_err(AppError::Protocol)?;
+        if run.project_id != request.project_id {
+            return Err(AppError::Protocol("a pipeline of another project".into()));
+        }
+        Ok(run)
+    }
+    .instrument(ipc_span("start_pipeline"))
+    .await
+}
+
+/// Pause, resume or cancel a pipeline; the engine job of its stage follows.
+#[tauri::command]
+pub async fn control_pipeline(
+    state: State<'_, AppState>,
+    request: DiscoveryControlRequest,
+) -> Result<PipelineRun, AppError> {
+    async {
+        let run: PipelineRun = state
+            .supervisor
+            .request_with(PIPELINES_CONTROL, &request, LONG_OPERATION_TIMEOUT)
+            .await?;
+        run.validate().map_err(AppError::Protocol)?;
+        if run.job_id != request.job_id {
+            return Err(AppError::Protocol(
+                "the pipeline is not the one asked for".into(),
+            ));
+        }
+        Ok(run)
+    }
+    .instrument(ipc_span("control_pipeline"))
+    .await
+}
+
+/// Retries or skips a stage that failed for good, with a reason.
+#[tauri::command]
+pub async fn resolve_dead_letter(
+    state: State<'_, AppState>,
+    request: DeadLetterRequest,
+) -> Result<PipelineRun, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let run: PipelineRun = state
+            .supervisor
+            .request_with(PIPELINES_DEAD_LETTER, &request, OPERATIONS_TIMEOUT)
+            .await?;
+        run.validate().map_err(AppError::Protocol)?;
+        let still_open = run.dead_letters.iter().any(|letter| {
+            letter.task_id == request.task_id && letter.review_status == DeadLetterStatus::Open
+        });
+        if run.job_id != request.job_id || still_open {
+            return Err(AppError::Protocol(
+                "the dead letter was not resolved".into(),
+            ));
+        }
+        Ok(run)
+    }
+    .instrument(ipc_span("resolve_dead_letter"))
+    .await
+}
+
+/// Pipelines newest first, with this machine's resources.
+#[tauri::command]
+pub async fn list_pipelines(
+    state: State<'_, AppState>,
+    query: PipelineListQuery,
+) -> Result<PipelinePage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: PipelinePage = state
+            .supervisor
+            .request_with(PIPELINES_LIST, &query, OPERATIONS_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_pipelines"))
+    .await
+}
+
+/// The persisted event log, filtered by job, stage, business, request or level.
+#[tauri::command]
+pub async fn list_job_events(
+    state: State<'_, AppState>,
+    query: JobEventQuery,
+) -> Result<JobEventPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: JobEventPage = state
+            .supervisor
+            .request_with(JOBS_EVENTS, &query, OPERATIONS_READ_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_job_events"))
+    .await
+}
+
+/// Previews or deletes old events of finished jobs; errors are always kept.
+#[tauri::command]
+pub async fn cleanup_job_events(
+    state: State<'_, AppState>,
+    request: EventCleanupRequest,
+) -> Result<EventCleanupResult, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let result: EventCleanupResult = state
+            .supervisor
+            .request_with(JOBS_CLEANUP_EVENTS, &request, LONG_OPERATION_TIMEOUT)
+            .await?;
+        result.validate(&request).map_err(AppError::Protocol)?;
+        Ok(result)
+    }
+    .instrument(ipc_span("cleanup_job_events"))
+    .await
+}
+
+/// Captures a project as the next version of a dataset.
+#[tauri::command]
+pub async fn create_dataset_snapshot(
+    state: State<'_, AppState>,
+    request: DatasetSnapshotRequest,
+) -> Result<DatasetSnapshotDetail, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let detail: DatasetSnapshotDetail = state
+            .supervisor
+            .request_with(DATASETS_SNAPSHOT, &request, SNAPSHOT_TIMEOUT)
+            .await?;
+        let snapshot_id = detail.item.snapshot.id.clone();
+        detail.validate(&snapshot_id).map_err(AppError::Protocol)?;
+        if detail.item.project_id != request.project_id
+            || detail.item.dataset_name != request.dataset_name
+        {
+            return Err(AppError::Protocol("a snapshot of another dataset".into()));
+        }
+        Ok(detail)
+    }
+    .instrument(ipc_span("create_dataset_snapshot"))
+    .await
+}
+
+#[tauri::command]
+pub async fn list_dataset_snapshots(
+    state: State<'_, AppState>,
+    query: DatasetSnapshotListQuery,
+) -> Result<DatasetSnapshotPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: DatasetSnapshotPage = state
+            .supervisor
+            .request_with(DATASETS_SNAPSHOTS, &query, OPERATIONS_READ_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_dataset_snapshots"))
+    .await
+}
+
+/// A snapshot with its quality report, lineage and exports.
+#[tauri::command]
+pub async fn get_dataset_snapshot(
+    state: State<'_, AppState>,
+    query: DatasetSnapshotQuery,
+) -> Result<DatasetSnapshotDetail, AppError> {
+    async {
+        let detail: DatasetSnapshotDetail = state
+            .supervisor
+            .request_with(DATASETS_GET_SNAPSHOT, &query, LONG_OPERATION_TIMEOUT)
+            .await?;
+        detail
+            .validate(&query.snapshot_id)
+            .map_err(AppError::Protocol)?;
+        Ok(detail)
+    }
+    .instrument(ipc_span("get_dataset_snapshot"))
+    .await
+}
+
+/// What changed between two snapshots, row by row.
+#[tauri::command]
+pub async fn diff_dataset_snapshots(
+    state: State<'_, AppState>,
+    query: DatasetDiffQuery,
+) -> Result<DatasetDiff, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let diff: DatasetDiff = state
+            .supervisor
+            .request_with(DATASETS_DIFF, &query, SNAPSHOT_COMPARE_TIMEOUT)
+            .await?;
+        diff.validate(&query).map_err(AppError::Protocol)?;
+        Ok(diff)
+    }
+    .instrument(ipc_span("diff_dataset_snapshots"))
+    .await
+}
+
+/// Previews or applies the retention of a dataset's snapshot versions.
+#[tauri::command]
+pub async fn cleanup_dataset(
+    state: State<'_, AppState>,
+    request: DatasetCleanupRequest,
+) -> Result<DatasetCleanupResult, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let result: DatasetCleanupResult = state
+            .supervisor
+            .request_with(DATASETS_CLEANUP, &request, SNAPSHOT_COMPARE_TIMEOUT)
+            .await?;
+        result.validate(&request).map_err(AppError::Protocol)?;
+        Ok(result)
+    }
+    .instrument(ipc_span("cleanup_dataset"))
+    .await
+}
+
+#[tauri::command]
+pub async fn get_export_catalog(
+    state: State<'_, AppState>,
+    query: ExportCatalogQuery,
+) -> Result<ExportCatalog, AppError> {
+    async {
+        let catalog: ExportCatalog = state
+            .supervisor
+            .request_with(EXPORTS_CATALOG, &query, OPERATIONS_READ_TIMEOUT)
+            .await?;
+        catalog.validate().map_err(AppError::Protocol)?;
+        Ok(catalog)
+    }
+    .instrument(ipc_span("get_export_catalog"))
+    .await
+}
+
+/// Clones a preset or saves the next version of one; built-in presets never change.
+#[tauri::command]
+pub async fn save_export_preset(
+    state: State<'_, AppState>,
+    request: ExportPresetSaveRequest,
+) -> Result<ExportCatalog, AppError> {
+    async {
+        request.validate().map_err(AppError::InvalidInput)?;
+        let catalog: ExportCatalog = state
+            .supervisor
+            .request_with(EXPORTS_SAVE_PRESET, &request, OPERATIONS_READ_TIMEOUT)
+            .await?;
+        catalog.validate().map_err(AppError::Protocol)?;
+        Ok(catalog)
+    }
+    .instrument(ipc_span("save_export_preset"))
+    .await
+}
+
+/// The first rows exactly as the file will hold them, with the counts and warnings.
+#[tauri::command]
+pub async fn preview_export(
+    state: State<'_, AppState>,
+    draft: ExportDraft,
+) -> Result<ExportPreviewResult, AppError> {
+    async {
+        draft.validate().map_err(AppError::InvalidInput)?;
+        let preview: ExportPreviewResult = state
+            .supervisor
+            .request_with(EXPORTS_PREVIEW, &draft, LONG_OPERATION_TIMEOUT)
+            .await?;
+        preview.validate(&draft).map_err(AppError::Protocol)?;
+        Ok(preview)
+    }
+    .instrument(ipc_span("preview_export"))
+    .await
+}
+
+/// Opens the native save dialog. The page gets a one-time grant and what to show, never a path it
+/// could change; nothing is chosen when the dialog is closed.
+#[tauri::command]
+pub async fn choose_export_destination<R: Runtime>(
+    app: AppHandle<R>,
+    grants: State<'_, ExportGrants>,
+    format: ExportFormat,
+    suggested_name: String,
+) -> Result<Option<ExportDestination>, AppError> {
+    async {
+        let extension = format.extension();
+        let stem: String = suggested_name
+            .chars()
+            .filter(|c| !matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|'))
+            .take(120)
+            .collect();
+        let stem = if stem.trim().is_empty() {
+            "export".to_owned()
+        } else {
+            stem
+        };
+        let dialog = app
+            .dialog()
+            .file()
+            .set_file_name(format!("{stem}.{extension}"))
+            .add_filter(extension.to_uppercase(), &[extension]);
+        let chosen = tauri::async_runtime::spawn_blocking(move || dialog.blocking_save_file())
+            .await
+            .map_err(|error| AppError::InvalidInput(format!("the save dialog failed: {error}")))?;
+        let Some(chosen) = chosen else {
+            return Ok(None);
+        };
+        let mut path = chosen
+            .into_path()
+            .map_err(|error| AppError::InvalidInput(format!("not a local file: {error}")))?;
+        if !path
+            .extension()
+            .and_then(|found| found.to_str())
+            .is_some_and(|found| found.eq_ignore_ascii_case(extension))
+        {
+            path.set_extension(extension);
+        }
+        check_destination(&path, format).map_err(AppError::InvalidInput)?;
+        let file_name = path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let folder = path
+            .parent()
+            .map(|parent| parent.display().to_string())
+            .unwrap_or_default();
+        let grant = grants.issue(path, format);
+        Ok(Some(ExportDestination {
+            grant_id: Id::parse(&grant).map_err(AppError::Protocol)?,
+            file_name,
+            folder,
+            format,
+        }))
+    }
+    .instrument(ipc_span("choose_export_destination"))
+    .await
+}
+
+/// Starts an export to the destination a grant stands for; the grant is used up.
+#[tauri::command]
+pub async fn start_export(
+    state: State<'_, AppState>,
+    grants: State<'_, ExportGrants>,
+    draft: ExportDraft,
+    grant_id: String,
+) -> Result<ExportItem, AppError> {
+    async {
+        draft.validate().map_err(AppError::InvalidInput)?;
+        let (path, format) = grants.take(&grant_id).ok_or_else(|| {
+            AppError::InvalidInput("choose where to save the export first".into())
+        })?;
+        if format != draft.format {
+            return Err(AppError::InvalidInput(
+                "the destination was chosen for another format".into(),
+            ));
+        }
+        check_destination(&path, format).map_err(AppError::InvalidInput)?;
+        let destination = path
+            .to_str()
+            .ok_or_else(|| AppError::InvalidInput("the destination is not valid text".into()))?
+            .to_owned();
+        let file_name = path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned());
+        let request = ExportStartRequest::from_draft(draft, destination);
+        let item: ExportItem = state
+            .supervisor
+            .request_with(EXPORTS_START, &request, LONG_OPERATION_TIMEOUT)
+            .await?;
+        item.validate().map_err(AppError::Protocol)?;
+        if item.export.file_name != file_name || item.export.format != request.format {
+            return Err(AppError::Protocol(
+                "the export is not the one asked for".into(),
+            ));
+        }
+        Ok(item)
+    }
+    .instrument(ipc_span("start_export"))
+    .await
+}
+
+#[tauri::command]
+pub async fn cancel_export(
+    state: State<'_, AppState>,
+    request: ExportCancelRequest,
+) -> Result<ExportItem, AppError> {
+    async {
+        let item: ExportItem = state
+            .supervisor
+            .request_with(EXPORTS_CANCEL, &request, OPERATIONS_TIMEOUT)
+            .await?;
+        item.validate().map_err(AppError::Protocol)?;
+        if item.export.id != request.export_id {
+            return Err(AppError::Protocol(
+                "the export is not the one asked for".into(),
+            ));
+        }
+        Ok(item)
+    }
+    .instrument(ipc_span("cancel_export"))
+    .await
+}
+
+/// Export history, newest first.
+#[tauri::command]
+pub async fn list_exports(
+    state: State<'_, AppState>,
+    query: ExportListQuery,
+) -> Result<ExportPage, AppError> {
+    async {
+        query.validate().map_err(AppError::InvalidInput)?;
+        let page: ExportPage = state
+            .supervisor
+            .request_with(EXPORTS_LIST, &query, OPERATIONS_READ_TIMEOUT)
+            .await?;
+        page.validate(&query).map_err(AppError::Protocol)?;
+        Ok(page)
+    }
+    .instrument(ipc_span("list_exports"))
     .await
 }
 

@@ -7,19 +7,21 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use chrono::Utc;
-use lead_intelligence_lib::commands::{AppState, CoreInfo};
+use lead_intelligence_lib::commands::{AppState, CoreInfo, ExportGrants};
 use lead_intelligence_lib::config::Environment;
 use lead_intelligence_lib::data::{
     AiInferencePage, AiRunPage, AiStatus, BusinessDetail, BusinessPage, CalibrationReport,
     CampaignSaved, CandidateDetail, CandidatePage, CanonicalField, ContactDetail, ContactOrigin,
     ContactPage, ContactRunPage, ContactSuppression, CrawlRun, CrawlRunPage, CrawlUrlDetail,
-    CrawlUrlPage, CriteriaCheck, DatasetPage, DecisionMakerPage, DiscoveryRun, DiscoveryRunPage,
-    ExplorerCatalog, ExplorerPage, ImportPreview, JobStatus, LatinoDetail, LatinoRunPage,
+    CrawlUrlPage, CriteriaCheck, DatasetCleanupResult, DatasetDiff, DatasetPage,
+    DatasetSnapshotDetail, DecisionMakerPage, DiscoveryRun, DiscoveryRunPage, ExplorerCatalog,
+    ExplorerPage, ExportCatalog, ExportFormat, ExportItem, ExportPage, ExportPreviewResult,
+    ExportStatus, ImportPreview, JobEventPage, JobStatus, LatinoDetail, LatinoRunPage,
     LatinoStatus, LeadScorePage, LeadScorecardDetail, MatchDetail, MatchPage, MatchStatus,
-    ResearchStatus, ResearchWorkspace, ResolutionRunPage, SalesBrief, SavedViewItem,
-    ScoreComparison, ScoreRunPage, ScoringCatalog, ScoringSimulation, SelectionMethod,
-    SourceCatalog, SourceRunStatus, SuppressionExport, SyntheticSeedResult, TimelinePage,
-    WebsiteAuditDetail, WebsiteAuditPage, WebsiteRunPage,
+    PipelinePage, PipelineRun, ResearchStatus, ResearchWorkspace, ResolutionRunPage, SalesBrief,
+    SavedViewItem, ScoreComparison, ScoreRunPage, ScoringCatalog, ScoringSimulation,
+    SelectionMethod, SourceCatalog, SourceRunStatus, SuppressionExport, SyntheticSeedResult,
+    TimelinePage, WebsiteAuditDetail, WebsiteAuditPage, WebsiteRunPage,
 };
 use lead_intelligence_lib::protocol::{
     CommandError, CommandErrorCode, ComponentState, DiagnosticsReport, WorkerState,
@@ -27,6 +29,7 @@ use lead_intelligence_lib::protocol::{
 use lead_intelligence_lib::register_commands;
 use lead_intelligence_lib::worker::WorkerSupervisor;
 use serde_json::json;
+use tauri::Manager;
 use tauri::ipc::{CallbackFn, InvokeBody};
 use tauri::test::{INVOKE_KEY, get_ipc_response, mock_builder, mock_context, noop_assets};
 use tauri::webview::InvokeRequest;
@@ -71,6 +74,7 @@ fn mock_app(supervisor: Arc<WorkerSupervisor>, dir: &Path, environment: Environm
     };
     let app = register_commands(mock_builder())
         .manage(state)
+        .manage(ExportGrants::default())
         .build(mock_context(noop_assets()))
         .expect("mock app");
     let webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
@@ -1099,6 +1103,248 @@ fn crawl_settings() -> serde_json::Value {
         "include_subdomains": false, "include_paths": [], "exclude_paths": [],
         "browser": "never", "screenshots": false
     })
+}
+
+/// Polls the pipeline listing the way the Jobs screen does, until the pipeline stops.
+fn settled_pipeline(
+    webview: &tauri::WebviewWindow<tauri::test::MockRuntime>,
+    project_id: &str,
+    job_id: &str,
+) -> PipelinePage {
+    for _ in 0..1200 {
+        let page: PipelinePage = invoke(
+            webview,
+            "list_pipelines",
+            json!({ "query": { "project_id": project_id, "limit": 5, "cursor": null } }),
+        )
+        .expect("pipelines")
+        .deserialize()
+        .expect("typed pipelines");
+        let run = page
+            .items
+            .iter()
+            .find(|run| run.job_id.to_string() == job_id)
+            .expect("the pipeline is listed");
+        if !matches!(
+            run.status,
+            JobStatus::Queued | JobStatus::Running | JobStatus::Paused
+        ) {
+            return page;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(250));
+    }
+    panic!("the pipeline never settled");
+}
+
+/// A pipeline over the synthetic project drives the real engines; its snapshot is inspected,
+/// exported through a save-dialog grant, captured again, compared and retained.
+#[test]
+fn a_pipeline_snapshot_and_export_run_end_to_end_through_ipc() {
+    let data = tempfile::tempdir().expect("temp dir");
+    let chosen = tempfile::tempdir().expect("chosen folder");
+    let supervisor = WorkerSupervisor::new(common::real_worker(data.path()), common::quiet());
+    tauri::async_runtime::block_on(supervisor.start()).expect("worker starts");
+    let (app, webview) = mock_app(supervisor.clone(), data.path(), Environment::Development);
+    let seed: SyntheticSeedResult = invoke(&webview, "seed_synthetic_data", json!({}))
+        .expect("seed")
+        .deserialize()
+        .expect("typed seed");
+    let project = seed.project_id.to_string();
+
+    // 1. a repeated key returns the pipeline it already started
+    let start = json!({ "request": {
+        "project_id": project, "campaign_id": null, "check_mail_domains": false,
+        "priority": 0, "idempotency_key": "ipc-real-pipeline"
+    }});
+    let run: PipelineRun = invoke(&webview, "start_pipeline", start.clone())
+        .expect("pipeline starts")
+        .deserialize()
+        .expect("typed pipeline");
+    let again: PipelineRun = invoke(&webview, "start_pipeline", start)
+        .expect("same key")
+        .deserialize()
+        .expect("typed pipeline");
+    assert_eq!(again.job_id, run.job_id);
+    let job_id = run.job_id.to_string();
+
+    let page = settled_pipeline(&webview, &project, &job_id);
+    let run = page
+        .items
+        .into_iter()
+        .find(|item| item.job_id.to_string() == job_id)
+        .expect("listed");
+    assert_eq!(run.status, JobStatus::Succeeded, "{:?}", run.dead_letters);
+    assert!(page.resources.cpu_count >= 1);
+    let snapshot_id = run.snapshot_id.expect("eligibility wrote a snapshot");
+
+    // 2. the persisted log holds the pipeline's events and its engine jobs'
+    let events: JobEventPage = invoke(
+        &webview,
+        "list_job_events",
+        json!({ "query": {
+            "job_id": job_id, "task_id": null, "business_id": null, "request_id": null,
+            "levels": [], "limit": 100, "cursor": null
+        }}),
+    )
+    .expect("events")
+    .deserialize()
+    .expect("typed events");
+    assert!(events.total >= 10);
+
+    // 3. the snapshot has its measured quality report and its lineage
+    let detail: DatasetSnapshotDetail = invoke(
+        &webview,
+        "get_dataset_snapshot",
+        json!({ "query": { "snapshot_id": snapshot_id } }),
+    )
+    .expect("snapshot")
+    .deserialize()
+    .expect("typed snapshot");
+    assert_eq!(detail.quality.rows, detail.item.snapshot.row_count);
+    assert!(!detail.lineage.is_empty());
+
+    // 4. exporting needs a grant from the core's own save dialog, used once, for its format
+    let catalog: ExportCatalog = invoke(
+        &webview,
+        "get_export_catalog",
+        json!({ "query": { "include_superseded": false } }),
+    )
+    .expect("catalogue")
+    .deserialize()
+    .expect("typed catalogue");
+    assert!(catalog.formats.contains(&ExportFormat::Csv));
+    let draft = json!({
+        "source_kind": "snapshot", "query": null, "view_id": null, "snapshot_id": snapshot_id,
+        "format": "csv",
+        "columns": [
+            { "key": "display_name", "header": "Business" }, { "key": "tier", "header": "Tier" }
+        ],
+        "bom": true, "include_suppressed": false, "suppressed_reason": null,
+        "preset_key": null, "preset_version": null
+    });
+    let preview: ExportPreviewResult =
+        invoke(&webview, "preview_export", json!({ "draft": draft }))
+            .expect("preview")
+            .deserialize()
+            .expect("typed preview");
+    let unknown = invoke(
+        &webview,
+        "start_export",
+        json!({ "draft": draft, "grantId": "not-a-grant" }),
+    )
+    .expect_err("no grant");
+    assert_eq!(command_error(unknown).code, CommandErrorCode::InvalidInput);
+    let grants = app.state::<ExportGrants>();
+    let spreadsheet = grants.issue(chosen.path().join("leads.xlsx"), ExportFormat::Xlsx);
+    let other_format = invoke(
+        &webview,
+        "start_export",
+        json!({ "draft": draft, "grantId": spreadsheet }),
+    )
+    .expect_err("a grant for another format");
+    assert_eq!(
+        command_error(other_format).code,
+        CommandErrorCode::InvalidInput
+    );
+    let destination = chosen.path().join("leads.csv");
+    let grant = grants.issue(destination.clone(), ExportFormat::Csv);
+    let started: ExportItem = invoke(
+        &webview,
+        "start_export",
+        json!({ "draft": draft, "grantId": grant }),
+    )
+    .expect("export starts")
+    .deserialize()
+    .expect("typed export");
+    let reused = invoke(
+        &webview,
+        "start_export",
+        json!({ "draft": draft, "grantId": grant }),
+    )
+    .expect_err("a grant is used once");
+    assert_eq!(command_error(reused).code, CommandErrorCode::InvalidInput);
+
+    let mut written = None;
+    for _ in 0..600 {
+        let exports: ExportPage = invoke(
+            &webview,
+            "list_exports",
+            json!({ "query": { "project_id": project, "limit": 10, "cursor": null } }),
+        )
+        .expect("exports")
+        .deserialize()
+        .expect("typed exports");
+        let item = exports
+            .items
+            .into_iter()
+            .find(|item| item.export.id == started.export.id)
+            .expect("listed");
+        if matches!(
+            item.export.status,
+            ExportStatus::Succeeded | ExportStatus::Failed | ExportStatus::Cancelled
+        ) {
+            written = Some(item);
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    let written = written.expect("the export finished");
+    assert_eq!(
+        written.export.status,
+        ExportStatus::Succeeded,
+        "{:?}",
+        written.export.error_message
+    );
+    assert_eq!(written.export.row_count, Some(preview.exported));
+    assert!(destination.exists());
+    assert!(chosen.path().join("leads.csv.manifest.json").exists());
+
+    // 5. a second capture is the next version; the first stays because it was exported
+    let second: DatasetSnapshotDetail = invoke(
+        &webview,
+        "create_dataset_snapshot",
+        json!({ "request": {
+            "project_id": project, "dataset_name": detail.item.dataset_name,
+            "description": null, "score_run_id": null
+        }}),
+    )
+    .expect("second snapshot")
+    .deserialize()
+    .expect("typed snapshot");
+    assert_eq!(
+        second.item.snapshot.version,
+        detail.item.snapshot.version + 1
+    );
+    let diff: DatasetDiff = invoke(
+        &webview,
+        "diff_dataset_snapshots",
+        json!({ "query": {
+            "before_snapshot_id": snapshot_id, "after_snapshot_id": second.item.snapshot.id,
+            "limit": 50
+        }}),
+    )
+    .expect("diff")
+    .deserialize()
+    .expect("typed diff");
+    assert_eq!(diff.added_count, 0, "nothing changed between the captures");
+    let retention: DatasetCleanupResult = invoke(
+        &webview,
+        "cleanup_dataset",
+        json!({ "request": {
+            "dataset_id": detail.item.snapshot.dataset_id, "keep_latest": 1,
+            "mode": "preview", "reason": null
+        }}),
+    )
+    .expect("retention preview")
+    .deserialize()
+    .expect("typed retention");
+    assert!(retention.deleted.is_empty());
+    assert!(retention.kept.iter().any(|kept| {
+        kept.snapshot_id == detail.item.snapshot.id
+            && kept.kept_because.as_deref() == Some("exported")
+    }));
+
+    tauri::async_runtime::block_on(supervisor.stop());
 }
 
 /// Crawls addresses that must never be fetched: loopback, a local name and the cloud metadata

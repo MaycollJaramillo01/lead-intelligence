@@ -16,3 +16,9 @@ export const sourcePath = (connectorKey: string) => withParam("/sources", "sourc
 export const scoreRunPath = (scoreRunId: string) => withParam("/lead-explorer", "run", scoreRunId);
 
 export const datasetPath = (datasetId: string) => withParam("/datasets", "dataset", datasetId);
+
+/** A dataset snapshot: the Datasets screen opens the dataset it belongs to (phase 13). */
+export const snapshotPath = (snapshotId: string) => withParam("/datasets", "snapshot", snapshotId);
+
+/** The persisted event log of a job, its engine jobs' events included (phase 13). */
+export const logsPath = (jobId: string) => withParam("/logs", "job", jobId);

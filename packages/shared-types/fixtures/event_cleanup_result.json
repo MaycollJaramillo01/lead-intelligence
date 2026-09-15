@@ -1,0 +1,17 @@
+{
+  "mode": "preview",
+  "cutoff": "2025-12-02T00:00:00.000Z",
+  "matched": 0,
+  "deleted": 0,
+  "by_level": [
+    {
+      "level": "debug",
+      "count": 0
+    },
+    {
+      "level": "info",
+      "count": 0
+    }
+  ],
+  "kept_errors": 0
+}

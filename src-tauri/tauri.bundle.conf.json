@@ -1,0 +1,7 @@
+{
+  "bundle": {
+    "resources": {
+      "../services/research-engine/dist/research-engine/": "research-engine/"
+    }
+  }
+}

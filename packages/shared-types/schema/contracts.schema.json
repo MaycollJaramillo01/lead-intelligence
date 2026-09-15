@@ -4893,6 +4893,33 @@
       "title": "CategoryCriterion",
       "type": "object"
     },
+    "ChangedRow": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "fields": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "business_id",
+        "display_name",
+        "fields"
+      ],
+      "title": "ChangedRow",
+      "type": "object"
+    },
     "ChannelCriterion": {
       "additionalProperties": false,
       "description": "At least one usable published channel of these types, and a published decision maker when\nasked for.",
@@ -5250,6 +5277,114 @@
       "title": "ChecklistView",
       "type": "object"
     },
+    "ChildJob": {
+      "additionalProperties": false,
+      "description": "An engine job a stage started, or attached because it was already open for the project.",
+      "properties": {
+        "job_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "kind": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "reused": {
+          "type": "boolean"
+        },
+        "progress_done": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "progress_total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rate_per_minute": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "eta_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stats": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "job_id",
+        "kind",
+        "status",
+        "reused",
+        "progress_done",
+        "progress_total",
+        "started_at",
+        "finished_at",
+        "rate_per_minute",
+        "eta_seconds",
+        "stats"
+      ],
+      "title": "ChildJob",
+      "type": "object"
+    },
     "CitedPoint": {
       "additionalProperties": false,
       "properties": {
@@ -5282,6 +5417,48 @@
       ],
       "title": "ClassificationKind",
       "type": "string"
+    },
+    "CleanupSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "snapshot_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "row_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "bytes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kept_because": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "snapshot_id",
+        "version",
+        "row_count",
+        "bytes",
+        "kept_because"
+      ],
+      "title": "CleanupSnapshot",
+      "type": "object"
     },
     "ClusterMember": {
       "additionalProperties": false,
@@ -9006,6 +9183,172 @@
       "title": "Dataset",
       "type": "object"
     },
+    "DatasetCleanupRequest": {
+      "additionalProperties": false,
+      "description": "Deletes old snapshot versions of a dataset, keeping the newest `keep_latest` and whatever\nlineage or exports still need. Preview first; applying needs a reason.",
+      "properties": {
+        "dataset_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "keep_latest": {
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "mode": {
+          "$ref": "#/$defs/BulkMode"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "dataset_id",
+        "keep_latest",
+        "mode",
+        "reason"
+      ],
+      "title": "DatasetCleanupRequest",
+      "type": "object"
+    },
+    "DatasetCleanupResult": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/BulkMode"
+        },
+        "deleted": {
+          "items": {
+            "$ref": "#/$defs/CleanupSnapshot"
+          },
+          "type": "array"
+        },
+        "kept": {
+          "items": {
+            "$ref": "#/$defs/CleanupSnapshot"
+          },
+          "type": "array"
+        },
+        "freed_bytes": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "mode",
+        "deleted",
+        "kept",
+        "freed_bytes"
+      ],
+      "title": "DatasetCleanupResult",
+      "type": "object"
+    },
+    "DatasetDiff": {
+      "additionalProperties": false,
+      "properties": {
+        "before": {
+          "$ref": "#/$defs/DatasetSnapshotItem"
+        },
+        "after": {
+          "$ref": "#/$defs/DatasetSnapshotItem"
+        },
+        "added_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "removed_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "changed_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unchanged_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "added": {
+          "items": {
+            "$ref": "#/$defs/DiffRow"
+          },
+          "type": "array"
+        },
+        "removed": {
+          "items": {
+            "$ref": "#/$defs/DiffRow"
+          },
+          "type": "array"
+        },
+        "changed": {
+          "items": {
+            "$ref": "#/$defs/ChangedRow"
+          },
+          "type": "array"
+        },
+        "compared_fields": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "before",
+        "after",
+        "added_count",
+        "removed_count",
+        "changed_count",
+        "unchanged_count",
+        "added",
+        "removed",
+        "changed",
+        "compared_fields",
+        "truncated"
+      ],
+      "title": "DatasetDiff",
+      "type": "object"
+    },
+    "DatasetDiffQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "before_snapshot_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "after_snapshot_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "before_snapshot_id",
+        "after_snapshot_id",
+        "limit"
+      ],
+      "title": "DatasetDiffQuery",
+      "type": "object"
+    },
     "DatasetListItem": {
       "additionalProperties": false,
       "properties": {
@@ -9115,6 +9458,106 @@
       "title": "DatasetPage",
       "type": "object"
     },
+    "DatasetQuality": {
+      "additionalProperties": false,
+      "description": "Computed from the snapshot's Parquet copy when it is written; never estimated.",
+      "properties": {
+        "schema_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "rows": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "duplicates": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "coverage": {
+          "items": {
+            "$ref": "#/$defs/FieldCoverage"
+          },
+          "type": "array"
+        },
+        "statuses": {
+          "items": {
+            "$ref": "#/$defs/ValueCount"
+          },
+          "type": "array"
+        },
+        "tiers": {
+          "items": {
+            "$ref": "#/$defs/ValueCount"
+          },
+          "type": "array"
+        },
+        "score_bins": {
+          "items": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "unscored": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "suppressed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "oldest_seen_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "newest_seen_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stale_rows": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "errors": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "rows",
+        "duplicates",
+        "coverage",
+        "statuses",
+        "tiers",
+        "score_bins",
+        "unscored",
+        "suppressed",
+        "oldest_seen_at",
+        "newest_seen_at",
+        "stale_rows",
+        "errors"
+      ],
+      "title": "DatasetQuality",
+      "type": "object"
+    },
     "DatasetSnapshot": {
       "additionalProperties": false,
       "description": "Immutable, reproducible rows in DuckDB plus a partitioned Parquet copy.",
@@ -9156,6 +9599,42 @@
         "created_at": {
           "format": "date-time",
           "type": "string"
+        },
+        "query_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "cutoff_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pipeline_versions_json": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "quality_json": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -9167,9 +9646,210 @@
         "parquet_path",
         "schema_version",
         "filters_json",
-        "created_at"
+        "created_at",
+        "query_json",
+        "cutoff_at",
+        "pipeline_versions_json",
+        "quality_json"
       ],
       "title": "DatasetSnapshot",
+      "type": "object"
+    },
+    "DatasetSnapshotDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "item": {
+          "$ref": "#/$defs/DatasetSnapshotItem"
+        },
+        "quality": {
+          "$ref": "#/$defs/DatasetQuality"
+        },
+        "lineage": {
+          "items": {
+            "$ref": "#/$defs/LineageItem"
+          },
+          "type": "array"
+        },
+        "exports": {
+          "items": {
+            "$ref": "#/$defs/Export"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "item",
+        "quality",
+        "lineage",
+        "exports"
+      ],
+      "title": "DatasetSnapshotDetail",
+      "type": "object"
+    },
+    "DatasetSnapshotItem": {
+      "additionalProperties": false,
+      "properties": {
+        "snapshot": {
+          "$ref": "#/$defs/DatasetSnapshot"
+        },
+        "dataset_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "lineage_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "export_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "snapshot",
+        "dataset_name",
+        "project_id",
+        "lineage_count",
+        "export_count",
+        "is_synthetic"
+      ],
+      "title": "DatasetSnapshotItem",
+      "type": "object"
+    },
+    "DatasetSnapshotListQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "dataset_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "dataset_id",
+        "limit",
+        "cursor"
+      ],
+      "title": "DatasetSnapshotListQuery",
+      "type": "object"
+    },
+    "DatasetSnapshotPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/DatasetSnapshotItem"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "DatasetSnapshotPage",
+      "type": "object"
+    },
+    "DatasetSnapshotQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "snapshot_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshot_id"
+      ],
+      "title": "DatasetSnapshotQuery",
+      "type": "object"
+    },
+    "DatasetSnapshotRequest": {
+      "additionalProperties": false,
+      "description": "Captures a project as the next version of a dataset: a consistent read at one moment. The\nrows carry the tiers and scores of `score_run_id`, or of the newest finished run when null.",
+      "properties": {
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "dataset_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "score_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "dataset_name",
+        "description",
+        "score_run_id"
+      ],
+      "title": "DatasetSnapshotRequest",
       "type": "object"
     },
     "DatasetSnapshotSource": {
@@ -9232,6 +9912,137 @@
       ],
       "title": "DatasetSnapshotSource",
       "type": "object"
+    },
+    "DeadLetter": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "task_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "stage": {
+          "$ref": "#/$defs/PipelineStage"
+        },
+        "attempt": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "error_code": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "error_message": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "review_status": {
+          "$ref": "#/$defs/DeadLetterStatus"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "resolved_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolved_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolution_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "task_id",
+        "stage",
+        "attempt",
+        "error_code",
+        "error_message",
+        "retryable",
+        "review_status",
+        "created_at",
+        "resolved_at",
+        "resolved_by",
+        "resolution_reason"
+      ],
+      "title": "DeadLetter",
+      "type": "object"
+    },
+    "DeadLetterAction": {
+      "enum": [
+        "retry",
+        "skip"
+      ],
+      "title": "DeadLetterAction",
+      "type": "string"
+    },
+    "DeadLetterRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "task_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/DeadLetterAction"
+        },
+        "reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "job_id",
+        "task_id",
+        "action",
+        "reason"
+      ],
+      "title": "DeadLetterRequest",
+      "type": "object"
+    },
+    "DeadLetterStatus": {
+      "enum": [
+        "open",
+        "retried",
+        "skipped"
+      ],
+      "title": "DeadLetterStatus",
+      "type": "string"
     },
     "DecileLift": {
       "additionalProperties": false,
@@ -9710,6 +10521,24 @@
         "gpu"
       ],
       "title": "DiagnosticsResult",
+      "type": "object"
+    },
+    "DiffRow": {
+      "additionalProperties": false,
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "business_id",
+        "display_name"
+      ],
+      "title": "DiffRow",
       "type": "object"
     },
     "DigitalMaturity": {
@@ -10529,7 +11358,8 @@
         "match_candidate",
         "contact_suppression",
         "saved_view",
-        "research_checklist"
+        "research_checklist",
+        "export_preset"
       ],
       "title": "EntityType",
       "type": "string"
@@ -10624,6 +11454,86 @@
         "retryable"
       ],
       "title": "ErrorInfo",
+      "type": "object"
+    },
+    "EventCleanupRequest": {
+      "additionalProperties": false,
+      "description": "Deletes old events of finished jobs. Errors are never deleted: they are the root causes.",
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/BulkMode"
+        },
+        "older_than_days": {
+          "maximum": 3650,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "levels": {
+          "items": {
+            "$ref": "#/$defs/EventLevel"
+          },
+          "type": "array"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "mode",
+        "older_than_days",
+        "levels",
+        "reason"
+      ],
+      "title": "EventCleanupRequest",
+      "type": "object"
+    },
+    "EventCleanupResult": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/BulkMode"
+        },
+        "cutoff": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "matched": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "deleted": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "by_level": {
+          "items": {
+            "$ref": "#/$defs/LevelCount"
+          },
+          "type": "array"
+        },
+        "kept_errors": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "mode",
+        "cutoff",
+        "matched",
+        "deleted",
+        "by_level",
+        "kept_errors"
+      ],
+      "title": "EventCleanupResult",
       "type": "object"
     },
     "EventLevel": {
@@ -12004,6 +12914,82 @@
         "updated_at": {
           "format": "date-time",
           "type": "string"
+        },
+        "job_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "destination": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "columns_json": {
+          "items": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "config_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "actor": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "preset_key": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "preset_version": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -12021,9 +13007,316 @@
         "finished_at",
         "error_message",
         "created_at",
-        "updated_at"
+        "updated_at",
+        "job_id",
+        "destination",
+        "columns_json",
+        "config_json",
+        "actor",
+        "preset_key",
+        "preset_version",
+        "error_code"
       ],
       "title": "Export",
+      "type": "object"
+    },
+    "ExportCancelRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "export_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "export_id"
+      ],
+      "title": "ExportCancelRequest",
+      "type": "object"
+    },
+    "ExportCatalog": {
+      "additionalProperties": false,
+      "properties": {
+        "presets": {
+          "items": {
+            "$ref": "#/$defs/ExportPresetView"
+          },
+          "type": "array"
+        },
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/ExportColumnInfo"
+          },
+          "type": "array"
+        },
+        "appended": {
+          "items": {
+            "$ref": "#/$defs/ExportColumnInfo"
+          },
+          "type": "array"
+        },
+        "formats": {
+          "items": {
+            "$ref": "#/$defs/ExportFormat"
+          },
+          "type": "array"
+        },
+        "xlsx_max_rows": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_columns": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "presets",
+        "columns",
+        "appended",
+        "formats",
+        "xlsx_max_rows",
+        "max_columns"
+      ],
+      "title": "ExportCatalog",
+      "type": "object"
+    },
+    "ExportCatalogQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "include_superseded": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "include_superseded"
+      ],
+      "title": "ExportCatalogQuery",
+      "type": "object"
+    },
+    "ExportColumn": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "header": {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "header"
+      ],
+      "title": "ExportColumn",
+      "type": "object"
+    },
+    "ExportColumnInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "source_kind": {
+          "$ref": "#/$defs/ExportSourceKind"
+        },
+        "key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ExportColumnType"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_kind",
+        "key",
+        "type",
+        "description"
+      ],
+      "title": "ExportColumnInfo",
+      "type": "object"
+    },
+    "ExportColumnType": {
+      "enum": [
+        "text",
+        "number",
+        "flag",
+        "timestamp",
+        "list"
+      ],
+      "title": "ExportColumnType",
+      "type": "string"
+    },
+    "ExportDefinition": {
+      "additionalProperties": false,
+      "description": "What a preset fixes: the source kind, the format, the columns and their headers.",
+      "properties": {
+        "source_kind": {
+          "$ref": "#/$defs/ExportSourceKind"
+        },
+        "format": {
+          "$ref": "#/$defs/ExportFormat"
+        },
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/ExportColumn"
+          },
+          "type": "array"
+        },
+        "bom": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "source_kind",
+        "format",
+        "columns",
+        "bom"
+      ],
+      "title": "ExportDefinition",
+      "type": "object"
+    },
+    "ExportDestination": {
+      "additionalProperties": false,
+      "description": "What the desktop core's save dialog returned: a one-time grant the interface passes back to\nstart the export, and the file name and folder to show. The path never reaches the page.",
+      "properties": {
+        "grant_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "file_name": {
+          "maxLength": 260,
+          "minLength": 1,
+          "type": "string"
+        },
+        "folder": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string"
+        },
+        "format": {
+          "$ref": "#/$defs/ExportFormat"
+        }
+      },
+      "required": [
+        "grant_id",
+        "file_name",
+        "folder",
+        "format"
+      ],
+      "title": "ExportDestination",
+      "type": "object"
+    },
+    "ExportDraft": {
+      "additionalProperties": false,
+      "description": "Everything an export needs but its destination, which the desktop core adds from the save\ndialog: the interface never names a path.",
+      "properties": {
+        "source_kind": {
+          "$ref": "#/$defs/ExportSourceKind"
+        },
+        "query": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExplorerQuery"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "view_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "snapshot_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "format": {
+          "$ref": "#/$defs/ExportFormat"
+        },
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/ExportColumn"
+          },
+          "type": "array"
+        },
+        "bom": {
+          "type": "boolean"
+        },
+        "include_suppressed": {
+          "type": "boolean"
+        },
+        "suppressed_reason": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "preset_key": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "preset_version": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "source_kind",
+        "query",
+        "view_id",
+        "snapshot_id",
+        "format",
+        "columns",
+        "bom",
+        "include_suppressed",
+        "suppressed_reason",
+        "preset_key",
+        "preset_version"
+      ],
+      "title": "ExportDraft",
       "type": "object"
     },
     "ExportFormat": {
@@ -12036,6 +13329,313 @@
       ],
       "title": "ExportFormat",
       "type": "string"
+    },
+    "ExportItem": {
+      "additionalProperties": false,
+      "properties": {
+        "export": {
+          "$ref": "#/$defs/Export"
+        },
+        "job_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JobStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rows_written": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rows_total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "export",
+        "job_status",
+        "rows_written",
+        "rows_total",
+        "is_synthetic"
+      ],
+      "title": "ExportItem",
+      "type": "object"
+    },
+    "ExportListQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "limit",
+        "cursor"
+      ],
+      "title": "ExportListQuery",
+      "type": "object"
+    },
+    "ExportPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ExportItem"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "ExportPage",
+      "type": "object"
+    },
+    "ExportPreset": {
+      "additionalProperties": false,
+      "description": "One immutable version of an export preset (built in, or cloned and saved by a person).",
+      "properties": {
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "key": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "definition_json": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "built_in": {
+          "type": "boolean"
+        },
+        "cloned_from_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_by": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "superseded_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "key",
+        "version",
+        "name",
+        "description",
+        "definition_json",
+        "built_in",
+        "cloned_from_id",
+        "created_by",
+        "created_at",
+        "superseded_at"
+      ],
+      "title": "ExportPreset",
+      "type": "object"
+    },
+    "ExportPresetSaveRequest": {
+      "additionalProperties": false,
+      "description": "A new preset (cloned from `clone_from`, or from nothing) or the next version of a saved one.\nBuilt-in presets are cloned, never changed.",
+      "properties": {
+        "key": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "clone_from": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "definition": {
+          "$ref": "#/$defs/ExportDefinition"
+        }
+      },
+      "required": [
+        "key",
+        "clone_from",
+        "name",
+        "description",
+        "definition"
+      ],
+      "title": "ExportPresetSaveRequest",
+      "type": "object"
+    },
+    "ExportPresetView": {
+      "additionalProperties": false,
+      "properties": {
+        "preset": {
+          "$ref": "#/$defs/ExportPreset"
+        },
+        "definition": {
+          "$ref": "#/$defs/ExportDefinition"
+        },
+        "versions": {
+          "items": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "cloned_from_key": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "preset",
+        "definition",
+        "versions",
+        "cloned_from_key"
+      ],
+      "title": "ExportPresetView",
+      "type": "object"
     },
     "ExportPreview": {
       "additionalProperties": false,
@@ -12129,6 +13729,181 @@
         "sample_size"
       ],
       "title": "ExportPreviewRequest",
+      "type": "object"
+    },
+    "ExportPreviewResult": {
+      "additionalProperties": false,
+      "description": "The first rows exactly as the file would hold them, with the counts and warnings.",
+      "properties": {
+        "matching": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "excluded_suppressed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "exported": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "headers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sample": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/JsonValue"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "matching",
+        "excluded_suppressed",
+        "exported",
+        "headers",
+        "sample",
+        "warnings",
+        "generated_at"
+      ],
+      "title": "ExportPreviewResult",
+      "type": "object"
+    },
+    "ExportSourceKind": {
+      "enum": [
+        "query",
+        "snapshot"
+      ],
+      "title": "ExportSourceKind",
+      "type": "string"
+    },
+    "ExportStartRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "source_kind": {
+          "$ref": "#/$defs/ExportSourceKind"
+        },
+        "query": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExplorerQuery"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "view_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "snapshot_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "format": {
+          "$ref": "#/$defs/ExportFormat"
+        },
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/ExportColumn"
+          },
+          "type": "array"
+        },
+        "bom": {
+          "type": "boolean"
+        },
+        "include_suppressed": {
+          "type": "boolean"
+        },
+        "suppressed_reason": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "preset_key": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "preset_version": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "destination": {
+          "maxLength": 1024,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_kind",
+        "query",
+        "view_id",
+        "snapshot_id",
+        "format",
+        "columns",
+        "bom",
+        "include_suppressed",
+        "suppressed_reason",
+        "preset_key",
+        "preset_version",
+        "destination"
+      ],
+      "title": "ExportStartRequest",
       "type": "object"
     },
     "ExportStatus": {
@@ -12658,6 +14433,37 @@
         "similarity"
       ],
       "title": "FieldComparison",
+      "type": "object"
+    },
+    "FieldCoverage": {
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "known": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unknown": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "share": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "field",
+        "known",
+        "unknown",
+        "share"
+      ],
+      "title": "FieldCoverage",
       "type": "object"
     },
     "FinalInput": {
@@ -14192,6 +15998,163 @@
         "created_at"
       ],
       "title": "JobEvent",
+      "type": "object"
+    },
+    "JobEventItem": {
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "$ref": "#/$defs/JobEvent"
+        },
+        "job_kind": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_.]*$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "stage": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "event",
+        "job_kind",
+        "project_id",
+        "stage"
+      ],
+      "title": "JobEventItem",
+      "type": "object"
+    },
+    "JobEventPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/JobEventItem"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total"
+      ],
+      "title": "JobEventPage",
+      "type": "object"
+    },
+    "JobEventQuery": {
+      "additionalProperties": false,
+      "description": "The persisted log. A pipeline's events include those of its engine jobs.",
+      "properties": {
+        "job_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "task_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "business_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "levels": {
+          "items": {
+            "$ref": "#/$defs/EventLevel"
+          },
+          "type": "array"
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "job_id",
+        "task_id",
+        "business_id",
+        "request_id",
+        "levels",
+        "limit",
+        "cursor"
+      ],
+      "title": "JobEventQuery",
       "type": "object"
     },
     "JobMetric": {
@@ -16414,6 +18377,67 @@
       "title": "LeadTier",
       "type": "string"
     },
+    "LevelCount": {
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "$ref": "#/$defs/EventLevel"
+        },
+        "count": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "level",
+        "count"
+      ],
+      "title": "LevelCount",
+      "type": "object"
+    },
+    "LineageItem": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/LineageKind"
+        },
+        "id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "label",
+        "at"
+      ],
+      "title": "LineageItem",
+      "type": "object"
+    },
+    "LineageKind": {
+      "enum": [
+        "source_run",
+        "score_run",
+        "parent_snapshot"
+      ],
+      "title": "LineageKind",
+      "type": "string"
+    },
     "LlmFitModel": {
       "additionalProperties": false,
       "properties": {
@@ -17777,6 +19801,508 @@
         "available"
       ],
       "title": "PinView",
+      "type": "object"
+    },
+    "PipelineAttempt": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error_message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retryable": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "jobs": {
+          "items": {
+            "$ref": "#/$defs/ChildJob"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "attempt",
+        "status",
+        "started_at",
+        "finished_at",
+        "error_code",
+        "error_message",
+        "retryable",
+        "jobs"
+      ],
+      "title": "PipelineAttempt",
+      "type": "object"
+    },
+    "PipelineListQuery": {
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "project_id",
+        "limit",
+        "cursor"
+      ],
+      "title": "PipelineListQuery",
+      "type": "object"
+    },
+    "PipelinePage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/PipelineRun"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "resources": {
+          "$ref": "#/$defs/ResourceUsage"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor",
+        "total",
+        "resources"
+      ],
+      "title": "PipelinePage",
+      "type": "object"
+    },
+    "PipelineResource": {
+      "enum": [
+        "http",
+        "browser",
+        "cpu",
+        "ram",
+        "disk",
+        "gpu"
+      ],
+      "title": "PipelineResource",
+      "type": "string"
+    },
+    "PipelineRun": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "project_name": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "campaign_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "campaign_name": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "priority": {
+          "type": "integer"
+        },
+        "check_mail_domains": {
+          "type": "boolean"
+        },
+        "progress_done": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "progress_total": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "counts": {
+          "$ref": "#/$defs/StageCounts"
+        },
+        "requested_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stages": {
+          "items": {
+            "$ref": "#/$defs/PipelineStageView"
+          },
+          "type": "array"
+        },
+        "dead_letters": {
+          "items": {
+            "$ref": "#/$defs/DeadLetter"
+          },
+          "type": "array"
+        },
+        "score_run_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "eligible_leads": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "snapshot_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actions": {
+          "items": {
+            "$ref": "#/$defs/RunControlAction"
+          },
+          "type": "array"
+        },
+        "is_synthetic": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job_id",
+        "project_id",
+        "project_name",
+        "campaign_id",
+        "campaign_name",
+        "status",
+        "priority",
+        "check_mail_domains",
+        "progress_done",
+        "progress_total",
+        "counts",
+        "requested_at",
+        "started_at",
+        "finished_at",
+        "stages",
+        "dead_letters",
+        "score_run_id",
+        "eligible_leads",
+        "snapshot_id",
+        "actions",
+        "is_synthetic"
+      ],
+      "title": "PipelineRun",
+      "type": "object"
+    },
+    "PipelineStage": {
+      "description": "The stages of a campaign pipeline, in order. Each runs the engine job of its phase.",
+      "enum": [
+        "discovery",
+        "acquisition",
+        "normalization",
+        "entity_resolution",
+        "latino_evidence",
+        "website_intelligence",
+        "contact_intelligence",
+        "local_ai",
+        "scoring",
+        "review_export_eligibility"
+      ],
+      "title": "PipelineStage",
+      "type": "string"
+    },
+    "PipelineStageView": {
+      "additionalProperties": false,
+      "properties": {
+        "task_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "stage": {
+          "$ref": "#/$defs/PipelineStage"
+        },
+        "ordinal": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "version": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "inputs": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "outputs": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "depends_on": {
+          "items": {
+            "$ref": "#/$defs/PipelineStage"
+          },
+          "type": "array"
+        },
+        "resources": {
+          "items": {
+            "$ref": "#/$defs/PipelineResource"
+          },
+          "type": "array"
+        },
+        "max_attempts": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "retryable_codes": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/JobStatus"
+        },
+        "skipped": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempts": {
+          "items": {
+            "$ref": "#/$defs/PipelineAttempt"
+          },
+          "type": "array"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/RunEvent"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "task_id",
+        "stage",
+        "ordinal",
+        "version",
+        "inputs",
+        "outputs",
+        "depends_on",
+        "resources",
+        "max_attempts",
+        "retryable_codes",
+        "status",
+        "skipped",
+        "attempts",
+        "events"
+      ],
+      "title": "PipelineStageView",
+      "type": "object"
+    },
+    "PipelineStartRequest": {
+      "additionalProperties": false,
+      "description": "Runs every stage over one project; a campaign adds discovery and acquisition. A repeated key\n(a double click, a retry after a timeout) returns the pipeline it already started.",
+      "properties": {
+        "project_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "campaign_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "check_mail_domains": {
+          "type": "boolean"
+        },
+        "priority": {
+          "maximum": 100,
+          "minimum": -100,
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "maxLength": 120,
+          "minLength": 8,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project_id",
+        "campaign_id",
+        "check_mail_domains",
+        "priority",
+        "idempotency_key"
+      ],
+      "title": "PipelineStartRequest",
       "type": "object"
     },
     "PrecisionAtK": {
@@ -19211,6 +21737,162 @@
         "manual_decisions"
       ],
       "title": "ResolutionStats",
+      "type": "object"
+    },
+    "ResourceSlot": {
+      "additionalProperties": false,
+      "properties": {
+        "resource": {
+          "$ref": "#/$defs/PipelineResource"
+        },
+        "running": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "limit": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "resource",
+        "running",
+        "limit"
+      ],
+      "title": "ResourceSlot",
+      "type": "object"
+    },
+    "ResourceUsage": {
+      "additionalProperties": false,
+      "description": "This machine now, as the orchestrator sees it. Null means the OS did not say.",
+      "properties": {
+        "sampled_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "cpu_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cpu_percent": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ram_total_mib": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ram_free_mib": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vram_total_mib": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vram_free_mib": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "disk_total_mib": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "disk_free_mib": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "active_browsers": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slots": {
+          "items": {
+            "$ref": "#/$defs/ResourceSlot"
+          },
+          "type": "array"
+        },
+        "pressure": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "sampled_at",
+        "cpu_count",
+        "cpu_percent",
+        "ram_total_mib",
+        "ram_free_mib",
+        "vram_total_mib",
+        "vram_free_mib",
+        "disk_total_mib",
+        "disk_free_mib",
+        "active_browsers",
+        "slots",
+        "pressure"
+      ],
+      "title": "ResourceUsage",
       "type": "object"
     },
     "ReviewDecision": {
@@ -22061,6 +24743,50 @@
       "title": "SourceSelection",
       "type": "object"
     },
+    "StageCounts": {
+      "additionalProperties": false,
+      "properties": {
+        "queued": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "running": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "paused": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "succeeded": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cancelled": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "queued",
+        "running",
+        "paused",
+        "succeeded",
+        "skipped",
+        "failed",
+        "cancelled"
+      ],
+      "title": "StageCounts",
+      "type": "object"
+    },
     "SuppressionChangeRequest": {
       "additionalProperties": false,
       "description": "Adds an entry (`suppression_id` null, with `kind` and `value`) or lifts one\n(`suppression_id`); both need a reason.",
@@ -22805,6 +25531,24 @@
       ],
       "title": "ValidationStatus",
       "type": "string"
+    },
+    "ValueCount": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "count": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "value",
+        "count"
+      ],
+      "title": "ValueCount",
+      "type": "object"
     },
     "ViewColumn": {
       "additionalProperties": false,

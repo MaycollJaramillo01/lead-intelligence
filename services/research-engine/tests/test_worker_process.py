@@ -330,3 +330,119 @@ def test_research_work_survives_a_worker_crash(tmp_path: Path) -> None:
         assert [row["business_id"] for row in filtered["rows"]] == [lead]
     finally:
         _stop(second)
+
+
+def _until(
+    worker: WorkerProcess,
+    message_type: str,
+    payload: dict[str, Any],
+    finished: Callable[[Any], bool],
+    timeout: float = 300.0,
+) -> Any:
+    """Asks again every half second until `finished` holds for the answer."""
+    deadline = time.monotonic() + timeout
+    while True:
+        answer = worker.request(message_type, payload)
+        assert answer["error"] is None, answer["error"]
+        if finished(answer["payload"]):
+            return answer["payload"]
+        assert time.monotonic() < deadline, answer["payload"]
+        time.sleep(0.5)
+
+
+def test_a_pipeline_drives_the_real_engines_and_an_export_writes_its_file(tmp_path: Path) -> None:
+    data, chosen = tmp_path / "data", tmp_path / "chosen-folder"
+    data.mkdir()
+    chosen.mkdir()
+    worker = WorkerProcess(data, LEAD_DEV_TOOLS="1")
+    try:
+        _ready(worker)
+        seeded = worker.request("dev.seed_synthetic")["payload"]
+        start = {
+            "project_id": seeded["project_id"],
+            "campaign_id": None,
+            "check_mail_domains": False,
+            "priority": 0,
+            "idempotency_key": "fixture-real-pipeline",
+        }
+        started = worker.request("pipelines.start", start)
+        assert started["error"] is None, started["error"]
+        job_id = started["payload"]["job_id"]
+
+        def mine(page: Any) -> Any:
+            return next(item for item in page["items"] if item["job_id"] == job_id)
+
+        page = _until(
+            worker,
+            "pipelines.list",
+            {"project_id": seeded["project_id"], "limit": 5, "cursor": None},
+            lambda page: mine(page)["status"] in ("succeeded", "failed", "cancelled"),
+        )
+        item = mine(page)
+        failures = [
+            (stage["stage"], attempt["error_code"], attempt["error_message"])
+            for stage in item["stages"]
+            for attempt in stage["attempts"]
+            if attempt["error_code"]
+        ]
+        assert item["status"] == "succeeded", failures
+        stages = {stage["stage"]: stage for stage in item["stages"]}
+        assert stages["discovery"]["skipped"] == "no_campaign"
+        for name in (
+            "normalization",
+            "latino_evidence",
+            "website_intelligence",
+            "contact_intelligence",
+            "local_ai",
+            "scoring",
+        ):
+            assert stages[name]["attempts"][0]["jobs"], name  # a real engine job did the work
+        assert item["snapshot_id"] is not None
+        assert item["eligible_leads"] is not None
+        assert page["resources"]["cpu_count"] >= 1
+        query = dict.fromkeys(("task_id", "business_id", "request_id", "cursor"))
+        events = worker.request(
+            "jobs.events", query | {"job_id": job_id, "levels": [], "limit": 100}
+        )
+        assert events["payload"]["total"] >= 10
+
+        draft = {
+            "source_kind": "snapshot",
+            "query": None,
+            "view_id": None,
+            "snapshot_id": item["snapshot_id"],
+            "format": "csv",
+            "columns": [
+                {"key": "display_name", "header": "Business"},
+                {"key": "tier", "header": "Tier"},
+            ],
+            "bom": True,
+            "include_suppressed": False,
+            "suppressed_reason": None,
+            "preset_key": None,
+            "preset_version": None,
+        }
+        preview = worker.request("exports.preview", draft)
+        assert preview["error"] is None, preview["error"]
+        export = worker.request(
+            "exports.start", {**draft, "destination": str(chosen / "leads.csv")}
+        )
+        assert export["error"] is None, export["error"]
+        export_id = export["payload"]["export"]["id"]
+
+        def written(page: Any) -> list[Any]:
+            return [entry for entry in page["items"] if entry["export"]["id"] == export_id]
+
+        exports = _until(
+            worker,
+            "exports.list",
+            {"project_id": None, "limit": 10, "cursor": None},
+            lambda page: written(page)[0]["export"]["status"] in ("succeeded", "failed"),
+        )
+        (entry,) = written(exports)
+        assert entry["export"]["status"] == "succeeded", entry["export"]["error_message"]
+        lines = (chosen / "leads.csv").read_text(encoding="utf-8-sig").splitlines()
+        assert len(lines) - 1 == preview["payload"]["exported"] == entry["export"]["row_count"]
+        assert (chosen / "leads.csv.manifest.json").exists()
+    finally:
+        _stop(worker)

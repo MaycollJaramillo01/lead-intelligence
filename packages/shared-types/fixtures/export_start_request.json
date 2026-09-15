@@ -1,0 +1,49 @@
+{
+  "source_kind": "query",
+  "query": {
+    "score_run_id": null,
+    "filters": {
+      "kind": "group",
+      "join": "and",
+      "negate": false,
+      "children": []
+    },
+    "search": null,
+    "sort": [
+      {
+        "field": "total_score",
+        "direction": "desc"
+      }
+    ],
+    "offset": 0,
+    "limit": 100,
+    "with_total": false
+  },
+  "view_id": null,
+  "snapshot_id": null,
+  "format": "csv",
+  "columns": [
+    {
+      "key": "name",
+      "header": "Business"
+    },
+    {
+      "key": "tier",
+      "header": "Tier"
+    },
+    {
+      "key": "total_score",
+      "header": "Lead score"
+    },
+    {
+      "key": "main_channel",
+      "header": "Channel"
+    }
+  ],
+  "bom": true,
+  "include_suppressed": false,
+  "suppressed_reason": null,
+  "preset_key": null,
+  "preset_version": null,
+  "destination": "C:/synthetic/exports/leads.csv"
+}

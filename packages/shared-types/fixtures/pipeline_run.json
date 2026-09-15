@@ -1,0 +1,488 @@
+{
+  "job_id": "01900000-0000-7000-8000-000000001670",
+  "project_id": "01900000-0000-7000-8000-000000000001",
+  "project_name": "Synthetic test workspace",
+  "campaign_id": null,
+  "campaign_name": null,
+  "status": "running",
+  "priority": 0,
+  "check_mail_domains": false,
+  "progress_done": 4,
+  "progress_total": 10,
+  "counts": {
+    "queued": 5,
+    "running": 1,
+    "paused": 0,
+    "succeeded": 2,
+    "skipped": 2,
+    "failed": 0,
+    "cancelled": 0
+  },
+  "requested_at": "2026-01-01T00:00:00.000Z",
+  "started_at": "2026-01-01T00:00:00.000Z",
+  "finished_at": null,
+  "stages": [
+    {
+      "task_id": "01900000-0000-7000-8000-000000001671",
+      "stage": "discovery",
+      "ordinal": 0,
+      "version": "1",
+      "inputs": [
+        "campaign"
+      ],
+      "outputs": [
+        "discovery_candidates"
+      ],
+      "depends_on": [],
+      "resources": [
+        "http"
+      ],
+      "max_attempts": 3,
+      "retryable_codes": [
+        "network",
+        "rate_limited",
+        "store_busy",
+        "store_unavailable",
+        "timeout",
+        "worker_interrupted"
+      ],
+      "status": "succeeded",
+      "skipped": "no_campaign",
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "succeeded",
+          "started_at": "2026-01-01T00:00:00.000Z",
+          "finished_at": "2026-01-01T00:00:00.000Z",
+          "error_code": null,
+          "error_message": null,
+          "retryable": null,
+          "jobs": []
+        }
+      ],
+      "events": []
+    },
+    {
+      "task_id": "01900000-0000-7000-8000-000000001672",
+      "stage": "acquisition",
+      "ordinal": 1,
+      "version": "1",
+      "inputs": [
+        "discovery_candidates"
+      ],
+      "outputs": [
+        "raw_pages"
+      ],
+      "depends_on": [
+        "discovery"
+      ],
+      "resources": [
+        "http",
+        "browser",
+        "disk"
+      ],
+      "max_attempts": 3,
+      "retryable_codes": [
+        "network",
+        "rate_limited",
+        "store_busy",
+        "store_unavailable",
+        "timeout",
+        "worker_interrupted"
+      ],
+      "status": "succeeded",
+      "skipped": "no_campaign",
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "succeeded",
+          "started_at": "2026-01-01T00:00:00.000Z",
+          "finished_at": "2026-01-01T00:00:00.000Z",
+          "error_code": null,
+          "error_message": null,
+          "retryable": null,
+          "jobs": []
+        }
+      ],
+      "events": []
+    },
+    {
+      "task_id": "01900000-0000-7000-8000-000000001673",
+      "stage": "normalization",
+      "ordinal": 2,
+      "version": "1",
+      "inputs": [
+        "discovery_candidates",
+        "raw_pages"
+      ],
+      "outputs": [
+        "normalized_records"
+      ],
+      "depends_on": [
+        "acquisition"
+      ],
+      "resources": [
+        "cpu",
+        "ram"
+      ],
+      "max_attempts": 2,
+      "retryable_codes": [
+        "store_busy",
+        "store_unavailable",
+        "timeout",
+        "worker_interrupted"
+      ],
+      "status": "succeeded",
+      "skipped": null,
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "succeeded",
+          "started_at": "2026-01-01T00:00:00.000Z",
+          "finished_at": "2026-01-01T00:00:00.000Z",
+          "error_code": null,
+          "error_message": null,
+          "retryable": null,
+          "jobs": [
+            {
+              "job_id": "01900000-0000-7000-8000-000000001692",
+              "kind": "resolution",
+              "status": "succeeded",
+              "reused": false,
+              "progress_done": 38,
+              "progress_total": 38,
+              "started_at": "2026-01-01T00:00:00.000Z",
+              "finished_at": "2026-01-01T00:00:00.000Z",
+              "rate_per_minute": null,
+              "eta_seconds": null,
+              "stats": null
+            }
+          ]
+        }
+      ],
+      "events": []
+    },
+    {
+      "task_id": "01900000-0000-7000-8000-000000001674",
+      "stage": "entity_resolution",
+      "ordinal": 3,
+      "version": "1",
+      "inputs": [
+        "normalized_records"
+      ],
+      "outputs": [
+        "businesses",
+        "match_candidates"
+      ],
+      "depends_on": [
+        "normalization"
+      ],
+      "resources": [
+        "cpu",
+        "ram",
+        "disk"
+      ],
+      "max_attempts": 2,
+      "retryable_codes": [
+        "store_busy",
+        "store_unavailable",
+        "timeout",
+        "worker_interrupted"
+      ],
+      "status": "succeeded",
+      "skipped": null,
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "succeeded",
+          "started_at": "2026-01-01T00:00:00.000Z",
+          "finished_at": "2026-01-01T00:00:00.000Z",
+          "error_code": null,
+          "error_message": null,
+          "retryable": null,
+          "jobs": [
+            {
+              "job_id": "01900000-0000-7000-8000-000000001692",
+              "kind": "resolution",
+              "status": "succeeded",
+              "reused": true,
+              "progress_done": 38,
+              "progress_total": 38,
+              "started_at": "2026-01-01T00:00:00.000Z",
+              "finished_at": "2026-01-01T00:00:00.000Z",
+              "rate_per_minute": null,
+              "eta_seconds": null,
+              "stats": null
+            }
+          ]
+        }
+      ],
+      "events": []
+    },
+    {
+      "task_id": "01900000-0000-7000-8000-000000001675",
+      "stage": "latino_evidence",
+      "ordinal": 4,
+      "version": "1",
+      "inputs": [
+        "businesses",
+        "raw_pages"
+      ],
+      "outputs": [
+        "latino_assessments"
+      ],
+      "depends_on": [
+        "entity_resolution"
+      ],
+      "resources": [
+        "cpu"
+      ],
+      "max_attempts": 2,
+      "retryable_codes": [
+        "store_busy",
+        "store_unavailable",
+        "timeout",
+        "worker_interrupted"
+      ],
+      "status": "running",
+      "skipped": null,
+      "attempts": [
+        {
+          "attempt": 1,
+          "status": "failed",
+          "started_at": "2026-01-01T00:00:00.000Z",
+          "finished_at": "2026-01-01T00:00:00.000Z",
+          "error_code": "configuration",
+          "error_message": "synthetic fixture: the evidence rules could not load",
+          "retryable": false,
+          "jobs": []
+        },
+        {
+          "attempt": 2,
+          "status": "running",
+          "started_at": "2026-01-01T00:00:00.000Z",
+          "finished_at": null,
+          "error_code": null,
+          "error_message": null,
+          "retryable": null,
+          "jobs": [
+            {
+              "job_id": "01900000-0000-7000-8000-000000001712",
+              "kind": "latino_evidence",
+              "status": "running",
+              "reused": false,
+              "progress_done": 12,
+              "progress_total": 38,
+              "started_at": "2026-01-01T00:00:00.000Z",
+              "finished_at": null,
+              "rate_per_minute": null,
+              "eta_seconds": null,
+              "stats": null
+            }
+          ]
+        }
+      ],
+      "events": [
+        {
+          "level": "error",
+          "event": "stage_failed",
+          "error_code": "configuration",
+          "retryable": false,
+          "detail_json": {
+            "attempt": 1,
+            "message": "synthetic fixture: the evidence rules could not load",
+            "stage": "latino_evidence"
+          },
+          "created_at": "2026-01-01T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "task_id": "01900000-0000-7000-8000-000000001676",
+      "stage": "website_intelligence",
+      "ordinal": 5,
+      "version": "1",
+      "inputs": [
+        "raw_pages"
+      ],
+      "outputs": [
+        "website_audits"
+      ],
+      "depends_on": [
+        "entity_resolution"
+      ],
+      "resources": [
+        "cpu",
+        "disk"
+      ],
+      "max_attempts": 2,
+      "retryable_codes": [
+        "store_busy",
+        "store_unavailable",
+        "timeout",
+        "worker_interrupted"
+      ],
+      "status": "queued",
+      "skipped": null,
+      "attempts": [],
+      "events": []
+    },
+    {
+      "task_id": "01900000-0000-7000-8000-000000001677",
+      "stage": "contact_intelligence",
+      "ordinal": 6,
+      "version": "1",
+      "inputs": [
+        "businesses",
+        "raw_pages"
+      ],
+      "outputs": [
+        "contact_channels"
+      ],
+      "depends_on": [
+        "entity_resolution"
+      ],
+      "resources": [
+        "http",
+        "cpu"
+      ],
+      "max_attempts": 3,
+      "retryable_codes": [
+        "network",
+        "rate_limited",
+        "store_busy",
+        "store_unavailable",
+        "timeout",
+        "worker_interrupted"
+      ],
+      "status": "queued",
+      "skipped": null,
+      "attempts": [],
+      "events": []
+    },
+    {
+      "task_id": "01900000-0000-7000-8000-000000001678",
+      "stage": "local_ai",
+      "ordinal": 7,
+      "version": "1",
+      "inputs": [
+        "businesses",
+        "raw_pages",
+        "website_audits"
+      ],
+      "outputs": [
+        "inferences"
+      ],
+      "depends_on": [
+        "latino_evidence",
+        "website_intelligence",
+        "contact_intelligence"
+      ],
+      "resources": [
+        "gpu",
+        "ram"
+      ],
+      "max_attempts": 2,
+      "retryable_codes": [
+        "out_of_memory",
+        "store_busy",
+        "store_unavailable",
+        "timeout",
+        "worker_interrupted"
+      ],
+      "status": "queued",
+      "skipped": null,
+      "attempts": [],
+      "events": []
+    },
+    {
+      "task_id": "01900000-0000-7000-8000-000000001679",
+      "stage": "scoring",
+      "ordinal": 8,
+      "version": "1",
+      "inputs": [
+        "businesses",
+        "latino_assessments",
+        "website_audits",
+        "contact_channels",
+        "inferences"
+      ],
+      "outputs": [
+        "score_run",
+        "lead_index"
+      ],
+      "depends_on": [
+        "local_ai"
+      ],
+      "resources": [
+        "cpu"
+      ],
+      "max_attempts": 2,
+      "retryable_codes": [
+        "store_busy",
+        "store_unavailable",
+        "timeout",
+        "worker_interrupted"
+      ],
+      "status": "queued",
+      "skipped": null,
+      "attempts": [],
+      "events": []
+    },
+    {
+      "task_id": "01900000-0000-7000-8000-000000001680",
+      "stage": "review_export_eligibility",
+      "ordinal": 9,
+      "version": "1",
+      "inputs": [
+        "score_run",
+        "lead_index"
+      ],
+      "outputs": [
+        "eligible_leads",
+        "dataset_snapshot"
+      ],
+      "depends_on": [
+        "scoring"
+      ],
+      "resources": [
+        "disk"
+      ],
+      "max_attempts": 2,
+      "retryable_codes": [
+        "store_busy",
+        "store_unavailable",
+        "timeout",
+        "worker_interrupted"
+      ],
+      "status": "queued",
+      "skipped": null,
+      "attempts": [],
+      "events": []
+    }
+  ],
+  "dead_letters": [
+    {
+      "id": "01900000-0000-7000-8000-000000001704",
+      "task_id": "01900000-0000-7000-8000-000000001675",
+      "stage": "latino_evidence",
+      "attempt": 1,
+      "error_code": "configuration",
+      "error_message": "synthetic fixture: the evidence rules could not load",
+      "retryable": false,
+      "review_status": "retried",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "resolved_at": "2026-01-01T00:00:00.000Z",
+      "resolved_by": "fixture",
+      "resolution_reason": "Synthetic fixture: the rules were fixed"
+    }
+  ],
+  "score_run_id": null,
+  "eligible_leads": null,
+  "snapshot_id": null,
+  "actions": [
+    "pause",
+    "cancel"
+  ],
+  "is_synthetic": true
+}
