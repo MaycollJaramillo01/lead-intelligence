@@ -6,6 +6,7 @@ import {
   buildIcpRequest,
   buildPipelineRequest,
   candidateLimit,
+  clientExportDraft,
   clientListQuery,
   contactOf,
   DEFAULT_RADIUS_KM,
@@ -110,7 +111,9 @@ describe("simple client search results", () => {
         kind: "group",
         join: "or",
         negate: false,
-        children: [{ kind: "condition", field: "category", operator: "contains", value: "roofing" }],
+        children: [
+          { kind: "condition", field: "category", operator: "contains", value: "roofing" },
+        ],
       },
       { kind: "condition", field: "tier", operator: "in", value: ["priority", "review"] },
       { kind: "condition", field: "suppressed", operator: "is_false", value: null },
@@ -119,7 +122,11 @@ describe("simple client search results", () => {
   });
 
   it("counts every lead of the search when asked for what was found", () => {
-    const found = clientListQuery(null, buildCampaignRequest({ ...draft, latinoOnly: false }), true);
+    const found = clientListQuery(
+      null,
+      buildCampaignRequest({ ...draft, latinoOnly: false }),
+      true,
+    );
     expect(found.sort.map((key) => key.field)).toEqual(["total_score"]);
     expect(found.filters.children).toHaveLength(2);
     expect(found).toMatchObject({ limit: 1, with_total: true });
@@ -137,5 +144,27 @@ describe("simple client search results", () => {
     expect(offerOf("simple_google")).toBe("google");
     expect(offerOf("custom_offer")).toBeNull();
     expect(offerOf(null)).toBeNull();
+  });
+
+  it("downloads the same clients as the list, with the number to call first", () => {
+    const query = clientListQuery("run", buildCampaignRequest(draft));
+    const file = clientExportDraft(query, (key) => `[${key}]`);
+    // the worker streams every lead the query matches, so its limit bounds the screen only
+    expect(file.query).toBe(query);
+    expect(file.columns.map((column) => column.key).slice(0, 3)).toEqual([
+      "name",
+      "phone",
+      "email",
+    ]);
+    expect(file.columns.map((column) => column.header)).toEqual(
+      file.columns.map((column) => `[${column.key}]`),
+    );
+    expect(file).toMatchObject({
+      source_kind: "query",
+      format: "csv",
+      bom: true,
+      include_suppressed: false,
+      preset_key: null,
+    });
   });
 });

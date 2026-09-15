@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pause, Play, Search, Square } from "lucide-react";
+import { Download, Pause, Play, Search, Square } from "lucide-react";
 import { toast } from "sonner";
-import type { ExplorerRow, PipelineRun } from "@lead/shared-types";
+import type { ExplorerQuery, ExplorerRow, PipelineRun } from "@lead/shared-types";
 import { PageScroll, PageShell } from "@/components/layout/page-chrome";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,6 +16,7 @@ import {
   buildCampaignRequest,
   buildIcpRequest,
   buildPipelineRequest,
+  clientExportDraft,
   clientListQuery,
   contactOf,
   latinoFirst,
@@ -28,9 +29,12 @@ import {
 
 const OFFERS: OfferChoice[] = ["website", "conversion", "booking", "google", "measurement"];
 const POLL_MS = 2_000;
+const WRITTEN: ReadonlySet<string> = new Set(["succeeded", "failed", "cancelled"]);
 
 interface ClientList {
   jobId: string;
+  /** The clients of the search, as the file downloads them: every match, not only `rows`. */
+  query: ExplorerQuery;
   /** Every client of the search; `rows` holds the first of them. */
   total: number;
   /** Every lead of the search, whatever its tier. */
@@ -93,8 +97,9 @@ export function ClientSearchScreen() {
         });
         const campaign = campaigns.items.find((item) => item.id === finished.campaign_id);
         if (!campaign) return;
+        const query = clientListQuery(finished.score_run_id, campaign);
         const [page, found] = await Promise.all([
-          desktop.exploreLeads(clientListQuery(finished.score_run_id, campaign)),
+          desktop.exploreLeads(query),
           desktop.exploreLeads(clientListQuery(finished.score_run_id, campaign, true)),
         ]);
         const rows = await Promise.all(
@@ -108,6 +113,7 @@ export function ClientSearchScreen() {
         if (cancelled) return;
         setClients({
           jobId: finished.job_id,
+          query,
           total: page.total ?? rows.length,
           found: found.total ?? 0,
           rows,
@@ -192,6 +198,46 @@ export function ClientSearchScreen() {
 
   const list = finished && clients?.jobId === finished.job_id ? clients : null;
   const latino = latinoFirst(active?.campaign_name ?? null);
+
+  /** Writes the whole list to the file the save dialog names; the page never sees a path. */
+  const download = async () => {
+    if (!list) return;
+    setBusy(true);
+    try {
+      const file = clientExportDraft(list.query, (key) => t(`clientSearch.column.${key}`));
+      const destination = await desktop.chooseExportDestination(
+        "csv",
+        (active?.campaign_name ?? t("clientSearch.title")).replaceAll(" · ", " - "),
+      );
+      if (!destination) return; // the save dialog was closed
+      let item = await desktop.startExport(file, destination.grant_id);
+      const exportId = item.export.id;
+      while (!WRITTEN.has(item.export.status)) {
+        await new Promise((resolve) => window.setTimeout(resolve, POLL_MS));
+        const page = await desktop.listExports({
+          project_id: item.export.project_id,
+          limit: 25,
+          cursor: null,
+        });
+        item = page.items.find((entry) => entry.export.id === exportId) ?? item;
+      }
+      if (item.export.status !== "succeeded") {
+        throw new Error(item.export.error_message ?? item.export.error_code ?? item.export.status);
+      }
+      toast.success(
+        t("clientSearch.downloaded", {
+          count: item.export.row_count ?? 0,
+          file: item.export.file_name ?? "",
+        }),
+      );
+    } catch (cause) {
+      toast.error(t("clientSearch.downloadFailed"), {
+        description: toIpcError(cause, "client export").message,
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <PageShell>
@@ -416,9 +462,17 @@ export function ClientSearchScreen() {
                         <p className="font-medium">
                           {t("clientSearch.ready", { count: list.total })}
                         </p>
-                        <Button asChild variant="outline">
-                          <a href="#/lead-explorer">{t("clientSearch.openList")}</a>
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                          {list.total > 0 && (
+                            <Button disabled={busy} onClick={() => void download()}>
+                              <Download aria-hidden="true" />
+                              {t("clientSearch.download")}
+                            </Button>
+                          )}
+                          <Button asChild variant="outline">
+                            <a href="#/lead-explorer">{t("clientSearch.openList")}</a>
+                          </Button>
+                        </div>
                       </div>
                       {list.total === 0 ? (
                         <p className="text-sm text-muted-foreground">

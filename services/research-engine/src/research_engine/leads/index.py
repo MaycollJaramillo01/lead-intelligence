@@ -33,7 +33,7 @@ BATCH: Final = 500
 PROBLEM_BITS: Final = {problem: 1 << index for index, problem in enumerate(ProblemType)}
 #: The channel a lead shows first: the most validated one, then the most direct kind. Invalid,
 #: suppressed and stale channels are no route (`leads.common.routes`).
-_STATUS_RANK: Final = {
+STATUS_RANK: Final = {
     ValidationStatus.LIKELY_VALID: 0,
     ValidationStatus.DOMAIN_VALID: 1,
     ValidationStatus.STRUCTURALLY_VALID: 2,
@@ -64,10 +64,10 @@ def project(run: ScoreRun, facts: BusinessFacts, card: LeadScorecard) -> LeadInd
     # ponytail: facts keep no fictional flag per channel, so next to a counted channel a fictional
     # one may still be shown first; add the flag to FactChannel if real data ever needs it
     counted = facts.contactability.channels_counted
-    usable = [c for c in facts.channels if c.validation_status in _STATUS_RANK] if counted else []
+    usable = [c for c in facts.channels if c.validation_status in STATUS_RANK] if counted else []
     best = min(
         usable,
-        key=lambda c: (_STATUS_RANK.get(c.validation_status, 9), _TYPE_RANK[c.contact_type], c.key),
+        key=lambda c: (STATUS_RANK.get(c.validation_status, 9), _TYPE_RANK[c.contact_type], c.key),
         default=None,
     )
     observed = [

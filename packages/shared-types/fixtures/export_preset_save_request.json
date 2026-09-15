@@ -12,6 +12,14 @@
         "header": "Business"
       },
       {
+        "key": "phone",
+        "header": "Phone"
+      },
+      {
+        "key": "email",
+        "header": "Email"
+      },
+      {
         "key": "locality",
         "header": "City"
       },

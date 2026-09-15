@@ -642,6 +642,17 @@ export const en = {
   "clientSearch.offerIt": "Offer: {offer}",
   "clientSearch.latinoEvidence": "Latino evidence",
   "clientSearch.more": "Showing {shown} of {count}; open the full list to see the rest.",
+  "clientSearch.download": "Download the list",
+  "clientSearch.downloaded": "{count} clients saved to {file}",
+  "clientSearch.downloadFailed": "The list could not be saved",
+  "clientSearch.column.name": "Business",
+  "clientSearch.column.phone": "Phone",
+  "clientSearch.column.email": "Email",
+  "clientSearch.column.locality": "City",
+  "clientSearch.column.region": "State",
+  "clientSearch.column.domain": "Website",
+  "clientSearch.column.top_problem": "Why call them",
+  "clientSearch.column.total_score": "Lead score",
 
   "module.notConfiguredTitle": "This module is not configured yet",
   "module.notConfiguredBody":

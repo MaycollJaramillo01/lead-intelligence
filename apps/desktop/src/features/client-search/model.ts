@@ -5,6 +5,7 @@ import type {
   ExplorerCondition,
   ExplorerGroup,
   ExplorerQuery,
+  ExportDraft,
   IcpDefinition,
   IcpSaveRequest,
   PipelineStage,
@@ -199,6 +200,43 @@ export function clientListQuery(
     offset: 0,
     limit: onlyFound ? 1 : CLIENT_LIST_LIMIT,
     with_total: true,
+  };
+}
+
+/** The columns of the file a search downloads, in the order a call list is read. */
+export const CLIENT_COLUMNS = [
+  "name",
+  "phone",
+  "email",
+  "locality",
+  "region",
+  "domain",
+  "top_problem",
+  "total_score",
+] as const;
+
+/**
+ * The file of a finished search: every client it matched, not only the ones the screen shows, each
+ * with the phone or email to reach them. The headers come from the page, so the file speaks the
+ * language of the screen that asked for it.
+ */
+export function clientExportDraft(
+  query: ExplorerQuery,
+  header: (key: (typeof CLIENT_COLUMNS)[number]) => string,
+): ExportDraft {
+  return {
+    source_kind: "query",
+    query,
+    view_id: null,
+    snapshot_id: null,
+    format: "csv",
+    columns: CLIENT_COLUMNS.map((key) => ({ key, header: header(key) })),
+    // a spreadsheet reads the accents of these headers only with the byte-order mark
+    bom: true,
+    include_suppressed: false,
+    suppressed_reason: null,
+    preset_key: null,
+    preset_version: null,
   };
 }
 

@@ -85,17 +85,17 @@ del informe comercial determinista. Si la IA local solo reformuló ese informe, 
 
 ## Etapas y texto
 
-| Etapa interna                          | Texto visible                                                       |
-| -------------------------------------- | ------------------------------------------------------------------- |
-| `discovery`                            | Buscando negocios… {hechos} encontrados                             |
-| `acquisition`                          | Visitando sus páginas web… {hechos} de {total}                      |
-| `normalization`, `entity_resolution`   | Quitando duplicados…                                                |
-| `latino_evidence`                      | Revisando si son negocios latinos…                                  |
-| `website_intelligence`                 | Buscando problemas en sus webs…                                     |
-| `contact_intelligence`                 | Juntando teléfonos y correos…                                       |
-| `local_ai`                             | Redactando explicaciones… / Saltado: la IA local no está disponible |
-| `scoring`                              | Eligiendo los mejores…                                              |
-| `review_export_eligibility`            | Preparando tu lista…                                                |
+| Etapa interna                        | Texto visible                                                       |
+| ------------------------------------ | ------------------------------------------------------------------- |
+| `discovery`                          | Buscando negocios… {hechos} encontrados                             |
+| `acquisition`                        | Visitando sus páginas web… {hechos} de {total}                      |
+| `normalization`, `entity_resolution` | Quitando duplicados…                                                |
+| `latino_evidence`                    | Revisando si son negocios latinos…                                  |
+| `website_intelligence`               | Buscando problemas en sus webs…                                     |
+| `contact_intelligence`               | Juntando teléfonos y correos…                                       |
+| `local_ai`                           | Redactando explicaciones… / Saltado: la IA local no está disponible |
+| `scoring`                            | Eligiendo los mejores…                                              |
+| `review_export_eligibility`          | Preparando tu lista…                                                |
 
 «Saltado» también aparece, sin números, cuando ningún perfil de IA tiene modelo: la etapa recorre
 igualmente cada tarea y las omite, y «Redactando explicaciones… 288 / 288» afirmaba un trabajo que no
@@ -124,6 +124,13 @@ negocio, su ciudad, el teléfono (o el correo), por qué llamarle y qué ofrecer
 no filtra por campaña, así que dos búsquedas del mismo tipo en el mismo estado comparten lista; los
 restos de otras campañas del proyecto (USAspending, otros estados) quedan fuera. Con 0 clientes se
 dice cuántos negocios de la búsqueda se revisaron y qué probar.
+
+**Descargar la lista** guarda un CSV con **todos** los clientes de la búsqueda, no solo los 100 que
+se muestran: negocio, teléfono, correo, ciudad, estado, web, por qué llamarle y puntuación, con las
+cabeceras en el idioma de la pantalla. El archivo lo nombra el diálogo de guardado del sistema (la
+página nunca ve una ruta) y se escribe con su hash y su manifiesto, como cualquier exportación;
+«No contactar» nunca sale. Hasta la fase 16 ninguna columna traía el número: el explorador solo
+guarda el tipo de canal (D-097).
 
 ## Navegación y lenguaje
 

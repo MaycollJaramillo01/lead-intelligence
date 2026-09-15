@@ -414,6 +414,36 @@ async def test_a_snapshot_export_is_reproducible_byte_for_byte(
         assert digests[0] == digests[1]
 
 
+def test_a_query_export_carries_the_number_to_call(
+    conn: sqlite3.Connection, data_dir: Path, seeded: SyntheticSeedResult
+) -> None:
+    """`main_channel` names the kind of the route only, so a list exported without the value
+    cannot be called. A number on the do-not-contact list is still no route."""
+    draft = _query_draft(
+        ExportFormat.CSV,
+        columns=(("name", "Business"), ("phone", "Phone"), ("email", "Email")),
+    )
+    preview = exports.preview(conn, data_dir, draft, utc_now())
+    assert preview.headers[:3] == ["Business", "Phone", "Email"]
+    calls = [row[1] for row in preview.sample if row[1]]
+    published = {
+        value
+        for (value,) in conn.execute(
+            "SELECT value_raw FROM contact_points WHERE contact_type = 'phone' "
+            "AND do_not_contact = 0 AND origin <> 'hypothesis'"
+        )
+    }
+    assert calls
+    assert set(calls) <= published
+
+    conn.execute(
+        "UPDATE contact_points SET do_not_contact = 1, suppression_reason = ? WHERE value_raw = ?",
+        ("asked to be left alone (test)", calls[0]),
+    )
+    again = exports.preview(conn, data_dir, draft, utc_now())
+    assert all(row[1] != calls[0] for row in again.sample)
+
+
 def test_a_stop_a_full_disk_or_a_refused_folder_leaves_no_partial_file(
     conn: sqlite3.Connection,
     data_dir: Path,

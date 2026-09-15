@@ -606,13 +606,21 @@
         "key": "sales_ready_concise",
         "version": 1,
         "name": "Sales-ready concise",
-        "description": "One row per lead with what a first contact needs: who and where, the score, the route and the offer. Leads on the do-not-contact list stay out.",
+        "description": "One row per lead with what a first contact needs: who and where, the phone or email to reach them, the score, the route and the offer. Leads on the do-not-contact list stay out.",
         "definition_json": {
           "bom": true,
           "columns": [
             {
               "header": "Business",
               "key": "name"
+            },
+            {
+              "header": "Phone",
+              "key": "phone"
+            },
+            {
+              "header": "Email",
+              "key": "email"
             },
             {
               "header": "City",
@@ -675,6 +683,14 @@
           {
             "key": "name",
             "header": "Business"
+          },
+          {
+            "key": "phone",
+            "header": "Phone"
+          },
+          {
+            "key": "email",
+            "header": "Email"
           },
           {
             "key": "locality",
@@ -847,6 +863,18 @@
       "key": "name",
       "type": "text",
       "description": "The name the business shows (chosen among its records)."
+    },
+    {
+      "source_kind": "query",
+      "key": "phone",
+      "type": "text",
+      "description": "The number to call: the most validated phone the business published, never one guessed from a pattern and never one on the do-not-contact list. Empty when there is none."
+    },
+    {
+      "source_kind": "query",
+      "key": "email",
+      "type": "text",
+      "description": "The address to write to, chosen the same way as the phone."
     },
     {
       "source_kind": "query",

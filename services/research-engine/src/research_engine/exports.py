@@ -39,6 +39,8 @@ from research_engine import __version__, datasets, jobs, repository
 from research_engine.domain import (
     STALE_AFTER_DAYS,
     AuditAction,
+    ContactOrigin,
+    ContactType,
     DatasetSnapshot,
     EntityType,
     EventLevel,
@@ -124,9 +126,27 @@ class ExportStopped(Exception):
 
 # ---- columns ------------------------------------------------------------------------------------
 
-#: Query columns: explorer field -> (type, ExplorerRow attribute, what it means).
+#: Contact values an export can carry, by the key that names the column. The explorer keeps only
+#: the kind of the channel (`main_channel`), never its value: a call list needs the value itself.
+CONTACT_COLUMNS: Final[dict[str, ContactType]] = {
+    "phone": ContactType.PHONE,
+    "email": ContactType.EMAIL,
+}
+#: Query columns: explorer field (or a `CONTACT_COLUMNS` key) -> (type, the `ExplorerRow` attribute
+#: or that same contact key, what it means).
 QUERY_COLUMNS: Final[dict[str, tuple[ExportColumnType, str, str]]] = {
     _F.NAME: (_T.TEXT, "display_name", "The name the business shows (chosen among its records)."),
+    "phone": (
+        _T.TEXT,
+        "phone",
+        "The number to call: the most validated phone the business published, never one guessed "
+        "from a pattern and never one on the do-not-contact list. Empty when there is none.",
+    ),
+    "email": (
+        _T.TEXT,
+        "email",
+        "The address to write to, chosen the same way as the phone.",
+    ),
     _F.LOCALITY: (_T.TEXT, "locality", "City of the location the business shows."),
     _F.REGION: (_T.TEXT, "region", "State of that location."),
     _F.CATEGORY: (_T.TEXT, "category", "Category the business shows."),
@@ -337,14 +357,17 @@ BUILT_IN: Final[tuple[tuple[str, str, str, ExportDefinition], ...]] = (
     (
         "sales_ready_concise",
         "Sales-ready concise",
-        "One row per lead with what a first contact needs: who and where, the score, the route "
-        "and the offer. Leads on the do-not-contact list stay out.",
+        "One row per lead with what a first contact needs: who and where, the phone or email to "
+        "reach them, the score, the route and the offer. Leads on the do-not-contact list stay "
+        "out.",
         ExportDefinition(
             source_kind=ExportSourceKind.QUERY,
             format=ExportFormat.CSV,
             bom=True,
             columns=_columns(
                 ("name", "Business"),
+                ("phone", "Phone"),
+                ("email", "Email"),
                 ("locality", "City"),
                 ("region", "State"),
                 ("category", "Category"),
@@ -664,6 +687,37 @@ def unverified(row: ExplorerRow) -> bool:
     return row.main_channel is not None and row.channel_status not in VERIFIED
 
 
+def best_contacts(conn: sqlite3.Connection, ids: Sequence[str]) -> dict[str, dict[str, str]]:
+    """Per business, the phone and the email to use: the most validated published one of each kind,
+    the primary before the rest, off the do-not-contact list. Invalid, stale and suppressed
+    addresses are no route, the same rule the explorer's channel follows (`leads.index`)."""
+    found: dict[str, dict[str, str]] = {}
+    ranked: dict[tuple[str, str], tuple[int, int]] = {}
+    marks = ",".join("?" * len(ids))
+    kinds = ",".join("?" * len(CONTACT_COLUMNS))
+    rows = conn.execute(
+        "SELECT business_id, contact_type, value_raw, validation_status, is_primary "  # noqa: S608
+        f"FROM contact_points WHERE business_id IN ({marks}) AND contact_type IN ({kinds}) "
+        "AND deleted_at IS NULL AND do_not_contact = 0 AND origin <> ?",
+        [
+            *ids,
+            *(kind.value for kind in CONTACT_COLUMNS.values()),
+            ContactOrigin.HYPOTHESIS.value,
+        ],
+    )
+    for row in rows:
+        rank = index.STATUS_RANK.get(ValidationStatus(row["validation_status"]))
+        if rank is None:
+            continue
+        key = (row["business_id"], row["contact_type"])
+        order = (rank, 0 if row["is_primary"] else 1)
+        if key in ranked and ranked[key] <= order:
+            continue
+        ranked[key] = order
+        found.setdefault(row["business_id"], {})[row["contact_type"]] = row["value_raw"]
+    return found
+
+
 def query_rows(
     conn: sqlite3.Connection,
     plan_: Plan,
@@ -675,16 +729,24 @@ def query_rows(
     if plan_.run is None or draft.query is None:
         raise ExportError("a query export names its query")
     chosen = [QUERY_COLUMNS[key][1] for key in plan_.keys[: len(draft.columns)]]
+    wanted = any(attribute in CONTACT_COLUMNS for attribute in chosen)
     exported_at = format_ts(now)
     for ids in explorer.stream_ids(conn, draft.query, plan_.run, now, BATCH):
         if should_stop():
             raise ExportStopped
+        contacts = best_contacts(conn, ids) if wanted else {}
         for row in explorer.rows_for(conn, plan_.run, ids, now):
             if row.suppressed and not draft.include_suppressed:
                 plan_.skipped[0] += 1
                 continue
+            reachable = contacts.get(row.business_id, {})
             yield [
-                *(_plain(getattr(row, attribute)) for attribute in chosen),
+                *(
+                    reachable.get(CONTACT_COLUMNS[attribute])
+                    if attribute in CONTACT_COLUMNS
+                    else _plain(getattr(row, attribute))
+                    for attribute in chosen
+                ),
                 row.business_id,
                 plan_.run.id,
                 exported_at,
@@ -1058,7 +1120,13 @@ def preview(
             conn,
             ExportPreviewRequest(
                 query=draft.query,
-                columns=[ExplorerField(key) for key in plan_.keys[: len(draft.columns)]],
+                # counting reads explorer fields only; a contact value is none (`CONTACT_COLUMNS`)
+                columns=[
+                    ExplorerField(key)
+                    for key in plan_.keys[: len(draft.columns)]
+                    if key not in CONTACT_COLUMNS
+                ]
+                or [ExplorerField.NAME],
                 include_suppressed=draft.include_suppressed,
                 sample_size=1,
             ),

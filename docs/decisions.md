@@ -1350,3 +1350,23 @@ worker.
 dos búsquedas del mismo tipo en el mismo estado comparten lista, y un lugar que Overture encontró
 solo por una categoría padre queda fuera. Un campo de campaña en el explorador es la mejora. La
 lista pide hasta 100 fichas en paralelo.
+
+## D-097 · Una exportación lleva el teléfono y el correo, y la lista se descarga desde la pantalla (phase 16)
+
+**Contexto.** La búsqueda ya termina con clientes en pantalla, pero llevárselos no funcionaba. El
+explorador solo guarda el **tipo** de canal (`main_channel`: teléfono o correo), nunca su valor, y
+ninguna columna exportable ni añadida traía el número: un archivo exportado no se podía llamar. La
+única forma de descargar era el explorador técnico, oculto de la barra simple, con un asistente de
+dos diálogos y claves de columna en inglés.
+
+**Decisión.** `phone` y `email` son columnas exportables de una consulta (`CONTACT_COLUMNS`), leídas
+de `contact_points` por lotes junto a las filas: la publicada más validada de cada tipo, la primaria
+antes que el resto, nunca una hipótesis ni una marcada «No contactar», la misma regla del canal del
+índice (`leads.index.STATUS_RANK`). El preset «Sales-ready concise» las trae tras el nombre. En
+«Buscar clientes» un botón **Descargar la lista** escribe todos los clientes de la búsqueda —no solo
+los 100 que se ven— con las cabeceras en el idioma de la pantalla, por el mismo diálogo de guardado,
+hash y manifiesto que cualquier exportación.
+
+**Consecuencia.** El recuento previo sigue leyendo solo campos del explorador (un valor de contacto
+no lo es). El archivo es CSV con BOM. `top_problem` y `offer` viajan como código; la pantalla los
+traduce, el archivo no.

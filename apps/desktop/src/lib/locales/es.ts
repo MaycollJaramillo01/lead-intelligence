@@ -644,6 +644,17 @@ export const es: Partial<Record<TranslationKey, string>> = {
   "clientSearch.offerIt": "Ofrécele: {offer}",
   "clientSearch.latinoEvidence": "Evidencia latina",
   "clientSearch.more": "Se muestran {shown} de {count}; abre la lista completa para ver el resto.",
+  "clientSearch.download": "Descargar la lista",
+  "clientSearch.downloaded": "Se guardaron {count} clientes en {file}",
+  "clientSearch.downloadFailed": "No se pudo guardar la lista",
+  "clientSearch.column.name": "Negocio",
+  "clientSearch.column.phone": "Teléfono",
+  "clientSearch.column.email": "Correo",
+  "clientSearch.column.locality": "Ciudad",
+  "clientSearch.column.region": "Estado",
+  "clientSearch.column.domain": "Web",
+  "clientSearch.column.top_problem": "Por qué llamarle",
+  "clientSearch.column.total_score": "Puntuación",
 
   "module.notConfiguredTitle": "Este módulo aún no está configurado",
   "module.notConfiguredBody":
