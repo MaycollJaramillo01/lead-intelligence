@@ -1327,3 +1327,26 @@ continúa sin proliferación de objetos.
 **Consecuencia.** La secuencia no es atómica, pero no necesita ampliar el protocolo Rust/Python y
 conserva su validación y auditoría. La pantalla explica un fallo en el último paso y permite repetir;
 una operación ya iniciada sigue protegida por la clave idempotente del orquestador.
+
+## D-096 · «Latinos primero» ordena en vez de excluir y la lista sale en la propia pantalla (phase 16)
+
+**Contexto.** La primera búsqueda real (remodelación, Miami, FL, 25 clientes, «Solo negocios
+latinos») terminó con «Hay 0 clientes listos». Tuvo tres causas. El perfil exigía evidencia latina
+(`latino: market_affinity`) y 13 de los 14 negocios de Florida no la publicaban, así que
+`gate.latino` los excluyó. Sin radio, Overture solo miró los límites municipales de Miami: 12
+remodeladores con teléfono o correo. Y el recuento de la etapa de elegibilidad cubre todo el
+proyecto, con restos de USAspending y de una campaña de Arkansas.
+
+**Decisión.** En el modo simple el perfil nunca exige evidencia latina (`latino: none`). Pedirla
+ordena la lista por `latino_confidence`, y la elección se guarda en el nombre de la búsqueda
+(«… · latinos primero»). Sin radio se buscan 40 km (64 remodeladores alrededor de Miami). Al
+terminar, la pantalla consulta `explore_leads` sobre la puntuación del proceso: prioridad o revisar,
+sin supresión, con un canal utilizable, del estado y los tipos de negocio de la campaña. El teléfono
+o correo de cada fila sale de `get_business`. Con 0 clientes dice cuántos negocios revisó. La etapa
+de IA muestra «Saltado» cuando ningún perfil tiene modelo. Sigue sin añadirse ningún mensaje al
+worker.
+
+**Consecuencia.** Estado y categoría sustituyen a un filtro por campaña que el explorador no tiene:
+dos búsquedas del mismo tipo en el mismo estado comparten lista, y un lugar que Overture encontró
+solo por una categoría padre queda fuera. Un campo de campaña en el explorador es la mejora. La
+lista pide hasta 100 fichas en paralelo.

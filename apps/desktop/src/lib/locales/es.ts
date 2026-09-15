@@ -599,13 +599,13 @@ export const es: Partial<Record<TranslationKey, string>> = {
   "clientSearch.what": "¿Qué vendes?",
   "clientSearch.business": "¿A qué negocios?",
   "clientSearch.chooseBusiness": "Elige un tipo de negocio",
-  "clientSearch.latino": "Solo negocios latinos",
+  "clientSearch.latino": "Latinos primero",
   "clientSearch.latinoHelp":
-    "Usa evidencia empresarial publicada, nunca el apellido ni el idioma. Puede reducir mucho la lista.",
+    "Los negocios con evidencia empresarial publicada de ser latinos salen primero (nunca el apellido ni el idioma). Los demás siguen en la lista.",
   "clientSearch.where": "¿Dónde?",
   "clientSearch.state": "Estado",
   "clientSearch.city": "Ciudad",
-  "clientSearch.radius": "Radio en km (opcional)",
+  "clientSearch.radius": "Radio en km (40 si lo dejas vacío)",
   "clientSearch.howMany": "¿Cuántos clientes quieres?",
   "clientSearch.estimate.25": "Normalmente 8–20 minutos",
   "clientSearch.estimate.50": "Normalmente 15–35 minutos",
@@ -635,6 +635,15 @@ export const es: Partial<Record<TranslationKey, string>> = {
   "clientSearch.progress.ai": "Redactando explicaciones…",
   "clientSearch.progress.aiSkipped": "Saltado: la IA local no está disponible",
   "clientSearch.progress.choose": "Eligiendo los mejores…",
+  "clientSearch.progress.list": "Preparando tu lista…",
+  "clientSearch.loading": "Cargando tu lista…",
+  "clientSearch.none":
+    "Revisamos {found} negocios de la zona y ninguno tiene a la vez un problema que tu oferta resuelve y un teléfono o correo. Marca más cosas en «¿Qué vendes?» o amplía el radio.",
+  "clientSearch.why": "Por qué: {problem}",
+  "clientSearch.noWebsiteSeen": "ninguna fuente consultada publica una web",
+  "clientSearch.offerIt": "Ofrécele: {offer}",
+  "clientSearch.latinoEvidence": "Evidencia latina",
+  "clientSearch.more": "Se muestran {shown} de {count}; abre la lista completa para ver el resto.",
 
   "module.notConfiguredTitle": "Este módulo aún no está configurado",
   "module.notConfiguredBody":

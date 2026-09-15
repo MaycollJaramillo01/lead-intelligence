@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pause, Play, Search, Square } from "lucide-react";
 import { toast } from "sonner";
-import type { PipelineRun } from "@lead/shared-types";
+import type { ExplorerRow, PipelineRun } from "@lead/shared-types";
 import { PageScroll, PageShell } from "@/components/layout/page-chrome";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BUSINESS_TYPES, US_STATES } from "@/features/campaigns/businessTypes";
+import { PROBLEM_KEYS } from "@/features/scoring/labels";
 import { useT } from "@/lib/i18n";
 import { desktop, toIpcError } from "@/lib/ipc";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,10 @@ import {
   buildCampaignRequest,
   buildIcpRequest,
   buildPipelineRequest,
+  clientListQuery,
+  contactOf,
+  latinoFirst,
+  offerOf,
   STAGE_MESSAGE,
   visibleProgress,
   type ClientSearchDraft,
@@ -23,6 +28,15 @@ import {
 
 const OFFERS: OfferChoice[] = ["website", "conversion", "booking", "google", "measurement"];
 const POLL_MS = 2_000;
+
+interface ClientList {
+  jobId: string;
+  /** Every client of the search; `rows` holds the first of them. */
+  total: number;
+  /** Every lead of the search, whatever its tier. */
+  found: number;
+  rows: { row: ExplorerRow; contact: string | null }[];
+}
 
 export function ClientSearchScreen() {
   const t = useT();
@@ -37,8 +51,11 @@ export function ClientSearchScreen() {
   });
   const [runs, setRuns] = useState<PipelineRun[]>([]);
   const [busy, setBusy] = useState(false);
+  const [clients, setClients] = useState<ClientList | null>(null);
+  const [aiOff, setAiOff] = useState(false);
   const active =
     runs.find((run) => ["queued", "running", "paused"].includes(run.status)) ?? runs[0];
+  const finished = active?.status === "succeeded" ? active : null;
 
   const load = useCallback(async () => {
     try {
@@ -57,6 +74,52 @@ export function ClientSearchScreen() {
     const timer = window.setInterval(() => void load(), POLL_MS);
     return () => window.clearInterval(timer);
   }, [load, runs]);
+  useEffect(() => {
+    void desktop
+      .getAiStatus({ include_llm_fit: false })
+      .then((status) => setAiOff(status.profiles.every((profile) => !profile.model)))
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (!finished) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const campaigns = await desktop.listCampaigns({
+          project_id: finished.project_id,
+          limit: 500,
+          cursor: null,
+        });
+        const campaign = campaigns.items.find((item) => item.id === finished.campaign_id);
+        if (!campaign) return;
+        const [page, found] = await Promise.all([
+          desktop.exploreLeads(clientListQuery(finished.score_run_id, campaign)),
+          desktop.exploreLeads(clientListQuery(finished.score_run_id, campaign, true)),
+        ]);
+        const rows = await Promise.all(
+          page.rows.map(async (row) => {
+            const detail = await desktop
+              .getBusiness({ business_id: row.business_id })
+              .catch(() => null);
+            return { row, contact: detail ? contactOf(detail.contacts.map((c) => c.value)) : null };
+          }),
+        );
+        if (cancelled) return;
+        setClients({
+          jobId: finished.job_id,
+          total: page.total ?? rows.length,
+          found: found.total ?? 0,
+          rows,
+        });
+      } catch (cause) {
+        if (!cancelled) toast.error(toIpcError(cause, "client list").message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [finished]);
 
   const valid =
     draft.offers.length > 0 && draft.businessTypeId && draft.region && draft.locality.trim();
@@ -126,6 +189,9 @@ export function ClientSearchScreen() {
       toast.error(toIpcError(cause).message);
     }
   };
+
+  const list = finished && clients?.jobId === finished.job_id ? clients : null;
+  const latino = latinoFirst(active?.campaign_name ?? null);
 
   return (
     <PageShell>
@@ -309,6 +375,8 @@ export function ClientSearchScreen() {
               </div>
               <ol className="mt-4 space-y-2">
                 {visibleProgress(active.stages).map((stage) => {
+                  // the AI stage still walks every task when no model is assigned, skipping each
+                  const aiSkipped = stage.stage === "local_ai" && (stage.skipped || aiOff);
                   const jobs = stage.attempts.at(-1)?.jobs ?? [];
                   const done = jobs.reduce((sum, job) => sum + job.progress_done, 0);
                   const totals = jobs
@@ -324,24 +392,84 @@ export function ClientSearchScreen() {
                       className="flex justify-between rounded-md bg-muted/40 px-3 py-2 text-sm"
                     >
                       <span>
-                        {stage.skipped && stage.stage === "local_ai"
+                        {aiSkipped
                           ? t("clientSearch.progress.aiSkipped")
                           : t(STAGE_MESSAGE[stage.stage])}
                       </span>
-                      <span className="text-muted-foreground">
-                        {done}
-                        {total != null ? ` / ${total}` : ""}
-                      </span>
+                      {!aiSkipped && (
+                        <span className="text-muted-foreground">
+                          {done}
+                          {total != null ? ` / ${total}` : ""}
+                        </span>
+                      )}
                     </li>
                   );
                 })}
               </ol>
-              {active.status === "succeeded" && (
-                <div className="mt-4 flex items-center justify-between">
-                  <p>{t("clientSearch.ready", { count: active.eligible_leads ?? 0 })}</p>
-                  <Button asChild>
-                    <a href="#/lead-explorer">{t("clientSearch.openList")}</a>
-                  </Button>
+              {finished && (
+                <div className="mt-4 space-y-3">
+                  {!list ? (
+                    <p className="text-sm text-muted-foreground">{t("clientSearch.loading")}</p>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="font-medium">
+                          {t("clientSearch.ready", { count: list.total })}
+                        </p>
+                        <Button asChild variant="outline">
+                          <a href="#/lead-explorer">{t("clientSearch.openList")}</a>
+                        </Button>
+                      </div>
+                      {list.total === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          {t("clientSearch.none", { found: list.found })}
+                        </p>
+                      ) : (
+                        <ul className="divide-y rounded-md border">
+                          {list.rows.map(({ row, contact }) => {
+                            const offer = offerOf(row.offer);
+                            const details = [
+                              row.locality,
+                              row.top_problem &&
+                                t("clientSearch.why", {
+                                  // an Overture place without a URL does not prove there is no site
+                                  problem:
+                                    row.top_problem === "no_website"
+                                      ? t("clientSearch.noWebsiteSeen")
+                                      : t(PROBLEM_KEYS[row.top_problem]),
+                                }),
+                              offer &&
+                                t("clientSearch.offerIt", {
+                                  offer: t(`clientSearch.offer.${offer}`),
+                                }),
+                              latino &&
+                                row.latino_status !== "unknown" &&
+                                t("clientSearch.latinoEvidence"),
+                            ].filter(Boolean);
+                            return (
+                              <li
+                                key={row.business_id}
+                                className="flex flex-wrap items-start justify-between gap-2 px-3 py-2 text-sm"
+                              >
+                                <div className="min-w-0">
+                                  <p className="font-medium">{row.display_name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {details.join(" · ")}
+                                  </p>
+                                </div>
+                                {contact && <span className="select-all font-mono">{contact}</span>}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                      {list.total > list.rows.length && (
+                        <p className="text-xs text-muted-foreground">
+                          {t("clientSearch.more", { shown: list.rows.length, count: list.total })}
+                        </p>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </section>
@@ -356,9 +484,7 @@ export function ClientSearchScreen() {
                 {runs.map((run) => (
                   <li key={run.job_id} className="flex items-center justify-between py-2 text-sm">
                     <span>{run.campaign_name}</span>
-                    <span className="text-muted-foreground">
-                      {run.status} · {run.eligible_leads ?? 0}
-                    </span>
+                    <span className="text-muted-foreground">{t(`jobStatus.${run.status}`)}</span>
                   </li>
                 ))}
               </ul>

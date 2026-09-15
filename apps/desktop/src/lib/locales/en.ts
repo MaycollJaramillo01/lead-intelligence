@@ -597,13 +597,13 @@ export const en = {
   "clientSearch.what": "What do you sell?",
   "clientSearch.business": "Which businesses?",
   "clientSearch.chooseBusiness": "Choose a business type",
-  "clientSearch.latino": "Latino businesses only",
+  "clientSearch.latino": "Latino businesses first",
   "clientSearch.latinoHelp":
-    "Uses published business evidence, never surnames or language. This can make the list much shorter.",
+    "Businesses with published evidence of being Latino come first (never surnames or language). The rest stay on the list.",
   "clientSearch.where": "Where?",
   "clientSearch.state": "State",
   "clientSearch.city": "City",
-  "clientSearch.radius": "Radius in km (optional)",
+  "clientSearch.radius": "Radius in km (40 if left empty)",
   "clientSearch.howMany": "How many clients do you want?",
   "clientSearch.estimate.25": "Usually 8–20 minutes",
   "clientSearch.estimate.50": "Usually 15–35 minutes",
@@ -633,6 +633,15 @@ export const en = {
   "clientSearch.progress.ai": "Drafting explanations…",
   "clientSearch.progress.aiSkipped": "Skipped: local AI is not available",
   "clientSearch.progress.choose": "Choosing the best matches…",
+  "clientSearch.progress.list": "Preparing your list…",
+  "clientSearch.loading": "Loading your list…",
+  "clientSearch.none":
+    "We checked {found} businesses in the area and none has both a problem your offer solves and a phone or email. Pick more things under “What do you sell?” or widen the radius.",
+  "clientSearch.why": "Why: {problem}",
+  "clientSearch.noWebsiteSeen": "no source we checked lists a website",
+  "clientSearch.offerIt": "Offer: {offer}",
+  "clientSearch.latinoEvidence": "Latino evidence",
+  "clientSearch.more": "Showing {shown} of {count}; open the full list to see the rest.",
 
   "module.notConfiguredTitle": "This module is not configured yet",
   "module.notConfiguredBody":

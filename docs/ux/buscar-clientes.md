@@ -8,8 +8,8 @@ versiona) la búsqueda y «Mi oferta», activa esa oferta y pone en marcha el pr
 terminar, abre una lista ordenada y exportable. La app no llama ni contacta a nadie.
 
 1. Elegir una o varias ofertas (o describir otra y marcar los problemas que resuelve).
-2. Elegir el tipo de negocio; opcionalmente pedir solo negocios latinos.
-3. Elegir estado, escribir ciudad y, opcionalmente, radio.
+2. Elegir el tipo de negocio; opcionalmente pedir los negocios latinos primero.
+3. Elegir estado, escribir ciudad y, opcionalmente, radio (40 km si se deja vacío).
 4. Pedir 25, 50 o 100 clientes y pulsar **Buscar clientes**.
 5. Esperar, pausar o continuar. Abrir **Tu lista de clientes** y descargarla.
 
@@ -19,7 +19,7 @@ terminar, abre una lista ordenada y exportable. La app no llama ni contacta a na
 ┌ Buscar clientes ───────────────────────────────────────────────┐
 │ Te decimos a quién llamar, su contacto y qué ofrecerle.       │
 │ 1 ¿Qué vendes? [Páginas web] [Más clientes] [Reservas] ...    │
-│ 2 ¿A qué negocios? [Tipo de negocio ▾] [ ] Solo latinos       │
+│ 2 ¿A qué negocios? [Tipo de negocio ▾] [ ] Latinos primero    │
 │ 3 ¿Dónde? [Estado ▾] [Ciudad] [Radio km, opcional]             │
 │ 4 ¿Cuántos? (25) (50) (100)   Aproximadamente 8–20 minutos    │
 │                                      [ Buscar clientes ]       │
@@ -94,7 +94,12 @@ del informe comercial determinista. Si la IA local solo reformuló ese informe, 
 | `website_intelligence`                 | Buscando problemas en sus webs…                                     |
 | `contact_intelligence`                 | Juntando teléfonos y correos…                                       |
 | `local_ai`                             | Redactando explicaciones… / Saltado: la IA local no está disponible |
-| `scoring`, `review_export_eligibility` | Eligiendo los mejores…                                              |
+| `scoring`                              | Eligiendo los mejores…                                              |
+| `review_export_eligibility`            | Preparando tu lista…                                                |
+
+«Saltado» también aparece, sin números, cuando ningún perfil de IA tiene modelo: la etapa recorre
+igualmente cada tarea y las omite, y «Redactando explicaciones… 288 / 288» afirmaba un trabajo que no
+se hizo.
 
 Los números se leen exclusivamente de `progress_done`, `progress_total` y los intentos/eventos del
 proceso. Sin total real no se muestra porcentaje ni se extrapola tiempo.
@@ -105,6 +110,20 @@ Se buscan **12 negocios por cliente solicitado** porque no todos tendrán eviden
 compatible y contacto utilizable: 25 → 300, 50 → 600, 100 → 1.200. `max_requests` es el mismo límite
 y `max_pages_per_source` es `ceil(candidatos / 100)`, con mínimo 3. Las estimaciones orientativas
 mostradas son 8–20, 15–35 y 25–60 minutos; el progreso posterior solo muestra datos reales.
+
+Sin radio se buscan **40 km** alrededor de la ciudad. Los límites municipales se quedan cortos:
+Overture (release 2026-08-19) tenía 12 remodeladores con teléfono o correo dentro de Miami, 45 a 25 km
+y 64 a 40 km.
+
+## La lista
+
+Al terminar, la pantalla lee el explorador sobre la puntuación del proceso: prioridad o revisar,
+fuera de «No contactar», con teléfono o correo utilizable, del estado y los tipos de negocio de la
+búsqueda, mejor puntuación primero (evidencia latina primero si se pidió). Cada fila muestra el
+negocio, su ciudad, el teléfono (o el correo), por qué llamarle y qué ofrecerle. El explorador aún
+no filtra por campaña, así que dos búsquedas del mismo tipo en el mismo estado comparten lista; los
+restos de otras campañas del proyecto (USAspending, otros estados) quedan fuera. Con 0 clientes se
+dice cuántos negocios de la búsqueda se revisaron y qué probar.
 
 ## Navegación y lenguaje
 
@@ -127,6 +146,7 @@ avanzadas» revela intactas las pantallas anteriores. La paleta sigue indexando 
 
 ## Privacidad y seguridad comercial
 
-«Solo negocios latinos» usa evidencia empresarial publicada; jamás apellidos ni idioma. Puede reducir
-mucho la lista. Los textos de IA son sugerencias. Las supresiones se aplican al explorar y exportar;
+«Latinos primero» ordena antes los negocios con evidencia empresarial publicada; jamás apellidos ni
+idioma. No es un requisito: exigirlo dejó 0 clientes en Miami, donde 13 de 14 negocios no publicaban
+esa evidencia (D-096). Los textos de IA son sugerencias. Las supresiones se aplican al explorar y exportar;
 «No contactar» nunca sale en el archivo. La aplicación no llama, escribe, envía ni completa formularios.

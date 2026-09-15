@@ -1,11 +1,17 @@
 import type {
+  CampaignListItem,
   CampaignSaveRequest,
+  ContactPoint,
+  ExplorerCondition,
+  ExplorerGroup,
+  ExplorerQuery,
   IcpDefinition,
   IcpSaveRequest,
   PipelineStage,
   PipelineStageView,
   PipelineStartRequest,
   ProblemType,
+  ValidationStatus,
 } from "@lead/shared-types";
 import { emptyCriteria } from "@/features/discovery/criteria";
 import { BUSINESS_TYPES, type BusinessType } from "@/features/campaigns/businessTypes";
@@ -32,6 +38,12 @@ export interface ClientSearchDraft {
 }
 
 export const candidateLimit = (wanted: number) => wanted * 12;
+/** A city alone is only its own limits: Overture held 12 remodelers in Miami's, 64 within 40 km. */
+export const DEFAULT_RADIUS_KM = 40;
+/** The rows a result shows; its count covers every match. */
+export const CLIENT_LIST_LIMIT = 100;
+const LATINO_FIRST = " · latinos primero";
+const UNUSABLE: ReadonlySet<ValidationStatus> = new Set(["invalid", "stale", "suppressed"]);
 
 export function buildCampaignRequest(
   draft: ClientSearchDraft,
@@ -48,7 +60,7 @@ export function buildCampaignRequest(
       metro: null,
       locality: draft.locality.trim(),
       postal_code: null,
-      radius_km: draft.radiusKm,
+      radius_km: draft.radiusKm ?? DEFAULT_RADIUS_KM,
     },
   ];
   criteria.categories = [...type.categories];
@@ -76,8 +88,13 @@ export function buildCampaignRequest(
 }
 
 export function searchName(type: BusinessType, draft: ClientSearchDraft): string {
-  return `Buscar clientes · ${type.id} · ${draft.locality.trim()} · ${draft.region}`;
+  const name = `Buscar clientes · ${type.id} · ${draft.locality.trim()} · ${draft.region}`;
+  return draft.latinoOnly ? name + LATINO_FIRST : name;
 }
+
+/** Whether a search asked for Latino businesses first: its name is where that choice is kept. */
+export const latinoFirst = (campaignName: string | null) =>
+  campaignName?.endsWith(LATINO_FIRST) === true;
 
 export function buildIcpRequest(
   draft: ClientSearchDraft,
@@ -100,7 +117,9 @@ export function buildIcpRequest(
     description: "Configurada desde Buscar clientes",
     definition: {
       ...template,
-      latino: draft.latinoOnly ? "market_affinity" : "none",
+      // Latino evidence orders the list (`clientListQuery`) instead of being a requirement: as one
+      // it excluded every business without published evidence, which is most of them.
+      latino: "none",
       // Geography and category already bound the campaign; repeating them here would create
       // two independently editable filters that can contradict one another.
       geography: { ...template.geography, importance: "ignore", include: [], exclude: [] },
@@ -129,6 +148,83 @@ export function buildPipelineRequest(
   };
 }
 
+const condition = (
+  field: ExplorerCondition["field"],
+  operator: ExplorerCondition["operator"],
+  value: ExplorerCondition["value"] = null,
+): ExplorerCondition => ({ kind: "condition", field, operator, value });
+
+/**
+ * The clients of one search in a score run: priority or review, not on the do-not-contact list,
+ * with a phone or email, best first (Latino evidence first when the search asked for it). With
+ * `onlyFound`, every lead of the search whatever its tier, to say how many were checked.
+ */
+// ponytail: the explorer has no campaign filter, so the search's state and business types stand in
+// for it: two searches of one type in one state share a list, and a place Overture matched only
+// through a parent of its category stays out. A campaign filter in the explorer is the upgrade.
+export function clientListQuery(
+  scoreRunId: string | null,
+  campaign: Pick<CampaignListItem, "name" | "criteria">,
+  onlyFound = false,
+): ExplorerQuery {
+  const children: ExplorerGroup["children"] = [];
+  const region = campaign.criteria.geography[0]?.region;
+  if (region) children.push(condition("region", "eq", region));
+  const terms = campaign.criteria.categories;
+  if (terms.length > 0) {
+    children.push({
+      kind: "group",
+      join: "or",
+      negate: false,
+      children: terms.map((term) => condition("category", "contains", term)),
+    });
+  }
+  if (!onlyFound) {
+    children.push(
+      condition("tier", "in", ["priority", "review"]),
+      condition("suppressed", "is_false"),
+      condition("usable_channels", "gt", 0),
+    );
+  }
+  return {
+    score_run_id: scoreRunId,
+    filters: { kind: "group", join: "and", negate: false, children },
+    search: null,
+    sort: latinoFirst(campaign.name)
+      ? [
+          { field: "latino_confidence", direction: "desc" },
+          { field: "total_score", direction: "desc" },
+        ]
+      : [{ field: "total_score", direction: "desc" }],
+    offset: 0,
+    limit: onlyFound ? 1 : CLIENT_LIST_LIMIT,
+    with_total: true,
+  };
+}
+
+/** What to call or write first: a phone before an email, the primary one before the others. */
+export function contactOf(points: readonly ContactPoint[]): string | null {
+  const usable = points
+    .filter(
+      (point) =>
+        (point.contact_type === "phone" || point.contact_type === "email") &&
+        !point.do_not_contact &&
+        !UNUSABLE.has(point.validation_status),
+    )
+    .sort(
+      (a, b) =>
+        Number(b.contact_type === "phone") - Number(a.contact_type === "phone") ||
+        Number(b.is_primary) - Number(a.is_primary),
+    );
+  return usable[0]?.value_raw ?? null;
+}
+
+/** The simple-search offer a lead was matched to (`simple_<choice>`), if it is one. */
+export function offerOf(key: string | null): OfferChoice | null {
+  const choice = key?.startsWith("simple_") ? key.slice("simple_".length) : null;
+  return choice !== null && choice in OFFER_PROBLEMS ? (choice as OfferChoice) : null;
+}
+
 export const STAGE_MESSAGE: Record<PipelineStage, TranslationKey> = {
   discovery: "clientSearch.progress.discovery",
   acquisition: "clientSearch.progress.acquisition",
@@ -139,7 +235,7 @@ export const STAGE_MESSAGE: Record<PipelineStage, TranslationKey> = {
   contact_intelligence: "clientSearch.progress.contact",
   local_ai: "clientSearch.progress.ai",
   scoring: "clientSearch.progress.choose",
-  review_export_eligibility: "clientSearch.progress.choose",
+  review_export_eligibility: "clientSearch.progress.list",
 };
 
 export function visibleProgress(stages: PipelineStageView[]): PipelineStageView[] {
