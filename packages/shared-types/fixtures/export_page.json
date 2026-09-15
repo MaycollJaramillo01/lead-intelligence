@@ -18,7 +18,7 @@
         "created_at": "2026-01-01T00:00:00.000Z",
         "updated_at": "2026-01-01T00:00:00.000Z",
         "job_id": "01900000-0000-7000-8000-000000001746",
-        "destination": "C:/synthetic/exports/leads.csv",
+        "destination": "C:\\synthetic\\exports\\leads.csv",
         "columns_json": [
           {
             "header": "Business",
