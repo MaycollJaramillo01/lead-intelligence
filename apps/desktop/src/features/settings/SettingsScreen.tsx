@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import { PageScroll, PageShell, Section } from "@/components/layout/page-chrome";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -38,6 +39,8 @@ export function SettingsScreen() {
   const setDensity = usePreferences((state) => state.setDensity);
   const setLanguage = usePreferences((state) => state.setLanguage);
   const reset = usePreferences((state) => state.reset);
+  const showAdvancedTools = usePreferences((state) => state.showAdvancedTools);
+  const setShowAdvancedTools = usePreferences((state) => state.setShowAdvancedTools);
   const core = useDiagnosticsStore((state) => state.report?.core ?? null);
 
   return (
@@ -79,6 +82,17 @@ export function SettingsScreen() {
                 </SelectContent>
               </Select>
             </Field>
+            <Field id="advanced-tools" label={t("settings.advancedTools")}>
+              <Switch
+                id="advanced-tools"
+                checked={showAdvancedTools}
+                onCheckedChange={setShowAdvancedTools}
+                aria-describedby="advanced-tools-help"
+              />
+            </Field>
+            <p id="advanced-tools-help" className="py-2 text-xs text-muted-foreground">
+              {t("settings.advancedToolsHelp")}
+            </p>
           </div>
         </Section>
 

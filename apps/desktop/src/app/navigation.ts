@@ -15,6 +15,7 @@ import {
   Settings,
   Target,
   Telescope,
+  UserRoundSearch,
   type LucideIcon,
 } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n";
@@ -47,6 +48,15 @@ export const NAV_SECTIONS: ReadonlyArray<{ id: NavSectionId; titleKey: Translati
 ];
 
 export const NAV_ITEMS: readonly NavItem[] = [
+  {
+    id: "client-search",
+    path: "/buscar-clientes",
+    icon: UserRoundSearch,
+    section: "overview",
+    status: "available",
+    titleKey: "nav.client_search",
+    descriptionKey: "desc.client_search",
+  },
   {
     id: "overview",
     path: "/overview",
@@ -193,10 +203,17 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
 ];
 
-export const DEFAULT_ROUTE = "/overview";
+export const DEFAULT_ROUTE = "/buscar-clientes";
 
 export function navItemsBySection(section: NavSectionId): NavItem[] {
   return NAV_ITEMS.filter((item) => item.section === section);
+}
+
+/** Simple navigation hides implementation screens; the command palette still uses NAV_ITEMS. */
+export function visibleSidebarItems(showAdvancedTools: boolean): NavItem[] {
+  return NAV_ITEMS.filter(
+    (item) => showAdvancedTools || item.id === "client-search" || item.id === "settings",
+  );
 }
 
 /** The module a path belongs to: its own page, or a page under it (`/businesses/<id>`). */

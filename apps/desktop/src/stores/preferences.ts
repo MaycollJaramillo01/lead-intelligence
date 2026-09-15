@@ -17,6 +17,7 @@ interface PreferencesState {
   language: Language;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
+  showAdvancedTools: boolean;
   /** Inspector width as a percentage of the content area. */
   inspectorSize: number;
   /** Column visibility per table id, so each table keeps its own layout. */
@@ -28,6 +29,7 @@ interface PreferencesState {
   setLanguage: (language: Language) => void;
   toggleSidebar: () => void;
   setSidebarWidth: (width: number) => void;
+  setShowAdvancedTools: (show: boolean) => void;
   setInspectorSize: (size: number) => void;
   setColumnVisibility: (tableId: string, visibility: Record<string, boolean>) => void;
   setExplorer: (explorer: ExplorerLayout) => void;
@@ -42,9 +44,10 @@ export interface ExplorerLayout {
 const DEFAULTS = {
   theme: "dark",
   density: "comfortable",
-  language: "en",
+  language: "es",
   sidebarCollapsed: false,
   sidebarWidth: 232,
+  showAdvancedTools: false,
   inspectorSize: 32,
   columnVisibility: {},
   explorer: { definition: null, viewId: null },
@@ -55,6 +58,7 @@ const DEFAULTS = {
   | "setLanguage"
   | "toggleSidebar"
   | "setSidebarWidth"
+  | "setShowAdvancedTools"
   | "setInspectorSize"
   | "setColumnVisibility"
   | "setExplorer"
@@ -73,6 +77,7 @@ export const usePreferences = create<PreferencesState>()(
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setSidebarWidth: (width) =>
         set({ sidebarWidth: Math.round(clamp(width, SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH)) }),
+      setShowAdvancedTools: (showAdvancedTools) => set({ showAdvancedTools }),
       setInspectorSize: (size) => set({ inspectorSize: clamp(size, 20, 60) }),
       setColumnVisibility: (tableId, visibility) =>
         set((state) => ({
@@ -81,7 +86,7 @@ export const usePreferences = create<PreferencesState>()(
       setExplorer: (explorer) => set({ explorer }),
       reset: () => set(DEFAULTS),
     }),
-    { name: PREFERENCES_STORAGE_KEY, version: 1 },
+    { name: PREFERENCES_STORAGE_KEY, version: 2 },
   ),
 );
 

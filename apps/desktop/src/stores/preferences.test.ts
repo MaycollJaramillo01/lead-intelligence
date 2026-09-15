@@ -13,12 +13,13 @@ describe("preferences store", () => {
     localStorage.clear();
   });
 
-  it("starts dark, comfortable and in English", () => {
+  it("starts dark, comfortable and in Spanish", () => {
     const state = usePreferences.getState();
     expect(state.theme).toBe("dark");
     expect(state.density).toBe("comfortable");
-    expect(state.language).toBe("en");
+    expect(state.language).toBe("es");
     expect(state.sidebarCollapsed).toBe(false);
+    expect(state.showAdvancedTools).toBe(false);
   });
 
   it("clamps the sidebar width to its allowed range", () => {
