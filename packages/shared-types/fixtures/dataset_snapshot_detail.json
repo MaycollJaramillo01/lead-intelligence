@@ -1,12 +1,12 @@
 {
   "item": {
     "snapshot": {
-      "id": "01900000-0000-7000-8000-000000001728",
-      "dataset_id": "01900000-0000-7000-8000-000000001713",
+      "id": "01900000-0000-7000-8000-000000001729",
+      "dataset_id": "01900000-0000-7000-8000-000000001714",
       "version": 2,
       "row_count": 20,
       "duckdb_table": "business_snapshot_rows",
-      "parquet_path": "datasets/01900000-0000-7000-8000-000000001713/01900000-0000-7000-8000-000000001728",
+      "parquet_path": "datasets/01900000-0000-7000-8000-000000001714/01900000-0000-7000-8000-000000001729",
       "schema_version": 2,
       "filters_json": {
         "project_id": "01900000-0000-7000-8000-000000000001"
@@ -15,7 +15,7 @@
       "query_json": {
         "dataset_name": "Synthetic fixture dataset",
         "project_id": "01900000-0000-7000-8000-000000000001",
-        "score_run_id": "01900000-0000-7000-8000-000000001398"
+        "score_run_id": "01900000-0000-7000-8000-000000001399"
       },
       "cutoff_at": "2026-01-01T00:00:00.000Z",
       "pipeline_versions_json": {
@@ -243,19 +243,19 @@
     },
     {
       "kind": "source_run",
-      "id": "01900000-0000-7000-8000-000000000231",
+      "id": "01900000-0000-7000-8000-000000000232",
       "label": "Synthetic public registry (test data)",
       "at": "2026-01-01T00:00:00.000Z"
     },
     {
       "kind": "source_run",
-      "id": "01900000-0000-7000-8000-000000000233",
+      "id": "01900000-0000-7000-8000-000000000234",
       "label": "Synthetic directory (test data)",
       "at": "2026-01-01T00:00:00.000Z"
     },
     {
       "kind": "score_run",
-      "id": "01900000-0000-7000-8000-000000001398",
+      "id": "01900000-0000-7000-8000-000000001399",
       "label": "Synthetic ICP: local services with weak websites v1 · custom.synthetic_model_contactability_first v1",
       "at": "2026-01-01T00:00:00.000Z"
     }

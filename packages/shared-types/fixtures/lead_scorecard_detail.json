@@ -1,19 +1,19 @@
 {
   "score_run": {
-    "job_id": "01900000-0000-7000-8000-000000001163",
-    "score_run_id": "01900000-0000-7000-8000-000000001162",
+    "job_id": "01900000-0000-7000-8000-000000001164",
+    "score_run_id": "01900000-0000-7000-8000-000000001163",
     "project_id": "01900000-0000-7000-8000-000000000001",
     "project_name": "Synthetic test workspace",
     "status": "succeeded",
     "stage": "done",
     "progress_done": 20,
     "progress_total": 20,
-    "scoring_model_id": "01900000-0000-7000-8000-000000001154",
+    "scoring_model_id": "01900000-0000-7000-8000-000000001155",
     "scoring_model_key": "lead_intelligence.heuristic",
     "scoring_model_name": "Lead Intelligence heuristic",
     "scoring_model_version": 1,
     "is_heuristic": true,
-    "icp_profile_id": "01900000-0000-7000-8000-000000001157",
+    "icp_profile_id": "01900000-0000-7000-8000-000000001158",
     "icp_profile_name": "Synthetic ICP: local services with weak websites",
     "icp_profile_version": 1,
     "engine_version": "1.0.0",
@@ -105,19 +105,19 @@
         "retryable": null,
         "detail_json": {
           "project_id": "01900000-0000-7000-8000-000000000001",
-          "score_run_id": "01900000-0000-7000-8000-000000001162"
+          "score_run_id": "01900000-0000-7000-8000-000000001163"
         },
         "created_at": "2026-01-01T00:00:00.000Z"
       }
     ],
     "is_synthetic": true
   },
-  "business_id": "01900000-0000-7000-8000-000000000090",
+  "business_id": "01900000-0000-7000-8000-000000000091",
   "display_name": "Synthetic Bakery 0001",
   "lead_stage": "attempted",
   "rank": 1,
   "scorecard": {
-    "business_id": "01900000-0000-7000-8000-000000000090",
+    "business_id": "01900000-0000-7000-8000-000000000091",
     "tier": "review",
     "total_score": 63.6471,
     "confidence": 0.6444,
@@ -241,7 +241,7 @@
         "evidence": [
           {
             "kind": "website_audit",
-            "ref": "01900000-0000-7000-8000-000000000465",
+            "ref": "01900000-0000-7000-8000-000000000466",
             "label": "synthetic-bakery-0001.example",
             "url": null
           }
@@ -300,13 +300,13 @@
         "evidence": [
           {
             "kind": "website_finding",
-            "ref": "01900000-0000-7000-8000-000000000481",
+            "ref": "01900000-0000-7000-8000-000000000482",
             "label": "seo.sitemap: warning",
             "url": "https://synthetic-bakery-0001.example/sitemap.xml"
           },
           {
             "kind": "website_audit",
-            "ref": "01900000-0000-7000-8000-000000000465",
+            "ref": "01900000-0000-7000-8000-000000000466",
             "label": "synthetic-bakery-0001.example",
             "url": null
           }
@@ -352,7 +352,7 @@
         "evidence": [
           {
             "kind": "business",
-            "ref": "01900000-0000-7000-8000-000000000090",
+            "ref": "01900000-0000-7000-8000-000000000091",
             "label": "Synthetic Bakery 0001",
             "url": null
           }
@@ -372,7 +372,7 @@
         "evidence": [
           {
             "kind": "website_audit",
-            "ref": "01900000-0000-7000-8000-000000000465",
+            "ref": "01900000-0000-7000-8000-000000000466",
             "label": "synthetic-bakery-0001.example",
             "url": null
           }
@@ -418,7 +418,7 @@
         "evidence": [
           {
             "kind": "business",
-            "ref": "01900000-0000-7000-8000-000000000090",
+            "ref": "01900000-0000-7000-8000-000000000091",
             "label": "Synthetic Bakery 0001",
             "url": null
           }
@@ -438,7 +438,7 @@
         "evidence": [
           {
             "kind": "business",
-            "ref": "01900000-0000-7000-8000-000000000090",
+            "ref": "01900000-0000-7000-8000-000000000091",
             "label": "Synthetic Bakery 0001",
             "url": null
           }
@@ -471,7 +471,7 @@
         "evidence": [
           {
             "kind": "website_audit",
-            "ref": "01900000-0000-7000-8000-000000000465",
+            "ref": "01900000-0000-7000-8000-000000000466",
             "label": "synthetic-bakery-0001.example",
             "url": null
           }
@@ -491,7 +491,7 @@
         "evidence": [
           {
             "kind": "website_audit",
-            "ref": "01900000-0000-7000-8000-000000000465",
+            "ref": "01900000-0000-7000-8000-000000000466",
             "label": "synthetic-bakery-0001.example",
             "url": null
           }
@@ -550,7 +550,7 @@
         "evidence": [
           {
             "kind": "business",
-            "ref": "01900000-0000-7000-8000-000000000090",
+            "ref": "01900000-0000-7000-8000-000000000091",
             "label": "Synthetic Bakery 0001",
             "url": null
           }
@@ -570,7 +570,7 @@
         "evidence": [
           {
             "kind": "website_audit",
-            "ref": "01900000-0000-7000-8000-000000000465",
+            "ref": "01900000-0000-7000-8000-000000000466",
             "label": "synthetic-bakery-0001.example",
             "url": null
           }
@@ -590,7 +590,7 @@
         "evidence": [
           {
             "kind": "business",
-            "ref": "01900000-0000-7000-8000-000000000090",
+            "ref": "01900000-0000-7000-8000-000000000091",
             "label": "Synthetic Bakery 0001",
             "url": null
           }
@@ -610,7 +610,7 @@
         "evidence": [
           {
             "kind": "website_audit",
-            "ref": "01900000-0000-7000-8000-000000000465",
+            "ref": "01900000-0000-7000-8000-000000000466",
             "label": "synthetic-bakery-0001.example",
             "url": null
           }
@@ -755,7 +755,7 @@
         "evidence": [
           {
             "kind": "business",
-            "ref": "01900000-0000-7000-8000-000000000090",
+            "ref": "01900000-0000-7000-8000-000000000091",
             "label": "Synthetic Bakery 0001",
             "url": null
           }
@@ -768,7 +768,7 @@
         "evidence": [
           {
             "kind": "business",
-            "ref": "01900000-0000-7000-8000-000000000090",
+            "ref": "01900000-0000-7000-8000-000000000091",
             "label": "Synthetic Bakery 0001",
             "url": null
           }
@@ -781,7 +781,7 @@
         "evidence": [
           {
             "kind": "business",
-            "ref": "01900000-0000-7000-8000-000000000090",
+            "ref": "01900000-0000-7000-8000-000000000091",
             "label": "Synthetic Bakery 0001",
             "url": null
           }
@@ -794,7 +794,7 @@
         "evidence": [
           {
             "kind": "website_audit",
-            "ref": "01900000-0000-7000-8000-000000000465",
+            "ref": "01900000-0000-7000-8000-000000000466",
             "label": "synthetic-bakery-0001.example",
             "url": null
           }
@@ -830,7 +830,7 @@
         "evidence": [
           {
             "kind": "business",
-            "ref": "01900000-0000-7000-8000-000000000090",
+            "ref": "01900000-0000-7000-8000-000000000091",
             "label": "Synthetic Bakery 0001",
             "url": null
           }
@@ -845,7 +845,7 @@
         "evidence": [
           {
             "kind": "website_audit",
-            "ref": "01900000-0000-7000-8000-000000000465",
+            "ref": "01900000-0000-7000-8000-000000000466",
             "label": "synthetic-bakery-0001.example",
             "url": null
           }
@@ -889,7 +889,7 @@
         "evidence": [
           {
             "kind": "website_audit",
-            "ref": "01900000-0000-7000-8000-000000000465",
+            "ref": "01900000-0000-7000-8000-000000000466",
             "label": "synthetic-bakery-0001.example",
             "url": null
           }
@@ -921,7 +921,7 @@
         "evidence": [
           {
             "kind": "business",
-            "ref": "01900000-0000-7000-8000-000000000090",
+            "ref": "01900000-0000-7000-8000-000000000091",
             "label": "Synthetic Bakery 0001",
             "url": null
           }
@@ -1021,7 +1021,7 @@
       "evidence": [
         {
           "kind": "website_audit",
-          "ref": "01900000-0000-7000-8000-000000000465",
+          "ref": "01900000-0000-7000-8000-000000000466",
           "label": "synthetic-bakery-0001.example",
           "url": null
         }
@@ -1036,7 +1036,7 @@
   },
   "history": [
     {
-      "score_run_id": "01900000-0000-7000-8000-000000001398",
+      "score_run_id": "01900000-0000-7000-8000-000000001399",
       "created_at": "2026-01-01T00:00:00.000Z",
       "scoring_model_key": "custom.synthetic_model_contactability_first",
       "scoring_model_version": 1,
@@ -1047,7 +1047,7 @@
       "confidence": 0.6444
     },
     {
-      "score_run_id": "01900000-0000-7000-8000-000000001162",
+      "score_run_id": "01900000-0000-7000-8000-000000001163",
       "created_at": "2026-01-01T00:00:00.000Z",
       "scoring_model_key": "lead_intelligence.heuristic",
       "scoring_model_version": 1,
@@ -1060,9 +1060,9 @@
   ],
   "outcomes": [
     {
-      "id": "01900000-0000-7000-8000-000000001631",
-      "business_id": "01900000-0000-7000-8000-000000000090",
-      "score_run_id": "01900000-0000-7000-8000-000000001162",
+      "id": "01900000-0000-7000-8000-000000001632",
+      "business_id": "01900000-0000-7000-8000-000000000091",
+      "score_run_id": "01900000-0000-7000-8000-000000001163",
       "stage": "attempted",
       "previous_stage": "not_contacted",
       "lost_reason": null,
@@ -1080,12 +1080,12 @@
   ],
   "decisions": [
     {
-      "id": "01900000-0000-7000-8000-000000001632",
+      "id": "01900000-0000-7000-8000-000000001633",
       "entity_type": "business",
-      "entity_id": "01900000-0000-7000-8000-000000000090",
+      "entity_id": "01900000-0000-7000-8000-000000000091",
       "decision": "lead_score_confirmed",
       "previous_value": null,
-      "new_value": "01900000-0000-7000-8000-000000001162",
+      "new_value": "01900000-0000-7000-8000-000000001163",
       "reason": "The evidence matches the ICP (synthetic test data)",
       "actor": "dev-seed",
       "decided_at": "2026-01-01T00:00:00.000Z"

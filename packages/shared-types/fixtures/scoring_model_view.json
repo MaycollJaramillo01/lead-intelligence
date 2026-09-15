@@ -1,6 +1,6 @@
 {
   "model": {
-    "id": "01900000-0000-7000-8000-000000001394",
+    "id": "01900000-0000-7000-8000-000000001395",
     "key": "custom.synthetic_model_contactability_first",
     "name": "Synthetic model: contactability first",
     "description": "Synthetic test data",
@@ -13,8 +13,8 @@
   },
   "versions": [
     {
-      "id": "01900000-0000-7000-8000-000000001396",
-      "scoring_model_id": "01900000-0000-7000-8000-000000001394",
+      "id": "01900000-0000-7000-8000-000000001397",
+      "scoring_model_id": "01900000-0000-7000-8000-000000001395",
       "version": 1,
       "definition_json": {
         "features": [

@@ -1,11 +1,11 @@
 {
   "run": {
-    "id": "01900000-0000-7000-8000-000000001138",
+    "id": "01900000-0000-7000-8000-000000001139",
     "task_type": "evidence_extraction",
     "task_version": "1.0.0",
     "project_id": "01900000-0000-7000-8000-000000000001",
-    "business_id": "01900000-0000-7000-8000-000000000965",
-    "job_id": "01900000-0000-7000-8000-000000001103",
+    "business_id": "01900000-0000-7000-8000-000000000966",
+    "job_id": "01900000-0000-7000-8000-000000001104",
     "provider": "synthetic",
     "model": "synthetic-text:1b",
     "model_digest": "sha256:94f82603c69836cb284e2babc51dddaa62e8d5ffa38e498ae39caa238e77f1f7",
@@ -22,14 +22,14 @@
     "prompt_template_id": "evidence_extraction",
     "prompt_template_version": "1.0.0",
     "output_schema_version": "1.0.0",
-    "input_sha256": "63bfe6e0de147ca646ed55cc585efd2a3c1917be711bc348f487e1b34c0da973",
+    "input_sha256": "b7349580d5777555480e6fcbb221b0934dcf561dda0f5e22c6cc2720f09f7939",
     "input_json": {
       "facts": {
         "business_name": "Synthetic Painting 0702"
       },
       "refs": [
         {
-          "entity_id": "01900000-0000-7000-8000-000000000940",
+          "entity_id": "01900000-0000-7000-8000-000000000941",
           "kind": "page_fragment",
           "ref": "F1",
           "sha256": "f78e31b8f122c1217a60b09387b8b3826117b4f65e00c1fe3d97e3a219678f5c",
@@ -37,7 +37,7 @@
           "text": "Synthetic Painting 0702 Founded by Morgan Placeholder in 1998. Call (312) 555-0181 or email hello@synthetic-painting-0702.example. Test data only."
         },
         {
-          "entity_id": "01900000-0000-7000-8000-000000000944",
+          "entity_id": "01900000-0000-7000-8000-000000000945",
           "kind": "page_fragment",
           "ref": "F2",
           "sha256": "cf49153a4dedd243f97589b5c8ea61034fdd5555c8a40d59d500d22cc566e814",
@@ -47,7 +47,7 @@
       ],
       "warnings": []
     },
-    "cache_key": "f0ebd6270cdb48e26690e8c65a3021fa389c55e14270a91314c709d7efec5b9b",
+    "cache_key": "d54f10039af2c0176ff738309c76de2b4d87c895dec8cea0ccdece6fd0e25662",
     "status": "succeeded",
     "device": "gpu",
     "attempts": 1,
@@ -65,8 +65,8 @@
   "business_name": "Synthetic Painting 0702",
   "outputs": [
     {
-      "id": "01900000-0000-7000-8000-000000001139",
-      "inference_run_id": "01900000-0000-7000-8000-000000001138",
+      "id": "01900000-0000-7000-8000-000000001140",
+      "inference_run_id": "01900000-0000-7000-8000-000000001139",
       "attempt": 1,
       "raw_output": "{\"outcome\":\"ok\",\"claims\":[{\"kind\":\"other\",\"statement\":\"The page describes the business\",\"quote\":\"Synthetic Painting 0702 Founded by Morga\",\"evidence_ids\":[\"F1\"],\"confidence\":0.5}]}",
       "validated_output_json": {
@@ -91,7 +91,7 @@
     {
       "ref": "F1",
       "kind": "page_fragment",
-      "entity_id": "01900000-0000-7000-8000-000000000940",
+      "entity_id": "01900000-0000-7000-8000-000000000941",
       "source": "https://synthetic-painting-0702.example/",
       "text": "Synthetic Painting 0702 Founded by Morgan Placeholder in 1998. Call (312) 555-0181 or email hello@synthetic-painting-0702.example. Test data only.",
       "sha256": "f78e31b8f122c1217a60b09387b8b3826117b4f65e00c1fe3d97e3a219678f5c"
@@ -99,7 +99,7 @@
     {
       "ref": "F2",
       "kind": "page_fragment",
-      "entity_id": "01900000-0000-7000-8000-000000000944",
+      "entity_id": "01900000-0000-7000-8000-000000000945",
       "source": "https://synthetic-painting-0702.example/",
       "text": "Synthetic Painting 0702 Founded by Morgan Placeholder in 1998. Call (312) 555-0182 or email hello@synthetic-painting-0702.example. Test data only.",
       "sha256": "cf49153a4dedd243f97589b5c8ea61034fdd5555c8a40d59d500d22cc566e814"
@@ -108,9 +108,9 @@
   "warnings": [],
   "decisions": [
     {
-      "id": "01900000-0000-7000-8000-000000001153",
+      "id": "01900000-0000-7000-8000-000000001154",
       "entity_type": "inference_run",
-      "entity_id": "01900000-0000-7000-8000-000000001138",
+      "entity_id": "01900000-0000-7000-8000-000000001139",
       "decision": "ai_output_accepted",
       "previous_value": "unreviewed",
       "new_value": "accepted",

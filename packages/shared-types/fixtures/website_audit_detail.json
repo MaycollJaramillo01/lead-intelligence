@@ -1,12 +1,12 @@
 {
   "audit": {
-    "id": "01900000-0000-7000-8000-000000000853",
+    "id": "01900000-0000-7000-8000-000000000854",
     "project_id": "01900000-0000-7000-8000-000000000001",
     "site": "synthetic-cleaning-0602.example",
     "root_url": "https://synthetic-cleaning-0602.example/",
     "final_url": "https://synthetic-cleaning-0602.example/",
-    "source_run_id": "01900000-0000-7000-8000-000000000841",
-    "previous_audit_id": "01900000-0000-7000-8000-000000000526",
+    "source_run_id": "01900000-0000-7000-8000-000000000842",
+    "previous_audit_id": "01900000-0000-7000-8000-000000000527",
     "status": "complete",
     "ruleset_version": "1.0.0",
     "extractor_version": "1.0.0",
@@ -238,7 +238,7 @@
     },
     "pages": [
       {
-        "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+        "crawl_url_id": "01900000-0000-7000-8000-000000000847",
         "url": "https://synthetic-cleaning-0602.example/",
         "final_url": "https://synthetic-cleaning-0602.example/",
         "page_kind": "home",
@@ -284,7 +284,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "img.alt",
           "snippet": "2 of 2 without alt"
         }
@@ -305,7 +305,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "html.lang",
           "snippet": null
         }
@@ -354,7 +354,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "main_text",
           "snippet": "14 words of main content"
         }
@@ -403,7 +403,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "meta.description",
           "snippet": null
         }
@@ -424,7 +424,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "mixed_content",
           "snippet": "http://synthetic-cleaning-0602.example/photo.jpg"
         }
@@ -445,7 +445,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "cta",
           "snippet": "(312) 555-0162"
         }
@@ -466,7 +466,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "title",
           "snippet": "Home"
         }
@@ -529,7 +529,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "json_ld",
           "snippet": "LocalBusiness"
         }
@@ -550,7 +550,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "headings",
           "snippet": null
         }
@@ -599,7 +599,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "meta.open_graph",
           "snippet": "none"
         }
@@ -830,7 +830,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "tel_link",
           "snippet": "+13125550162"
         }
@@ -851,7 +851,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "json_ld",
           "snippet": "LocalBusiness"
         }
@@ -872,7 +872,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "phone",
           "snippet": "3125550162"
         }
@@ -893,7 +893,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "meta.viewport",
           "snippet": "width=device-width, initial-scale=1"
         }
@@ -914,7 +914,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "final_url",
           "snippet": "https://synthetic-cleaning-0602.example/"
         }
@@ -949,7 +949,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/robots.txt",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000843",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000844",
           "field": "robots.txt",
           "snippet": "User-agent: * Disallow: /admin/ # synthetic test data"
         }
@@ -970,7 +970,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "json_ld",
           "snippet": "LocalBusiness"
         }
@@ -991,7 +991,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "tech.script",
           "snippet": "https://www.googletagmanager.com/gtag/js?id=G-TEST0602"
         }
@@ -1012,7 +1012,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "meta.viewport",
           "snippet": "width=device-width, initial-scale=1"
         }
@@ -1033,7 +1033,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "h1",
           "snippet": "Synthetic Cleaning 0602"
         }
@@ -1096,7 +1096,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/robots.txt",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000843",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000844",
           "field": "robots.txt",
           "snippet": "read"
         }
@@ -1117,7 +1117,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "byte_size",
           "snippet": "560"
         }
@@ -1138,7 +1138,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "fetch_ms",
           "snippet": "slowest: 40 ms"
         }
@@ -1253,7 +1253,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "tech.script",
           "snippet": "https://www.googletagmanager.com/gtag/js?id=G-TEST0602"
         }
@@ -1270,7 +1270,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "cta",
           "snippet": "(312) 555-0162"
         }
@@ -1285,7 +1285,7 @@
       "evidence": [
         {
           "url": "https://synthetic-cleaning-0602.example/",
-          "crawl_url_id": "01900000-0000-7000-8000-000000000846",
+          "crawl_url_id": "01900000-0000-7000-8000-000000000847",
           "field": "tel_link",
           "snippet": "+13125550162"
         }
@@ -1293,7 +1293,7 @@
     }
   ],
   "diff": {
-    "previous_audit_id": "01900000-0000-7000-8000-000000000526",
+    "previous_audit_id": "01900000-0000-7000-8000-000000000527",
     "previous_created_at": "2026-01-01T00:00:00.000Z",
     "ruleset_changed": false,
     "final_url_before": "https://synthetic-cleaning-0602.example/",
@@ -1377,13 +1377,13 @@
   },
   "history": [
     {
-      "id": "01900000-0000-7000-8000-000000000853",
+      "id": "01900000-0000-7000-8000-000000000854",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "site": "synthetic-cleaning-0602.example",
       "root_url": "https://synthetic-cleaning-0602.example/",
       "final_url": "https://synthetic-cleaning-0602.example/",
-      "source_run_id": "01900000-0000-7000-8000-000000000841",
-      "previous_audit_id": "01900000-0000-7000-8000-000000000526",
+      "source_run_id": "01900000-0000-7000-8000-000000000842",
+      "previous_audit_id": "01900000-0000-7000-8000-000000000527",
       "status": "complete",
       "ruleset_version": "1.0.0",
       "extractor_version": "1.0.0",
@@ -1498,12 +1498,12 @@
       "created_at": "2026-01-01T00:00:00.000Z"
     },
     {
-      "id": "01900000-0000-7000-8000-000000000526",
+      "id": "01900000-0000-7000-8000-000000000527",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "site": "synthetic-cleaning-0602.example",
       "root_url": "https://synthetic-cleaning-0602.example/",
       "final_url": "https://synthetic-cleaning-0602.example/",
-      "source_run_id": "01900000-0000-7000-8000-000000000454",
+      "source_run_id": "01900000-0000-7000-8000-000000000455",
       "previous_audit_id": null,
       "status": "complete",
       "ruleset_version": "1.0.0",

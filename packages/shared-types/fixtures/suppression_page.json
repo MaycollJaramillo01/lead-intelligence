@@ -1,7 +1,7 @@
 {
   "items": [
     {
-      "id": "01900000-0000-7000-8000-000000001101",
+      "id": "01900000-0000-7000-8000-000000001102",
       "kind": "domain",
       "value": "synthetic-closed-0799.example",
       "business_id": null,
@@ -14,7 +14,7 @@
       "lift_reason": null
     },
     {
-      "id": "01900000-0000-7000-8000-000000001099",
+      "id": "01900000-0000-7000-8000-000000001100",
       "kind": "email",
       "value": "owner@synthetic-closed-0799.example",
       "business_id": null,
@@ -27,7 +27,7 @@
       "lift_reason": null
     },
     {
-      "id": "01900000-0000-7000-8000-000000000996",
+      "id": "01900000-0000-7000-8000-000000000997",
       "kind": "email",
       "value": "hello@synthetic-painting-0702.example",
       "business_id": null,

@@ -1,10 +1,10 @@
 {
-  "business_id": "01900000-0000-7000-8000-000000000310",
-  "root_business_id": "01900000-0000-7000-8000-000000000310",
+  "business_id": "01900000-0000-7000-8000-000000000311",
+  "root_business_id": "01900000-0000-7000-8000-000000000311",
   "effective": {
     "assessment": {
-      "id": "01900000-0000-7000-8000-000000000428",
-      "business_id": "01900000-0000-7000-8000-000000000310",
+      "id": "01900000-0000-7000-8000-000000000429",
+      "business_id": "01900000-0000-7000-8000-000000000311",
       "status": "unknown",
       "assessment_confidence": 0.0,
       "method": "manual_review",
@@ -21,7 +21,7 @@
           "names_not_used",
           "absence_is_not_evidence"
         ],
-        "reviewed_assessment_id": "01900000-0000-7000-8000-000000000422",
+        "reviewed_assessment_id": "01900000-0000-7000-8000-000000000423",
         "warnings": []
       }
     },
@@ -33,8 +33,8 @@
   },
   "automatic": {
     "assessment": {
-      "id": "01900000-0000-7000-8000-000000000422",
-      "business_id": "01900000-0000-7000-8000-000000000310",
+      "id": "01900000-0000-7000-8000-000000000423",
+      "business_id": "01900000-0000-7000-8000-000000000311",
       "status": "unknown",
       "assessment_confidence": 0.0,
       "method": "rules",
@@ -74,8 +74,8 @@
     {
       "evidence": {
         "value": {
-          "id": "01900000-0000-7000-8000-000000000389",
-          "business_id": "01900000-0000-7000-8000-000000000310",
+          "id": "01900000-0000-7000-8000-000000000390",
+          "business_id": "01900000-0000-7000-8000-000000000311",
           "evidence_type": "directory_membership",
           "claim": "Listed in a directory of Latino- or Hispanic-owned businesses",
           "value_json": {
@@ -86,7 +86,7 @@
           "strength": "moderate",
           "status": "contradicted",
           "confidence": 0.75,
-          "extraction_id": "01900000-0000-7000-8000-000000000388",
+          "extraction_id": "01900000-0000-7000-8000-000000000389",
           "web_page_id": null,
           "field_path": "payload.directory",
           "snippet": "directory: Hispanic-owned business directory (synthetic)",
@@ -96,19 +96,19 @@
           "updated_at": "2026-01-01T00:00:00.000Z"
         },
         "provenance": {
-          "extraction_id": "01900000-0000-7000-8000-000000000388",
+          "extraction_id": "01900000-0000-7000-8000-000000000389",
           "extractor": "latino.payload",
           "extractor_version": "1.0.0",
           "extracted_at": "2026-01-01T00:00:00.000Z",
-          "raw_record_id": "01900000-0000-7000-8000-000000000246",
-          "source_run_id": "01900000-0000-7000-8000-000000000233",
+          "raw_record_id": "01900000-0000-7000-8000-000000000247",
+          "source_run_id": "01900000-0000-7000-8000-000000000234",
           "acquired_page_id": null,
           "connector_key": "synthetic.directory",
           "connector_name": "Synthetic directory (test data)",
           "connector_kind": "directory",
           "method": "synthetic",
           "source_url": null,
-          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000246",
+          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000247",
           "acquired_at": "2026-01-01T00:00:00.000Z"
         }
       },
@@ -124,8 +124,8 @@
     {
       "evidence": {
         "value": {
-          "id": "01900000-0000-7000-8000-000000000391",
-          "business_id": "01900000-0000-7000-8000-000000000317",
+          "id": "01900000-0000-7000-8000-000000000392",
+          "business_id": "01900000-0000-7000-8000-000000000318",
           "evidence_type": "ownership_declaration",
           "claim": "A source states that the business is not Latino- or Hispanic-owned",
           "value_json": {
@@ -136,7 +136,7 @@
           "strength": "strong",
           "status": "active",
           "confidence": 0.9,
-          "extraction_id": "01900000-0000-7000-8000-000000000390",
+          "extraction_id": "01900000-0000-7000-8000-000000000391",
           "web_page_id": null,
           "field_path": "payload.hispanic_owned",
           "snippet": "hispanic_owned: no",
@@ -146,19 +146,19 @@
           "updated_at": "2026-01-01T00:00:00.000Z"
         },
         "provenance": {
-          "extraction_id": "01900000-0000-7000-8000-000000000390",
+          "extraction_id": "01900000-0000-7000-8000-000000000391",
           "extractor": "latino.payload",
           "extractor_version": "1.0.0",
           "extracted_at": "2026-01-01T00:00:00.000Z",
-          "raw_record_id": "01900000-0000-7000-8000-000000000248",
-          "source_run_id": "01900000-0000-7000-8000-000000000231",
+          "raw_record_id": "01900000-0000-7000-8000-000000000249",
+          "source_run_id": "01900000-0000-7000-8000-000000000232",
           "acquired_page_id": null,
           "connector_key": "synthetic.registry",
           "connector_name": "Synthetic public registry (test data)",
           "connector_kind": "public_registry",
           "method": "synthetic",
           "source_url": null,
-          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000248",
+          "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000249",
           "acquired_at": "2026-01-02T00:00:00.000Z"
         }
       },
@@ -175,8 +175,8 @@
   "history": [
     {
       "assessment": {
-        "id": "01900000-0000-7000-8000-000000000428",
-        "business_id": "01900000-0000-7000-8000-000000000310",
+        "id": "01900000-0000-7000-8000-000000000429",
+        "business_id": "01900000-0000-7000-8000-000000000311",
         "status": "unknown",
         "assessment_confidence": 0.0,
         "method": "manual_review",
@@ -193,7 +193,7 @@
             "names_not_used",
             "absence_is_not_evidence"
           ],
-          "reviewed_assessment_id": "01900000-0000-7000-8000-000000000422",
+          "reviewed_assessment_id": "01900000-0000-7000-8000-000000000423",
           "warnings": []
         }
       },
@@ -205,8 +205,8 @@
     },
     {
       "assessment": {
-        "id": "01900000-0000-7000-8000-000000000422",
-        "business_id": "01900000-0000-7000-8000-000000000310",
+        "id": "01900000-0000-7000-8000-000000000423",
+        "business_id": "01900000-0000-7000-8000-000000000311",
         "status": "unknown",
         "assessment_confidence": 0.0,
         "method": "rules",
@@ -244,9 +244,9 @@
   ],
   "decisions": [
     {
-      "id": "01900000-0000-7000-8000-000000000429",
+      "id": "01900000-0000-7000-8000-000000000430",
       "entity_type": "business",
-      "entity_id": "01900000-0000-7000-8000-000000000310",
+      "entity_id": "01900000-0000-7000-8000-000000000311",
       "decision": "latino_review",
       "previous_value": "unknown",
       "new_value": "unknown",

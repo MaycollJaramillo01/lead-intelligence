@@ -1,23 +1,23 @@
 {
   "score_run": {
-    "job_id": "01900000-0000-7000-8000-000000001399",
-    "score_run_id": "01900000-0000-7000-8000-000000001398",
+    "job_id": "01900000-0000-7000-8000-000000001400",
+    "score_run_id": "01900000-0000-7000-8000-000000001399",
     "project_id": "01900000-0000-7000-8000-000000000001",
     "project_name": "Synthetic test workspace",
     "status": "succeeded",
     "stage": "done",
     "progress_done": 20,
     "progress_total": 20,
-    "scoring_model_id": "01900000-0000-7000-8000-000000001394",
+    "scoring_model_id": "01900000-0000-7000-8000-000000001395",
     "scoring_model_key": "custom.synthetic_model_contactability_first",
     "scoring_model_name": "Synthetic model: contactability first",
     "scoring_model_version": 1,
     "is_heuristic": true,
-    "icp_profile_id": "01900000-0000-7000-8000-000000001157",
+    "icp_profile_id": "01900000-0000-7000-8000-000000001158",
     "icp_profile_name": "Synthetic ICP: local services with weak websites",
     "icp_profile_version": 1,
     "engine_version": "1.0.0",
-    "facts_from_run_id": "01900000-0000-7000-8000-000000001162",
+    "facts_from_run_id": "01900000-0000-7000-8000-000000001163",
     "stats": {
       "businesses": 20,
       "priority": 0,
@@ -105,7 +105,7 @@
         "retryable": null,
         "detail_json": {
           "project_id": "01900000-0000-7000-8000-000000000001",
-          "score_run_id": "01900000-0000-7000-8000-000000001398"
+          "score_run_id": "01900000-0000-7000-8000-000000001399"
         },
         "created_at": "2026-01-01T00:00:00.000Z"
       }
@@ -115,7 +115,7 @@
   "offset": 0,
   "rows": [
     {
-      "business_id": "01900000-0000-7000-8000-000000000951",
+      "business_id": "01900000-0000-7000-8000-000000000952",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "rank": 11,
       "display_name": "Synthetic Plumbing 0701",
@@ -158,7 +158,7 @@
       "is_synthetic": true
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000090",
+      "business_id": "01900000-0000-7000-8000-000000000091",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "rank": 1,
       "display_name": "Synthetic Bakery 0001",
@@ -205,7 +205,7 @@
       "is_synthetic": true
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000110",
+      "business_id": "01900000-0000-7000-8000-000000000111",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "rank": 2,
       "display_name": "Synthetic Bakery 0001",
@@ -250,7 +250,7 @@
       "is_synthetic": true
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000134",
+      "business_id": "01900000-0000-7000-8000-000000000135",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "rank": 12,
       "display_name": "Synthetic Bakery 0200",
@@ -293,7 +293,7 @@
       "is_synthetic": true
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000152",
+      "business_id": "01900000-0000-7000-8000-000000000153",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "rank": 3,
       "display_name": "Synthetic Cleaning Services",

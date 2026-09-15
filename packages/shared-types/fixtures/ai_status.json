@@ -306,7 +306,7 @@
       "model": "synthetic-text:1b",
       "accuracy": 0.167,
       "latency_p50_ms": 0,
-      "benchmark_id": "01900000-0000-7000-8000-000000001152",
+      "benchmark_id": "01900000-0000-7000-8000-000000001153",
       "benchmarked_at": "2026-01-01T00:00:00.000Z"
     }
   ],
@@ -327,7 +327,7 @@
   },
   "benchmark_results": [
     {
-      "id": "01900000-0000-7000-8000-000000001152",
+      "id": "01900000-0000-7000-8000-000000001153",
       "provider": "synthetic",
       "model": "synthetic-text:1b",
       "model_digest": "sha256:94f82603c69836cb284e2babc51dddaa62e8d5ffa38e498ae39caa238e77f1f7",

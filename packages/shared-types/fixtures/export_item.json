@@ -1,6 +1,6 @@
 {
   "export": {
-    "id": "01900000-0000-7000-8000-000000001746",
+    "id": "01900000-0000-7000-8000-000000001747",
     "project_id": "01900000-0000-7000-8000-000000000001",
     "dataset_snapshot_id": null,
     "status": "pending",
@@ -15,7 +15,7 @@
     "error_message": null,
     "created_at": "2026-01-01T00:00:00.000Z",
     "updated_at": "2026-01-01T00:00:00.000Z",
-    "job_id": "01900000-0000-7000-8000-000000001745",
+    "job_id": "01900000-0000-7000-8000-000000001746",
     "destination": "C:\\synthetic\\exports\\leads.csv",
     "columns_json": [
       {
@@ -134,7 +134,7 @@
         "suppressed_reason": null,
         "view_id": null
       },
-      "score_run_id": "01900000-0000-7000-8000-000000001398"
+      "score_run_id": "01900000-0000-7000-8000-000000001399"
     },
     "actor": "fixture",
     "preset_key": null,

@@ -1,19 +1,19 @@
 {
   "left": {
-    "job_id": "01900000-0000-7000-8000-000000001163",
-    "score_run_id": "01900000-0000-7000-8000-000000001162",
+    "job_id": "01900000-0000-7000-8000-000000001164",
+    "score_run_id": "01900000-0000-7000-8000-000000001163",
     "project_id": "01900000-0000-7000-8000-000000000001",
     "project_name": "Synthetic test workspace",
     "status": "succeeded",
     "stage": "done",
     "progress_done": 20,
     "progress_total": 20,
-    "scoring_model_id": "01900000-0000-7000-8000-000000001154",
+    "scoring_model_id": "01900000-0000-7000-8000-000000001155",
     "scoring_model_key": "lead_intelligence.heuristic",
     "scoring_model_name": "Lead Intelligence heuristic",
     "scoring_model_version": 1,
     "is_heuristic": true,
-    "icp_profile_id": "01900000-0000-7000-8000-000000001157",
+    "icp_profile_id": "01900000-0000-7000-8000-000000001158",
     "icp_profile_name": "Synthetic ICP: local services with weak websites",
     "icp_profile_version": 1,
     "engine_version": "1.0.0",
@@ -105,7 +105,7 @@
         "retryable": null,
         "detail_json": {
           "project_id": "01900000-0000-7000-8000-000000000001",
-          "score_run_id": "01900000-0000-7000-8000-000000001162"
+          "score_run_id": "01900000-0000-7000-8000-000000001163"
         },
         "created_at": "2026-01-01T00:00:00.000Z"
       }
@@ -113,24 +113,24 @@
     "is_synthetic": true
   },
   "right": {
-    "job_id": "01900000-0000-7000-8000-000000001399",
-    "score_run_id": "01900000-0000-7000-8000-000000001398",
+    "job_id": "01900000-0000-7000-8000-000000001400",
+    "score_run_id": "01900000-0000-7000-8000-000000001399",
     "project_id": "01900000-0000-7000-8000-000000000001",
     "project_name": "Synthetic test workspace",
     "status": "succeeded",
     "stage": "done",
     "progress_done": 20,
     "progress_total": 20,
-    "scoring_model_id": "01900000-0000-7000-8000-000000001394",
+    "scoring_model_id": "01900000-0000-7000-8000-000000001395",
     "scoring_model_key": "custom.synthetic_model_contactability_first",
     "scoring_model_name": "Synthetic model: contactability first",
     "scoring_model_version": 1,
     "is_heuristic": true,
-    "icp_profile_id": "01900000-0000-7000-8000-000000001157",
+    "icp_profile_id": "01900000-0000-7000-8000-000000001158",
     "icp_profile_name": "Synthetic ICP: local services with weak websites",
     "icp_profile_version": 1,
     "engine_version": "1.0.0",
-    "facts_from_run_id": "01900000-0000-7000-8000-000000001162",
+    "facts_from_run_id": "01900000-0000-7000-8000-000000001163",
     "stats": {
       "businesses": 20,
       "priority": 0,
@@ -218,7 +218,7 @@
         "retryable": null,
         "detail_json": {
           "project_id": "01900000-0000-7000-8000-000000000001",
-          "score_run_id": "01900000-0000-7000-8000-000000001398"
+          "score_run_id": "01900000-0000-7000-8000-000000001399"
         },
         "created_at": "2026-01-01T00:00:00.000Z"
       }
@@ -232,7 +232,7 @@
   "mean_abs_rank_change": 0.3,
   "changes": [
     {
-      "business_id": "01900000-0000-7000-8000-000000000090",
+      "business_id": "01900000-0000-7000-8000-000000000091",
       "display_name": "Synthetic Bakery 0001",
       "left_rank": 1,
       "right_rank": 1,
@@ -242,7 +242,7 @@
       "right_total": 65.4483
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000110",
+      "business_id": "01900000-0000-7000-8000-000000000111",
       "display_name": "Synthetic Bakery 0001",
       "left_rank": 2,
       "right_rank": 2,
@@ -252,7 +252,7 @@
       "right_total": 65.4483
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000152",
+      "business_id": "01900000-0000-7000-8000-000000000153",
       "display_name": "Synthetic Cleaning Services",
       "left_rank": 3,
       "right_rank": 3,
@@ -262,7 +262,7 @@
       "right_total": 49.0196
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000158",
+      "business_id": "01900000-0000-7000-8000-000000000159",
       "display_name": "Synthetic Cleaning Services",
       "left_rank": 4,
       "right_rank": 4,
@@ -272,7 +272,7 @@
       "right_total": 49.0196
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000267",
+      "business_id": "01900000-0000-7000-8000-000000000268",
       "display_name": "Synthetic Auto Repair 0501",
       "left_rank": 5,
       "right_rank": 5,
@@ -282,7 +282,7 @@
       "right_total": 49.0196
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000273",
+      "business_id": "01900000-0000-7000-8000-000000000274",
       "display_name": "Synthetic Bakery 0502",
       "left_rank": 6,
       "right_rank": 6,
@@ -292,7 +292,7 @@
       "right_total": 49.0196
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000279",
+      "business_id": "01900000-0000-7000-8000-000000000280",
       "display_name": "Synthetic Dental Clinic 0503",
       "left_rank": 7,
       "right_rank": 7,
@@ -302,7 +302,7 @@
       "right_total": 39.6807
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000287",
+      "business_id": "01900000-0000-7000-8000-000000000288",
       "display_name": "Synthetic Landscaping 0504",
       "left_rank": 8,
       "right_rank": 8,
@@ -312,7 +312,7 @@
       "right_total": 39.6807
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000295",
+      "business_id": "01900000-0000-7000-8000-000000000296",
       "display_name": "Synthetic Tax Preparation 0505",
       "left_rank": 9,
       "right_rank": 9,
@@ -322,7 +322,7 @@
       "right_total": 39.6807
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000303",
+      "business_id": "01900000-0000-7000-8000-000000000304",
       "display_name": "Synthetic Tax Preparation 0505",
       "left_rank": 10,
       "right_rank": 10,

@@ -1,19 +1,19 @@
 {
   "score_run": {
-    "job_id": "01900000-0000-7000-8000-000000001163",
-    "score_run_id": "01900000-0000-7000-8000-000000001162",
+    "job_id": "01900000-0000-7000-8000-000000001164",
+    "score_run_id": "01900000-0000-7000-8000-000000001163",
     "project_id": "01900000-0000-7000-8000-000000000001",
     "project_name": "Synthetic test workspace",
     "status": "succeeded",
     "stage": "done",
     "progress_done": 20,
     "progress_total": 20,
-    "scoring_model_id": "01900000-0000-7000-8000-000000001154",
+    "scoring_model_id": "01900000-0000-7000-8000-000000001155",
     "scoring_model_key": "lead_intelligence.heuristic",
     "scoring_model_name": "Lead Intelligence heuristic",
     "scoring_model_version": 1,
     "is_heuristic": true,
-    "icp_profile_id": "01900000-0000-7000-8000-000000001157",
+    "icp_profile_id": "01900000-0000-7000-8000-000000001158",
     "icp_profile_name": "Synthetic ICP: local services with weak websites",
     "icp_profile_version": 1,
     "engine_version": "1.0.0",
@@ -105,7 +105,7 @@
         "retryable": null,
         "detail_json": {
           "project_id": "01900000-0000-7000-8000-000000000001",
-          "score_run_id": "01900000-0000-7000-8000-000000001162"
+          "score_run_id": "01900000-0000-7000-8000-000000001163"
         },
         "created_at": "2026-01-01T00:00:00.000Z"
       }
@@ -114,7 +114,7 @@
   },
   "items": [
     {
-      "business_id": "01900000-0000-7000-8000-000000000090",
+      "business_id": "01900000-0000-7000-8000-000000000091",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "display_name": "Synthetic Bakery 0001",
       "locality": "Austin",
@@ -176,7 +176,7 @@
       "is_synthetic": true
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000110",
+      "business_id": "01900000-0000-7000-8000-000000000111",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "display_name": "Synthetic Bakery 0001",
       "locality": "Austin",
@@ -238,7 +238,7 @@
       "is_synthetic": true
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000152",
+      "business_id": "01900000-0000-7000-8000-000000000153",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "display_name": "Synthetic Cleaning Services",
       "locality": "Houston",
@@ -300,7 +300,7 @@
       "is_synthetic": true
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000158",
+      "business_id": "01900000-0000-7000-8000-000000000159",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "display_name": "Synthetic Cleaning Services",
       "locality": "Tampa",
@@ -362,7 +362,7 @@
       "is_synthetic": true
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000267",
+      "business_id": "01900000-0000-7000-8000-000000000268",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "display_name": "Synthetic Auto Repair 0501",
       "locality": "Austin",
@@ -424,7 +424,7 @@
       "is_synthetic": true
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000273",
+      "business_id": "01900000-0000-7000-8000-000000000274",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "display_name": "Synthetic Bakery 0502",
       "locality": "Phoenix",
@@ -486,7 +486,7 @@
       "is_synthetic": true
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000279",
+      "business_id": "01900000-0000-7000-8000-000000000280",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "display_name": "Synthetic Dental Clinic 0503",
       "locality": "Miami",
@@ -548,7 +548,7 @@
       "is_synthetic": true
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000287",
+      "business_id": "01900000-0000-7000-8000-000000000288",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "display_name": "Synthetic Landscaping 0504",
       "locality": "Chicago",
@@ -610,7 +610,7 @@
       "is_synthetic": true
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000295",
+      "business_id": "01900000-0000-7000-8000-000000000296",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "display_name": "Synthetic Tax Preparation 0505",
       "locality": "Austin",
@@ -672,7 +672,7 @@
       "is_synthetic": true
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000303",
+      "business_id": "01900000-0000-7000-8000-000000000304",
       "project_id": "01900000-0000-7000-8000-000000000001",
       "display_name": "Synthetic Tax Preparation 0505",
       "locality": "Denver",
@@ -734,6 +734,6 @@
       "is_synthetic": true
     }
   ],
-  "next_cursor": "WyJsZWFkcy4wMTkwMDAwMC0wMDAwLTcwMDAtODAwMC0wMDAwMDAwMDExNjIiLCIwMDAwMDAwMTAiLCIwMTkwMDAwMC0wMDAwLTcwMDAtODAwMC0wMDAwMDAwMDAzMDMiXQ",
+  "next_cursor": "WyJsZWFkcy4wMTkwMDAwMC0wMDAwLTcwMDAtODAwMC0wMDAwMDAwMDExNjMiLCIwMDAwMDAwMTAiLCIwMTkwMDAwMC0wMDAwLTcwMDAtODAwMC0wMDAwMDAwMDAzMDQiXQ",
   "total": 20
 }

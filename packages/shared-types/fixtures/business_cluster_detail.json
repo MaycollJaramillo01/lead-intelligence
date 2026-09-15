@@ -1,6 +1,6 @@
 {
   "business": {
-    "id": "01900000-0000-7000-8000-000000000118",
+    "id": "01900000-0000-7000-8000-000000000119",
     "project_id": "01900000-0000-7000-8000-000000000001",
     "display_name": "Synthetic Plumbing 0100 LLC",
     "name_sort_key": "synthetic plumbing 0100 llc",
@@ -18,9 +18,9 @@
   "names": [
     {
       "value": {
-        "id": "01900000-0000-7000-8000-000000000120",
-        "business_id": "01900000-0000-7000-8000-000000000118",
-        "extraction_id": "01900000-0000-7000-8000-000000000119",
+        "id": "01900000-0000-7000-8000-000000000121",
+        "business_id": "01900000-0000-7000-8000-000000000119",
+        "extraction_id": "01900000-0000-7000-8000-000000000120",
         "name_raw": "Synthetic Plumbing 0100 LLC",
         "name_normalized": "synthetic plumbing 0100",
         "name_kind": "legal",
@@ -30,11 +30,11 @@
         "created_at": "2026-01-01T00:00:00.000Z"
       },
       "provenance": {
-        "extraction_id": "01900000-0000-7000-8000-000000000119",
+        "extraction_id": "01900000-0000-7000-8000-000000000120",
         "extractor": "resolution.candidate",
         "extractor_version": "1.0.0",
         "extracted_at": "2026-01-01T00:00:00.000Z",
-        "raw_record_id": "01900000-0000-7000-8000-000000000073",
+        "raw_record_id": "01900000-0000-7000-8000-000000000074",
         "source_run_id": "01900000-0000-7000-8000-000000000003",
         "acquired_page_id": null,
         "connector_key": "synthetic.fixture",
@@ -42,15 +42,15 @@
         "connector_kind": "synthetic",
         "method": "synthetic",
         "source_url": null,
-        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000073",
+        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000074",
         "acquired_at": "2026-01-01T00:00:00.000Z"
       }
     },
     {
       "value": {
-        "id": "01900000-0000-7000-8000-000000000128",
-        "business_id": "01900000-0000-7000-8000-000000000126",
-        "extraction_id": "01900000-0000-7000-8000-000000000127",
+        "id": "01900000-0000-7000-8000-000000000129",
+        "business_id": "01900000-0000-7000-8000-000000000127",
+        "extraction_id": "01900000-0000-7000-8000-000000000128",
         "name_raw": "Synthetic Plumbing 0100, Inc.",
         "name_normalized": "synthetic plumbing 0100",
         "name_kind": "legal",
@@ -60,11 +60,11 @@
         "created_at": "2026-01-01T00:00:00.000Z"
       },
       "provenance": {
-        "extraction_id": "01900000-0000-7000-8000-000000000127",
+        "extraction_id": "01900000-0000-7000-8000-000000000128",
         "extractor": "resolution.candidate",
         "extractor_version": "1.0.0",
         "extracted_at": "2026-01-01T00:00:00.000Z",
-        "raw_record_id": "01900000-0000-7000-8000-000000000075",
+        "raw_record_id": "01900000-0000-7000-8000-000000000076",
         "source_run_id": "01900000-0000-7000-8000-000000000003",
         "acquired_page_id": null,
         "connector_key": "synthetic.fixture",
@@ -72,7 +72,7 @@
         "connector_kind": "synthetic",
         "method": "synthetic",
         "source_url": null,
-        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000075",
+        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000076",
         "acquired_at": "2026-01-01T00:00:00.000Z"
       }
     }
@@ -80,9 +80,9 @@
   "locations": [
     {
       "value": {
-        "id": "01900000-0000-7000-8000-000000000121",
-        "business_id": "01900000-0000-7000-8000-000000000118",
-        "extraction_id": "01900000-0000-7000-8000-000000000119",
+        "id": "01900000-0000-7000-8000-000000000122",
+        "business_id": "01900000-0000-7000-8000-000000000119",
+        "extraction_id": "01900000-0000-7000-8000-000000000120",
         "address_raw": "100 Example Ave Suite 4, Austin, TX, 78701",
         "street": "100 Example Ave",
         "unit": "Ste 4",
@@ -98,11 +98,11 @@
         "created_at": "2026-01-01T00:00:00.000Z"
       },
       "provenance": {
-        "extraction_id": "01900000-0000-7000-8000-000000000119",
+        "extraction_id": "01900000-0000-7000-8000-000000000120",
         "extractor": "resolution.candidate",
         "extractor_version": "1.0.0",
         "extracted_at": "2026-01-01T00:00:00.000Z",
-        "raw_record_id": "01900000-0000-7000-8000-000000000073",
+        "raw_record_id": "01900000-0000-7000-8000-000000000074",
         "source_run_id": "01900000-0000-7000-8000-000000000003",
         "acquired_page_id": null,
         "connector_key": "synthetic.fixture",
@@ -110,15 +110,15 @@
         "connector_kind": "synthetic",
         "method": "synthetic",
         "source_url": null,
-        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000073",
+        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000074",
         "acquired_at": "2026-01-01T00:00:00.000Z"
       }
     },
     {
       "value": {
-        "id": "01900000-0000-7000-8000-000000000129",
-        "business_id": "01900000-0000-7000-8000-000000000126",
-        "extraction_id": "01900000-0000-7000-8000-000000000127",
+        "id": "01900000-0000-7000-8000-000000000130",
+        "business_id": "01900000-0000-7000-8000-000000000127",
+        "extraction_id": "01900000-0000-7000-8000-000000000128",
         "address_raw": "100 Example Avenue, Ste 4, Austin, Texas, 78701-2233",
         "street": "100 Example Ave",
         "unit": "Ste 4",
@@ -134,11 +134,11 @@
         "created_at": "2026-01-01T00:00:00.000Z"
       },
       "provenance": {
-        "extraction_id": "01900000-0000-7000-8000-000000000127",
+        "extraction_id": "01900000-0000-7000-8000-000000000128",
         "extractor": "resolution.candidate",
         "extractor_version": "1.0.0",
         "extracted_at": "2026-01-01T00:00:00.000Z",
-        "raw_record_id": "01900000-0000-7000-8000-000000000075",
+        "raw_record_id": "01900000-0000-7000-8000-000000000076",
         "source_run_id": "01900000-0000-7000-8000-000000000003",
         "acquired_page_id": null,
         "connector_key": "synthetic.fixture",
@@ -146,7 +146,7 @@
         "connector_kind": "synthetic",
         "method": "synthetic",
         "source_url": null,
-        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000075",
+        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000076",
         "acquired_at": "2026-01-01T00:00:00.000Z"
       }
     }
@@ -154,9 +154,9 @@
   "websites": [
     {
       "value": {
-        "id": "01900000-0000-7000-8000-000000000122",
-        "business_id": "01900000-0000-7000-8000-000000000118",
-        "extraction_id": "01900000-0000-7000-8000-000000000119",
+        "id": "01900000-0000-7000-8000-000000000123",
+        "business_id": "01900000-0000-7000-8000-000000000119",
+        "extraction_id": "01900000-0000-7000-8000-000000000120",
         "url_raw": "http://www.synthetic-plumbing-0100.example/?utm_source=seed",
         "url_normalized": "http://synthetic-plumbing-0100.example",
         "domain": "synthetic-plumbing-0100.example",
@@ -166,11 +166,11 @@
         "created_at": "2026-01-01T00:00:00.000Z"
       },
       "provenance": {
-        "extraction_id": "01900000-0000-7000-8000-000000000119",
+        "extraction_id": "01900000-0000-7000-8000-000000000120",
         "extractor": "resolution.candidate",
         "extractor_version": "1.0.0",
         "extracted_at": "2026-01-01T00:00:00.000Z",
-        "raw_record_id": "01900000-0000-7000-8000-000000000073",
+        "raw_record_id": "01900000-0000-7000-8000-000000000074",
         "source_run_id": "01900000-0000-7000-8000-000000000003",
         "acquired_page_id": null,
         "connector_key": "synthetic.fixture",
@@ -178,15 +178,15 @@
         "connector_kind": "synthetic",
         "method": "synthetic",
         "source_url": null,
-        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000073",
+        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000074",
         "acquired_at": "2026-01-01T00:00:00.000Z"
       }
     },
     {
       "value": {
-        "id": "01900000-0000-7000-8000-000000000130",
-        "business_id": "01900000-0000-7000-8000-000000000126",
-        "extraction_id": "01900000-0000-7000-8000-000000000127",
+        "id": "01900000-0000-7000-8000-000000000131",
+        "business_id": "01900000-0000-7000-8000-000000000127",
+        "extraction_id": "01900000-0000-7000-8000-000000000128",
         "url_raw": "https://synthetic-plumbing-0100.example",
         "url_normalized": "https://synthetic-plumbing-0100.example",
         "domain": "synthetic-plumbing-0100.example",
@@ -196,11 +196,11 @@
         "created_at": "2026-01-01T00:00:00.000Z"
       },
       "provenance": {
-        "extraction_id": "01900000-0000-7000-8000-000000000127",
+        "extraction_id": "01900000-0000-7000-8000-000000000128",
         "extractor": "resolution.candidate",
         "extractor_version": "1.0.0",
         "extracted_at": "2026-01-01T00:00:00.000Z",
-        "raw_record_id": "01900000-0000-7000-8000-000000000075",
+        "raw_record_id": "01900000-0000-7000-8000-000000000076",
         "source_run_id": "01900000-0000-7000-8000-000000000003",
         "acquired_page_id": null,
         "connector_key": "synthetic.fixture",
@@ -208,7 +208,7 @@
         "connector_kind": "synthetic",
         "method": "synthetic",
         "source_url": null,
-        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000075",
+        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000076",
         "acquired_at": "2026-01-01T00:00:00.000Z"
       }
     }
@@ -216,8 +216,8 @@
   "contacts": [
     {
       "value": {
-        "id": "01900000-0000-7000-8000-000000000123",
-        "business_id": "01900000-0000-7000-8000-000000000118",
+        "id": "01900000-0000-7000-8000-000000000124",
+        "business_id": "01900000-0000-7000-8000-000000000119",
         "location_id": null,
         "decision_maker_id": null,
         "contact_type": "phone",
@@ -235,7 +235,7 @@
         "do_not_contact": false,
         "suppression_reason": null,
         "confidence": 0.7,
-        "extraction_id": "01900000-0000-7000-8000-000000000119",
+        "extraction_id": "01900000-0000-7000-8000-000000000120",
         "first_seen_at": "2026-01-01T00:00:00.000Z",
         "last_seen_at": "2026-01-01T00:00:00.000Z",
         "created_at": "2026-01-01T00:00:00.000Z",
@@ -244,11 +244,11 @@
         "deleted_reason": null
       },
       "provenance": {
-        "extraction_id": "01900000-0000-7000-8000-000000000119",
+        "extraction_id": "01900000-0000-7000-8000-000000000120",
         "extractor": "resolution.candidate",
         "extractor_version": "1.0.0",
         "extracted_at": "2026-01-01T00:00:00.000Z",
-        "raw_record_id": "01900000-0000-7000-8000-000000000073",
+        "raw_record_id": "01900000-0000-7000-8000-000000000074",
         "source_run_id": "01900000-0000-7000-8000-000000000003",
         "acquired_page_id": null,
         "connector_key": "synthetic.fixture",
@@ -256,14 +256,14 @@
         "connector_kind": "synthetic",
         "method": "synthetic",
         "source_url": null,
-        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000073",
+        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000074",
         "acquired_at": "2026-01-01T00:00:00.000Z"
       }
     },
     {
       "value": {
-        "id": "01900000-0000-7000-8000-000000000131",
-        "business_id": "01900000-0000-7000-8000-000000000126",
+        "id": "01900000-0000-7000-8000-000000000132",
+        "business_id": "01900000-0000-7000-8000-000000000127",
         "location_id": null,
         "decision_maker_id": null,
         "contact_type": "phone",
@@ -281,7 +281,7 @@
         "do_not_contact": false,
         "suppression_reason": null,
         "confidence": 0.7,
-        "extraction_id": "01900000-0000-7000-8000-000000000127",
+        "extraction_id": "01900000-0000-7000-8000-000000000128",
         "first_seen_at": "2026-01-01T00:00:00.000Z",
         "last_seen_at": "2026-01-01T00:00:00.000Z",
         "created_at": "2026-01-01T00:00:00.000Z",
@@ -290,11 +290,11 @@
         "deleted_reason": null
       },
       "provenance": {
-        "extraction_id": "01900000-0000-7000-8000-000000000127",
+        "extraction_id": "01900000-0000-7000-8000-000000000128",
         "extractor": "resolution.candidate",
         "extractor_version": "1.0.0",
         "extracted_at": "2026-01-01T00:00:00.000Z",
-        "raw_record_id": "01900000-0000-7000-8000-000000000075",
+        "raw_record_id": "01900000-0000-7000-8000-000000000076",
         "source_run_id": "01900000-0000-7000-8000-000000000003",
         "acquired_page_id": null,
         "connector_key": "synthetic.fixture",
@@ -302,7 +302,7 @@
         "connector_kind": "synthetic",
         "method": "synthetic",
         "source_url": null,
-        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000075",
+        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000076",
         "acquired_at": "2026-01-01T00:00:00.000Z"
       }
     }
@@ -310,9 +310,9 @@
   "classifications": [
     {
       "value": {
-        "id": "01900000-0000-7000-8000-000000000125",
-        "business_id": "01900000-0000-7000-8000-000000000118",
-        "extraction_id": "01900000-0000-7000-8000-000000000119",
+        "id": "01900000-0000-7000-8000-000000000126",
+        "business_id": "01900000-0000-7000-8000-000000000119",
+        "extraction_id": "01900000-0000-7000-8000-000000000120",
         "kind": "category",
         "label_raw": "Plumbing",
         "taxonomy_key": "plumbing",
@@ -323,11 +323,11 @@
         "created_at": "2026-01-01T00:00:00.000Z"
       },
       "provenance": {
-        "extraction_id": "01900000-0000-7000-8000-000000000119",
+        "extraction_id": "01900000-0000-7000-8000-000000000120",
         "extractor": "resolution.candidate",
         "extractor_version": "1.0.0",
         "extracted_at": "2026-01-01T00:00:00.000Z",
-        "raw_record_id": "01900000-0000-7000-8000-000000000073",
+        "raw_record_id": "01900000-0000-7000-8000-000000000074",
         "source_run_id": "01900000-0000-7000-8000-000000000003",
         "acquired_page_id": null,
         "connector_key": "synthetic.fixture",
@@ -335,15 +335,15 @@
         "connector_kind": "synthetic",
         "method": "synthetic",
         "source_url": null,
-        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000073",
+        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000074",
         "acquired_at": "2026-01-01T00:00:00.000Z"
       }
     },
     {
       "value": {
-        "id": "01900000-0000-7000-8000-000000000133",
-        "business_id": "01900000-0000-7000-8000-000000000126",
-        "extraction_id": "01900000-0000-7000-8000-000000000127",
+        "id": "01900000-0000-7000-8000-000000000134",
+        "business_id": "01900000-0000-7000-8000-000000000127",
+        "extraction_id": "01900000-0000-7000-8000-000000000128",
         "kind": "category",
         "label_raw": "Plumbing, Heating, and Air-Conditioning Contractors",
         "taxonomy_key": "plumbing",
@@ -354,11 +354,11 @@
         "created_at": "2026-01-01T00:00:00.000Z"
       },
       "provenance": {
-        "extraction_id": "01900000-0000-7000-8000-000000000127",
+        "extraction_id": "01900000-0000-7000-8000-000000000128",
         "extractor": "resolution.candidate",
         "extractor_version": "1.0.0",
         "extracted_at": "2026-01-01T00:00:00.000Z",
-        "raw_record_id": "01900000-0000-7000-8000-000000000075",
+        "raw_record_id": "01900000-0000-7000-8000-000000000076",
         "source_run_id": "01900000-0000-7000-8000-000000000003",
         "acquired_page_id": null,
         "connector_key": "synthetic.fixture",
@@ -366,7 +366,7 @@
         "connector_kind": "synthetic",
         "method": "synthetic",
         "source_url": null,
-        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000075",
+        "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000076",
         "acquired_at": "2026-01-01T00:00:00.000Z"
       }
     }
@@ -374,32 +374,32 @@
   "evidence": [],
   "members": [
     {
-      "business_id": "01900000-0000-7000-8000-000000000118",
+      "business_id": "01900000-0000-7000-8000-000000000119",
       "display_name": "Synthetic Plumbing 0100 LLC",
       "status": "candidate",
       "connector_name": "Synthetic fixture source (test data)",
       "connector_kind": "synthetic",
       "source_url": null,
-      "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000073",
+      "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000074",
       "first_seen_at": "2026-01-01T00:00:00.000Z"
     },
     {
-      "business_id": "01900000-0000-7000-8000-000000000126",
+      "business_id": "01900000-0000-7000-8000-000000000127",
       "display_name": "Synthetic Plumbing 0100, Inc.",
       "status": "merged",
       "connector_name": "Synthetic fixture source (test data)",
       "connector_kind": "synthetic",
       "source_url": null,
-      "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000075",
+      "external_id": "synthetic-candidate-01900000-0000-7000-8000-000000000076",
       "first_seen_at": "2026-01-01T00:00:00.000Z"
     }
   ],
   "canonical": [
     {
-      "id": "01900000-0000-7000-8000-000000000208",
-      "business_id": "01900000-0000-7000-8000-000000000118",
+      "id": "01900000-0000-7000-8000-000000000209",
+      "business_id": "01900000-0000-7000-8000-000000000119",
       "field": "category",
-      "observation_id": "01900000-0000-7000-8000-000000000125",
+      "observation_id": "01900000-0000-7000-8000-000000000126",
       "value": "Plumbing",
       "method": "policy",
       "policy_version": "1.0.0",
@@ -410,10 +410,10 @@
       "superseded_at": null
     },
     {
-      "id": "01900000-0000-7000-8000-000000000205",
-      "business_id": "01900000-0000-7000-8000-000000000118",
+      "id": "01900000-0000-7000-8000-000000000206",
+      "business_id": "01900000-0000-7000-8000-000000000119",
       "field": "location",
-      "observation_id": "01900000-0000-7000-8000-000000000121",
+      "observation_id": "01900000-0000-7000-8000-000000000122",
       "value": "100 Example Ave Ste 4, Austin, TX 78701",
       "method": "policy",
       "policy_version": "1.0.0",
@@ -424,10 +424,10 @@
       "superseded_at": null
     },
     {
-      "id": "01900000-0000-7000-8000-000000000204",
-      "business_id": "01900000-0000-7000-8000-000000000118",
+      "id": "01900000-0000-7000-8000-000000000205",
+      "business_id": "01900000-0000-7000-8000-000000000119",
       "field": "name",
-      "observation_id": "01900000-0000-7000-8000-000000000120",
+      "observation_id": "01900000-0000-7000-8000-000000000121",
       "value": "Synthetic Plumbing 0100 LLC",
       "method": "policy",
       "policy_version": "1.0.0",
@@ -438,10 +438,10 @@
       "superseded_at": null
     },
     {
-      "id": "01900000-0000-7000-8000-000000000207",
-      "business_id": "01900000-0000-7000-8000-000000000118",
+      "id": "01900000-0000-7000-8000-000000000208",
+      "business_id": "01900000-0000-7000-8000-000000000119",
       "field": "phone",
-      "observation_id": "01900000-0000-7000-8000-000000000123",
+      "observation_id": "01900000-0000-7000-8000-000000000124",
       "value": "+15125550110",
       "method": "policy",
       "policy_version": "1.0.0",
@@ -452,10 +452,10 @@
       "superseded_at": null
     },
     {
-      "id": "01900000-0000-7000-8000-000000000206",
-      "business_id": "01900000-0000-7000-8000-000000000118",
+      "id": "01900000-0000-7000-8000-000000000207",
+      "business_id": "01900000-0000-7000-8000-000000000119",
       "field": "website",
-      "observation_id": "01900000-0000-7000-8000-000000000122",
+      "observation_id": "01900000-0000-7000-8000-000000000123",
       "value": "http://synthetic-plumbing-0100.example",
       "method": "policy",
       "policy_version": "1.0.0",
@@ -468,16 +468,16 @@
   ],
   "merges": [
     {
-      "id": "01900000-0000-7000-8000-000000000171",
+      "id": "01900000-0000-7000-8000-000000000172",
       "project_id": "01900000-0000-7000-8000-000000000001",
-      "business_id": "01900000-0000-7000-8000-000000000126",
-      "into_business_id": "01900000-0000-7000-8000-000000000118",
-      "match_id": "01900000-0000-7000-8000-000000000169",
+      "business_id": "01900000-0000-7000-8000-000000000127",
+      "into_business_id": "01900000-0000-7000-8000-000000000119",
+      "match_id": "01900000-0000-7000-8000-000000000170",
       "is_manual": false,
       "score": 0.997527,
       "rules_version": "1.0.0",
       "explanation_json": {
-        "cluster_root": "01900000-0000-7000-8000-000000000118",
+        "cluster_root": "01900000-0000-7000-8000-000000000119",
         "features": {
           "blocking_keys": [
             "domain:synthetic-plumbing-0100.example",
@@ -559,7 +559,7 @@
           "total": 6.0
         },
         "previous_status": "candidate",
-        "reason": "resolution run 01900000-0000-7000-8000-000000000085 (rules 1.0.0)",
+        "reason": "resolution run 01900000-0000-7000-8000-000000000086 (rules 1.0.0)",
         "reasons": {
           "reasons": [
             {

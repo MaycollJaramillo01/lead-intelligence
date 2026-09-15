@@ -121,6 +121,43 @@
     {
       "connector_id": "01900000-0000-7000-8000-000000000050",
       "metadata": {
+        "key": "overture.places",
+        "name": "Overture Maps places (phones, websites, emails)",
+        "kind": "public_dataset",
+        "version": "1.0.0",
+        "capabilities": [
+          "pagination",
+          "checkpoint",
+          "geography_region",
+          "geography_locality",
+          "geography_postal_code",
+          "geography_radius",
+          "category_terms",
+          "keyword_search"
+        ],
+        "terms_url": "https://docs.overturemaps.org/attribution/",
+        "terms_summary": "Open data of the Overture Maps Foundation (CDLA Permissive 2.0 or Apache 2.0 by contributor), read anonymously from its public release. Each place of the campaign is located with OpenStreetMap's Nominatim, one lookup a second as its policy asks. Only places with a phone or an email are kept.",
+        "requires_credentials": false,
+        "automation_allowed": true,
+        "default_requests_per_minute": 600,
+        "default_daily_request_budget": null,
+        "default_page_size": 500,
+        "config_fields": []
+      },
+      "enabled": true,
+      "health": "ready",
+      "health_detail": null,
+      "requests_per_minute": 600,
+      "daily_request_budget": null,
+      "max_concurrency": 1,
+      "last_run_at": null,
+      "last_run_status": null,
+      "last_error_code": null,
+      "last_error_message": null
+    },
+    {
+      "connector_id": "01900000-0000-7000-8000-000000000051",
+      "metadata": {
         "key": "directory.api_template",
         "name": "Business directory API (template, not configured)",
         "kind": "directory",

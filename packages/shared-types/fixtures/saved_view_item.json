@@ -1,6 +1,6 @@
 {
   "view": {
-    "id": "01900000-0000-7000-8000-000000001637",
+    "id": "01900000-0000-7000-8000-000000001638",
     "scope": "lead_explorer",
     "name": "Synthetic view: priority and review leads",
     "description": "Synthetic test data",
@@ -10,8 +10,8 @@
   },
   "versions": [
     {
-      "id": "01900000-0000-7000-8000-000000001639",
-      "view_id": "01900000-0000-7000-8000-000000001637",
+      "id": "01900000-0000-7000-8000-000000001640",
+      "view_id": "01900000-0000-7000-8000-000000001638",
       "version": 1,
       "definition_json": {
         "columns": [
