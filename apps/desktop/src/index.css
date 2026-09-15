@@ -164,6 +164,14 @@
     border-radius: var(--radius-sm);
   }
 
+  /* Chromium draws a native select's list with the select's own background, which is transparent
+     in this app: without theme colours the options read light-on-white in the dark theme */
+  option,
+  optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
+
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
