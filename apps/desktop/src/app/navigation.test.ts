@@ -9,9 +9,11 @@ import {
 import { en } from "@/lib/locales/en";
 import { es } from "@/lib/locales/es";
 
-/** The 16 modules the product promises, in the order the prompt defines them. */
+/** The modules the product promises, in the order the prompt defines them. */
 const EXPECTED_MODULES = [
   "client-search",
+  "client-list",
+  "client-searches",
   "overview",
   "discovery",
   "campaigns",
@@ -76,6 +78,8 @@ describe("navigation registry", () => {
   it("hides advanced screens by default and restores all of them on request", () => {
     expect(visibleSidebarItems(false).map((item) => item.id)).toEqual([
       "client-search",
+      "client-list",
+      "client-searches",
       "settings",
     ]);
     expect(visibleSidebarItems(true)).toEqual(NAV_ITEMS);

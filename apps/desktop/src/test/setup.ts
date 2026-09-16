@@ -1,5 +1,6 @@
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, beforeEach } from "vitest";
+import { usePreferences } from "@/stores/preferences";
 
 /* jsdom lacks the observer and pointer APIs that Radix, cmdk and the virtualizer rely on. */
 class ResizeObserverStub {
@@ -43,6 +44,11 @@ Element.prototype.scrollIntoView ??= () => {};
 Element.prototype.hasPointerCapture ??= () => false;
 Element.prototype.setPointerCapture ??= () => {};
 Element.prototype.releasePointerCapture ??= () => {};
+
+/* The app ships Spanish first (D-095); these tests read the English wording of every screen. */
+beforeEach(() => {
+  usePreferences.setState({ language: "en" });
+});
 
 afterEach(() => {
   cleanup();

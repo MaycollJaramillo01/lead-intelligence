@@ -13,6 +13,8 @@ export const es: Partial<Record<TranslationKey, string>> = {
 
   "nav.overview": "Resumen",
   "nav.client_search": "Buscar clientes",
+  "nav.client_list": "Tu lista de clientes",
+  "nav.client_searches": "Mis búsquedas",
   "nav.discovery": "Descubrimiento",
   "nav.campaigns": "Campañas",
   "nav.sources": "Fuentes",
@@ -31,6 +33,9 @@ export const es: Partial<Record<TranslationKey, string>> = {
 
   "desc.overview": "Estado del sistema y el camino más corto a la siguiente acción útil.",
   "desc.client_search": "Una lista corta y ordenada con contacto y una razón para llamar.",
+  "desc.client_list":
+    "Los clientes de tu última búsqueda, con el teléfono y el archivo para descargar.",
+  "desc.client_searches": "Todas las búsquedas que has hecho y en qué quedaron.",
   "desc.discovery": "Encuentra negocios candidatos desde fuentes legales y configurables.",
   "desc.campaigns": "Define qué buscar: geografía, verticales, fuentes y límites.",
   "desc.sources": "Conectores, sus capacidades, condiciones y salud.",
@@ -645,6 +650,11 @@ export const es: Partial<Record<TranslationKey, string>> = {
   "clientSearch.latinoEvidence": "Evidencia latina",
   "clientSearch.more": "Se muestran {shown} de {count}; abre la lista completa para ver el resto.",
   "clientSearch.download": "Descargar la lista",
+  "clientSearch.done": "Tu lista de clientes está lista.",
+  "clientSearch.open": "Abrir",
+  "clientSearch.chooseCity": "Elige una ciudad",
+  "clientSearch.chooseStateFirst": "Elige antes el estado",
+  "clientList.empty": "Todavía no hay lista. Empieza una búsqueda y aquí saldrán tus clientes.",
   "clientSearch.downloaded": "Se guardaron {count} clientes en {file}",
   "clientSearch.downloadFailed": "No se pudo guardar la lista",
   "clientSearch.column.name": "Negocio",

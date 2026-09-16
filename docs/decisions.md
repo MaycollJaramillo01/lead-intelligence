@@ -1370,3 +1370,24 @@ hash y manifiesto que cualquier exportación.
 **Consecuencia.** El recuento previo sigue leyendo solo campos del explorador (un valor de contacto
 no lo es). El archivo es CSV con BOM. `top_problem` y `offer` viajan como código; la pantalla los
 traduce, el archivo no.
+
+## D-098 · La ciudad se elige de una lista y la experiencia simple deja de ser una sola pantalla (phase 16)
+
+**Contexto.** La ciudad era texto libre: se escribía y solo al terminar se sabía si Nominatim la
+reconocía, así que una errata daba 0 clientes sin explicación. Y toda la experiencia simple
+(formulario, progreso, lista de clientes e historial) vivía dentro de «Buscar clientes», con una
+barra lateral de dos entradas, en contra de lo que ya describía `docs/ux/buscar-clientes.md`.
+
+**Decisión.** Las ciudades salen del Gazetteer de lugares 2024 del US Census Bureau (dominio
+público): 31.830 lugares de los 50 estados y DC, sin su descriptor legal («city», «CDP»...),
+generados en `apps/desktop/src/features/campaigns/usCities.ts` y empaquetados una línea por estado.
+El desplegable se llena con el estado elegido y se vacía al cambiarlo. La barra simple pasa a tener
+cuatro entradas: **Buscar clientes** (formulario y progreso), **Tu lista de clientes**
+(`/mis-clientes`, con la descarga), **Mis búsquedas** (`/mis-busquedas`) y **Ajustes**; las dos
+nuevas leen los mismos datos con `useSearchRuns` y `useClientList`.
+
+**Consecuencia.** El archivo de ciudades ocupa 315 KB en el bundle y solo cubre EE. UU.; un lugar
+que el Censo no lista ya no puede escribirse a mano. La lista de una búsqueda anterior se abre con
+`#/mis-clientes?job=<id>`. Los tests de interfaz seguían escritos contra la versión en inglés
+anterior al rediseño: fijar el idioma inglés en `src/test/setup.ts` recupera 31 de ellos, y los ~100
+que siguen fallando esperan nombres que el rediseño cambió.

@@ -9,7 +9,7 @@ terminar, abre una lista ordenada y exportable. La app no llama ni contacta a na
 
 1. Elegir una o varias ofertas (o describir otra y marcar los problemas que resuelve).
 2. Elegir el tipo de negocio; opcionalmente pedir los negocios latinos primero.
-3. Elegir estado, escribir ciudad y, opcionalmente, radio (40 km si se deja vacío).
+3. Elegir estado y ciudad de sus listas y, opcionalmente, radio (40 km si se deja vacío).
 4. Pedir 25, 50 o 100 clientes y pulsar **Buscar clientes**.
 5. Esperar, pausar o continuar. Abrir **Tu lista de clientes** y descargarla.
 
@@ -20,7 +20,7 @@ terminar, abre una lista ordenada y exportable. La app no llama ni contacta a na
 │ Te decimos a quién llamar, su contacto y qué ofrecerle.       │
 │ 1 ¿Qué vendes? [Páginas web] [Más clientes] [Reservas] ...    │
 │ 2 ¿A qué negocios? [Tipo de negocio ▾] [ ] Latinos primero    │
-│ 3 ¿Dónde? [Estado ▾] [Ciudad] [Radio km, opcional]             │
+│ 3 ¿Dónde? [Estado ▾] [Ciudad ▾] [Radio km, opcional]           │
 │ 4 ¿Cuántos? (25) (50) (100)   Aproximadamente 8–20 minutos    │
 │                                      [ Buscar clientes ]       │
 └────────────────────────────────────────────────────────────────┘
@@ -111,6 +111,10 @@ compatible y contacto utilizable: 25 → 300, 50 → 600, 100 → 1.200. `max_re
 y `max_pages_per_source` es `ceil(candidatos / 100)`, con mínimo 3. Las estimaciones orientativas
 mostradas son 8–20, 15–35 y 25–60 minutos; el progreso posterior solo muestra datos reales.
 
+La ciudad se elige de una lista, no se escribe: son los 31.830 lugares del Gazetteer 2024 del US
+Census Bureau (dominio público), por estado, sin su descriptor legal. Una errata ya no puede dejar la
+búsqueda en cero (D-098).
+
 Sin radio se buscan **40 km** alrededor de la ciudad. Los límites municipales se quedan cortos:
 Overture (release 2026-08-19) tenía 12 remodeladores con teléfono o correo dentro de Miami, 45 a 25 km
 y 64 a 40 km.
@@ -134,7 +138,8 @@ guarda el tipo de canal (D-097).
 
 ## Navegación y lenguaje
 
-La barra simple contiene **Buscar clientes**, **Mis búsquedas** y **Ajustes**. «Mostrar herramientas
+La barra simple contiene **Buscar clientes**, **Tu lista de clientes**, **Mis búsquedas** y
+**Ajustes**. «Mostrar herramientas
 avanzadas» revela intactas las pantallas anteriores. La paleta sigue indexando todas.
 
 | Término interno         | Texto simple                 |

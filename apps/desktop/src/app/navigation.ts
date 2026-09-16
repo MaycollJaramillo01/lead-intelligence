@@ -5,6 +5,7 @@ import {
   Database,
   Download,
   Gauge,
+  History,
   LayoutDashboard,
   ListChecks,
   Megaphone,
@@ -56,6 +57,24 @@ export const NAV_ITEMS: readonly NavItem[] = [
     status: "available",
     titleKey: "nav.client_search",
     descriptionKey: "desc.client_search",
+  },
+  {
+    id: "client-list",
+    path: "/mis-clientes",
+    icon: ListChecks,
+    section: "overview",
+    status: "available",
+    titleKey: "nav.client_list",
+    descriptionKey: "desc.client_list",
+  },
+  {
+    id: "client-searches",
+    path: "/mis-busquedas",
+    icon: History,
+    section: "overview",
+    status: "available",
+    titleKey: "nav.client_searches",
+    descriptionKey: "desc.client_searches",
   },
   {
     id: "overview",
@@ -209,11 +228,17 @@ export function navItemsBySection(section: NavSectionId): NavItem[] {
   return NAV_ITEMS.filter((item) => item.section === section);
 }
 
+/** What the simple bar shows: the search, its list, its history and the settings. */
+const SIMPLE: ReadonlySet<string> = new Set([
+  "client-search",
+  "client-list",
+  "client-searches",
+  "settings",
+]);
+
 /** Simple navigation hides implementation screens; the command palette still uses NAV_ITEMS. */
 export function visibleSidebarItems(showAdvancedTools: boolean): NavItem[] {
-  return NAV_ITEMS.filter(
-    (item) => showAdvancedTools || item.id === "client-search" || item.id === "settings",
-  );
+  return NAV_ITEMS.filter((item) => showAdvancedTools || SIMPLE.has(item.id));
 }
 
 /** The module a path belongs to: its own page, or a page under it (`/businesses/<id>`). */

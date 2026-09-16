@@ -12,6 +12,8 @@ export const en = {
 
   "nav.overview": "Overview",
   "nav.client_search": "Find clients",
+  "nav.client_list": "Your client list",
+  "nav.client_searches": "Your searches",
   "nav.discovery": "Discovery",
   "nav.campaigns": "Campaigns",
   "nav.sources": "Sources",
@@ -30,6 +32,9 @@ export const en = {
 
   "desc.overview": "System state and the shortest path to the next useful action.",
   "desc.client_search": "A short, ranked client list with contact details and a reason to call.",
+  "desc.client_list":
+    "The clients of your last search, with the phone to call and the file to download.",
+  "desc.client_searches": "Every search you have run, with what happened to it.",
   "desc.discovery": "Find candidate businesses from configurable, legal sources.",
   "desc.campaigns": "Define what to look for: geography, verticals, sources and limits.",
   "desc.sources": "Connectors, their capabilities, terms and health.",
@@ -643,6 +648,11 @@ export const en = {
   "clientSearch.latinoEvidence": "Latino evidence",
   "clientSearch.more": "Showing {shown} of {count}; open the full list to see the rest.",
   "clientSearch.download": "Download the list",
+  "clientSearch.done": "Your client list is ready.",
+  "clientSearch.open": "Open",
+  "clientSearch.chooseCity": "Choose a city",
+  "clientSearch.chooseStateFirst": "Choose a state first",
+  "clientList.empty": "No list yet. Start a search and your clients will appear here.",
   "clientSearch.downloaded": "{count} clients saved to {file}",
   "clientSearch.downloadFailed": "The list could not be saved",
   "clientSearch.column.name": "Business",
