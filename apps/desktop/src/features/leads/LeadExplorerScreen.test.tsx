@@ -86,7 +86,7 @@ function renderScreen(path = "/lead-explorer") {
 
 describe("LeadExplorerScreen", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     useUiStore.setState({ inspectorOpen: false, inspectedId: null });
     useExplorerSession.setState(explorerSessionDefaults);
     for (const mock of Object.values(mocks)) mock.mockReset();

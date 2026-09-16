@@ -24,7 +24,7 @@ const detail = detailFixture as LatinoDetail;
 
 describe("LatinoPanel", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.getLatino.mockResolvedValue(detail);
   });

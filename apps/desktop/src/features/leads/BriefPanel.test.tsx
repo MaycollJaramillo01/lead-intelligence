@@ -42,7 +42,7 @@ const WHY: readonly BriefSection[] = [
 
 describe("sales brief", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     for (const mock of Object.values(mocks)) mock.mockReset();
   });
 

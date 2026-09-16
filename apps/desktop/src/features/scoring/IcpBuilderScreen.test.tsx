@@ -46,7 +46,7 @@ async function openProfile() {
 
 describe("IcpBuilderScreen", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.getScoringCatalog.mockResolvedValue(catalog);
     mocks.listScoreRuns.mockResolvedValue(runs);

@@ -90,7 +90,7 @@ function renderPage() {
 
 describe("business in full", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.getBusiness.mockResolvedValue(detail);
     mocks.getLeadScorecard.mockRejectedValue(new IpcError("not_found", "not scored yet"));

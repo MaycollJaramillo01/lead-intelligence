@@ -13,5 +13,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     restoreMocks: true,
+    // The screens that type into big forms pass alone but not while every other file runs beside
+    // them: the default 5 s is the machine, not the code (they take ~1 s each on an idle one).
+    testTimeout: 20_000,
   },
 });

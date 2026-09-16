@@ -61,7 +61,7 @@ async function openBusiness() {
 
 describe("ContactsView", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.listContacts.mockResolvedValue(page);
     mocks.listContactRuns.mockResolvedValue(NO_RUNS);

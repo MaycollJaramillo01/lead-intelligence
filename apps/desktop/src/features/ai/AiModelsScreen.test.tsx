@@ -35,7 +35,7 @@ const runs = runsFixture as AiRunPage;
 
 describe("AiModelsScreen", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.getAiStatus.mockResolvedValue(status);
     mocks.configureAi.mockResolvedValue(status);

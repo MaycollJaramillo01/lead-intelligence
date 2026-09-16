@@ -8,6 +8,7 @@ import explorerFixture from "@lead/shared-types/fixtures/explorer_catalog.json";
 import catalogFixture from "@lead/shared-types/fixtures/source_catalog.json";
 import { createTestRouter } from "@/app/router";
 import { NAV_ITEMS } from "@/app/navigation";
+import { en } from "@/lib/locales/en";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDiagnosticsStore } from "@/features/diagnostics/store";
 import { IpcError, type desktop } from "@/lib/ipc";
@@ -57,7 +58,7 @@ function renderApp(path = "/overview") {
 
 describe("application shell", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en", showAdvancedTools: true });
     useUiStore.setState({ commandPaletteOpen: false, shortcutsHelpOpen: false, inspectedId: null });
     useDiagnosticsStore.setState({ report, worker: report.worker, error: null, loading: false });
     for (const mock of Object.values(mocks)) mock.mockReset();
@@ -91,8 +92,9 @@ describe("application shell", () => {
     renderApp();
     const sidebar = screen.getByRole("navigation", { name: "Lead Intelligence" });
     for (const item of NAV_ITEMS) {
+      // the System link also carries the worker indicator, so its name starts with the module name
       expect(
-        within(sidebar).getByRole("link", { name: new RegExp(item.id.replace("-", " "), "i") }),
+        within(sidebar).getByRole("link", { name: new RegExp(en[item.titleKey]) }),
       ).toBeTruthy();
     }
     expect(within(sidebar).getByRole("heading", { name: "System" })).toBeTruthy();

@@ -73,7 +73,7 @@ function renderJobs(path = "/jobs") {
 
 describe("JobsScreen", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.listDiscoveryRuns.mockResolvedValue(discovery);
     mocks.listCrawlRuns.mockResolvedValue(crawls);

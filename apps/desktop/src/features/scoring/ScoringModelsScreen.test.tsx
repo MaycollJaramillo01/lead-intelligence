@@ -44,7 +44,7 @@ const [rescored, original] = runs.items as [ScoreRunItem, ScoreRunItem];
 
 describe("ScoringModelsScreen", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.getScoringCatalog.mockResolvedValue(catalog);
     mocks.listScoreRuns.mockResolvedValue(runs);

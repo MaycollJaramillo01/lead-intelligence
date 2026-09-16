@@ -6,7 +6,7 @@ describe("appearance sync", () => {
   let stop: (() => void) | undefined;
 
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     document.documentElement.className = "";
   });
 

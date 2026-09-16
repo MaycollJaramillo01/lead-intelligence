@@ -56,7 +56,7 @@ async function openDuplicates() {
 
 describe("Possible duplicates", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     useUiStore.setState({ inspectorOpen: true, inspectedId: null });
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.listBusinesses.mockResolvedValue(EMPTY);

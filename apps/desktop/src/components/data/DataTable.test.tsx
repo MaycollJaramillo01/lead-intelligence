@@ -57,7 +57,7 @@ function bodyRowNames(): string[] {
 
 describe("DataTable", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
   });
 
   it("renders rows and sorts by a column header", async () => {
@@ -119,7 +119,7 @@ describe("DataTable virtualization", () => {
   );
 
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
       configurable: true,
       get: () => 600,

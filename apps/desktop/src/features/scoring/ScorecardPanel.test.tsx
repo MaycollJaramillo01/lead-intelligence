@@ -22,7 +22,7 @@ const run = detail.score_run.score_run_id;
 
 describe("ScorecardPanel", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.getLeadScorecard.mockResolvedValue(detail);
     mocks.actOnLead.mockResolvedValue(detail);

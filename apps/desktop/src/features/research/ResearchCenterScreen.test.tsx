@@ -57,7 +57,7 @@ function renderScreen() {
 
 describe("ResearchCenterScreen", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.listCampaigns.mockResolvedValue(campaigns);
     mocks.listCrawlRuns.mockResolvedValue(runs);

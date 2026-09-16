@@ -30,7 +30,7 @@ async function typeReason(text: string) {
 
 describe("ResearchPanel", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.getResearchWorkspace.mockResolvedValue(workspace);
     mocks.actOnResearch.mockResolvedValue(workspace);

@@ -36,7 +36,7 @@ async function openChangedSite() {
 
 describe("WebsiteIntelligenceView", () => {
   beforeEach(() => {
-    usePreferences.setState(preferenceDefaults);
+    usePreferences.setState({ ...preferenceDefaults, language: "en" });
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.listWebsiteAudits.mockResolvedValue(page);
     mocks.listWebsiteRuns.mockResolvedValue(runs);
