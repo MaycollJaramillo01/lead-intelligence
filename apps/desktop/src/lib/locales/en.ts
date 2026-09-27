@@ -711,6 +711,47 @@ export const en = {
   "clientSearch.repeatingNoOffer":
     "This is your earlier search. Tick what you sell and press “Find clients” to repeat it.",
   "clientSearch.paused": "Your search was paused. Press “Continue” to finish it.",
+  "clientSearch.progress.stopped": "Stopped here",
+  "clientSearch.progress.skipped": "Skipped",
+  "clientSearch.step.discovery": "finding businesses",
+  "clientSearch.step.acquisition": "visiting their websites",
+  "clientSearch.step.deduplicate": "removing duplicates",
+  "clientSearch.step.latino": "checking whether they are Latino businesses",
+  "clientSearch.step.website": "looking for problems on their websites",
+  "clientSearch.step.contact": "collecting phones and emails",
+  "clientSearch.step.ai": "drafting explanations",
+  "clientSearch.step.choose": "choosing the best matches",
+  "clientSearch.step.list": "preparing your list",
+  "clientSearch.cause.network": "There was no internet connection or the source did not answer.",
+  "clientSearch.cause.timeout": "The source or this computer took too long to answer.",
+  "clientSearch.cause.rate_limited": "The source asked us to wait before asking again.",
+  "clientSearch.cause.store": "The app's data was busy or could not be opened.",
+  "clientSearch.cause.worker_interrupted": "The process closed while it was working.",
+  "clientSearch.cause.out_of_memory": "The computer ran out of memory.",
+  "clientSearch.cause.configuration": "The app could not start this step with the search's data.",
+  "clientSearch.cause.other": "Something unexpected failed in this step.",
+  "clientSearch.failure.title": "Your search stopped while {step}.",
+  "clientSearch.failure.retryHelps": "Trying again usually fixes it.",
+  "clientSearch.failure.cannotSkip":
+    "The list needs this step, so it cannot be skipped: try it again.",
+  "clientSearch.skip.acquisition":
+    "If you skip it, only what the source publishes is used: their websites are not checked, so there will be fewer reasons to call.",
+  "clientSearch.skip.latino":
+    "If you skip it, the list is not ordered by Latino evidence; everything else stays the same.",
+  "clientSearch.skip.website":
+    "If you skip it, their websites are not checked: fewer clients come out, only those with another reason to call.",
+  "clientSearch.skip.contact":
+    "If you skip it, only the phones and emails the source publishes are used.",
+  "clientSearch.skip.ai":
+    "If you skip it, only the drafted explanations are missing; the list is the same.",
+  "clientSearch.failure.retry": "Try again",
+  "clientSearch.failure.skip": "Skip this step",
+  "clientSearch.failure.details": "Technical details (for support)",
+  "clientSearch.failure.retrying": "Trying that step again",
+  "clientSearch.failure.skipped": "Going on without that step",
+  "clientSearch.failure.notResolved": "The search could not go on",
+  "clientSearch.failure.none":
+    "Your search stopped and there is nothing left to decide. You can repeat it from “My searches”.",
   "clientList.noneFiltered": "No client of this search matches what you ticked in “Show only”.",
 
   "module.notConfiguredTitle": "This module is not configured yet",

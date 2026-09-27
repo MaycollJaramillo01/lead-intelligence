@@ -189,6 +189,38 @@ pulsar «Buscar clientes», así que se puede cambiar algo antes. Una ciudad esc
 la lista del Censo (D-098) se vuelve a elegir. Si la app se cerró a mitad, «Buscar clientes» dice
 «Tu búsqueda quedó en pausa» junto a «Continuar».
 
+## Cuando un paso falla
+
+Los fallos pasajeros se reintentan solos (D-084). Cuando un paso agota sus intentos o el motor lo
+rechaza, la búsqueda queda «Fallida» y tanto «Buscar clientes» como «Mis búsquedas» lo explican sin
+códigos (D-101):
+
+```text
+┌ Tu búsqueda se detuvo al buscar problemas en sus webs. ─────────┐
+│ No hubo conexión a internet o la fuente no respondió. Suele     │
+│ arreglarse volviendo a intentarlo.                              │
+│ Si lo saltas, no se revisan sus webs: saldrán menos clientes…   │
+│ [Reintentar] [Saltar este paso]                                 │
+│ ▸ Detalles técnicos (para soporte)                              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+| Paso                                   | ¿Se puede saltar? | Qué implica saltarlo                                     |
+| -------------------------------------- | ----------------- | -------------------------------------------------------- |
+| Buscar negocios                        | No                | Sin negocios no hay lista                                |
+| Visitar sus páginas web                | Sí                | Solo lo que publica la fuente: menos motivos para llamar |
+| Quitar duplicados                      | No                | De ahí salen los negocios que se puntúan                 |
+| Revisar si son negocios latinos        | Sí                | La lista no se ordena por evidencia latina               |
+| Buscar problemas en sus webs           | Sí                | Menos clientes, solo los que tengan otro motivo          |
+| Juntar teléfonos y correos             | Sí                | Solo los teléfonos y correos que publica la fuente       |
+| Redactar explicaciones                 | Sí                | Solo faltan las explicaciones redactadas                 |
+| Elegir los mejores · Preparar tu lista | No                | De ahí salen la puntuación y la lista                    |
+
+Las causas se dicen en palabras (sin conexión, la fuente tardó, pidió esperar, datos ocupados, el
+proceso se cerró, sin memoria, ajustes de la búsqueda, algo inesperado) y, si el motor la marca
+como pasajera, se añade «Suele arreglarse volviendo a intentarlo». El mensaje del motor queda
+plegado en «Detalles técnicos». La etapa que falló dice «Se detuvo aquí» y una saltada, «Saltado».
+
 ## Navegación y lenguaje
 
 La barra simple contiene **Buscar clientes**, **Tu lista de clientes**, **Mis búsquedas** y

@@ -10,6 +10,7 @@ import type {
   LeadActionRequest,
   LeadStage,
   LeadTier,
+  PipelineRun,
   PipelineStage,
   PipelineStageView,
   PipelineStartRequest,
@@ -440,6 +441,54 @@ export function outcomeRequest(
     occurred_at: null,
   };
 }
+
+/** A stage as the step of the search it stopped at: «Tu búsqueda se detuvo al …». */
+export const STAGE_STEP: Record<PipelineStage, TranslationKey> = {
+  discovery: "clientSearch.step.discovery",
+  acquisition: "clientSearch.step.acquisition",
+  normalization: "clientSearch.step.deduplicate",
+  entity_resolution: "clientSearch.step.deduplicate",
+  latino_evidence: "clientSearch.step.latino",
+  website_intelligence: "clientSearch.step.website",
+  contact_intelligence: "clientSearch.step.contact",
+  local_ai: "clientSearch.step.ai",
+  scoring: "clientSearch.step.choose",
+  review_export_eligibility: "clientSearch.step.list",
+};
+
+/**
+ * What going on without a step costs, for the steps a search can skip and still leave a list
+ * (D-101). The others make the list itself: finding and merging businesses, scoring them and
+ * preparing the list (the score run comes from that last step), so they are only retried.
+ */
+export const SKIP_EFFECT: Partial<Record<PipelineStage, TranslationKey>> = {
+  acquisition: "clientSearch.skip.acquisition",
+  latino_evidence: "clientSearch.skip.latino",
+  website_intelligence: "clientSearch.skip.website",
+  contact_intelligence: "clientSearch.skip.contact",
+  local_ai: "clientSearch.skip.ai",
+};
+
+/** Why a step failed, in words; the engine's code is never shown. */
+const CAUSE_KEYS: Record<string, TranslationKey> = {
+  network: "clientSearch.cause.network",
+  timeout: "clientSearch.cause.timeout",
+  rate_limited: "clientSearch.cause.rate_limited",
+  store_unavailable: "clientSearch.cause.store",
+  store_busy: "clientSearch.cause.store",
+  worker_interrupted: "clientSearch.cause.worker_interrupted",
+  out_of_memory: "clientSearch.cause.out_of_memory",
+  configuration: "clientSearch.cause.configuration",
+};
+export const causeKey = (code: string): TranslationKey =>
+  CAUSE_KEYS[code] ?? "clientSearch.cause.other";
+
+/** The failure a person has to decide on: the stage a search stopped at, retry or skip. */
+export const openFailure = (run: Pick<PipelineRun, "dead_letters">) =>
+  run.dead_letters.find((letter) => letter.review_status === "open") ?? null;
+
+export const RETRY_REASON = "Reintentado desde Buscar clientes";
+export const SKIP_REASON = "Saltado desde Buscar clientes";
 
 export const STAGE_MESSAGE: Record<PipelineStage, TranslationKey> = {
   discovery: "clientSearch.progress.discovery",

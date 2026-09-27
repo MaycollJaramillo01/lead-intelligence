@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { formatDateTime, useLanguage, useT } from "@/lib/i18n";
 import { desktop, toIpcError } from "@/lib/ipc";
 import { searchTitle } from "./model";
+import { SearchFailure } from "./SearchFailure";
 import { useSearchDetails, useSearchRuns, type SearchDetails } from "./useSearches";
 
 const IN_PROGRESS: ReadonlySet<string> = new Set(["queued", "running"]);
@@ -100,6 +101,11 @@ export function ClientSearchesScreen() {
                             </Button>
                           )}
                       </div>
+                      {run.status === "failed" && (
+                        <div className="basis-full">
+                          <SearchFailure run={run} onResolved={reload} />
+                        </div>
+                      )}
                     </li>
                   );
                 })}

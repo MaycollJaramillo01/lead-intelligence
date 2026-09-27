@@ -17,7 +17,7 @@ import type { desktop } from "@/lib/ipc";
 import { preferenceDefaults, usePreferences } from "@/stores/preferences";
 import { ClientSearchesScreen } from "./ClientSearchesScreen";
 import { ClientSearchScreen } from "./ClientSearchScreen";
-import { buildCampaignRequest } from "./model";
+import { buildCampaignRequest, RETRY_REASON, SKIP_REASON } from "./model";
 
 const mocks = vi.hoisted(() => ({
   listPipelines: vi.fn<typeof desktop.listPipelines>(),
@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   getScoringCatalog: vi.fn<typeof desktop.getScoringCatalog>(),
   exploreLeads: vi.fn<typeof desktop.exploreLeads>(),
   controlPipeline: vi.fn<typeof desktop.controlPipeline>(),
+  resolveDeadLetter: vi.fn<typeof desktop.resolveDeadLetter>(),
   getAiStatus: vi.fn<typeof desktop.getAiStatus>(),
 }));
 vi.mock("@/lib/ipc", async (importOriginal) => ({
@@ -62,6 +63,37 @@ const runs = [
     score_run_id: null,
     actions: ["resume", "cancel"],
   }),
+  ...(
+    [
+      ["dallas", "Dallas", "website_intelligence", "network", true],
+      ["austin", "Austin", "scoring", "configuration", false],
+    ] as const
+  ).map(([id, city, stage, code, retryable]) =>
+    run({
+      job_id: `job-${id}`,
+      status: "failed",
+      campaign_id: `campaign-${id}`,
+      campaign_name: `Buscar clientes · roofing · ${city} · TX`,
+      score_run_id: null,
+      actions: [],
+      dead_letters: [
+        {
+          id: `letter-${id}`,
+          task_id: `task-${id}`,
+          stage,
+          attempt: 3,
+          error_code: code,
+          error_message: `${code}: the engine said no (synthetic)`,
+          retryable,
+          review_status: "open",
+          created_at: "2026-09-27T10:00:00.000Z",
+          resolved_at: null,
+          resolved_by: null,
+          resolution_reason: null,
+        },
+      ],
+    }),
+  ),
 ];
 const campaigns = campaignFixture as CampaignPage;
 const catalog = catalogFixture as ScoringCatalog;
@@ -183,6 +215,56 @@ describe("My searches", () => {
     ).toBe("25");
     expect(screen.getByRole("button", { name: "Find clients" }).hasAttribute("disabled")).toBe(
       false,
+    );
+  });
+
+  it("explains a stopped search without codes and lets it go on", async () => {
+    const user = userEvent.setup();
+    mocks.resolveDeadLetter.mockResolvedValue(runs[2] as PipelineRun);
+    renderHistory();
+    const dallas = within(
+      (await screen.findByText("Roofing · Dallas, Texas")).closest("li") as HTMLElement,
+    );
+    const alert = within(dallas.getByRole("alert"));
+    expect(
+      alert.getByText("Your search stopped while looking for problems on their websites."),
+    ).toBeTruthy();
+    expect(
+      alert.getByText(
+        "There was no internet connection or the source did not answer. Trying again usually fixes it.",
+      ),
+    ).toBeTruthy();
+    expect(alert.getByText(/their websites are not checked: fewer clients come out/)).toBeTruthy();
+    expect(alert.queryByText(/^network$/)).toBeNull();
+    await user.click(alert.getByRole("button", { name: "Skip this step" }));
+    await waitFor(() =>
+      expect(mocks.resolveDeadLetter).toHaveBeenCalledWith({
+        job_id: "job-dallas",
+        task_id: "task-dallas",
+        action: "skip",
+        reason: SKIP_REASON,
+      }),
+    );
+
+    // a step the list is made of is only retried
+    const austin = within(
+      within(screen.getByText("Roofing · Austin, Texas").closest("li") as HTMLElement).getByRole(
+        "alert",
+      ),
+    );
+    expect(austin.getByText("Your search stopped while choosing the best matches.")).toBeTruthy();
+    expect(
+      austin.getByText("The list needs this step, so it cannot be skipped: try it again."),
+    ).toBeTruthy();
+    expect(austin.queryByRole("button", { name: "Skip this step" })).toBeNull();
+    await user.click(austin.getByRole("button", { name: "Try again" }));
+    await waitFor(() =>
+      expect(mocks.resolveDeadLetter).toHaveBeenLastCalledWith({
+        job_id: "job-austin",
+        task_id: "task-austin",
+        action: "retry",
+        reason: RETRY_REASON,
+      }),
     );
   });
 });

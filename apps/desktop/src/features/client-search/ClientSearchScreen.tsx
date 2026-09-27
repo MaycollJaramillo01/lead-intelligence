@@ -22,6 +22,7 @@ import {
   type ClientSearchDraft,
   type OfferChoice,
 } from "./model";
+import { SearchFailure } from "./SearchFailure";
 import { useSearchRuns } from "./useSearches";
 
 const OFFERS: OfferChoice[] = ["website", "conversion", "booking", "google", "measurement"];
@@ -350,10 +351,14 @@ export function ClientSearchScreen() {
                     totals.length === jobs.length
                       ? totals.reduce((sum, value) => sum + value, 0)
                       : null;
+                  const failed = stage.status === "failed";
                   return (
                     <li
                       key={stage.task_id}
-                      className="flex justify-between rounded-md bg-muted/40 px-3 py-2 text-sm"
+                      className={cn(
+                        "flex justify-between rounded-md bg-muted/40 px-3 py-2 text-sm",
+                        failed && "text-destructive",
+                      )}
                     >
                       <span>
                         {aiSkipped
@@ -361,15 +366,23 @@ export function ClientSearchScreen() {
                           : t(STAGE_MESSAGE[stage.stage])}
                       </span>
                       {!aiSkipped && (
-                        <span className="text-muted-foreground">
-                          {done}
-                          {total != null ? ` / ${total}` : ""}
+                        <span className={cn(!failed && "text-muted-foreground")}>
+                          {failed
+                            ? t("clientSearch.progress.stopped")
+                            : stage.skipped === "skipped_by_person"
+                              ? t("clientSearch.progress.skipped")
+                              : `${done}${total != null ? ` / ${total}` : ""}`}
                         </span>
                       )}
                     </li>
                   );
                 })}
               </ol>
+              {active.status === "failed" && (
+                <div className="mt-4">
+                  <SearchFailure run={active} onResolved={reload} />
+                </div>
+              )}
               {active.status === "succeeded" && (
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                   <p className="font-medium">{t("clientSearch.done")}</p>

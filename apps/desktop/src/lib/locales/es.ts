@@ -715,6 +715,48 @@ export const es: Partial<Record<TranslationKey, string>> = {
   "clientSearch.repeatingNoOffer":
     "Es tu búsqueda anterior. Marca qué vendes y pulsa «Buscar clientes» para repetirla.",
   "clientSearch.paused": "Tu búsqueda quedó en pausa. Pulsa «Continuar» para terminarla.",
+  "clientSearch.progress.stopped": "Se detuvo aquí",
+  "clientSearch.progress.skipped": "Saltado",
+  "clientSearch.step.discovery": "buscar negocios",
+  "clientSearch.step.acquisition": "visitar sus páginas web",
+  "clientSearch.step.deduplicate": "quitar duplicados",
+  "clientSearch.step.latino": "revisar si son negocios latinos",
+  "clientSearch.step.website": "buscar problemas en sus webs",
+  "clientSearch.step.contact": "juntar teléfonos y correos",
+  "clientSearch.step.ai": "redactar explicaciones",
+  "clientSearch.step.choose": "elegir los mejores",
+  "clientSearch.step.list": "preparar tu lista",
+  "clientSearch.cause.network": "No hubo conexión a internet o la fuente no respondió.",
+  "clientSearch.cause.timeout": "La fuente o este equipo tardaron demasiado en responder.",
+  "clientSearch.cause.rate_limited": "La fuente pidió que esperemos antes de seguir preguntando.",
+  "clientSearch.cause.store": "Los datos de la app estaban ocupados o no se pudieron abrir.",
+  "clientSearch.cause.worker_interrupted": "El proceso se cerró mientras trabajaba.",
+  "clientSearch.cause.out_of_memory": "El equipo se quedó sin memoria.",
+  "clientSearch.cause.configuration":
+    "La app no pudo empezar este paso con los datos de la búsqueda.",
+  "clientSearch.cause.other": "Algo inesperado falló en este paso.",
+  "clientSearch.failure.title": "Tu búsqueda se detuvo al {step}.",
+  "clientSearch.failure.retryHelps": "Suele arreglarse volviendo a intentarlo.",
+  "clientSearch.failure.cannotSkip":
+    "Este paso hace falta para tener la lista, así que no se puede saltar: reinténtalo.",
+  "clientSearch.skip.acquisition":
+    "Si lo saltas, solo se usa lo que publica la fuente: no se revisan sus webs, así que habrá menos motivos para llamar.",
+  "clientSearch.skip.latino":
+    "Si lo saltas, la lista no se ordena por evidencia latina; todo lo demás sigue igual.",
+  "clientSearch.skip.website":
+    "Si lo saltas, no se revisan sus webs: saldrán menos clientes, solo los que tengan otro motivo para llamar.",
+  "clientSearch.skip.contact":
+    "Si lo saltas, solo se usan los teléfonos y correos que publica la fuente.",
+  "clientSearch.skip.ai":
+    "Si lo saltas, solo faltan las explicaciones redactadas; la lista sale igual.",
+  "clientSearch.failure.retry": "Reintentar",
+  "clientSearch.failure.skip": "Saltar este paso",
+  "clientSearch.failure.details": "Detalles técnicos (para soporte)",
+  "clientSearch.failure.retrying": "Volvemos a intentar ese paso",
+  "clientSearch.failure.skipped": "Seguimos sin ese paso",
+  "clientSearch.failure.notResolved": "No se pudo continuar la búsqueda",
+  "clientSearch.failure.none":
+    "Tu búsqueda se detuvo y no queda nada por decidir. Puedes repetirla desde «Mis búsquedas».",
   "clientList.noneFiltered":
     "Ningún cliente de esta búsqueda cumple lo que marcaste en «Mostrar solo».",
 

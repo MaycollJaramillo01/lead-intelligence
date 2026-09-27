@@ -1445,3 +1445,23 @@ pulsa «Buscar clientes», que versiona la misma campaña y el mismo perfil (D-0
 **Consecuencia.** Una búsqueda que aún no terminó no dice qué vendía (no tiene puntuación) y
 «Repetir» no se ofrece mientras está en curso o en pausa. Las búsquedas creadas antes de la lista
 de ciudades pueden traer una ciudad que ya no está en la lista: se vuelve a elegir.
+
+## D-101 · Un paso fallido se explica sin códigos y el modo simple solo salta lo que no hace la lista (phase 16)
+
+**Contexto.** Cuando un paso agotaba sus intentos o el motor lo rechazaba, la búsqueda quedaba
+«Fallida» con una carta muerta abierta (D-084) y el modo simple no decía nada: solo la pantalla
+avanzada de Trabajos permitía reintentar o saltar, con códigos como `network`.
+
+**Decisión.** «Buscar clientes» y «Mis búsquedas» muestran la carta abierta en palabras: en qué paso
+se detuvo, por qué (un texto por código conocido, uno genérico para el resto) y, si el motor la
+marcó como pasajera, que reintentar suele arreglarlo. «Reintentar» y «Saltar este paso» llaman al
+`resolve_dead_letter` existente con un motivo fijo; el mensaje del motor queda plegado en «Detalles
+técnicos». En el modo simple solo se pueden saltar los pasos sin los que igualmente sale una lista
+—visitar las webs, evidencia latina, problemas web, contactos e IA local— y cada uno dice qué se
+pierde. Buscar y unir negocios, puntuar y preparar la lista no se ofrecen para saltar: sin ellos
+no hay lista (la puntuación del proceso sale del último paso).
+
+**Consecuencia.** Un paso que no se puede saltar y sigue fallando deja la búsqueda detenida hasta
+que se arregle la causa; la pantalla avanzada sigue permitiendo saltarlo. Verificado en la app real
+sobre una copia de la búsqueda de Miami detenida en «buscar problemas en sus webs»: saltarlo
+reanudó la búsqueda y terminó las diez etapas.
