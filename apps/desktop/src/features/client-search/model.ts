@@ -32,8 +32,21 @@ export const OFFER_PROBLEMS: Record<OfferChoice, readonly ProblemType[]> = {
   measurement: ["measurement_not_detected"],
 };
 
+/** A service the cards do not name: the person's own words and the problems they tick. */
+export interface OtherOffer {
+  name: string;
+  solves: ProblemType[];
+}
+
+/** Longest name a person may give their own service (an offer name holds 300). */
+export const OTHER_NAME_MAX = 80;
+/** The offer key of the person's own service; the others are `simple_<choice>`. */
+export const OTHER_KEY = "simple_other";
+
 export interface ClientSearchDraft {
   offers: OfferChoice[];
+  /** «Otro»: null when not chosen. */
+  other: OtherOffer | null;
   businessTypeId: string;
   latinoOnly: boolean;
   region: string;
@@ -139,15 +152,32 @@ export function searchTitle(t: Translator, name: string | null): string | null {
     .join(" · ");
 }
 
-/** The offers a profile version sells, as the simple choices they were saved from. */
-export function offersOf(definition: Record<string, unknown> | undefined): OfferChoice[] {
-  const offers = definition?.offers;
-  if (!Array.isArray(offers)) return [];
-  return offers
-    .map((offer: unknown) =>
-      offerOf(offer && typeof offer === "object" && "key" in offer ? String(offer.key) : null),
-    )
-    .filter((choice): choice is OfferChoice => choice !== null);
+/** What a search sold: the cards it chose and the person's own service, if any. */
+export interface Sold {
+  offers: OfferChoice[];
+  other: OtherOffer | null;
+}
+
+const PROBLEM_SET: ReadonlySet<string> = new Set(PROBLEMS);
+
+/** What a profile version sells, as the simple choices and the own service it was saved from. */
+export function soldOf(definition: Record<string, unknown> | undefined): Sold {
+  const saved = Array.isArray(definition?.offers) ? (definition.offers as unknown[]) : [];
+  const sold: Sold = { offers: [], other: null };
+  for (const offer of saved) {
+    if (!offer || typeof offer !== "object" || !("key" in offer)) continue;
+    const choice = offerOf(String(offer.key));
+    if (choice === "other" && "name" in offer && "solves" in offer) {
+      const solves = Array.isArray(offer.solves) ? offer.solves : [];
+      sold.other = {
+        name: String(offer.name),
+        solves: solves.filter((problem): problem is ProblemType => PROBLEM_SET.has(problem)),
+      };
+    } else if (choice && choice !== "other") {
+      sold.offers.push(choice);
+    }
+  }
+  return sold;
 }
 
 /**
@@ -157,7 +187,7 @@ export function offersOf(definition: Record<string, unknown> | undefined): Offer
 export function draftOf(
   name: string | null,
   criteria: Pick<CampaignSaveRequest["criteria"], "geography" | "limits"> | undefined,
-  offers: readonly OfferChoice[],
+  sold: Sold,
 ): ClientSearchDraft | null {
   const asked = parseSearchName(name);
   if (!asked) return null;
@@ -165,11 +195,16 @@ export function draftOf(
   const wanted = WANTED.find((count) => candidateLimit(count) === criteria?.limits.max_candidates);
   return {
     ...asked,
-    offers: [...offers],
+    offers: [...sold.offers],
+    other: sold.other && { name: sold.other.name, solves: [...sold.other.solves] },
     radiusKm: radius === DEFAULT_RADIUS_KM ? null : radius,
     wanted: wanted ?? 25,
   };
 }
+
+/** Whether «Otro» is complete: a name and at least one problem it solves. */
+export const otherReady = (other: OtherOffer | null) =>
+  other === null || (other.name.trim().length > 0 && other.solves.length > 0);
 
 export function buildIcpRequest(
   draft: ClientSearchDraft,
@@ -185,6 +220,17 @@ export function buildIcpRequest(
     capabilities: [],
     not_for_categories: [],
   }));
+  if (draft.other) {
+    const name = draft.other.name.trim().slice(0, OTHER_NAME_MAX);
+    offers.push({
+      key: OTHER_KEY,
+      name,
+      description: name,
+      solves: [...draft.other.solves],
+      capabilities: [],
+      not_for_categories: [],
+    });
+  }
   return {
     profile_id: existingId,
     project_id: null,
@@ -313,8 +359,11 @@ export const whyKey = (problem: ProblemType): TranslationKey => `clientList.why.
 export const whyProblems = (top: ProblemType | null, problems: readonly ProblemType[]) =>
   [...new Set([...(top ? [top] : []), ...problems])].slice(0, 2);
 
-/** The words a downloaded file writes instead of the codes of its columns (`ExportColumn.labels`). */
-export function clientColumnLabels(t: Translator): ColumnLabels {
+/**
+ * The words a downloaded file writes instead of the codes of its columns (`ExportColumn.labels`);
+ * `otherName` is the name the person gave their own service in this search.
+ */
+export function clientColumnLabels(t: Translator, otherName: string | null = null): ColumnLabels {
   const offers = Object.keys(OFFER_PROBLEMS) as OfferChoice[];
   return {
     tier: Object.fromEntries(WORDED_TIERS.map((tier) => [tier, t(`clientList.tier.${tier}`)])),
@@ -324,9 +373,10 @@ export function clientColumnLabels(t: Translator): ColumnLabels {
         return [problem, why.charAt(0).toUpperCase() + why.slice(1)];
       }),
     ),
-    offer: Object.fromEntries(
-      offers.map((choice) => [`simple_${choice}`, t(`clientSearch.offer.${choice}`)]),
-    ),
+    offer: Object.fromEntries([
+      ...offers.map((choice) => [`simple_${choice}`, t(`clientSearch.offer.${choice}`)]),
+      ...(otherName ? [[OTHER_KEY, otherName]] : []),
+    ]),
   };
 }
 
@@ -390,10 +440,17 @@ export function contactsOf(points: readonly ContactPoint[]): ClientContacts {
 }
 
 /** The simple-search offer a lead was matched to (`simple_<choice>`), if it is one. */
-export function offerOf(key: string | null): OfferChoice | null {
+export function offerOf(key: string | null): OfferChoice | "other" | null {
+  if (key === OTHER_KEY) return "other";
   const choice = key?.startsWith("simple_") ? key.slice("simple_".length) : null;
   return choice !== null && choice in OFFER_PROBLEMS ? (choice as OfferChoice) : null;
 }
+
+/** The names a search sold, cards first: «Páginas web, Mi servicio». */
+export const soldNames = (t: Translator, sold: Sold) => [
+  ...sold.offers.map((offer) => t(`clientSearch.offer.${offer}`)),
+  ...(sold.other ? [sold.other.name] : []),
+];
 
 /** What a person records from the list: they got in touch, the client is interested, or not. */
 export type ClientAction = "contacted" | "interested" | "not_interested";

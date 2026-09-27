@@ -11,11 +11,13 @@ import type {
   ExportItem,
   LeadStage,
   PipelineRun,
+  ScoringCatalog,
 } from "@lead/shared-types";
 import detailFixture from "@lead/shared-types/fixtures/business_detail.json";
 import pageFixture from "@lead/shared-types/fixtures/explorer_page.json";
 import exportFixture from "@lead/shared-types/fixtures/export_item.json";
 import runFixture from "@lead/shared-types/fixtures/pipeline_run.json";
+import catalogFixture from "@lead/shared-types/fixtures/scoring_catalog.json";
 import type { desktop } from "@/lib/ipc";
 import { preferenceDefaults, usePreferences } from "@/stores/preferences";
 import { ClientListScreen } from "./ClientListScreen";
@@ -30,6 +32,7 @@ const mocks = vi.hoisted(() => ({
   chooseExportDestination: vi.fn<typeof desktop.chooseExportDestination>(),
   startExport: vi.fn<typeof desktop.startExport>(),
   listExports: vi.fn<typeof desktop.listExports>(),
+  getScoringCatalog: vi.fn<typeof desktop.getScoringCatalog>(),
 }));
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
@@ -111,6 +114,64 @@ beforeEach(() => {
 });
 
 describe("Your client list", () => {
+  it("offers the person's own service by the name they gave it, in the list and the file", async () => {
+    const user = userEvent.setup();
+    const scored = page.score_run && {
+      ...page.score_run,
+      icp_profile_id: "profile-1",
+      icp_profile_version: 2,
+    };
+    mocks.exploreLeads.mockImplementation(async (query) => ({
+      ...page,
+      score_run: scored,
+      rows: query.limit === 1 ? [] : [{ ...lead("not_contacted"), offer: "simple_other" }],
+      total: query.limit === 1 ? 7 : 1,
+    }));
+    const [profile] = (catalogFixture as ScoringCatalog).icp_profiles;
+    const [version] = profile?.versions ?? [];
+    mocks.getScoringCatalog.mockResolvedValue({
+      ...(catalogFixture as ScoringCatalog),
+      icp_profiles:
+        profile && version
+          ? [
+              {
+                ...profile,
+                versions: [
+                  {
+                    ...version,
+                    icp_profile_id: "profile-1",
+                    version: 2,
+                    definition_json: {
+                      offers: [
+                        { key: "simple_other", name: "Fotos para redes", solves: ["no_website"] },
+                      ],
+                    },
+                  },
+                ],
+              },
+            ]
+          : [],
+    });
+    mocks.chooseExportDestination.mockResolvedValue({
+      grant_id: "grant-1",
+      file_name: "clientes.csv",
+      folder: "Documents",
+      format: "csv",
+    });
+    const written = exportFixture as ExportItem;
+    mocks.startExport.mockResolvedValue({
+      ...written,
+      export: { ...written.export, status: "succeeded", row_count: 1 },
+    });
+    renderList();
+    expect(await screen.findByText("What to offer: Fotos para redes")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Download the list" }));
+    await waitFor(() => expect(mocks.startExport).toHaveBeenCalled());
+    const [draft] = mocks.startExport.mock.calls[0] ?? [];
+    const offer = draft?.columns.find((column) => column.key === "offer");
+    expect(offer?.labels?.simple_other).toBe("Fotos para redes");
+  });
+
   it("shows who to call, how, why and what to offer, for its own search only", async () => {
     renderList();
     expect(await screen.findByText("Techos Houston")).toBeTruthy();

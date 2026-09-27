@@ -16,10 +16,13 @@ import {
   latinoFirst,
   LIST_REASON,
   offerOf,
-  offersOf,
+  OTHER_KEY,
+  otherReady,
   outcomeRequest,
   parseSearchName,
   searchTitle,
+  soldNames,
+  soldOf,
   stagesFor,
   tierKey,
   whyProblems,
@@ -28,6 +31,7 @@ import {
 
 const draft: ClientSearchDraft = {
   offers: ["website", "booking"],
+  other: null,
   businessTypeId: "roofing",
   latinoOnly: true,
   region: "TX",
@@ -63,6 +67,13 @@ const point = (values: Partial<ContactPoint>) =>
   }) as ContactPoint;
 /** A translator that shows which key it was asked for. */
 const keys: Translator = (key) => `<${key}>`;
+const names = {
+  website: "Websites",
+  conversion: "Conversion",
+  booking: "Booking",
+  google: "Google",
+  measurement: "Measurement",
+};
 
 describe("simple client search requests", () => {
   it("uses twelve candidates per requested client and Overture", () => {
@@ -99,11 +110,40 @@ describe("simple client search requests", () => {
     expect(request.definition.offers[0]?.solves).toContain("no_website");
   });
 
+  it("sells the person's own service with the problems they ticked, only once it is complete", () => {
+    const other = { name: "  Fotos para redes  ", solves: ["weak_local_seo"] as ProblemType[] };
+    const request = buildIcpRequest({ ...draft, offers: [], other }, template, names);
+    expect(request.definition.offers).toEqual([
+      {
+        key: OTHER_KEY,
+        name: "Fotos para redes",
+        description: "Fotos para redes",
+        solves: ["weak_local_seo"],
+        capabilities: [],
+        not_for_categories: [],
+      },
+    ]);
+    expect(request.definition.problems.wanted).toEqual(["weak_local_seo"]);
+    expect(otherReady(null)).toBe(true);
+    expect(otherReady({ name: " ", solves: ["no_website"] })).toBe(false);
+    expect(otherReady({ name: "Fotos", solves: [] })).toBe(false);
+    expect(offerOf(OTHER_KEY)).toBe("other");
+    expect(clientColumnLabels(keys, "Fotos para redes").offer?.[OTHER_KEY]).toBe(
+      "Fotos para redes",
+    );
+    expect(clientColumnLabels(keys).offer?.[OTHER_KEY]).toBeUndefined();
+  });
+
   it("reads a search back from its name, its campaign and its offer profile, to repeat it", () => {
     for (const asked of [
       draft,
       {
         ...draft,
+        offers: ["google" as const],
+        other: {
+          name: "Fotos para redes",
+          solves: ["no_website", "weak_local_seo"] as ProblemType[],
+        },
         latinoOnly: false,
         radiusKm: null,
         wanted: 100 as const,
@@ -111,7 +151,13 @@ describe("simple client search requests", () => {
       },
     ]) {
       const request = buildCampaignRequest(asked);
-      expect(draftOf(request.name, request.criteria, asked.offers)).toEqual(asked);
+      const profile = buildIcpRequest(asked, template, names);
+      const sold = soldOf(profile.definition as unknown as Record<string, unknown>);
+      expect(draftOf(request.name, request.criteria, sold)).toEqual(asked);
+      expect(soldNames(keys, sold)).toEqual([
+        ...asked.offers.map((offer) => `<clientSearch.offer.${offer}>`),
+        ...(asked.other ? [asked.other.name] : []),
+      ]);
     }
     expect(parseSearchName("Buscar clientes · roofing · Houston · TX · latinos primero")).toEqual({
       businessTypeId: "roofing",
@@ -124,11 +170,18 @@ describe("simple client search requests", () => {
       "<businessType.roofing> · Houston, Texas · <clientSearch.latino>",
     );
     expect(searchTitle(keys, "Synthetic discovery campaign")).toBe("Synthetic discovery campaign");
-    expect(draftOf("Buscar clientes · roofing", undefined, [])).toBeNull();
+    expect(draftOf("Buscar clientes · roofing", undefined, { offers: [], other: null })).toBeNull();
     expect(
-      offersOf({ offers: [{ key: "simple_booking" }, { key: "website_rebuild" }, "bogus"] }),
-    ).toEqual(["booking"]);
-    expect(offersOf(undefined)).toEqual([]);
+      soldOf({
+        offers: [
+          { key: "simple_booking" },
+          { key: "website_rebuild" },
+          "bogus",
+          { key: OTHER_KEY, name: "Fotos", solves: ["no_website", "not_a_problem"] },
+        ],
+      }),
+    ).toEqual({ offers: ["booking"], other: { name: "Fotos", solves: ["no_website"] } });
+    expect(soldOf(undefined)).toEqual({ offers: [], other: null });
   });
 
   it("starts the existing process with an idempotency key", () => {

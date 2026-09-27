@@ -73,6 +73,24 @@ terminar, abre una lista ordenada y exportable. La app no llama ni contacta a na
 | Medición y anuncios                 | `measurement_not_detected`                                     |
 | Otro                                | Los que marque la persona, mostrados con las frases anteriores |
 
+**Otro** abre dos preguntas: «¿Cómo se llama tu servicio?» (hasta 80 caracteres) y «¿Qué problemas
+de sus clientes resuelve?», con una casilla por problema escrita como situación del negocio:
+
+| Casilla                                                     | Problema                   |
+| ----------------------------------------------------------- | -------------------------- |
+| Negocios sin página web                                     | `no_website`               |
+| Webs que no cargan o se caen                                | `website_unreachable`      |
+| Webs sin botón para llamar ni formulario                    | `weak_conversion_path`     |
+| No se puede reservar ni pedir presupuesto en línea          | `no_online_booking`        |
+| Webs con pocos datos del negocio para las búsquedas locales | `weak_local_seo`           |
+| Webs con ajustes básicos de Google por mejorar              | `weak_technical_seo`       |
+| Webs difíciles de usar en el móvil                          | `poor_mobile_experience`   |
+| Webs que no miden sus visitas                               | `measurement_not_detected` |
+
+«Buscar clientes» espera a tener el nombre y al menos una casilla. Se puede elegir solo «Otro» o
+junto a las tarjetas. En la lista, en el archivo y en «Mis búsquedas» el servicio aparece con el
+nombre que se le dio, y «Repetir» lo trae de vuelta con sus casillas (D-102).
+
 El perfil no repite lugar o categoría como condición obligatoria: esos límites ya pertenecen a la
 búsqueda. Con `require_observable_problem`, un negocio solo pasa a la lista priorizada cuando la
 evidencia muestra un problema que una oferta seleccionada resuelve. Si ninguno encaja, el texto es:

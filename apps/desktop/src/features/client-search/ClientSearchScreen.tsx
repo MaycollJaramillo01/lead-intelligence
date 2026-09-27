@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BUSINESS_TYPES, US_STATES } from "@/features/campaigns/businessTypes";
 import { citiesOf } from "@/features/campaigns/usCities";
+import { PROBLEMS } from "@/features/scoring/labels";
 import { useT } from "@/lib/i18n";
 import { desktop, toIpcError } from "@/lib/ipc";
 import { cn } from "@/lib/utils";
@@ -16,11 +17,14 @@ import {
   buildCampaignRequest,
   buildIcpRequest,
   buildPipelineRequest,
+  OTHER_NAME_MAX,
+  otherReady,
   searchTitle,
   STAGE_MESSAGE,
   visibleProgress,
   type ClientSearchDraft,
   type OfferChoice,
+  type OtherOffer,
 } from "./model";
 import { SearchFailure } from "./SearchFailure";
 import { useSearchRuns } from "./useSearches";
@@ -41,10 +45,12 @@ export function ClientSearchScreen() {
       ? // a city typed before the list existed (D-098) is chosen again from the list
         {
           ...repeated,
+          other: repeated.other ?? null,
           locality: citiesOf(repeated.region).includes(repeated.locality) ? repeated.locality : "",
         }
       : {
           offers: [],
+          other: null,
           businessTypeId: "",
           latinoOnly: false,
           region: "",
@@ -65,7 +71,14 @@ export function ClientSearchScreen() {
 
   const cities = useMemo(() => citiesOf(draft.region), [draft.region]);
   const valid =
-    draft.offers.length > 0 && draft.businessTypeId && draft.region && draft.locality.trim();
+    (draft.offers.length > 0 || draft.other !== null) &&
+    otherReady(draft.other) &&
+    draft.businessTypeId &&
+    draft.region &&
+    draft.locality.trim();
+  /** Changes «Otro» while it is chosen. */
+  const editOther = (change: (other: OtherOffer) => OtherOffer) =>
+    setDraft((state) => (state.other ? { ...state, other: change(state.other) } : state));
   const offerNames = useMemo(
     () =>
       Object.fromEntries(OFFERS.map((key) => [key, t(`clientSearch.offer.${key}`)])) as Record<
@@ -143,7 +156,7 @@ export function ClientSearchScreen() {
             {repeated && (
               <p className="mt-2 text-sm font-medium" role="status">
                 {t(
-                  repeated.offers.length > 0
+                  repeated.offers.length > 0 || repeated.other
                     ? "clientSearch.repeating"
                     : "clientSearch.repeatingNoOffer",
                 )}
@@ -180,7 +193,68 @@ export function ClientSearchScreen() {
                   </button>
                 );
               })}
+              <button
+                type="button"
+                aria-pressed={draft.other !== null}
+                onClick={() =>
+                  setDraft((state) => ({
+                    ...state,
+                    other: state.other ? null : { name: "", solves: [] },
+                  }))
+                }
+                className={cn(
+                  "rounded-lg border p-3 text-left text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring",
+                  draft.other && "border-primary bg-primary/10",
+                )}
+              >
+                {t("clientSearch.offer.other")}
+              </button>
             </div>
+            {draft.other && (
+              <div className="mt-4 space-y-3 rounded-lg border p-3">
+                <div>
+                  <Label htmlFor="other-offer-name">{t("clientSearch.other.name")}</Label>
+                  <Input
+                    id="other-offer-name"
+                    className="mt-1"
+                    maxLength={OTHER_NAME_MAX}
+                    placeholder={t("clientSearch.other.placeholder")}
+                    value={draft.other.name}
+                    onChange={(event) =>
+                      editOther((other) => ({ ...other, name: event.target.value }))
+                    }
+                  />
+                </div>
+                <fieldset>
+                  <legend className="text-sm font-medium">{t("clientSearch.other.solves")}</legend>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {PROBLEMS.map((problem) => (
+                      <div key={problem} className="flex items-start gap-2 text-sm">
+                        <Checkbox
+                          id={`other-solves-${problem}`}
+                          checked={draft.other?.solves.includes(problem) ?? false}
+                          onCheckedChange={(checked) =>
+                            editOther((other) => ({
+                              ...other,
+                              solves:
+                                checked === true
+                                  ? [...other.solves, problem]
+                                  : other.solves.filter((item) => item !== problem),
+                            }))
+                          }
+                        />
+                        <Label htmlFor={`other-solves-${problem}`} className="font-normal">
+                          {t(`clientSearch.solves.${problem}`)}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </fieldset>
+                {!otherReady(draft.other) && (
+                  <p className="text-xs text-muted-foreground">{t("clientSearch.other.needs")}</p>
+                )}
+              </div>
+            )}
           </section>
 
           <section className="grid gap-5 rounded-xl border bg-card p-5 md:grid-cols-2">

@@ -5,7 +5,7 @@ import { PageScroll, PageShell } from "@/components/layout/page-chrome";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, useLanguage, useT } from "@/lib/i18n";
 import { desktop, toIpcError } from "@/lib/ipc";
-import { searchTitle } from "./model";
+import { searchTitle, soldNames } from "./model";
 import { SearchFailure } from "./SearchFailure";
 import { useSearchDetails, useSearchRuns, type SearchDetails } from "./useSearches";
 
@@ -31,7 +31,7 @@ export function ClientSearchesScreen() {
 
   /** What the search sold, in the words of the form that asked for it. */
   const sells = (details: SearchDetails | null) =>
-    details?.draft?.offers.map((offer) => t(`clientSearch.offer.${offer}`)).join(", ");
+    details?.draft && soldNames(t, details.draft).join(", ");
 
   return (
     <PageShell>

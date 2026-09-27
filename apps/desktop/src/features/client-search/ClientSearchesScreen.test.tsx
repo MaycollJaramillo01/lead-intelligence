@@ -4,12 +4,15 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   CampaignPage,
+  CampaignSaved,
   ExplorerPage,
+  IcpProfileView,
   PipelinePage,
   PipelineRun,
   ScoringCatalog,
 } from "@lead/shared-types";
 import campaignFixture from "@lead/shared-types/fixtures/campaign_page.json";
+import campaignSavedFixture from "@lead/shared-types/fixtures/campaign_saved.json";
 import pageFixture from "@lead/shared-types/fixtures/explorer_page.json";
 import runFixture from "@lead/shared-types/fixtures/pipeline_run.json";
 import catalogFixture from "@lead/shared-types/fixtures/scoring_catalog.json";
@@ -27,6 +30,10 @@ const mocks = vi.hoisted(() => ({
   controlPipeline: vi.fn<typeof desktop.controlPipeline>(),
   resolveDeadLetter: vi.fn<typeof desktop.resolveDeadLetter>(),
   getAiStatus: vi.fn<typeof desktop.getAiStatus>(),
+  saveCampaign: vi.fn<typeof desktop.saveCampaign>(),
+  saveIcpProfile: vi.fn<typeof desktop.saveIcpProfile>(),
+  changeScoring: vi.fn<typeof desktop.changeScoring>(),
+  startPipeline: vi.fn<typeof desktop.startPipeline>(),
 }));
 vi.mock("@/lib/ipc", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ipc")>()),
@@ -37,6 +44,7 @@ vi.mock("@/lib/ipc", async (importOriginal) => ({
 const base = runFixture as PipelineRun;
 const miami = buildCampaignRequest({
   offers: ["booking"],
+  other: null,
   businessTypeId: "roofing",
   latinoOnly: true,
   region: "FL",
@@ -266,5 +274,56 @@ describe("My searches", () => {
         reason: RETRY_REASON,
       }),
     );
+  });
+});
+
+describe("Find clients with your own service", () => {
+  it("waits for its name and a problem, then sells it as the person wrote it", async () => {
+    const user = userEvent.setup();
+    const saved = campaignSavedFixture as CampaignSaved;
+    mocks.saveCampaign.mockResolvedValue(saved);
+    mocks.saveIcpProfile.mockImplementation(async (request) => ({
+      ...(profile as IcpProfileView),
+      versions: (profile?.versions ?? []).slice(0, 1),
+      profile: { ...(profile as IcpProfileView).profile, name: request.name },
+    }));
+    mocks.changeScoring.mockResolvedValue(catalog);
+    mocks.startPipeline.mockResolvedValue(runs[0] as PipelineRun);
+    render(
+      <MemoryRouter initialEntries={["/buscar-clientes"]}>
+        <Routes>
+          <Route path="/buscar-clientes" element={<ClientSearchScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await user.click(await screen.findByRole("button", { name: "Other" }));
+    await user.selectOptions(screen.getByLabelText("2. Which businesses?"), "roofing");
+    await user.selectOptions(screen.getByLabelText("State"), "FL");
+    await user.selectOptions(screen.getByLabelText("City"), "Miami");
+    const find = screen.getByRole("button", { name: "Find clients" });
+    expect(find.hasAttribute("disabled")).toBe(true);
+    expect(
+      screen.getByText("Write the name and tick at least one problem it solves."),
+    ).toBeTruthy();
+
+    await user.click(screen.getByLabelText("What is your service called?"));
+    await user.paste("Fotos para redes");
+    expect(find.hasAttribute("disabled")).toBe(true); // a name alone solves nothing yet
+    await user.click(screen.getByLabelText("Websites with few business details for local search"));
+    expect(find.hasAttribute("disabled")).toBe(false);
+
+    await user.click(find);
+    await waitFor(() => expect(mocks.startPipeline).toHaveBeenCalled());
+    const [request] = mocks.saveIcpProfile.mock.calls[0] ?? [];
+    expect(request?.definition.offers).toEqual([
+      {
+        key: "simple_other",
+        name: "Fotos para redes",
+        description: "Fotos para redes",
+        solves: ["weak_local_seo"],
+        capabilities: [],
+        not_for_categories: [],
+      },
+    ]);
   });
 });

@@ -78,16 +78,20 @@ function ClientRow({
   data: { row, contacts },
   scoreRunId,
   latino,
+  otherName,
   onChanged,
 }: {
   data: ClientRowData;
   scoreRunId: string;
   latino: boolean;
+  /** The person's own service («Otro») in this search. */
+  otherName: string | null;
   onChanged: () => void;
 }) {
   const t = useT();
   const [busy, setBusy] = useState(false);
-  const offer = offerOf(row.offer);
+  const choice = offerOf(row.offer);
+  const offer = choice === "other" ? otherName : choice && t(`clientSearch.offer.${choice}`);
   const why = whyProblems(row.top_problem, row.problems);
   const stage = row.lead_stage;
   const notes = [
@@ -173,7 +177,7 @@ function ClientRow({
           {t("clientSearch.why", { problem: why.map((problem) => t(whyKey(problem))).join("; ") })}
         </p>
       )}
-      {offer && <p>{t("clientSearch.offerIt", { offer: t(`clientSearch.offer.${offer}`) })}</p>}
+      {offer && <p>{t("clientSearch.offerIt", { offer })}</p>}
       {notes.length > 0 && <p className="text-xs text-muted-foreground">{notes.join(" · ")}</p>}
       <div className="flex flex-wrap gap-2">
         {stagesFor("contacted", stage).length > 0 && (
@@ -236,7 +240,7 @@ export function ClientListScreen() {
       const file = clientExportDraft(
         list.query,
         (key) => t(`clientSearch.column.${key}`),
-        clientColumnLabels(t),
+        clientColumnLabels(t, list.otherName),
       );
       const destination = await desktop.chooseExportDestination(
         "csv",
@@ -343,6 +347,7 @@ export function ClientListScreen() {
                       data={data}
                       scoreRunId={scoreRunId}
                       latino={latino}
+                      otherName={list.otherName}
                       onChanged={reload}
                     />
                   ))}

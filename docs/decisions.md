@@ -1465,3 +1465,21 @@ no hay lista (la puntuación del proceso sale del último paso).
 que se arregle la causa; la pantalla avanzada sigue permitiendo saltarlo. Verificado en la app real
 sobre una copia de la búsqueda de Miami detenida en «buscar problemas en sus webs»: saltarlo
 reanudó la búsqueda y terminó las diez etapas.
+
+## D-102 · «Otro» es una oferta más de «Mi oferta», con el nombre y los problemas de la persona (phase 16)
+
+**Contexto.** «¿Qué vendes?» solo ofrecía cinco tarjetas. El prompt 16 pide «Otro»: un nombre
+libre y los problemas que resuelve, marcados con frases y no con códigos.
+
+**Decisión.** «Otro» añade a «Mi oferta» una oferta con clave fija `simple_other`, el nombre que
+escribió la persona (recortado, 80 caracteres como máximo) y los `ProblemType` de las casillas
+que marcó. Cada casilla describe una situación del negocio, no un código. El motor la trata como
+cualquier otra oferta: la puntuación la recomienda cuando la evidencia muestra uno de esos
+problemas. El nombre no cabe en la clave (un código), así que la lista, el archivo, «Mis
+búsquedas» y «Repetir» lo leen de la versión de «Mi oferta» con la que se puntuó la búsqueda. Si
+ese catálogo no se puede leer, la lista sale igual y solo queda sin nombre esa oferta. No cambia
+ningún contrato ni mensaje del worker.
+
+**Consecuencia.** Solo cabe un servicio propio por búsqueda. Su nombre se guarda en la versión del
+perfil, así que una búsqueda posterior con otro nombre crea otra versión y la anterior conserva el
+suyo.

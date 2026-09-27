@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import type { ExplorerQuery, ExplorerRow, PipelineRun } from "@lead/shared-types";
+import type { ExplorerQuery, ExplorerRow, PipelineRun, ScoreRunItem } from "@lead/shared-types";
 import { desktop, toIpcError } from "@/lib/ipc";
 import {
   clientListQuery,
   contactsOf,
   draftOf,
   NO_FILTERS,
-  offersOf,
+  soldOf,
   type ClientContacts,
   type ClientFilters,
   type ClientSearchDraft,
+  type Sold,
 } from "./model";
 
 export const POLL_MS = 2_000;
@@ -54,6 +55,21 @@ export interface ClientList {
   /** Every lead the search found, whatever its tier. */
   found: number;
   rows: ClientRowData[];
+  /** The name the person gave their own service («Otro») in this search, if they did. */
+  otherName: string | null;
+}
+
+/** What the offer profile version a score run was scored with was selling (`soldOf`). */
+async function soldIn(projectId: string, scored: ScoreRunItem): Promise<Sold> {
+  const catalog = await desktop.getScoringCatalog({ project_id: projectId });
+  const version = catalog.icp_profiles
+    .flatMap((profile) => profile.versions)
+    .find(
+      (item) =>
+        item.icp_profile_id === scored.icp_profile_id &&
+        item.version === scored.icp_profile_version,
+    );
+  return soldOf(version?.definition_json);
 }
 
 const NO_CONTACTS: ClientContacts = { phone: null, email: null };
@@ -66,7 +82,9 @@ const NO_CONTACTS: ClientContacts = { phone: null, email: null };
 export function useClientList(finished: PipelineRun | null, filters: ClientFilters = NO_FILTERS) {
   const [clients, setClients] = useState<ClientList | null>(null);
   const known = useRef(new Map<string, ClientContacts>());
+  const others = useRef(new Map<string, string | null>());
   const jobId = finished?.job_id ?? null;
+  const projectId = finished?.project_id ?? null;
   const scoreRunId = finished?.score_run_id ?? null;
   const campaignId = finished?.campaign_id ?? null;
   const campaignName = finished?.campaign_name ?? null;
@@ -75,7 +93,7 @@ export function useClientList(finished: PipelineRun | null, filters: ClientFilte
 
   /** Reads the list; an answer that arrives after the filters changed is never shown. */
   const load = useCallback(async (): Promise<ClientList | null> => {
-    if (!campaignId) return null;
+    if (!campaignId || !projectId) return null;
     const search = { campaign_id: campaignId, campaign_name: campaignName };
     const query = clientListQuery(scoreRunId, search, { phone, email, callFirst });
     const [page, found] = await Promise.all([
@@ -95,8 +113,23 @@ export function useClientList(finished: PipelineRun | null, filters: ClientFilte
         return { row, contacts };
       }),
     );
-    return { key, query, total: page.total ?? rows.length, found: found.total ?? 0, rows };
-  }, [key, scoreRunId, campaignId, campaignName, phone, email, callFirst]);
+    const scored = page.score_run;
+    let otherName = scored ? others.current.get(scored.score_run_id) : null;
+    if (scored && otherName === undefined) {
+      // the name only words the offer: a catalog that cannot be read never hides the list
+      const sold = await soldIn(projectId, scored).catch(() => null);
+      otherName = sold?.other?.name ?? null;
+      if (sold) others.current.set(scored.score_run_id, otherName);
+    }
+    return {
+      key,
+      query,
+      total: page.total ?? rows.length,
+      found: found.total ?? 0,
+      rows,
+      otherName: otherName ?? null,
+    };
+  }, [key, scoreRunId, campaignId, campaignName, projectId, phone, email, callFirst]);
 
   const show = useCallback(
     (reading: Promise<ClientList | null>, stale: () => boolean = () => false) =>
@@ -159,7 +192,7 @@ export function useSearchDetails(runs: readonly PipelineRun[]) {
         missing.map(async (run) => {
           const campaign = campaigns.items.find((item) => item.id === run.campaign_id);
           let clients: number | null = null;
-          let offers: ReturnType<typeof offersOf> = [];
+          let sold: Sold = { offers: [], other: null };
           if (run.status === "succeeded" && run.campaign_id && run.score_run_id) {
             const search = { campaign_id: run.campaign_id, campaign_name: run.campaign_name };
             const page = await desktop.exploreLeads({
@@ -174,11 +207,11 @@ export function useSearchDetails(runs: readonly PipelineRun[]) {
                 item.icp_profile_id === scored?.icp_profile_id &&
                 item.version === scored.icp_profile_version,
             );
-            offers = offersOf(version?.definition_json);
+            sold = soldOf(version?.definition_json);
           }
           known.current.set(detailKey(run), {
             clients,
-            draft: draftOf(run.campaign_name, campaign?.criteria, offers),
+            draft: draftOf(run.campaign_name, campaign?.criteria, sold),
           });
         }),
       );
