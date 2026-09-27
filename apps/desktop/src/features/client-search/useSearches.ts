@@ -5,9 +5,12 @@ import { desktop, toIpcError } from "@/lib/ipc";
 import {
   clientListQuery,
   contactsOf,
+  draftOf,
   NO_FILTERS,
+  offersOf,
   type ClientContacts,
   type ClientFilters,
+  type ClientSearchDraft,
 } from "./model";
 
 export const POLL_MS = 2_000;
@@ -119,4 +122,69 @@ export function useClientList(finished: PipelineRun | null, filters: ClientFilte
   /** Reads the list again after something changed one of its clients (a stage, do not contact). */
   const reload = useCallback(() => void show(load()), [load, show]);
   return { list: clients?.key === key ? clients : null, reload };
+}
+
+export interface SearchDetails {
+  /** The clients a finished search left; null until it finishes. */
+  clients: number | null;
+  /** The search's form, to run it again; null when its name is not one this screen gave. */
+  draft: ClientSearchDraft | null;
+}
+
+/** A run changes what it shows only when its status or its score run does. */
+const detailKey = (run: PipelineRun) => `${run.job_id}:${run.status}:${run.score_run_id}`;
+
+/**
+ * What each search asked for and how many clients it left, read once per run and status: the list
+ * of searches is polled while one runs, and nothing here changes between two polls.
+ */
+export function useSearchDetails(runs: readonly PipelineRun[]) {
+  const [details, setDetails] = useState<ReadonlyMap<string, SearchDetails>>(new Map());
+  const known = useRef(new Map<string, SearchDetails>());
+
+  useEffect(() => {
+    const missing = runs.filter((run) => !known.current.has(detailKey(run)));
+    if (missing.length === 0) return;
+    // ponytail: no cancelling: the cache only grows, so a late answer is still a right one
+    void (async () => {
+      const projects = [...new Set(missing.map((run) => run.project_id))];
+      const [campaigns, catalogs] = await Promise.all([
+        desktop.listCampaigns({ project_id: null, limit: 100, cursor: null }),
+        Promise.all(projects.map((id) => desktop.getScoringCatalog({ project_id: id }))),
+      ]);
+      const versions = catalogs.flatMap((catalog) =>
+        catalog.icp_profiles.flatMap((profile) => profile.versions),
+      );
+      await Promise.all(
+        missing.map(async (run) => {
+          const campaign = campaigns.items.find((item) => item.id === run.campaign_id);
+          let clients: number | null = null;
+          let offers: ReturnType<typeof offersOf> = [];
+          if (run.status === "succeeded" && run.campaign_id && run.score_run_id) {
+            const search = { campaign_id: run.campaign_id, campaign_name: run.campaign_name };
+            const page = await desktop.exploreLeads({
+              ...clientListQuery(run.score_run_id, search),
+              limit: 1,
+            });
+            clients = page.total ?? 0;
+            // the offer profile version the search was scored with says what it was selling
+            const scored = page.score_run;
+            const version = versions.find(
+              (item) =>
+                item.icp_profile_id === scored?.icp_profile_id &&
+                item.version === scored.icp_profile_version,
+            );
+            offers = offersOf(version?.definition_json);
+          }
+          known.current.set(detailKey(run), {
+            clients,
+            draft: draftOf(run.campaign_name, campaign?.criteria, offers),
+          });
+        }),
+      );
+      setDetails(new Map(known.current));
+    })().catch((cause: unknown) => toast.error(toIpcError(cause, "search history").message));
+  }, [runs]);
+
+  return (run: PipelineRun) => details.get(detailKey(run)) ?? null;
 }

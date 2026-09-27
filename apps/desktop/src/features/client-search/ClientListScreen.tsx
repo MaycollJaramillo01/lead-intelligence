@@ -20,6 +20,7 @@ import {
   NO_FILTERS,
   offerOf,
   outcomeRequest,
+  searchTitle,
   stagesFor,
   tierKey,
   whyKey,
@@ -239,7 +240,10 @@ export function ClientListScreen() {
       );
       const destination = await desktop.chooseExportDestination(
         "csv",
-        (finished?.campaign_name ?? t("clientSearch.results")).replaceAll(" · ", " - "),
+        (searchTitle(t, finished?.campaign_name ?? null) ?? t("clientSearch.results")).replaceAll(
+          " · ",
+          " - ",
+        ),
       );
       if (!destination) return; // the save dialog was closed
       let item = await desktop.startExport(file, destination.grant_id);
@@ -278,7 +282,7 @@ export function ClientListScreen() {
           <header>
             <h1 className="text-2xl font-semibold">{t("clientSearch.results")}</h1>
             <p className="mt-1 text-muted-foreground">
-              {finished?.campaign_name ?? t("desc.client_list")}
+              {searchTitle(t, finished?.campaign_name ?? null) ?? t("desc.client_list")}
             </p>
           </header>
 

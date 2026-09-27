@@ -704,6 +704,17 @@ export const es: Partial<Record<TranslationKey, string>> = {
   "clientList.actionFailed": "No se pudo guardar",
   "clientList.suppressed": "{name} ya no saldrá en tus listas ni en tus descargas",
   "clientList.undo": "Deshacer",
+  "clientSearches.clients": "{count} clientes",
+  "clientSearches.oneClient": "1 cliente",
+  "clientSearches.sells": "Vendes: {offers}",
+  "clientSearches.progress": "Ver el progreso",
+  "clientSearches.repeat": "Repetir",
+  "clientSearches.resumed": "Tu búsqueda continúa",
+  "clientSearch.repeating":
+    "Es tu búsqueda anterior. Cambia lo que quieras y pulsa «Buscar clientes» para repetirla.",
+  "clientSearch.repeatingNoOffer":
+    "Es tu búsqueda anterior. Marca qué vendes y pulsa «Buscar clientes» para repetirla.",
+  "clientSearch.paused": "Tu búsqueda quedó en pausa. Pulsa «Continuar» para terminarla.",
   "clientList.noneFiltered":
     "Ningún cliente de esta búsqueda cumple lo que marcaste en «Mostrar solo».",
 

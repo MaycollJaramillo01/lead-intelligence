@@ -700,6 +700,17 @@ export const en = {
   "clientList.actionFailed": "It could not be saved",
   "clientList.suppressed": "{name} will no longer appear in your lists or downloads",
   "clientList.undo": "Undo",
+  "clientSearches.clients": "{count} clients",
+  "clientSearches.oneClient": "1 client",
+  "clientSearches.sells": "You sell: {offers}",
+  "clientSearches.progress": "See the progress",
+  "clientSearches.repeat": "Repeat",
+  "clientSearches.resumed": "Your search goes on",
+  "clientSearch.repeating":
+    "This is your earlier search. Change what you want and press “Find clients” to repeat it.",
+  "clientSearch.repeatingNoOffer":
+    "This is your earlier search. Tick what you sell and press “Find clients” to repeat it.",
+  "clientSearch.paused": "Your search was paused. Press “Continue” to finish it.",
   "clientList.noneFiltered": "No client of this search matches what you ticked in “Show only”.",
 
   "module.notConfiguredTitle": "This module is not configured yet",

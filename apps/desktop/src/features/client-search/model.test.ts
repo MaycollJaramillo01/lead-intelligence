@@ -12,10 +12,14 @@ import {
   clientListQuery,
   contactsOf,
   DEFAULT_RADIUS_KM,
+  draftOf,
   latinoFirst,
   LIST_REASON,
   offerOf,
+  offersOf,
   outcomeRequest,
+  parseSearchName,
+  searchTitle,
   stagesFor,
   tierKey,
   whyProblems,
@@ -93,6 +97,38 @@ describe("simple client search requests", () => {
     expect(request.definition.categories.terms).toEqual([]);
     expect(request.definition.latino).toBe("none");
     expect(request.definition.offers[0]?.solves).toContain("no_website");
+  });
+
+  it("reads a search back from its name, its campaign and its offer profile, to repeat it", () => {
+    for (const asked of [
+      draft,
+      {
+        ...draft,
+        latinoOnly: false,
+        radiusKm: null,
+        wanted: 100 as const,
+        locality: "San Antonio",
+      },
+    ]) {
+      const request = buildCampaignRequest(asked);
+      expect(draftOf(request.name, request.criteria, asked.offers)).toEqual(asked);
+    }
+    expect(parseSearchName("Buscar clientes · roofing · Houston · TX · latinos primero")).toEqual({
+      businessTypeId: "roofing",
+      locality: "Houston",
+      region: "TX",
+      latinoOnly: true,
+    });
+    expect(parseSearchName("Synthetic discovery campaign")).toBeNull();
+    expect(searchTitle(keys, "Buscar clientes · roofing · Houston · TX · latinos primero")).toBe(
+      "<businessType.roofing> · Houston, Texas · <clientSearch.latino>",
+    );
+    expect(searchTitle(keys, "Synthetic discovery campaign")).toBe("Synthetic discovery campaign");
+    expect(draftOf("Buscar clientes · roofing", undefined, [])).toBeNull();
+    expect(
+      offersOf({ offers: [{ key: "simple_booking" }, { key: "website_rebuild" }, "bogus"] }),
+    ).toEqual(["booking"]);
+    expect(offersOf(undefined)).toEqual([]);
   });
 
   it("starts the existing process with an idempotency key", () => {

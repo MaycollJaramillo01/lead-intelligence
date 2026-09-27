@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pause, Play, Search, Square } from "lucide-react";
+import { useLocation } from "react-router";
 import { toast } from "sonner";
 import { PageScroll, PageShell } from "@/components/layout/page-chrome";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import {
   buildCampaignRequest,
   buildIcpRequest,
   buildPipelineRequest,
+  searchTitle,
   STAGE_MESSAGE,
   visibleProgress,
   type ClientSearchDraft,
@@ -31,15 +33,25 @@ const SELECT = "h-9 w-full rounded-md border bg-background px-3 text-sm disabled
  */
 export function ClientSearchScreen() {
   const t = useT();
-  const [draft, setDraft] = useState<ClientSearchDraft>({
-    offers: [],
-    businessTypeId: "",
-    latinoOnly: false,
-    region: "",
-    locality: "",
-    radiusKm: null,
-    wanted: 25,
-  });
+  // "Repetir" in Mis búsquedas opens the form filled with the search it repeats
+  const repeated = (useLocation().state as { repeat?: ClientSearchDraft } | null)?.repeat ?? null;
+  const [draft, setDraft] = useState<ClientSearchDraft>(() =>
+    repeated
+      ? // a city typed before the list existed (D-098) is chosen again from the list
+        {
+          ...repeated,
+          locality: citiesOf(repeated.region).includes(repeated.locality) ? repeated.locality : "",
+        }
+      : {
+          offers: [],
+          businessTypeId: "",
+          latinoOnly: false,
+          region: "",
+          locality: "",
+          radiusKm: null,
+          wanted: 25,
+        },
+  );
   const { active, reload } = useSearchRuns();
   const [busy, setBusy] = useState(false);
   const [aiOff, setAiOff] = useState(false);
@@ -127,6 +139,15 @@ export function ClientSearchScreen() {
           <header>
             <h1 className="text-2xl font-semibold">{t("clientSearch.title")}</h1>
             <p className="mt-1 text-muted-foreground">{t("clientSearch.promise")}</p>
+            {repeated && (
+              <p className="mt-2 text-sm font-medium" role="status">
+                {t(
+                  repeated.offers.length > 0
+                    ? "clientSearch.repeating"
+                    : "clientSearch.repeatingNoOffer",
+                )}
+              </p>
+            )}
           </header>
 
           <section className="rounded-xl border bg-card p-5" aria-labelledby="offer-heading">
@@ -288,7 +309,12 @@ export function ClientSearchScreen() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="font-semibold">{t("clientSearch.yourSearch")}</h2>
-                  <p className="text-xs text-muted-foreground">{active.campaign_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {searchTitle(t, active.campaign_name)}
+                  </p>
+                  {active.status === "paused" && (
+                    <p className="mt-1 text-sm font-medium">{t("clientSearch.paused")}</p>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   {active.actions.includes("pause") && (

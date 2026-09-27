@@ -54,8 +54,11 @@ terminar, abre una lista ordenada y exportable. La app no llama ni contacta a na
 
 ```text
 ┌ Mis búsquedas ─────────────────────────────────────────────────┐
-│ 15 sep · Páginas web · Techos · Houston, Texas · 25 · Lista   │
-│ [Abrir] [Continuar] [Repetir]                                 │
+│ Remodelación · Miami, Florida · Latinos primero                │
+│ Vendes: Páginas web, Reservas y citas en línea                 │
+│ 20 sept 2026, 17:30 · Terminado · 16 clientes [Abrir] [Repetir]│
+│ Techos · Houston, Texas                                        │
+│ 27 sept 2026, 10:02 · En pausa              [Continuar]        │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -165,6 +168,26 @@ estado, web y puntuación, con cabeceras **y valores** en el idioma de la pantal
 nunca ve una ruta) y se escribe con su hash y su manifiesto, como cualquier exportación; «No
 contactar» nunca sale. Hasta la fase 16 ninguna columna traía el número: el explorador solo guarda
 el tipo de canal (D-097).
+
+## Mis búsquedas
+
+Cada búsqueda dice qué tipo de negocio, dónde y si pidió latinos primero (del nombre de su
+campaña), qué vendías (las ofertas de la versión de «Mi oferta» con la que se puntuó), cuándo se
+pidió, en qué quedó y, si terminó, cuántos clientes dejó: la misma consulta de «Tu lista de
+clientes», por su campaña (D-100).
+
+| Estado              | Botones                                             |
+| ------------------- | --------------------------------------------------- |
+| Terminado           | **Abrir** (su lista) y **Repetir**                  |
+| En pausa            | **Continuar** (reanuda el mismo proceso)            |
+| En cola o en curso  | **Ver el progreso** (la pantalla «Buscar clientes») |
+| Fallido o cancelado | **Repetir**                                         |
+
+**Repetir** abre «Buscar clientes» con el formulario relleno —qué vendes, tipo de negocio, latinos
+primero, estado, ciudad, radio y cuántos— y una línea que lo explica; la búsqueda solo empieza al
+pulsar «Buscar clientes», así que se puede cambiar algo antes. Una ciudad escrita a mano antes de
+la lista del Censo (D-098) se vuelve a elegir. Si la app se cerró a mitad, «Buscar clientes» dice
+«Tu búsqueda quedó en pausa» junto a «Continuar».
 
 ## Navegación y lenguaje
 

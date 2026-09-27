@@ -17,7 +17,7 @@ import type {
   ValidationStatus,
 } from "@lead/shared-types";
 import { emptyCriteria } from "@/features/discovery/criteria";
-import { BUSINESS_TYPES, type BusinessType } from "@/features/campaigns/businessTypes";
+import { BUSINESS_TYPES, US_STATES, type BusinessType } from "@/features/campaigns/businessTypes";
 import { PROBLEMS } from "@/features/scoring/labels";
 import type { TranslationKey, Translator } from "@/lib/i18n";
 
@@ -41,6 +41,7 @@ export interface ClientSearchDraft {
   wanted: 25 | 50 | 100;
 }
 
+export const WANTED = [25, 50, 100] as const satisfies readonly ClientSearchDraft["wanted"][];
 export const candidateLimit = (wanted: number) => wanted * 12;
 /** A city alone is only its own limits: Overture held 12 remodelers in Miami's, 64 within 40 km. */
 export const DEFAULT_RADIUS_KM = 40;
@@ -107,6 +108,67 @@ export function searchName(type: BusinessType, draft: ClientSearchDraft): string
 /** Whether a search asked for Latino businesses first: its name is where that choice is kept. */
 export const latinoFirst = (campaignName: string | null) =>
   campaignName?.endsWith(LATINO_FIRST) === true;
+
+const SEARCH_PREFIX = "Buscar clientes · ";
+
+/** What a search asked for, read back from the name `searchName` gave its campaign. */
+export function parseSearchName(name: string | null) {
+  if (!name?.startsWith(SEARCH_PREFIX)) return null;
+  const latinoOnly = latinoFirst(name);
+  const parts = name
+    .slice(SEARCH_PREFIX.length, latinoOnly ? -LATINO_FIRST.length : undefined)
+    .split(" · ");
+  const [businessTypeId, locality, region] = parts;
+  if (parts.length !== 3 || !businessTypeId || !locality || !region) return null;
+  return { businessTypeId, locality, region, latinoOnly };
+}
+
+/** A search as the form asked for it (business type, place, «Latinos primero»); else its name. */
+export function searchTitle(t: Translator, name: string | null): string | null {
+  const asked = parseSearchName(name);
+  if (!asked) return name;
+  const type = BUSINESS_TYPES.find((item) => item.id === asked.businessTypeId);
+  const state = US_STATES.find(([code]) => code === asked.region)?.[1] ?? asked.region;
+  return [
+    type ? t(type.label) : asked.businessTypeId,
+    `${asked.locality}, ${state}`,
+    asked.latinoOnly && t("clientSearch.latino"),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** The offers a profile version sells, as the simple choices they were saved from. */
+export function offersOf(definition: Record<string, unknown> | undefined): OfferChoice[] {
+  const offers = definition?.offers;
+  if (!Array.isArray(offers)) return [];
+  return offers
+    .map((offer: unknown) =>
+      offerOf(offer && typeof offer === "object" && "key" in offer ? String(offer.key) : null),
+    )
+    .filter((choice): choice is OfferChoice => choice !== null);
+}
+
+/**
+ * The form of a search to run it again: its name says what and where, its campaign the radius and
+ * how many clients were asked for, and the offer profile it was scored with what was sold.
+ */
+export function draftOf(
+  name: string | null,
+  criteria: Pick<CampaignSaveRequest["criteria"], "geography" | "limits"> | undefined,
+  offers: readonly OfferChoice[],
+): ClientSearchDraft | null {
+  const asked = parseSearchName(name);
+  if (!asked) return null;
+  const radius = criteria?.geography[0]?.radius_km ?? null;
+  const wanted = WANTED.find((count) => candidateLimit(count) === criteria?.limits.max_candidates);
+  return {
+    ...asked,
+    offers: [...offers],
+    radiusKm: radius === DEFAULT_RADIUS_KM ? null : radius,
+    wanted: wanted ?? 25,
+  };
+}
 
 export function buildIcpRequest(
   draft: ClientSearchDraft,

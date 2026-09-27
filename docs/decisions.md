@@ -1426,3 +1426,22 @@ entera; «Volver» regresa a la lista. No se añade ningún mensaje al worker.
 **Consecuencia.** En el explorador avanzado, el filtro por campaña se escribe como texto (su id).
 Los motivos para llamar son frases de la pantalla, fieles a lo que el motor observó; el guion y
 las explicaciones de la ficha siguen en inglés, como el resto de textos del motor.
+
+## D-100 · «Mis búsquedas» se lee de lo guardado y «Repetir» rellena el formulario (phase 16)
+
+**Contexto.** «Mis búsquedas» solo mostraba el nombre interno de la campaña, el estado y «Abrir».
+El prompt 16 pide fecha, qué, dónde, cuántos clientes y estado, con «Abrir», «Continuar» y
+«Repetir».
+
+**Decisión.** Nada nuevo se guarda. El tipo de negocio, el lugar y «latinos primero» se leen del
+nombre que `searchName` dio a la campaña; el radio y cuántos clientes se pidieron, de sus
+criterios; lo que se vendía, de las ofertas `simple_*` de la versión de «Mi oferta» con la que se
+puntuó la búsqueda (`score_run` de la página del explorador); y los clientes, de la misma consulta
+de la lista (D-099) con una fila. Cada búsqueda se lee una vez por estado, aunque la lista se
+refresque mientras otra corre. «Continuar» reanuda el mismo proceso (`control_pipeline`).
+«Repetir» abre «Buscar clientes» con el formulario relleno y no arranca nada: la persona revisa y
+pulsa «Buscar clientes», que versiona la misma campaña y el mismo perfil (D-095).
+
+**Consecuencia.** Una búsqueda que aún no terminó no dice qué vendía (no tiene puntuación) y
+«Repetir» no se ofrece mientras está en curso o en pausa. Las búsquedas creadas antes de la lista
+de ciudades pueden traer una ciudad que ya no está en la lista: se vuelve a elegir.
