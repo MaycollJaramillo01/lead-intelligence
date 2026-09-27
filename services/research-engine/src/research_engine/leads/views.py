@@ -19,6 +19,7 @@ from pydantic import ValidationError
 
 from research_engine import repository
 from research_engine.domain import (
+    EXPLORER_FILTER_ONLY,
     VIEW_SCHEMA_VERSION,
     AuditAction,
     EntityType,
@@ -84,7 +85,7 @@ def _from_v1(old: JsonObject) -> ViewDefinition:
         + [
             ViewColumn(field=field, visible=False, pinned=False, width=None)
             for field in ExplorerField
-            if field not in shown
+            if field not in shown and field not in EXPLORER_FILTER_ONLY
         ],
     )
 

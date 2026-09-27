@@ -63,6 +63,8 @@ export const FIELD_KEYS: Record<ExplorerField, TranslationKey> = {
   suppressed: "explorer.field.suppressed",
   stale: "explorer.field.stale",
   partial: "explorer.field.partial",
+  campaign: "explorer.field.campaign",
+  reachable_by: "explorer.field.reachable_by",
 };
 
 export const OPERATOR_KEYS: Record<ExplorerOperator, TranslationKey> = {
@@ -222,6 +224,7 @@ const VALUE_KEYS: Partial<Record<ExplorerField, Record<string, TranslationKey>>>
   tier: TIER_KEYS,
   latino_status: LATINO_STATUS_KEYS,
   main_channel: CHANNEL_KEYS,
+  reachable_by: CHANNEL_KEYS,
   channel_status: STATUS_KEYS,
   problem: PROBLEM_KEYS,
   top_problem: PROBLEM_KEYS,
@@ -298,5 +301,8 @@ export function cellText(t: Translator, row: ExplorerRow, field: ExplorerField):
     case "stale":
     case "partial":
       return t(row[field] ? "common.yes" : "common.no");
+    case "campaign":
+    case "reachable_by":
+      return null; // filters only: a lead shows neither (phase 16)
   }
 }

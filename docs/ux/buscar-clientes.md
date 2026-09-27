@@ -38,13 +38,17 @@ terminar, abre una lista ordenada y exportable. La app no llama ni contacta a na
 ```
 
 ```text
-┌ Tu lista de clientes                         [Descargar CSV] ──┐
-│ [ ] Con teléfono [ ] Con correo [ ] Llamar primero             │
-│ 1. Negocio · Houston, Texas · teléfono · correo · web          │
-│    Por qué llamarle: evidencia guardada…                       │
-│    Qué ofrecerle: Reservas en línea · LLAMAR PRIMERO           │
-│    [Llamé] [Le interesa] [No le interesa] [No contactar]       │
-│    [Ver guion] [Ver todo]                                      │
+┌ Tu lista de clientes                     [Descargar la lista] ─┐
+│ Hay 18 clientes listos                                         │
+│ Mostrar solo: [ ] Con teléfono [ ] Con correo                  │
+│               [ ] Solo «Llamar primero»                        │
+│ Techos Houston · Houston, TX                  (Llamar primero) │
+│   (713) 555-0101 [copiar] · hola@techos.com [copiar] · Web: …  │
+│   Por qué llamarle: no se puede reservar ni pedir presupuesto  │
+│   en línea; su web muestra pocos datos del negocio…            │
+│   Qué ofrecerle: Reservas y citas en línea                     │
+│   [Llamé] [Le interesa] [No le interesa] [No contactar]        │
+│   [Ver guion] [Ver todo]                                       │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -121,20 +125,46 @@ y 64 a 40 km.
 
 ## La lista
 
-Al terminar, la pantalla lee el explorador sobre la puntuación del proceso: prioridad o revisar,
-fuera de «No contactar», con teléfono o correo utilizable, del estado y los tipos de negocio de la
-búsqueda, mejor puntuación primero (evidencia latina primero si se pidió). Cada fila muestra el
-negocio, su ciudad, el teléfono (o el correo), por qué llamarle y qué ofrecerle. El explorador aún
-no filtra por campaña, así que dos búsquedas del mismo tipo en el mismo estado comparten lista; los
-restos de otras campañas del proyecto (USAspending, otros estados) quedan fuera. Con 0 clientes se
-dice cuántos negocios de la búsqueda se revisaron y qué probar.
+Al terminar, la pantalla lee el explorador sobre la puntuación del proceso: lo que encontró **la
+campaña de esa búsqueda** (D-099), prioridad o revisar, fuera de «No contactar», con teléfono o
+correo utilizable, mejor puntuación primero (evidencia latina primero si se pidió). Dos búsquedas
+del mismo tipo en el mismo estado ya no comparten lista. Con 0 clientes se dice cuántos negocios de
+la búsqueda se revisaron y qué probar; si lo vació un filtro, se dice eso.
 
-**Descargar la lista** guarda un CSV con **todos** los clientes de la búsqueda, no solo los 100 que
-se muestran: negocio, teléfono, correo, ciudad, estado, web, por qué llamarle y puntuación, con las
-cabeceras en el idioma de la pantalla. El archivo lo nombra el diálogo de guardado del sistema (la
-página nunca ve una ruta) y se escribe con su hash y su manifiesto, como cualquier exportación;
-«No contactar» nunca sale. Hasta la fase 16 ninguna columna traía el número: el explorador solo
-guarda el tipo de canal (D-097).
+Cada fila muestra el negocio y su ciudad, la prioridad en palabras («Llamar primero», «Revisar»),
+el teléfono y el correo con un botón de copiar, la web, **por qué llamarle** (hasta dos problemas
+observados, el que más pesó primero) y **qué ofrecerle**. Los textos de «por qué» dicen lo que el
+motor observó, nunca más:
+
+| Problema                   | Por qué llamarle                                                  |
+| -------------------------- | ----------------------------------------------------------------- |
+| `no_website`               | ninguna fuente consultada publica una web                         |
+| `website_unreachable`      | su web no cargó bien cuando la visitamos                          |
+| `weak_conversion_path`     | su web no tiene un botón claro para llamar ni un formulario       |
+| `no_online_booking`        | no se puede reservar ni pedir presupuesto en línea                |
+| `weak_local_seo`           | su web muestra pocos datos del negocio para las búsquedas locales |
+| `weak_technical_seo`       | su web tiene ajustes básicos de Google por mejorar                |
+| `poor_mobile_experience`   | su web es difícil de usar en el móvil                             |
+| `measurement_not_detected` | no vimos herramientas de medición en su web                       |
+
+Filtros: **Con teléfono**, **Con correo** y **Solo «Llamar primero»**; la descarga lleva lo que
+dejan. Acciones de cada cliente, sobre el embudo y la lista de no contactar existentes:
+
+| Botón                | Qué guarda                                                                 |
+| -------------------- | -------------------------------------------------------------------------- |
+| Llamé / Le escribí   | Etapa «contactado» (`attempted`) con el canal; solo si aún no se contactó  |
+| Le interesa          | Recorre contactado → conectado → calificado, las etapas que el embudo pide |
+| No le interesa       | Etapa `not_interested`                                                     |
+| No contactar         | Entrada de negocio en «No contactar», con «Deshacer»; sale de la lista     |
+| Ver guion / Ver todo | La ficha del negocio en su sección de oferta, o entera; «Volver» regresa   |
+
+**Descargar la lista** guarda un CSV con **todos** los clientes que dejan los filtros, no solo los
+100 que se muestran: negocio, teléfono, correo, prioridad, por qué llamarle, qué ofrecerle, ciudad,
+estado, web y puntuación, con cabeceras **y valores** en el idioma de la pantalla
+(`ExportColumn.labels`, D-099). El archivo lo nombra el diálogo de guardado del sistema (la página
+nunca ve una ruta) y se escribe con su hash y su manifiesto, como cualquier exportación; «No
+contactar» nunca sale. Hasta la fase 16 ninguna columna traía el número: el explorador solo guarda
+el tipo de canal (D-097).
 
 ## Navegación y lenguaje
 

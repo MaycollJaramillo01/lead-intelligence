@@ -5561,6 +5561,16 @@ class ExplorerField(StrEnum):
     SUPPRESSED = "suppressed"
     STALE = "stale"
     PARTIAL = "partial"
+    #: Phase 16, filter only: the campaigns whose discovery found one of the lead's records.
+    CAMPAIGN = "campaign"
+    #: Phase 16, filter only: the kinds of published contact an export would write for the lead.
+    REACHABLE_BY = "reachable_by"
+
+
+#: Fields a lead is filtered by but never shows: no column, no sort, no export column.
+EXPLORER_FILTER_ONLY: frozenset[ExplorerField] = frozenset(
+    {ExplorerField.CAMPAIGN, ExplorerField.REACHABLE_BY}
+)
 
 
 class ExplorerFieldType(StrEnum):
@@ -5660,7 +5670,8 @@ EXPLORER_FIELDS: dict[ExplorerField, ExplorerFieldInfo] = {
         _info(_F.FACTS_AGE_DAYS, _T.NUMBER, live=True),
         _info(_F.AUDIT_STATUS, _T.ENUM, WebsiteAuditStatus), _info(_F.CONFLICTS, _T.NUMBER),
         _info(_F.SUPPRESSED, _T.FLAG, live=True), _info(_F.STALE, _T.FLAG, live=True),
-        _info(_F.PARTIAL, _T.FLAG),
+        _info(_F.PARTIAL, _T.FLAG), _info(_F.CAMPAIGN, _T.SET, live=True),
+        _info(_F.REACHABLE_BY, _T.SET, ContactType, live=True),
     )
 }  # fmt: skip
 
@@ -6868,10 +6879,17 @@ class ExportSourceKind(StrEnum):
     SNAPSHOT = "snapshot"
 
 
+MAX_EXPORT_LABELS = 50
+
+
 class ExportColumn(Contract):
     #: An explorer field for a query export, a snapshot column for a snapshot export.
     key: Code
     header: Annotated[str, Field(min_length=1, max_length=64)]
+    #: Phase 16: the words written instead of the codes the column holds (a tier, a problem, an
+    #: offer), in the language of the screen that asked; a code without one is written as it is.
+    #: The only defaulted field of a contract: presets and drafts stored before it stay readable.
+    labels: Annotated[dict[Code, Label], Field(max_length=MAX_EXPORT_LABELS)] | None = None
 
 
 MAX_EXPORT_COLUMNS = 64

@@ -15,7 +15,7 @@ import orjson
 import pytest
 from pydantic import ValidationError
 
-from research_engine import repository
+from research_engine import exports, repository
 from research_engine.ai import engine as ai_engine
 from research_engine.ai import inputs, tasks
 from research_engine.ai import store as ai_store
@@ -24,6 +24,7 @@ from research_engine.ai.resources import ResourceMonitor, Sample
 from research_engine.contacts import store as contacts_store
 from research_engine.contracts import ComponentState, GpuStatus, MessageType
 from research_engine.domain import (
+    EXPLORER_FILTER_ONLY,
     STALE_AFTER_DAYS,
     AiConfigureRequest,
     AiProfile,
@@ -94,8 +95,12 @@ from research_engine.scoring.model import ScoringError
 from research_engine.testdata import (
     SYNTHETIC_ICP_NAME,
     ScriptedProvider,
+    SyntheticContext,
     _scored_run,
     clone_lead_index,
+    insert_candidates,
+    seed_businesses,
+    seed_discovery,
     seed_synthetic_workspace,
     synthetic_answer,
 )
@@ -339,6 +344,66 @@ def test_filters_sorts_and_windows_match_a_reference_evaluation(
     assert set(ranked) == set(named)
 
 
+def test_a_search_lists_only_what_its_campaign_found_and_how_each_lead_can_be_reached(
+    conn: sqlite3.Connection, seeded: SyntheticSeedResult
+) -> None:
+    """Phase 16: two searches of one kind in one state no longer share a list. A lead belongs to
+    the campaigns whose candidates became one of its records, merged ones included; and it is
+    reachable by the kinds of contact an export would write for it, a merged record's too."""
+    run_id, connector_id = conn.execute(
+        "SELECT id, connector_id FROM source_runs WHERE project_id = ? ORDER BY created_at LIMIT 1",
+        (seeded.project_id,),
+    ).fetchone()
+    ctx = SyntheticContext(seeded.project_id, connector_id, run_id, utc_now())
+    campaign = seed_discovery(conn, ctx).campaign_id  # its own candidates never became leads
+    grocery = _lead(conn, "Synthetic Grocery 0507")
+    painting = _lead(conn, "Synthetic Painting 0702")
+    bakery = _lead(conn, "Synthetic Bakery 0200", "Denver")
+    records = seed_businesses(conn, ctx, 2, start=900)
+    candidates = insert_candidates(conn, ctx, [{"name": "a"}, {"name": "b"}], campaign_id=campaign)
+    with repository.atomic(conn):
+        for root, record, candidate in zip((grocery, painting), records, candidates, strict=True):
+            conn.execute(
+                "UPDATE businesses SET status = 'merged', merged_into_id = ? WHERE id = ?",
+                (root, record),
+            )
+            conn.execute(
+                "INSERT INTO entity_records (candidate_id, business_id, project_id, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (candidate, record, seeded.project_id, format_ts(utc_now())),
+            )
+        # the bakery's only address now belongs to a record merged into the painter
+        conn.execute(
+            "UPDATE contact_points SET business_id = ? WHERE business_id = ? "
+            "AND contact_type = 'email'",
+            (records[1], bakery),
+        )
+
+    def names(field: str, operator: str, value: str) -> set[str]:
+        page = explorer.explore(
+            conn, _query(filters=_group("and", _when(field, operator, value))), utc_now()
+        )
+        assert page.total == len(page.rows)
+        return {row.business_id for row in page.rows}
+
+    assert names("campaign", "has", campaign) == {grocery, painting}
+    assert len(names("campaign", "has_not", campaign)) == 36
+    assert names("campaign", "has", new_id()) == set()
+    emailed = names("reachable_by", "has", "email")
+    assert painting in emailed
+    assert bakery not in emailed
+    assert emailed == {_lead(conn, "Synthetic Plumbing 0701"), painting}
+    assert exports.best_contacts(conn, [painting])[painting]["email"].endswith(".example")
+    assert len(names("reachable_by", "has", "phone")) == 38
+    with pytest.raises(ValidationError):
+        _query(filters=_group("and", _when("reachable_by", "has", "fax")))
+    # a filter, never a column: the default view and the audit preset leave both fields out
+    shown = {column.field for column in explorer.default_view().columns}
+    assert shown.isdisjoint({ExplorerField.CAMPAIGN, ExplorerField.REACHABLE_BY})
+    audit = next(fixed for key, _, _, fixed in exports.BUILT_IN if key == "full_evidence_audit")
+    assert {column.key for column in audit.columns}.isdisjoint({"campaign", "reachable_by"})
+
+
 def test_a_hundred_thousand_leads_are_paged_from_the_index_without_loading_them(
     conn: sqlite3.Connection, seeded: SyntheticSeedResult
 ) -> None:
@@ -502,7 +567,7 @@ def test_saved_views_are_versioned_archived_with_a_reason_and_upgraded_when_read
     assert [column.field for column in item.definition.columns if column.visible] == [
         ExplorerField.RANK, ExplorerField.NAME, ExplorerField.TIER,
     ]  # fmt: skip
-    assert len(item.definition.columns) == len(ExplorerField)
+    assert len(item.definition.columns) == len(ExplorerField) - len(EXPLORER_FILTER_ONLY)
     assert (item.definition.search, item.definition.sort[0].field) == ("roofing", "total_score")
     again = _save(conn, old.name, item.definition, old.id)  # the next save appends version 2
     assert again.upgraded_from is None

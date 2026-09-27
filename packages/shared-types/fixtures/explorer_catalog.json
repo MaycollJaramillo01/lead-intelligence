@@ -629,6 +629,34 @@
       "values": [],
       "sortable": true,
       "live": false
+    },
+    {
+      "field": "campaign",
+      "type": "set",
+      "operators": [
+        "has",
+        "has_not"
+      ],
+      "values": [],
+      "sortable": false,
+      "live": true
+    },
+    {
+      "field": "reachable_by",
+      "type": "set",
+      "operators": [
+        "has",
+        "has_not"
+      ],
+      "values": [
+        "phone",
+        "email",
+        "contact_form",
+        "booking_form",
+        "social_profile"
+      ],
+      "sortable": false,
+      "live": true
     }
   ],
   "max_depth": 3,

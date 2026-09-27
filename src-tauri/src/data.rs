@@ -7,7 +7,7 @@
 //! rejected while deserialising, and every page the worker returns is checked against the query
 //! that produced it before it reaches the UI.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 
 use chrono::{DateTime, Utc};
@@ -2248,15 +2248,7 @@ impl MatchListQuery {
     pub fn validate(&self) -> Result<(), String> {
         check_limit(self.limit)?;
         match &self.connector_key {
-            Some(key)
-                if key.len() > MAX_CODE_CHARS
-                    || !key.starts_with(|c: char| c.is_ascii_lowercase())
-                    || !key.bytes().all(|b| {
-                        b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'.'
-                    }) =>
-            {
-                Err(format!("{key:?} is not a source key"))
-            }
+            Some(key) if !is_code(key) => Err(format!("{key:?} is not a source key")),
             _ => Ok(()),
         }
     }
@@ -6862,7 +6854,7 @@ const EXPLORER_MAX_CHILDREN: usize = 20;
 const EXPLORER_MAX_SORT: usize = 4;
 const EXPLORER_MAX_OFFSET: u64 = 5_000_000;
 const EXPLORER_MAX_VALUES: usize = 50;
-const EXPLORER_FIELD_COUNT: usize = 36;
+const EXPLORER_FIELD_COUNT: usize = 38;
 const BULK_MAX_IDS: usize = 1000;
 const BULK_MAX_MATCHING: u64 = 5000;
 const BULK_MAX_SKIPS: usize = 100;
@@ -6918,7 +6910,9 @@ contract_enum!(ExplorerField {
     Conflicts,
     Suppressed,
     Stale,
-    Partial
+    Partial,
+    Campaign,
+    ReachableBy
 });
 contract_enum!(ExplorerFieldType {
     Text,
@@ -7119,7 +7113,9 @@ impl ExplorerField {
             | Self::ChannelStatus
             | Self::TopProblem
             | Self::AuditStatus => ExplorerFieldType::Enum,
-            Self::Tag | Self::Problem => ExplorerFieldType::Set,
+            Self::Tag | Self::Problem | Self::Campaign | Self::ReachableBy => {
+                ExplorerFieldType::Set
+            }
             Self::Suppressed | Self::Stale | Self::Partial => ExplorerFieldType::Flag,
             Self::Rank
             | Self::TotalScore
@@ -7151,6 +7147,8 @@ impl ExplorerField {
                 | Self::FactsAgeDays
                 | Self::Suppressed
                 | Self::Stale
+                | Self::Campaign
+                | Self::ReachableBy
         )
     }
 
@@ -7164,7 +7162,7 @@ impl ExplorerField {
             Self::ResearchStatus => parses::<ResearchStatus>(value),
             Self::Tier => parses::<LeadTier>(value),
             Self::LatinoStatus => parses::<LatinoStatus>(value),
-            Self::MainChannel => parses::<ContactType>(value),
+            Self::MainChannel | Self::ReachableBy => parses::<ContactType>(value),
             Self::ChannelStatus => parses::<ValidationStatus>(value),
             Self::TopProblem | Self::Problem => parses::<ProblemType>(value),
             Self::AuditStatus => parses::<WebsiteAuditStatus>(value),
@@ -8900,6 +8898,7 @@ const MAX_DIFF_ROWS: u32 = 500;
 const MAX_KEEP_LATEST: u32 = 100;
 const MAX_RETENTION_DAYS: u32 = 3650;
 const MAX_EXPORT_COLUMNS: usize = 64;
+const MAX_EXPORT_LABELS: usize = 50;
 const MAX_EXPORT_HEADER: usize = 64;
 const EXPORT_SAMPLE_ROWS: usize = 20;
 const MAX_SNAPSHOT_EXPORTS: usize = 20;
@@ -9959,6 +9958,18 @@ impl DatasetCleanupResult {
 pub struct ExportColumn {
     pub key: String,
     pub header: String,
+    /// Phase 16: the words written instead of the codes the column holds. Missing in presets and
+    /// drafts stored before it (`ExportColumn.labels` in `domain.py`).
+    #[serde(default)]
+    pub labels: Option<BTreeMap<String, String>>,
+}
+
+fn is_code(text: &str) -> bool {
+    text.len() <= MAX_CODE_CHARS
+        && text.starts_with(|c: char| c.is_ascii_lowercase())
+        && text
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'.')
 }
 
 fn check_export_columns(columns: &[ExportColumn]) -> Result<(), String> {
@@ -9977,6 +9988,16 @@ fn check_export_columns(columns: &[ExportColumn]) -> Result<(), String> {
         }
         if !headers.insert(column.header.to_lowercase()) {
             return Err(format!("two columns are headed {}", column.header));
+        }
+        let labels = column.labels.iter().flatten();
+        if labels.clone().count() > MAX_EXPORT_LABELS {
+            return Err(format!("a column labels at most {MAX_EXPORT_LABELS} codes"));
+        }
+        for (code, label) in labels {
+            if !is_code(code) {
+                return Err(format!("{code:?} is not a code"));
+            }
+            check_label("a label", label, MAX_LABEL_CHARS)?;
         }
     }
     Ok(())
@@ -10378,6 +10399,31 @@ mod tests {
             export("kind,value\n", 0).validate().is_err(),
             "unexpected columns"
         );
+    }
+
+    #[test]
+    fn export_labels_are_codes_with_words_and_older_columns_still_parse() {
+        let column = |labels: Value| {
+            serde_json::from_value::<ExportColumn>(json!({
+                "key": "tier", "header": "Prioridad", "labels": labels
+            }))
+            .expect("a column")
+        };
+        let older: ExportColumn =
+            serde_json::from_value(json!({"key": "tier", "header": "Tier"})).expect("stored");
+        assert_eq!(older.labels, None);
+        assert!(check_export_columns(&[column(json!({"priority": "Llamar primero"}))]).is_ok());
+        assert!(check_export_columns(&[column(Value::Null)]).is_ok());
+        for bad in [json!({"Priority": "x"}), json!({"priority": " "})] {
+            assert!(
+                check_export_columns(&[column(bad.clone())]).is_err(),
+                "{bad}"
+            );
+        }
+        let many: Map<String, Value> = (0..=MAX_EXPORT_LABELS)
+            .map(|index| (format!("code_{index}"), json!("x")))
+            .collect();
+        assert!(check_export_columns(&[column(Value::Object(many))]).is_err());
     }
 
     #[test]

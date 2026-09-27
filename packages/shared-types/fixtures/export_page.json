@@ -92,19 +92,23 @@
             "columns": [
               {
                 "header": "Business",
-                "key": "name"
+                "key": "name",
+                "labels": null
               },
               {
                 "header": "Tier",
-                "key": "tier"
+                "key": "tier",
+                "labels": null
               },
               {
                 "header": "Lead score",
-                "key": "total_score"
+                "key": "total_score",
+                "labels": null
               },
               {
                 "header": "Channel",
-                "key": "main_channel"
+                "key": "main_channel",
+                "labels": null
               }
             ],
             "destination": "C:/synthetic/exports/leads.csv",

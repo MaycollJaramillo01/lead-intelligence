@@ -21,6 +21,7 @@ from research_engine.domain import (
     BULK_MAX_IDS,
     BULK_MAX_MATCHING,
     EXPLORER_FIELDS,
+    EXPLORER_FILTER_ONLY,
     EXPLORER_MAX_CHILDREN,
     EXPLORER_MAX_CONDITIONS,
     EXPLORER_MAX_DEPTH,
@@ -114,7 +115,24 @@ _SEARCH: Final = (
     "li.business_id IN (SELECT coalesce(m.merged_into_id, m.id) FROM businesses m "
     "WHERE m.seq IN (SELECT rowid FROM business_search WHERE business_search MATCH ?))"
 )
+#: The businesses a campaign's discovery found: one of their records came from its candidates.
+_FOUND_BY: Final = (
+    "SELECT coalesce(b.merged_into_id, b.id) FROM entity_records er "
+    "JOIN discovery_candidates dc ON dc.id = er.candidate_id "
+    "JOIN businesses b ON b.id = er.business_id WHERE dc.campaign_id = ?"
+)
+#: The businesses with a contact of one kind an export writes (`exports.best_contacts`): published,
+#: off the do-not-contact list, not invalid nor stale, theirs or of a record merged into them.
+_REACHABLE: Final = (
+    "SELECT coalesce(b.merged_into_id, b.id) FROM contact_points c "  # noqa: S608
+    "JOIN businesses b ON b.id = c.business_id WHERE c.contact_type = ? "
+    "AND c.deleted_at IS NULL AND c.do_not_contact = 0 AND c.origin <> 'hypothesis' "
+    f"AND c.validation_status IN ({', '.join(repr(s.value) for s in index.STATUS_RANK)})"
+)
 _PARTIAL_AUDITS: Final = (WebsiteAuditStatus.PARTIAL, WebsiteAuditStatus.EMPTY)
+
+#: Set fields a lead belongs to through a table: `has` is one uncorrelated subquery per query.
+_MEMBERSHIP: Final = {_F.TAG: _TAGGED, _F.CAMPAIGN: _FOUND_BY, _F.REACHABLE_BY: _REACHABLE}
 
 Sql = tuple[str, list[object], set[str]]
 
@@ -161,7 +179,7 @@ def default_view() -> ViewDefinition:
         + [
             ViewColumn(field=field, visible=False, pinned=False, width=None)
             for field in ExplorerField
-            if field not in shown
+            if field not in shown and field not in EXPLORER_FILTER_ONLY
         ],
     )
 
@@ -230,8 +248,9 @@ def _expression(field: ExplorerField, now: datetime) -> Sql:
 
 def _condition(node: ExplorerCondition, now: datetime) -> Sql:
     op, value = node.operator, node.value
-    if node.field is _F.TAG:
-        return f"li.business_id {'IN' if op is _OP.HAS else 'NOT IN'} ({_TAGGED})", [value], set()
+    if node.field in _MEMBERSHIP:
+        within = "IN" if op is _OP.HAS else "NOT IN"
+        return f"li.business_id {within} ({_MEMBERSHIP[node.field]})", [value], set()
     if node.field is _F.PROBLEM:
         bit = index.PROBLEM_BITS[ProblemType(str(value))]
         return f"(li.problem_mask & ?) {'<>' if op is _OP.HAS else '='} 0", [bit], set()

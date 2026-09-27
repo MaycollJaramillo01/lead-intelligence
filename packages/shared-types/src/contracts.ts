@@ -315,7 +315,9 @@ export type ExplorerField =
   | "conflicts"
   | "suppressed"
   | "stale"
-  | "partial";
+  | "partial"
+  | "campaign"
+  | "reachable_by";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ExplorerOperator".
@@ -4897,6 +4899,13 @@ export interface ExportDefinition {
 export interface ExportColumn {
   key: string;
   header: string;
+  labels?: {
+    /**
+     * This interface was referenced by `undefined`'s JSON-Schema definition
+     * via the `patternProperty` "^[a-z][a-z0-9_.]*$".
+     */
+    [k: string]: string | undefined;
+  } | null;
 }
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema

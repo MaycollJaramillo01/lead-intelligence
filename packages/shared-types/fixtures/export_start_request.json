@@ -25,19 +25,23 @@
   "columns": [
     {
       "key": "name",
-      "header": "Business"
+      "header": "Business",
+      "labels": null
     },
     {
       "key": "tier",
-      "header": "Tier"
+      "header": "Tier",
+      "labels": null
     },
     {
       "key": "total_score",
-      "header": "Lead score"
+      "header": "Lead score",
+      "labels": null
     },
     {
       "key": "main_channel",
-      "header": "Channel"
+      "header": "Channel",
+      "labels": null
     }
   ],
   "bom": true,

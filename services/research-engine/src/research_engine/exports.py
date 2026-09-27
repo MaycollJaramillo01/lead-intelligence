@@ -37,6 +37,7 @@ import orjson
 
 from research_engine import __version__, datasets, jobs, repository
 from research_engine.domain import (
+    EXPLORER_FILTER_ONLY,
     STALE_AFTER_DAYS,
     AuditAction,
     ContactOrigin,
@@ -390,7 +391,13 @@ BUILT_IN: Final[tuple[tuple[str, str, str, ExportDefinition], ...]] = (
             source_kind=ExportSourceKind.QUERY,
             format=ExportFormat.XLSX,
             bom=False,
-            columns=_columns(*((field.value, field.value) for field in ExplorerField)),
+            columns=_columns(
+                *(
+                    (field.value, field.value)
+                    for field in ExplorerField
+                    if field not in EXPLORER_FILTER_ONLY
+                )
+            ),
         ),
     ),
     (
@@ -683,6 +690,15 @@ def _plain(value: object) -> object:
     return value
 
 
+def _labelled(value: object, labels: dict[str, str] | None) -> object:
+    """A code in the words the page gave for it (`ExportColumn.labels`), a list code by code."""
+    if not labels:
+        return value
+    if isinstance(value, list):
+        return [labels.get(item, item) if isinstance(item, str) else item for item in value]
+    return labels.get(value, value) if isinstance(value, str) else value
+
+
 def unverified(row: ExplorerRow) -> bool:
     return row.main_channel is not None and row.channel_status not in VERIFIED
 
@@ -690,16 +706,21 @@ def unverified(row: ExplorerRow) -> bool:
 def best_contacts(conn: sqlite3.Connection, ids: Sequence[str]) -> dict[str, dict[str, str]]:
     """Per business, the phone and the email to use: the most validated published one of each kind,
     the primary before the rest, off the do-not-contact list. Invalid, stale and suppressed
-    addresses are no route, the same rule the explorer's channel follows (`leads.index`)."""
+    addresses are no route, the same rule the explorer's channel follows (`leads.index`). A merge
+    moves no contact, so the records merged into a business lend it theirs, as its page shows."""
     found: dict[str, dict[str, str]] = {}
     ranked: dict[tuple[str, str], tuple[int, int]] = {}
     marks = ",".join("?" * len(ids))
     kinds = ",".join("?" * len(CONTACT_COLUMNS))
     rows = conn.execute(
-        "SELECT business_id, contact_type, value_raw, validation_status, is_primary "  # noqa: S608
-        f"FROM contact_points WHERE business_id IN ({marks}) AND contact_type IN ({kinds}) "
-        "AND deleted_at IS NULL AND do_not_contact = 0 AND origin <> ?",
+        "SELECT coalesce(b.merged_into_id, b.id) AS root, c.contact_type, c.value_raw, "  # noqa: S608
+        "c.validation_status, c.is_primary FROM contact_points c "
+        f"JOIN businesses b ON b.id = c.business_id WHERE (b.id IN ({marks}) "
+        f"OR b.merged_into_id IN ({marks})) AND c.contact_type IN ({kinds}) "
+        # equals keep the oldest, as the business's page picks
+        "AND c.deleted_at IS NULL AND c.do_not_contact = 0 AND c.origin <> ? ORDER BY c.id",
         [
+            *ids,
             *ids,
             *(kind.value for kind in CONTACT_COLUMNS.values()),
             ContactOrigin.HYPOTHESIS.value,
@@ -709,12 +730,12 @@ def best_contacts(conn: sqlite3.Connection, ids: Sequence[str]) -> dict[str, dic
         rank = index.STATUS_RANK.get(ValidationStatus(row["validation_status"]))
         if rank is None:
             continue
-        key = (row["business_id"], row["contact_type"])
+        key = (row["root"], row["contact_type"])
         order = (rank, 0 if row["is_primary"] else 1)
         if key in ranked and ranked[key] <= order:
             continue
         ranked[key] = order
-        found.setdefault(row["business_id"], {})[row["contact_type"]] = row["value_raw"]
+        found.setdefault(row["root"], {})[row["contact_type"]] = row["value_raw"]
     return found
 
 
@@ -744,8 +765,8 @@ def query_rows(
                 *(
                     reachable.get(CONTACT_COLUMNS[attribute])
                     if attribute in CONTACT_COLUMNS
-                    else _plain(getattr(row, attribute))
-                    for attribute in chosen
+                    else _labelled(_plain(getattr(row, attribute)), column.labels)
+                    for attribute, column in zip(chosen, draft.columns, strict=True)
                 ),
                 row.business_id,
                 plan_.run.id,
@@ -786,7 +807,10 @@ def snapshot_rows(
                     plan_.skipped[0] += 1
                     continue
                 yield [
-                    *(_plain(value) for value in values[:-1]),
+                    *(
+                        _labelled(_plain(value), column.labels)
+                        for value, column in zip(values[:-1], draft.columns, strict=True)
+                    ),
                     values[-1],
                     snapshot.id,
                     snapshot.version,

@@ -12,39 +12,48 @@
           "columns": [
             {
               "header": "Business",
-              "key": "name"
+              "key": "name",
+              "labels": null
             },
             {
               "header": "Website",
-              "key": "domain"
+              "key": "domain",
+              "labels": null
             },
             {
               "header": "Channel",
-              "key": "main_channel"
+              "key": "main_channel",
+              "labels": null
             },
             {
               "header": "Channel status",
-              "key": "channel_status"
+              "key": "channel_status",
+              "labels": null
             },
             {
               "header": "Usable channels",
-              "key": "usable_channels"
+              "key": "usable_channels",
+              "labels": null
             },
             {
               "header": "Conflicting fields",
-              "key": "conflicts"
+              "key": "conflicts",
+              "labels": null
             },
             {
               "header": "Research status",
-              "key": "research_status"
+              "key": "research_status",
+              "labels": null
             },
             {
               "header": "Assignee",
-              "key": "assignee"
+              "key": "assignee",
+              "labels": null
             },
             {
               "header": "Lead stage",
-              "key": "lead_stage"
+              "key": "lead_stage",
+              "labels": null
             }
           ],
           "format": "xlsx",
@@ -62,39 +71,48 @@
         "columns": [
           {
             "key": "name",
-            "header": "Business"
+            "header": "Business",
+            "labels": null
           },
           {
             "key": "domain",
-            "header": "Website"
+            "header": "Website",
+            "labels": null
           },
           {
             "key": "main_channel",
-            "header": "Channel"
+            "header": "Channel",
+            "labels": null
           },
           {
             "key": "channel_status",
-            "header": "Channel status"
+            "header": "Channel status",
+            "labels": null
           },
           {
             "key": "usable_channels",
-            "header": "Usable channels"
+            "header": "Usable channels",
+            "labels": null
           },
           {
             "key": "conflicts",
-            "header": "Conflicting fields"
+            "header": "Conflicting fields",
+            "labels": null
           },
           {
             "key": "research_status",
-            "header": "Research status"
+            "header": "Research status",
+            "labels": null
           },
           {
             "key": "assignee",
-            "header": "Assignee"
+            "header": "Assignee",
+            "labels": null
           },
           {
             "key": "lead_stage",
-            "header": "Lead stage"
+            "header": "Lead stage",
+            "labels": null
           }
         ],
         "bom": false
@@ -116,75 +134,93 @@
           "columns": [
             {
               "header": "project_id",
-              "key": "project_id"
+              "key": "project_id",
+              "labels": null
             },
             {
               "header": "display_name",
-              "key": "display_name"
+              "key": "display_name",
+              "labels": null
             },
             {
               "header": "status",
-              "key": "status"
+              "key": "status",
+              "labels": null
             },
             {
               "header": "lead_stage",
-              "key": "lead_stage"
+              "key": "lead_stage",
+              "labels": null
             },
             {
               "header": "locality",
-              "key": "locality"
+              "key": "locality",
+              "labels": null
             },
             {
               "header": "region",
-              "key": "region"
+              "key": "region",
+              "labels": null
             },
             {
               "header": "postal_code",
-              "key": "postal_code"
+              "key": "postal_code",
+              "labels": null
             },
             {
               "header": "primary_domain",
-              "key": "primary_domain"
+              "key": "primary_domain",
+              "labels": null
             },
             {
               "header": "primary_phone",
-              "key": "primary_phone"
+              "key": "primary_phone",
+              "labels": null
             },
             {
               "header": "primary_category",
-              "key": "primary_category"
+              "key": "primary_category",
+              "labels": null
             },
             {
               "header": "source_count",
-              "key": "source_count"
+              "key": "source_count",
+              "labels": null
             },
             {
               "header": "evidence_count",
-              "key": "evidence_count"
+              "key": "evidence_count",
+              "labels": null
             },
             {
               "header": "first_seen_at",
-              "key": "first_seen_at"
+              "key": "first_seen_at",
+              "labels": null
             },
             {
               "header": "last_seen_at",
-              "key": "last_seen_at"
+              "key": "last_seen_at",
+              "labels": null
             },
             {
               "header": "score_run_id",
-              "key": "score_run_id"
+              "key": "score_run_id",
+              "labels": null
             },
             {
               "header": "tier",
-              "key": "tier"
+              "key": "tier",
+              "labels": null
             },
             {
               "header": "total_score",
-              "key": "total_score"
+              "key": "total_score",
+              "labels": null
             },
             {
               "header": "suppressed",
-              "key": "suppressed"
+              "key": "suppressed",
+              "labels": null
             }
           ],
           "format": "parquet",
@@ -202,75 +238,93 @@
         "columns": [
           {
             "key": "project_id",
-            "header": "project_id"
+            "header": "project_id",
+            "labels": null
           },
           {
             "key": "display_name",
-            "header": "display_name"
+            "header": "display_name",
+            "labels": null
           },
           {
             "key": "status",
-            "header": "status"
+            "header": "status",
+            "labels": null
           },
           {
             "key": "lead_stage",
-            "header": "lead_stage"
+            "header": "lead_stage",
+            "labels": null
           },
           {
             "key": "locality",
-            "header": "locality"
+            "header": "locality",
+            "labels": null
           },
           {
             "key": "region",
-            "header": "region"
+            "header": "region",
+            "labels": null
           },
           {
             "key": "postal_code",
-            "header": "postal_code"
+            "header": "postal_code",
+            "labels": null
           },
           {
             "key": "primary_domain",
-            "header": "primary_domain"
+            "header": "primary_domain",
+            "labels": null
           },
           {
             "key": "primary_phone",
-            "header": "primary_phone"
+            "header": "primary_phone",
+            "labels": null
           },
           {
             "key": "primary_category",
-            "header": "primary_category"
+            "header": "primary_category",
+            "labels": null
           },
           {
             "key": "source_count",
-            "header": "source_count"
+            "header": "source_count",
+            "labels": null
           },
           {
             "key": "evidence_count",
-            "header": "evidence_count"
+            "header": "evidence_count",
+            "labels": null
           },
           {
             "key": "first_seen_at",
-            "header": "first_seen_at"
+            "header": "first_seen_at",
+            "labels": null
           },
           {
             "key": "last_seen_at",
-            "header": "last_seen_at"
+            "header": "last_seen_at",
+            "labels": null
           },
           {
             "key": "score_run_id",
-            "header": "score_run_id"
+            "header": "score_run_id",
+            "labels": null
           },
           {
             "key": "tier",
-            "header": "tier"
+            "header": "tier",
+            "labels": null
           },
           {
             "key": "total_score",
-            "header": "total_score"
+            "header": "total_score",
+            "labels": null
           },
           {
             "key": "suppressed",
-            "header": "suppressed"
+            "header": "suppressed",
+            "labels": null
           }
         ],
         "bom": false
@@ -292,147 +346,183 @@
           "columns": [
             {
               "header": "name",
-              "key": "name"
+              "key": "name",
+              "labels": null
             },
             {
               "header": "locality",
-              "key": "locality"
+              "key": "locality",
+              "labels": null
             },
             {
               "header": "region",
-              "key": "region"
+              "key": "region",
+              "labels": null
             },
             {
               "header": "category",
-              "key": "category"
+              "key": "category",
+              "labels": null
             },
             {
               "header": "domain",
-              "key": "domain"
+              "key": "domain",
+              "labels": null
             },
             {
               "header": "lead_stage",
-              "key": "lead_stage"
+              "key": "lead_stage",
+              "labels": null
             },
             {
               "header": "research_status",
-              "key": "research_status"
+              "key": "research_status",
+              "labels": null
             },
             {
               "header": "assignee",
-              "key": "assignee"
+              "key": "assignee",
+              "labels": null
             },
             {
               "header": "tag",
-              "key": "tag"
+              "key": "tag",
+              "labels": null
             },
             {
               "header": "tier",
-              "key": "tier"
+              "key": "tier",
+              "labels": null
             },
             {
               "header": "rank",
-              "key": "rank"
+              "key": "rank",
+              "labels": null
             },
             {
               "header": "total_score",
-              "key": "total_score"
+              "key": "total_score",
+              "labels": null
             },
             {
               "header": "confidence",
-              "key": "confidence"
+              "key": "confidence",
+              "labels": null
             },
             {
               "header": "data_coverage",
-              "key": "data_coverage"
+              "key": "data_coverage",
+              "labels": null
             },
             {
               "header": "icp_match",
-              "key": "icp_match"
+              "key": "icp_match",
+              "labels": null
             },
             {
               "header": "opportunity_score",
-              "key": "opportunity_score"
+              "key": "opportunity_score",
+              "labels": null
             },
             {
               "header": "digital_gap",
-              "key": "digital_gap"
+              "key": "digital_gap",
+              "labels": null
             },
             {
               "header": "business_health",
-              "key": "business_health"
+              "key": "business_health",
+              "labels": null
             },
             {
               "header": "buying_capacity",
-              "key": "buying_capacity"
+              "key": "buying_capacity",
+              "labels": null
             },
             {
               "header": "contactability",
-              "key": "contactability"
+              "key": "contactability",
+              "labels": null
             },
             {
               "header": "commercial_intent",
-              "key": "commercial_intent"
+              "key": "commercial_intent",
+              "labels": null
             },
             {
               "header": "data_confidence",
-              "key": "data_confidence"
+              "key": "data_confidence",
+              "labels": null
             },
             {
               "header": "latino_status",
-              "key": "latino_status"
+              "key": "latino_status",
+              "labels": null
             },
             {
               "header": "latino_confidence",
-              "key": "latino_confidence"
+              "key": "latino_confidence",
+              "labels": null
             },
             {
               "header": "main_channel",
-              "key": "main_channel"
+              "key": "main_channel",
+              "labels": null
             },
             {
               "header": "channel_status",
-              "key": "channel_status"
+              "key": "channel_status",
+              "labels": null
             },
             {
               "header": "usable_channels",
-              "key": "usable_channels"
+              "key": "usable_channels",
+              "labels": null
             },
             {
               "header": "problem",
-              "key": "problem"
+              "key": "problem",
+              "labels": null
             },
             {
               "header": "top_problem",
-              "key": "top_problem"
+              "key": "top_problem",
+              "labels": null
             },
             {
               "header": "offer",
-              "key": "offer"
+              "key": "offer",
+              "labels": null
             },
             {
               "header": "facts_age_days",
-              "key": "facts_age_days"
+              "key": "facts_age_days",
+              "labels": null
             },
             {
               "header": "audit_status",
-              "key": "audit_status"
+              "key": "audit_status",
+              "labels": null
             },
             {
               "header": "conflicts",
-              "key": "conflicts"
+              "key": "conflicts",
+              "labels": null
             },
             {
               "header": "suppressed",
-              "key": "suppressed"
+              "key": "suppressed",
+              "labels": null
             },
             {
               "header": "stale",
-              "key": "stale"
+              "key": "stale",
+              "labels": null
             },
             {
               "header": "partial",
-              "key": "partial"
+              "key": "partial",
+              "labels": null
             }
           ],
           "format": "xlsx",
@@ -450,147 +540,183 @@
         "columns": [
           {
             "key": "name",
-            "header": "name"
+            "header": "name",
+            "labels": null
           },
           {
             "key": "locality",
-            "header": "locality"
+            "header": "locality",
+            "labels": null
           },
           {
             "key": "region",
-            "header": "region"
+            "header": "region",
+            "labels": null
           },
           {
             "key": "category",
-            "header": "category"
+            "header": "category",
+            "labels": null
           },
           {
             "key": "domain",
-            "header": "domain"
+            "header": "domain",
+            "labels": null
           },
           {
             "key": "lead_stage",
-            "header": "lead_stage"
+            "header": "lead_stage",
+            "labels": null
           },
           {
             "key": "research_status",
-            "header": "research_status"
+            "header": "research_status",
+            "labels": null
           },
           {
             "key": "assignee",
-            "header": "assignee"
+            "header": "assignee",
+            "labels": null
           },
           {
             "key": "tag",
-            "header": "tag"
+            "header": "tag",
+            "labels": null
           },
           {
             "key": "tier",
-            "header": "tier"
+            "header": "tier",
+            "labels": null
           },
           {
             "key": "rank",
-            "header": "rank"
+            "header": "rank",
+            "labels": null
           },
           {
             "key": "total_score",
-            "header": "total_score"
+            "header": "total_score",
+            "labels": null
           },
           {
             "key": "confidence",
-            "header": "confidence"
+            "header": "confidence",
+            "labels": null
           },
           {
             "key": "data_coverage",
-            "header": "data_coverage"
+            "header": "data_coverage",
+            "labels": null
           },
           {
             "key": "icp_match",
-            "header": "icp_match"
+            "header": "icp_match",
+            "labels": null
           },
           {
             "key": "opportunity_score",
-            "header": "opportunity_score"
+            "header": "opportunity_score",
+            "labels": null
           },
           {
             "key": "digital_gap",
-            "header": "digital_gap"
+            "header": "digital_gap",
+            "labels": null
           },
           {
             "key": "business_health",
-            "header": "business_health"
+            "header": "business_health",
+            "labels": null
           },
           {
             "key": "buying_capacity",
-            "header": "buying_capacity"
+            "header": "buying_capacity",
+            "labels": null
           },
           {
             "key": "contactability",
-            "header": "contactability"
+            "header": "contactability",
+            "labels": null
           },
           {
             "key": "commercial_intent",
-            "header": "commercial_intent"
+            "header": "commercial_intent",
+            "labels": null
           },
           {
             "key": "data_confidence",
-            "header": "data_confidence"
+            "header": "data_confidence",
+            "labels": null
           },
           {
             "key": "latino_status",
-            "header": "latino_status"
+            "header": "latino_status",
+            "labels": null
           },
           {
             "key": "latino_confidence",
-            "header": "latino_confidence"
+            "header": "latino_confidence",
+            "labels": null
           },
           {
             "key": "main_channel",
-            "header": "main_channel"
+            "header": "main_channel",
+            "labels": null
           },
           {
             "key": "channel_status",
-            "header": "channel_status"
+            "header": "channel_status",
+            "labels": null
           },
           {
             "key": "usable_channels",
-            "header": "usable_channels"
+            "header": "usable_channels",
+            "labels": null
           },
           {
             "key": "problem",
-            "header": "problem"
+            "header": "problem",
+            "labels": null
           },
           {
             "key": "top_problem",
-            "header": "top_problem"
+            "header": "top_problem",
+            "labels": null
           },
           {
             "key": "offer",
-            "header": "offer"
+            "header": "offer",
+            "labels": null
           },
           {
             "key": "facts_age_days",
-            "header": "facts_age_days"
+            "header": "facts_age_days",
+            "labels": null
           },
           {
             "key": "audit_status",
-            "header": "audit_status"
+            "header": "audit_status",
+            "labels": null
           },
           {
             "key": "conflicts",
-            "header": "conflicts"
+            "header": "conflicts",
+            "labels": null
           },
           {
             "key": "suppressed",
-            "header": "suppressed"
+            "header": "suppressed",
+            "labels": null
           },
           {
             "key": "stale",
-            "header": "stale"
+            "header": "stale",
+            "labels": null
           },
           {
             "key": "partial",
-            "header": "partial"
+            "header": "partial",
+            "labels": null
           }
         ],
         "bom": false
@@ -612,59 +738,73 @@
           "columns": [
             {
               "header": "Business",
-              "key": "name"
+              "key": "name",
+              "labels": null
             },
             {
               "header": "Phone",
-              "key": "phone"
+              "key": "phone",
+              "labels": null
             },
             {
               "header": "Email",
-              "key": "email"
+              "key": "email",
+              "labels": null
             },
             {
               "header": "City",
-              "key": "locality"
+              "key": "locality",
+              "labels": null
             },
             {
               "header": "State",
-              "key": "region"
+              "key": "region",
+              "labels": null
             },
             {
               "header": "Category",
-              "key": "category"
+              "key": "category",
+              "labels": null
             },
             {
               "header": "Website",
-              "key": "domain"
+              "key": "domain",
+              "labels": null
             },
             {
               "header": "Tier",
-              "key": "tier"
+              "key": "tier",
+              "labels": null
             },
             {
               "header": "Lead score",
-              "key": "total_score"
+              "key": "total_score",
+              "labels": null
             },
             {
               "header": "Channel",
-              "key": "main_channel"
+              "key": "main_channel",
+              "labels": null
             },
             {
               "header": "Channel status",
-              "key": "channel_status"
+              "key": "channel_status",
+              "labels": null
             },
             {
               "header": "Top problem",
-              "key": "top_problem"
+              "key": "top_problem",
+              "labels": null
             },
             {
               "header": "Offer",
-              "key": "offer"
+              "key": "offer",
+              "labels": null
             },
             {
               "header": "Research status",
-              "key": "research_status"
+              "key": "research_status",
+              "labels": null
             }
           ],
           "format": "csv",
@@ -682,59 +822,73 @@
         "columns": [
           {
             "key": "name",
-            "header": "Business"
+            "header": "Business",
+            "labels": null
           },
           {
             "key": "phone",
-            "header": "Phone"
+            "header": "Phone",
+            "labels": null
           },
           {
             "key": "email",
-            "header": "Email"
+            "header": "Email",
+            "labels": null
           },
           {
             "key": "locality",
-            "header": "City"
+            "header": "City",
+            "labels": null
           },
           {
             "key": "region",
-            "header": "State"
+            "header": "State",
+            "labels": null
           },
           {
             "key": "category",
-            "header": "Category"
+            "header": "Category",
+            "labels": null
           },
           {
             "key": "domain",
-            "header": "Website"
+            "header": "Website",
+            "labels": null
           },
           {
             "key": "tier",
-            "header": "Tier"
+            "header": "Tier",
+            "labels": null
           },
           {
             "key": "total_score",
-            "header": "Lead score"
+            "header": "Lead score",
+            "labels": null
           },
           {
             "key": "main_channel",
-            "header": "Channel"
+            "header": "Channel",
+            "labels": null
           },
           {
             "key": "channel_status",
-            "header": "Channel status"
+            "header": "Channel status",
+            "labels": null
           },
           {
             "key": "top_problem",
-            "header": "Top problem"
+            "header": "Top problem",
+            "labels": null
           },
           {
             "key": "offer",
-            "header": "Offer"
+            "header": "Offer",
+            "labels": null
           },
           {
             "key": "research_status",
-            "header": "Research status"
+            "header": "Research status",
+            "labels": null
           }
         ],
         "bom": true
@@ -756,43 +910,53 @@
           "columns": [
             {
               "header": "Business",
-              "key": "name"
+              "key": "name",
+              "labels": null
             },
             {
               "header": "Website",
-              "key": "domain"
+              "key": "domain",
+              "labels": null
             },
             {
               "header": "Category",
-              "key": "category"
+              "key": "category",
+              "labels": null
             },
             {
               "header": "State",
-              "key": "region"
+              "key": "region",
+              "labels": null
             },
             {
               "header": "Digital gap",
-              "key": "digital_gap"
+              "key": "digital_gap",
+              "labels": null
             },
             {
               "header": "Audit status",
-              "key": "audit_status"
+              "key": "audit_status",
+              "labels": null
             },
             {
               "header": "Problems",
-              "key": "problem"
+              "key": "problem",
+              "labels": null
             },
             {
               "header": "Top problem",
-              "key": "top_problem"
+              "key": "top_problem",
+              "labels": null
             },
             {
               "header": "Offer",
-              "key": "offer"
+              "key": "offer",
+              "labels": null
             },
             {
               "header": "Lead score",
-              "key": "total_score"
+              "key": "total_score",
+              "labels": null
             }
           ],
           "format": "xlsx",
@@ -810,43 +974,53 @@
         "columns": [
           {
             "key": "name",
-            "header": "Business"
+            "header": "Business",
+            "labels": null
           },
           {
             "key": "domain",
-            "header": "Website"
+            "header": "Website",
+            "labels": null
           },
           {
             "key": "category",
-            "header": "Category"
+            "header": "Category",
+            "labels": null
           },
           {
             "key": "region",
-            "header": "State"
+            "header": "State",
+            "labels": null
           },
           {
             "key": "digital_gap",
-            "header": "Digital gap"
+            "header": "Digital gap",
+            "labels": null
           },
           {
             "key": "audit_status",
-            "header": "Audit status"
+            "header": "Audit status",
+            "labels": null
           },
           {
             "key": "problem",
-            "header": "Problems"
+            "header": "Problems",
+            "labels": null
           },
           {
             "key": "top_problem",
-            "header": "Top problem"
+            "header": "Top problem",
+            "labels": null
           },
           {
             "key": "offer",
-            "header": "Offer"
+            "header": "Offer",
+            "labels": null
           },
           {
             "key": "total_score",
-            "header": "Lead score"
+            "header": "Lead score",
+            "labels": null
           }
         ],
         "bom": false
@@ -1289,5 +1463,5 @@
     "parquet"
   ],
   "xlsx_max_rows": 1048575,
-  "max_columns": 36
+  "max_columns": 38
 }

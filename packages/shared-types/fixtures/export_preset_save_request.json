@@ -9,59 +9,73 @@
     "columns": [
       {
         "key": "name",
-        "header": "Business"
+        "header": "Business",
+        "labels": null
       },
       {
         "key": "phone",
-        "header": "Phone"
+        "header": "Phone",
+        "labels": null
       },
       {
         "key": "email",
-        "header": "Email"
+        "header": "Email",
+        "labels": null
       },
       {
         "key": "locality",
-        "header": "City"
+        "header": "City",
+        "labels": null
       },
       {
         "key": "region",
-        "header": "State"
+        "header": "State",
+        "labels": null
       },
       {
         "key": "category",
-        "header": "Category"
+        "header": "Category",
+        "labels": null
       },
       {
         "key": "domain",
-        "header": "Website"
+        "header": "Website",
+        "labels": null
       },
       {
         "key": "tier",
-        "header": "Tier"
+        "header": "Tier",
+        "labels": null
       },
       {
         "key": "total_score",
-        "header": "Lead score"
+        "header": "Lead score",
+        "labels": null
       },
       {
         "key": "main_channel",
-        "header": "Channel"
+        "header": "Channel",
+        "labels": null
       },
       {
         "key": "channel_status",
-        "header": "Channel status"
+        "header": "Channel status",
+        "labels": null
       },
       {
         "key": "top_problem",
-        "header": "Top problem"
+        "header": "Top problem",
+        "labels": null
       },
       {
         "key": "offer",
-        "header": "Offer"
+        "header": "Offer",
+        "labels": null
       },
       {
         "key": "research_status",
-        "header": "Research status"
+        "header": "Research status",
+        "labels": null
       }
     ],
     "bom": true

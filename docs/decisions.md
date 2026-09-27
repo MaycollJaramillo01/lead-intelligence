@@ -1390,4 +1390,39 @@ nuevas leen los mismos datos con `useSearchRuns` y `useClientList`.
 que el Censo no lista ya no puede escribirse a mano. La lista de una búsqueda anterior se abre con
 `#/mis-clientes?job=<id>`. Los tests de interfaz seguían escritos contra la versión en inglés
 anterior al rediseño: fijar el idioma inglés en `src/test/setup.ts` recupera 31 de ellos, y los ~100
-que siguen fallando esperan nombres que el rediseño cambió.
+que siguen fallando esperan nombres que el rediseño cambió (corregidos en e3184da: 257 de 257).
+
+## D-099 · La lista de una búsqueda es la de su campaña, se trabaja en la pantalla y se descarga en palabras (phase 16)
+
+**Contexto.** «Tu lista de clientes» filtraba por el estado y los tipos de negocio de la campaña
+porque el explorador no sabía qué campaña encontró cada negocio (D-096): dos búsquedas del mismo
+tipo en el mismo estado compartían lista. Mostraba un solo contacto, sin prioridad ni filtros, no
+dejaba anotar nada, y el archivo escribía `weak_local_seo` en «Por qué llamarle» y no decía qué
+ofrecer (D-097). Además, una fusión no mueve contactos: el archivo leía solo los del negocio raíz,
+mientras su ficha también muestra los de los registros fusionados en él.
+
+**Decisión.** El explorador tiene dos campos que solo filtran. `campaign` reúne las campañas cuyos
+candidatos se convirtieron en un registro del negocio, fusionados incluidos (`entity_records`).
+`reachable_by` reúne los tipos de contacto que un archivo escribiría: publicado, fuera de «No
+contactar», ni inválido ni caducado, del negocio o de un registro fusionado en él. No son columnas,
+ni claves de orden, ni columnas exportables; la vista por defecto y el preset de auditoría los dejan
+fuera, así que ese preset no cambia de versión.
+
+La lista de una búsqueda es `campaign has <id>`, prioridad o revisar, sin supresión y con un canal
+utilizable. «Con teléfono», «Con correo» y «Solo Llamar primero» añaden condiciones a esa misma
+consulta, así que la descarga lleva lo que se ve. `ExportColumn.labels` son las palabras que el
+archivo escribe en lugar de los códigos de una columna, en el idioma de la pantalla: prioridad, por
+qué llamarle y qué ofrecerle salen en palabras. Es el único campo con valor por defecto de un
+contrato, para que los presets y borradores guardados antes sigan leyéndose.
+`exports.best_contacts` lee también los contactos de los registros fusionados, y entre iguales
+elige el más antiguo; la pantalla elige igual (`contactsOf`).
+
+Cada cliente ofrece «Llamé» (o «Le escribí»), «Le interesa» y «No le interesa», que recorren el
+embudo existente (`act_on_lead` con `record_outcome`) por las etapas que permite: un cliente
+interesado fue contactado antes. «No contactar» añade una entrada de negocio a la lista de la fase
+09 y se puede deshacer. «Ver guion» abre la ficha en su sección de oferta y «Ver todo», la ficha
+entera; «Volver» regresa a la lista. No se añade ningún mensaje al worker.
+
+**Consecuencia.** En el explorador avanzado, el filtro por campaña se escribe como texto (su id).
+Los motivos para llamar son frases de la pantalla, fieles a lo que el motor observó; el guion y
+las explicaciones de la ficha siguen en inglés, como el resto de textos del motor.

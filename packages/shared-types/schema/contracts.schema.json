@@ -12174,7 +12174,9 @@
         "conflicts",
         "suppressed",
         "stale",
-        "partial"
+        "partial",
+        "campaign",
+        "reachable_by"
       ],
       "title": "ExplorerField",
       "type": "string"
@@ -13106,6 +13108,28 @@
           "maxLength": 64,
           "minLength": 1,
           "type": "string"
+        },
+        "labels": {
+          "anyOf": [
+            {
+              "maxProperties": 50,
+              "patternProperties": {
+                "^[a-z][a-z0-9_.]*$": {
+                  "maxLength": 300,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "propertyNames": {
+                "maxLength": 64
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [

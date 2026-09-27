@@ -1,30 +1,46 @@
+import { useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
-import { Link, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { PageShell } from "@/components/layout/page-chrome";
 import { BUSINESS_SECTIONS, BusinessInspector } from "@/features/businesses/BusinessInspector";
 import { useT } from "@/lib/i18n";
 
+const jump = (id: string) => {
+  const heading = document.getElementById(`business-${id}-title`);
+  heading?.scrollIntoView({ block: "start" });
+  heading?.focus({ preventScroll: true });
+};
+
 /**
  * A business in full (phase 12): the inspector's eleven sections one after another, with a list to
- * jump between them. Opened from the inspector, the timeline or a `/businesses/<id>` link.
+ * jump between them. Opened from the inspector, the timeline, the client list or a
+ * `/businesses/<id>` link; `?section=<id>` opens it at one section (phase 16: the script).
  */
 export function BusinessScreen() {
   const t = useT();
   const { businessId = "" } = useParams();
+  const [params] = useSearchParams();
+  const openAt = params.get("section");
+  const navigate = useNavigate();
+  // a screen that opened this one is where "back" returns; a link from nowhere goes to the explorer
+  const opened = useLocation().key !== "default";
 
-  const jump = (id: string) => {
-    const heading = document.getElementById(`business-${id}-title`);
-    heading?.scrollIntoView({ block: "start" });
-    heading?.focus({ preventScroll: true });
-  };
+  useEffect(() => {
+    if (openAt) jump(openAt);
+  }, [openAt]);
 
   const back = (
     <Link
       to="/lead-explorer"
+      onClick={(event) => {
+        if (!opened) return;
+        event.preventDefault();
+        void navigate(-1);
+      }}
       className="flex items-center gap-1 text-xs text-primary hover:underline"
     >
       <ArrowLeft aria-hidden="true" className="size-3.5" />
-      {t("business.back")}
+      {t(opened ? "business.return" : "business.back")}
     </Link>
   );
 

@@ -444,6 +444,38 @@ def test_a_query_export_carries_the_number_to_call(
     assert all(row[1] != calls[0] for row in again.sample)
 
 
+def test_a_column_writes_the_words_the_screen_gave_for_its_codes(
+    conn: sqlite3.Connection, data_dir: Path, seeded: SyntheticSeedResult
+) -> None:
+    """The file of a search speaks the language of its screen (phase 16): a code with a label is
+    written as the label, one without stays as it is, and a list is labelled item by item."""
+    base = _query_draft(ExportFormat.CSV)
+    draft = ExportDraft.model_validate(
+        base.model_dump()
+        | {
+            "columns": [
+                {"key": "name", "header": "Negocio", "labels": None},
+                {"key": "tier", "header": "Prioridad", "labels": {"low": "Baja prioridad"}},
+                {"key": "problem", "header": "Problemas", "labels": {"no_website": "Sin web"}},
+            ]
+        }
+    )
+    rows = list(exports.query_rows(conn, exports.plan(conn, draft), draft, utc_now()))
+    tiers = {row[1] for row in rows}
+    assert "Baja prioridad" in tiers
+    assert "low" not in tiers
+    assert "insufficient_data" in tiers  # no label: the code itself
+    problems = {item for row in rows if isinstance(row[2], list) for item in row[2]}
+    assert "Sin web" in problems
+    assert "no_website" not in problems
+    assert "weak_local_seo" in problems or "weak_conversion_path" in problems
+
+    # presets and drafts stored before labels existed are still read
+    assert ExportColumn.model_validate({"key": "tier", "header": "Tier"}).labels is None
+    with pytest.raises(ValidationError):
+        ExportColumn(key="tier", header="Tier", labels={"Not a code": "x"})
+
+
 def test_a_stop_a_full_disk_or_a_refused_folder_leaves_no_partial_file(
     conn: sqlite3.Connection,
     data_dir: Path,
