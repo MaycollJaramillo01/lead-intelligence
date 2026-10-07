@@ -116,7 +116,7 @@ describe("JobsScreen", () => {
     expect(mocks.listCrawlRuns).toHaveBeenCalledWith({
       project_id: null,
       campaign_id: null,
-      limit: 25,
+      limit: 10, // a crawl carries every site of its campaign (D-103)
       cursor: null,
     });
     expect(mocks.listScoreRuns).toHaveBeenCalledWith({ project_id: null, limit: 25, cursor: null });

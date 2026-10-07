@@ -41,9 +41,9 @@ export const NUMERIC_SETTINGS: ReadonlyArray<{
     scale: 1_000_000,
   },
   { key: "max_seconds_per_site", label: "research.setting.seconds", min: 10, max: 1_800 },
-  { key: "max_requests", label: "research.setting.requests", min: 1, max: 20_000 },
+  { key: "max_requests", label: "research.setting.requests", min: 1, max: 40_000 },
   { key: "requests_per_minute_per_host", label: "research.setting.rate", min: 1, max: 120 },
-  { key: "max_sites", label: "research.setting.sites", min: 1, max: 500 },
+  { key: "max_sites", label: "research.setting.sites", min: 1, max: 2_000 },
 ];
 
 export function lines(text: string): string[] {

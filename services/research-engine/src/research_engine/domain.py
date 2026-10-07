@@ -2860,6 +2860,9 @@ class ImportPreview(Contract):
 
 MAX_CRAWL_SEEDS = 200
 MAX_PATH_RULES = 25
+#: The most one crawl may take: every site of the largest campaign, 20 requests each (D-103).
+MAX_CRAWL_SITES = 2_000
+MAX_CRAWL_REQUESTS = 40_000
 PathRule = Annotated[str, Field(min_length=1, max_length=200, pattern=r"^/")]
 SeedUrl = Annotated[str, Field(min_length=1, max_length=2048)]
 
@@ -2875,12 +2878,12 @@ class BrowserMode(StrEnum):
 class CrawlSettings(Contract):
     """Budget and policy of one crawl. The bounds are the safe limits in docs/crawling.md."""
 
-    max_sites: Annotated[int, Field(ge=1, le=500)]
+    max_sites: Annotated[int, Field(ge=1, le=MAX_CRAWL_SITES)]
     max_pages_per_site: Annotated[int, Field(ge=1, le=100)]
     max_depth: Annotated[int, Field(ge=0, le=4)]
     max_bytes_per_site: Annotated[int, Field(ge=65_536, le=100_000_000)]
     max_seconds_per_site: Annotated[int, Field(ge=10, le=1_800)]
-    max_requests: Annotated[int, Field(ge=1, le=20_000)]
+    max_requests: Annotated[int, Field(ge=1, le=MAX_CRAWL_REQUESTS)]
     requests_per_minute_per_host: Annotated[int, Field(ge=1, le=120)]
     per_host_concurrency: Annotated[int, Field(ge=1, le=4)]
     include_subdomains: bool
@@ -2908,6 +2911,14 @@ def default_crawl_settings() -> CrawlSettings:
         exclude_paths=[],
         browser=BrowserMode.AUTO,
         screenshots=False,
+    )
+
+
+def campaign_crawl_settings() -> CrawlSettings:
+    """Every site a campaign found, for a pipeline: the Latino evidence, the audit and most
+    reasons to call exist only for the sites that were read (D-103)."""
+    return default_crawl_settings().model_copy(
+        update={"max_sites": MAX_CRAWL_SITES, "max_requests": MAX_CRAWL_REQUESTS}
     )
 
 

@@ -25,6 +25,7 @@ import pytest
 from research_engine import repository
 from research_engine.crawl import guard
 from research_engine.crawl.engine import CrawlerSettings, CrawlService, CrawlStartError
+from research_engine.crawl.engine import _plan as plan_crawl
 from research_engine.crawl.extract import sha256
 from research_engine.crawl.fetch import FetchPolicy
 from research_engine.discovery.engine import DiscoveryService, EngineSettings
@@ -47,6 +48,7 @@ from research_engine.domain import (
     RunControlAction,
     SourceRunStatus,
     SourceSelection,
+    campaign_crawl_settings,
     default_crawl_settings,
     empty_criteria,
 )
@@ -903,15 +905,10 @@ async def test_unchanged_pages_are_answered_from_the_cache(
 # ---- campaigns, listings and refusals ------------------------------------------------------------
 
 
-async def test_a_campaign_crawls_its_candidates_websites(
-    conn: sqlite3.Connection, data_dir: Path, bakery: FixtureSite
-) -> None:
-    rows = [
-        "name,city,state,website",
-        f"Panaderia El Sol,Austin,TX,{bakery.url('/')}",
-        f"Panaderia El Sol,Austin,TX,{bakery.url('/')}",
-        "No Website Bakery,Austin,TX,",
-    ]
+async def found_campaign(
+    conn: sqlite3.Connection, data_dir: Path, rows: list[str], *, candidates: int = 10
+) -> tuple[str, str]:
+    """A campaign whose discovery imported these `name,city,state,website` rows: its id and job."""
     spec = empty_criteria().model_copy(
         update={
             "sources": [
@@ -919,7 +916,9 @@ async def test_a_campaign_crawls_its_candidates_websites(
                     connector_key="file.import", priority=50, max_records=None, config_json={}
                 )
             ],
-            "limits": DiscoveryLimits(max_candidates=10, max_requests=5, max_pages_per_source=2),
+            "limits": DiscoveryLimits(
+                max_candidates=candidates, max_requests=5, max_pages_per_source=5
+            ),
         }
     )
     campaign_id = repository.save_campaign(
@@ -940,7 +939,7 @@ async def test_a_campaign_crawls_its_candidates_websites(
             inputs={
                 "file.import": {
                     "filename": "list.csv",
-                    "content": "\n".join(rows) + "\n",
+                    "content": "\n".join(["name,city,state,website", *rows]) + "\n",
                     "format": None,
                     "mapping": None,
                 }
@@ -948,6 +947,18 @@ async def test_a_campaign_crawls_its_candidates_websites(
         )
     )
     await discovery.idle(found.job_id)
+    return campaign_id, found.job_id
+
+
+async def test_a_campaign_crawls_its_candidates_websites(
+    conn: sqlite3.Connection, data_dir: Path, bakery: FixtureSite
+) -> None:
+    rows = [
+        f"Panaderia El Sol,Austin,TX,{bakery.url('/')}",
+        f"Panaderia El Sol,Austin,TX,{bakery.url('/')}",
+        "No Website Bakery,Austin,TX,",
+    ]
+    campaign_id, discovery_job = await found_campaign(conn, data_dir, rows)
 
     service = crawler(data_dir)
     run = await crawl(service, campaign_id=campaign_id, max_pages_per_site=1)
@@ -964,7 +975,37 @@ async def test_a_campaign_crawls_its_candidates_websites(
     )
     assert [item.job_id for item in listed.items] == [run.job_id]
     with pytest.raises(repository.NotFoundError):
-        repository.get_crawl_run(conn, found.job_id)  # a discovery job is not a crawl
+        repository.get_crawl_run(conn, discovery_job)  # a discovery job is not a crawl
+
+
+async def test_the_crawl_of_a_pipeline_takes_every_site_of_its_campaign(
+    conn: sqlite3.Connection, data_dir: Path
+) -> None:
+    """The first hundred sites used to be all a search read: the rest of its list had no Latino
+    evidence, no audit and no reason to call (D-103). Planned only; nothing is requested."""
+    rows = [f"Negocio {n},Houston,TX,https://negocio-{n}.example/" for n in range(130)]
+    campaign_id, _ = await found_campaign(conn, data_dir, rows, candidates=200)
+
+    def planned(settings: CrawlSettings) -> tuple[int, int]:
+        request = CrawlStartRequest(
+            project_id=None, campaign_id=campaign_id, urls=[], settings=settings
+        )
+        job_id = plan_crawl(conn, request, [])
+        (sites,) = conn.execute(
+            "SELECT count(*) FROM source_runs WHERE job_id = ?", (job_id,)
+        ).fetchone()
+        (capped,) = conn.execute(
+            "SELECT count(*) FROM job_events WHERE job_id = ? AND event = 'sites_capped'", (job_id,)
+        ).fetchone()
+        return sites, capped
+
+    assert planned(default_crawl_settings()) == (100, 1), "a crawl someone starts by hand"
+    assert planned(campaign_crawl_settings()) == (130, 0)
+    # room for the largest search the simple screen asks for (1 200 businesses), 20 requests a site
+    whole = campaign_crawl_settings()
+    assert whole.max_sites >= 1_200
+    assert whole.max_requests >= whole.max_sites * 20
+    assert CrawlSettings.model_validate(whole.model_dump()) == whole, "inside the contract's bounds"
 
 
 async def test_url_listings_page_and_filter(

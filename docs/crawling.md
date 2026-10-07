@@ -146,12 +146,12 @@ core, and is stored with the job and each site run.
 
 | Setting                          | Default | Allowed           | Meaning                                                          |
 | -------------------------------- | ------- | ----------------- | ---------------------------------------------------------------- |
-| `max_sites`                      | 100     | 1–500             | Sites taken from the campaign and the addresses                  |
+| `max_sites`                      | 100     | 1–2000            | Sites taken from the campaign and the addresses                  |
 | `max_pages_per_site`             | 12      | 1–100             | Page fetches per site (robots and sitemaps not counted)          |
 | `max_depth`                      | 2       | 0–4               | Link depth from the home page                                    |
 | `max_bytes_per_site`             | 25 MB   | 64 KiB–100 MB     | Stored bytes per site                                            |
 | `max_seconds_per_site`           | 180     | 10–1800           | Wall time of a site in one execution                             |
-| `max_requests`                   | 2000    | 1–20 000          | HTTP requests of the whole crawl, retries and redirects included |
+| `max_requests`                   | 2000    | 1–40 000          | HTTP requests of the whole crawl, retries and redirects included |
 | `requests_per_minute_per_host`   | 30      | 1–120             | Spacing between request starts to one host                       |
 | `per_host_concurrency`           | 2       | 1–4               | Requests in flight to one host                                   |
 | `include_subdomains`             | no      |                   | Follow links to subdomains of the site                           |
@@ -162,6 +162,12 @@ core, and is stored with the job and each site run.
 Fixed safe limits: 5 MiB per page, 2 MiB per robots.txt (500 KiB parsed), 10 MiB per sitemap
 (after decompression), 5 redirects, 3 attempts, 20 main-text kilobytes, 300 links, 25 emails and 25
 phones per page.
+
+**A pipeline reads its whole campaign.** The defaults are for a crawl someone starts by hand. The
+acquisition stage of a pipeline, and so every «Buscar clientes» search, starts its crawl with
+`campaign_crawl_settings()`: the same budget per site with `max_sites` and `max_requests` at their
+upper bounds, because Latino evidence, the audit and most reasons to call exist only for the sites
+that were read (D-103). Measured on 120 real sites: 44 sites a minute and 8.7 requests a site.
 
 **Slots.** HTTP slots = `min(16, 2 × CPUs)`; browser slots = up to 2, one per free GiB above 2 GiB and
 at most one per 4 CPUs (none when memory is short: the fallback then reports `browser_unavailable`).

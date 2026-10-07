@@ -81,7 +81,7 @@ from research_engine.domain import (
     StageCounts,
     TaskAttempt,
     WebsiteStartRequest,
-    default_crawl_settings,
+    campaign_crawl_settings,
     format_ts,
     new_id,
     utc_now,
@@ -1342,7 +1342,7 @@ class ServiceEngines:
                         project_id=None,
                         campaign_id=target.campaign_id,
                         urls=[],
-                        settings=default_crawl_settings(),
+                        settings=campaign_crawl_settings(),
                     )
                 )
                 return [run.job_id]

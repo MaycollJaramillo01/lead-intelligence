@@ -136,6 +136,10 @@ compatible y contacto utilizable: 25 → 300, 50 → 600, 100 → 1.200. `max_re
 y `max_pages_per_source` es `ceil(candidatos / 100)`, con mínimo 3. Las estimaciones orientativas
 mostradas son 8–20, 15–35 y 25–60 minutos; el progreso posterior solo muestra datos reales.
 
+Se visitan las webs de **todos** los negocios encontrados, no solo las cien primeras (D-103): la
+evidencia latina, los problemas de la web y casi todos los motivos para llamar salen de esas
+páginas. Es el paso más largo, unas 44 webs por minuto.
+
 La ciudad se elige de una lista, no se escribe: son los 31.830 lugares del Gazetteer 2024 del US
 Census Bureau (dominio público), por estado, sin su descriptor legal. Una errata ya no puede dejar la
 búsqueda en cero (D-098).

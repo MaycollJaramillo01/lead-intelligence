@@ -1483,3 +1483,28 @@ ningún contrato ni mensaje del worker.
 **Consecuencia.** Solo cabe un servicio propio por búsqueda. Su nombre se guarda en la versión del
 perfil, así que una búsqueda posterior con otro nombre crea otra versión y la anterior conserva el
 suyo.
+
+## D-103 · Una búsqueda lee todas las webs de su campaña, no las cien primeras
+
+**Contexto.** La etapa «visitar sus páginas web» arrancaba el rastreo con los valores por defecto:
+100 sitios y 2.000 peticiones. Una búsqueda de 100 clientes encuentra hasta 1.200 negocios, unos 900
+con web, así que nueve de cada diez webs no se leían. Sin página leída no hay evidencia latina, ni
+auditoría, ni motivo para llamar: «Latinos primero» ordenaba el 6 % de la lista. Medido el
+2026-10-07 sobre las 13 búsquedas reales (8.146 negocios): la app había dado 63 negocios con
+evidencia de mercado hispanohablante y ninguno con dueño latino; leyendo la portada de sus 5.631
+webs propias salieron 109 con alguna señal y, verificados, 83 clientes, 4 con dueño latino
+declarado.
+
+**Decisión.** La etapa de adquisición de cualquier proceso usa `campaign_crawl_settings()`: el
+mismo presupuesto por sitio (12 páginas, 30 peticiones por minuto, 2 a la vez) con `max_sites` y
+`max_requests` en sus topes, que suben de 500 a 2.000 sitios y de 20.000 a 40.000 peticiones (20
+por sitio; medido: 8,7). Un rastreo que alguien lanza a mano conserva los valores por defecto. No
+se cambia la concurrencia por sitio: con una petición a la vez (el doble de webs en paralelo) 120
+webs reales tardaron 2,4 minutos frente a 2,7, con las mismas páginas (553 y 558); no compensa
+alterar un trato por sitio ya probado.
+
+**Consecuencia.** Una búsqueda grande tarda más: unas 44 webs por minuto, cerca de 21 minutos de
+lectura para 900 webs donde antes eran de 3 a 5, dentro de los 25–60 minutos que la pantalla ya
+anuncia para 100 clientes. También ocupa más disco, en torno a 1 MB por web (casi 1 GB por
+búsqueda grande). Cada sitio recibe exactamente las mismas peticiones que antes. Una campaña con
+más de 2.000 webs se sigue recortando y lo dice el evento `sites_capped`.

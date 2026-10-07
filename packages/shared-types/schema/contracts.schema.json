@@ -7933,7 +7933,7 @@
       "description": "Budget and policy of one crawl. The bounds are the safe limits in docs/crawling.md.",
       "properties": {
         "max_sites": {
-          "maximum": 500,
+          "maximum": 2000,
           "minimum": 1,
           "type": "integer"
         },
@@ -7958,7 +7958,7 @@
           "type": "integer"
         },
         "max_requests": {
-          "maximum": 20000,
+          "maximum": 40000,
           "minimum": 1,
           "type": "integer"
         },

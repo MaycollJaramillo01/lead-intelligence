@@ -1641,7 +1641,7 @@ pub struct CrawlSettings {
 impl CrawlSettings {
     /// The same safe limits as the worker's contract (docs/crawling.md).
     pub fn validate(&self) -> Result<(), String> {
-        within("max_sites", self.max_sites, 1, 500)?;
+        within("max_sites", self.max_sites, 1, 2_000)?;
         within("max_pages_per_site", self.max_pages_per_site, 1, 100)?;
         within("max_depth", self.max_depth, 0, 4)?;
         within(
@@ -1651,7 +1651,7 @@ impl CrawlSettings {
             100_000_000,
         )?;
         within("max_seconds_per_site", self.max_seconds_per_site, 10, 1_800)?;
-        within("max_requests", self.max_requests, 1, 20_000)?;
+        within("max_requests", self.max_requests, 1, 40_000)?;
         within(
             "requests_per_minute_per_host",
             self.requests_per_minute_per_host,

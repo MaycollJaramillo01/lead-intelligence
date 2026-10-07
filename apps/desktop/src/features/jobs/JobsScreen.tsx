@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 
 const POLL_MS = 2000;
 const LISTED = 25;
+/** A crawl lists every site it read, about 0.5 kB each: ten whole campaigns fit an 8 MiB frame. */
+const LISTED_CRAWLS = 10;
 
 type JobKind =
   "discovery" | "crawl" | "resolution" | "latino" | "website" | "contacts" | "ai" | "scoring";
@@ -51,7 +53,7 @@ export function JobsScreen() {
     const [discovery, crawls, resolutions, evaluations, audits, checks, analyses, scores] =
       await Promise.all([
         desktop.listDiscoveryRuns(query),
-        desktop.listCrawlRuns(query),
+        desktop.listCrawlRuns({ ...query, limit: LISTED_CRAWLS }),
         desktop.listResolutionRuns(byProject),
         desktop.listLatinoRuns(byProject),
         desktop.listWebsiteRuns(byProject),

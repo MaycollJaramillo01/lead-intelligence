@@ -8,6 +8,7 @@ import time
 from collections.abc import Callable, Iterable
 from datetime import timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
@@ -16,6 +17,7 @@ from research_engine import datasets, jobs, operations, repository
 from research_engine.ai.resources import ResourceMonitor, Sample
 from research_engine.domain import (
     BulkMode,
+    CrawlStartRequest,
     DeadLetterAction,
     DeadLetterRequest,
     DeadLetterStatus,
@@ -33,6 +35,7 @@ from research_engine.domain import (
     PipelineStartRequest,
     RunControlAction,
     SyntheticSeedResult,
+    campaign_crawl_settings,
     format_ts,
     new_id,
     utc_now,
@@ -589,3 +592,30 @@ async def test_the_list_shows_estimates_the_controls_allowed_and_this_machines_r
     await service.control(
         DiscoveryControlRequest(job_id=run.job_id, action=RunControlAction.CANCEL)
     )
+
+
+@pytest.mark.anyio
+async def test_the_acquisition_stage_asks_for_every_site_of_the_campaign() -> None:
+    asked: list[CrawlStartRequest] = []
+
+    class Crawl:
+        async def start(self, request: CrawlStartRequest) -> SimpleNamespace:
+            asked.append(request)
+            return SimpleNamespace(job_id="crawl-job")
+
+    engines = operations.ServiceEngines(
+        discovery=None,
+        crawl=Crawl(),
+        resolution=None,
+        latino=None,
+        website=None,
+        contacts=None,
+        ai=None,
+        scoring=None,
+    )
+    campaign_id = new_id()
+    target = StageTarget(project_id=new_id(), campaign_id=campaign_id, check_mail_domains=False)
+    assert await engines.start(_S.ACQUISITION, target) == ["crawl-job"]
+    (request,) = asked
+    assert (request.campaign_id, request.urls) == (campaign_id, [])
+    assert request.settings == campaign_crawl_settings()  # not the first hundred sites (D-103)
