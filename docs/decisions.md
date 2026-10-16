@@ -1508,3 +1508,28 @@ lectura para 900 webs donde antes eran de 3 a 5, dentro de los 25–60 minutos q
 anuncia para 100 clientes. También ocupa más disco, en torno a 1 MB por web (casi 1 GB por
 búsqueda grande). Cada sitio recibe exactamente las mismas peticiones que antes. Una campaña con
 más de 2.000 webs se sigue recortando y lo dice el evento `sites_capped`.
+
+## D-104 · Un teléfono se escribe de una sola forma y la lista avisa de los que se repiten
+
+**Contexto.** Los CSV de las 18 búsquedas de Novarius, Falchion y cluster mezclaban `'+12818441292`,
+`12104056440` y `8329750834`: el motor escribía el texto que publicó cada fuente, y el «+» de
+Overture se ganaba el apóstrofo que `spreadsheet_cell` pone a lo que una hoja ejecutaría como
+fórmula. Además, de 1.742 filas contactables solo 1.643 eran negocios distintos por teléfono: 97
+repetidos dentro de una misma búsqueda (Overture lista el mismo local dos veces con otro nombre) y 2
+entre búsquedas, uno entre dos carpetas.
+
+**Decisión.** `exports.best_contacts` escribe el teléfono desde su E.164 (`phone_text`): un número
+norteamericano como `(281) 844-1292`, que es como lo lee y marca quien llama en EE. UU., lo que el
+importador de Trato (país US) vuelve a leer como `+12818441292`, y no empieza por «+», así que no
+lleva apóstrofo; la extensión se conserva y otro país usa la forma internacional con su «+» (y por
+tanto con la guarda). Un número que nunca se pudo leer sale como se publicó. La guarda contra
+fórmulas no cambia para ninguna otra celda. Las instantáneas escriben `primary_phone` igual. Cada
+fila del explorador lleva `searches` (las búsquedas que encontraron el negocio) y `same_phone` (hasta
+cinco negocios de cualquier carpeta que publican uno de sus teléfonos utilizables, con su carpeta y
+sus búsquedas); la exportación los ofrece como columnas, la descarga de «Tu lista de clientes» los
+incluye («Mismo teléfono que», «Encontrado en») y la lista dice «Mismo teléfono que …: es una sola
+línea, llama una vez» y «También en …».
+
+**Consecuencia.** Se marca, no se borra: dos locales de una cadena pueden compartir centralita y
+siguen siendo dos negocios, y la persona decide a cuál llamar. Excluir lo ya entregado en otra
+búsqueda queda para cuando haga falta; el aviso ya lo nombra.

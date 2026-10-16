@@ -4,6 +4,7 @@ import type {
   ContactType,
   ExplorerCondition,
   ExplorerQuery,
+  ExplorerRow,
   ExportDraft,
   IcpDefinition,
   IcpSaveRequest,
@@ -153,6 +154,28 @@ export function searchTitle(t: Translator, name: string | null): string | null {
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+/**
+ * What a client shares with other lists: the other searches that found it too, and the clients on
+ * its phone with where they were found («this search» when it is a twin in this same list).
+ */
+export function repeatsOf(
+  t: Translator,
+  row: Pick<ExplorerRow, "searches" | "same_phone">,
+  search: string | null,
+) {
+  const titled = (name: string) => searchTitle(t, name) ?? name;
+  return {
+    alsoIn: row.searches.filter((name) => name !== search).map(titled),
+    samePhone: row.same_phone.map((twin) => {
+      const where =
+        search !== null && twin.searches.includes(search)
+          ? [t("clientList.thisSearch")]
+          : [twin.project_name, ...twin.searches.map(titled)];
+      return `${twin.display_name} (${where.join(" · ")})`;
+    }),
+  };
 }
 
 /** What a search sold: the cards it chose and the person's own service, if any. */
@@ -338,6 +361,7 @@ export const CLIENT_COLUMNS = [
   "name",
   "phone",
   "email",
+  "same_phone",
   "tier",
   "top_problem",
   "offer",
@@ -345,6 +369,7 @@ export const CLIENT_COLUMNS = [
   "region",
   "domain",
   "total_score",
+  "searches",
 ] as const;
 export type ClientColumn = (typeof CLIENT_COLUMNS)[number];
 type ColumnLabels = Partial<Record<ClientColumn, Record<string, string>>>;

@@ -50,6 +50,7 @@ from research_engine.domain import (
     LeadScorecard,
     LeadStage,
     LeadTier,
+    PhoneTwin,
     ProblemType,
     ResearchStatus,
     ScoreRun,
@@ -68,6 +69,8 @@ from research_engine.scoring import store as scoring_store
 _F: Final = ExplorerField
 _OP: Final = ExplorerOperator
 MAX_TAGS_SHOWN: Final = 10
+#: A chain's switchboard can sit on many records: a row names the first few.
+MAX_TWINS_SHOWN: Final = 5
 DEFAULT_COLUMNS: Final = (
     _F.RANK, _F.NAME, _F.TIER, _F.TOTAL_SCORE, _F.CONFIDENCE, _F.RESEARCH_STATUS, _F.LEAD_STAGE,
     _F.OPPORTUNITY_SCORE, _F.DIGITAL_GAP, _F.CONTACTABILITY, _F.MAIN_CHANNEL, _F.LATINO_STATUS,
@@ -121,13 +124,22 @@ _FOUND_BY: Final = (
     "JOIN discovery_candidates dc ON dc.id = er.candidate_id "
     "JOIN businesses b ON b.id = er.business_id WHERE dc.campaign_id = ?"
 )
-#: The businesses with a contact of one kind an export writes (`exports.best_contacts`): published,
-#: off the do-not-contact list, not invalid nor stale, theirs or of a record merged into them.
+
+
+def _usable(alias: str) -> str:
+    """A contact an export writes (`exports.best_contacts`): published, off the do-not-contact
+    list, not invalid nor stale."""
+    return (
+        f"{alias}.deleted_at IS NULL AND {alias}.do_not_contact = 0 "
+        f"AND {alias}.origin <> 'hypothesis' AND {alias}.validation_status IN "
+        f"({', '.join(repr(s.value) for s in index.STATUS_RANK)})"
+    )
+
+
+#: The businesses with a usable contact of one kind, theirs or of a record merged into them.
 _REACHABLE: Final = (
     "SELECT coalesce(b.merged_into_id, b.id) FROM contact_points c "  # noqa: S608
-    "JOIN businesses b ON b.id = c.business_id WHERE c.contact_type = ? "
-    "AND c.deleted_at IS NULL AND c.do_not_contact = 0 AND c.origin <> 'hypothesis' "
-    f"AND c.validation_status IN ({', '.join(repr(s.value) for s in index.STATUS_RANK)})"
+    f"JOIN businesses b ON b.id = c.business_id WHERE c.contact_type = ? AND {_usable('c')}"
 )
 _PARTIAL_AUDITS: Final = (WebsiteAuditStatus.PARTIAL, WebsiteAuditStatus.EMPTY)
 
@@ -390,6 +402,62 @@ def _source(joins: set[str], scan: bool) -> str:
 # ---- reading ------------------------------------------------------------------------------------
 
 
+def searches_of(conn: sqlite3.Connection, ids: Sequence[str]) -> dict[str, list[str]]:
+    """The live searches whose discovery found each business or a record merged into it, by name."""
+    found: dict[str, list[str]] = defaultdict(list)
+    marks = _marks(ids)
+    for row in conn.execute(
+        "SELECT DISTINCT coalesce(b.merged_into_id, b.id) AS root, cp.name FROM businesses b "  # noqa: S608
+        "JOIN entity_records er ON er.business_id = b.id "
+        "JOIN discovery_candidates dc ON dc.id = er.candidate_id "
+        "JOIN campaigns cp ON cp.id = dc.campaign_id "
+        f"WHERE (b.id IN ({marks}) OR b.merged_into_id IN ({marks})) AND cp.deleted_at IS NULL "
+        "ORDER BY cp.name",
+        [*ids, *ids],
+    ):
+        found[row["root"]].append(row["name"])
+    return found
+
+
+def phone_twins(conn: sqlite3.Connection, ids: Sequence[str]) -> dict[str, list[PhoneTwin]]:
+    """Per business, the other live businesses that publish one of its usable phones, in any live
+    project as synthetic as its own: the lists that would have two people call one line."""
+    pairs: dict[str, list[tuple[str, str, str]]] = defaultdict(list)
+    marks = _marks(ids)
+    for row in conn.execute(
+        "SELECT DISTINCT coalesce(b.merged_into_id, b.id) AS root, t.id, t.display_name, "  # noqa: S608
+        "p.name AS project FROM contact_points c JOIN businesses b ON b.id = c.business_id "
+        "JOIN projects lp ON lp.id = b.project_id "
+        "JOIN contact_points o ON o.contact_type = 'phone' "
+        "AND o.value_normalized = c.value_normalized "
+        "JOIN businesses ob ON ob.id = o.business_id "
+        "JOIN businesses t ON t.id = coalesce(ob.merged_into_id, ob.id) "
+        "JOIN projects p ON p.id = t.project_id "
+        f"WHERE c.contact_type = 'phone' AND {_usable('c')} AND {_usable('o')} "
+        f"AND (b.id IN ({marks}) OR b.merged_into_id IN ({marks})) "
+        "AND t.id <> coalesce(b.merged_into_id, b.id) AND t.deleted_at IS NULL "
+        "AND p.deleted_at IS NULL AND p.is_synthetic = lp.is_synthetic "
+        "ORDER BY t.display_name, t.id",
+        [*ids, *ids],
+    ):
+        if len(pairs[row["root"]]) < MAX_TWINS_SHOWN:
+            pairs[row["root"]].append((row["id"], row["display_name"], row["project"]))
+    twins = list({twin for listed in pairs.values() for twin, _, _ in listed})
+    searches = searches_of(conn, twins) if twins else {}
+    return {
+        root: [
+            PhoneTwin(
+                business_id=twin,
+                display_name=name,
+                project_name=project,
+                searches=searches.get(twin, []),
+            )
+            for twin, name, project in listed
+        ]
+        for root, listed in pairs.items()
+    }
+
+
 def rows_of(
     conn: sqlite3.Connection, found: Sequence[LeadIndexRow], now: datetime
 ) -> list[ExplorerRow]:
@@ -415,6 +483,8 @@ def rows_of(
         ids,
     ):
         tags[row["entity_id"]].append(row["name"])
+    searches = searches_of(conn, ids)
+    twins = phone_twins(conn, ids)
     rows: list[ExplorerRow] = []
     stale_after = timedelta(days=STALE_AFTER_DAYS)
     for row in found:
@@ -466,6 +536,8 @@ def rows_of(
                 partial=row.tier is LeadTier.INSUFFICIENT_DATA
                 or row.audit_status in _PARTIAL_AUDITS,
                 is_synthetic=row.is_synthetic,
+                searches=searches.get(row.business_id, []),
+                same_phone=twins.get(row.business_id, []),
             )
         )
     return rows

@@ -7481,6 +7481,20 @@ pub struct ExplorerRow {
     pub stale: bool,
     pub partial: bool,
     pub is_synthetic: bool,
+    /// The searches that found it, by name.
+    pub searches: Vec<String>,
+    /// Other leads on one of its usable phones (D-104).
+    pub same_phone: Vec<PhoneTwin>,
+}
+
+/// Another lead that publishes one of a lead's phones, in any project.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PhoneTwin {
+    pub business_id: Id,
+    pub display_name: String,
+    pub project_name: String,
+    pub searches: Vec<String>,
 }
 
 impl ExplorerRow {

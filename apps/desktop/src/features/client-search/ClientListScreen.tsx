@@ -20,6 +20,7 @@ import {
   NO_FILTERS,
   offerOf,
   outcomeRequest,
+  repeatsOf,
   searchTitle,
   stagesFor,
   tierKey,
@@ -79,6 +80,7 @@ function ClientRow({
   scoreRunId,
   latino,
   otherName,
+  search,
   onChanged,
 }: {
   data: ClientRowData;
@@ -86,6 +88,8 @@ function ClientRow({
   latino: boolean;
   /** The person's own service («Otro») in this search. */
   otherName: string | null;
+  /** The name of the search the list belongs to. */
+  search: string | null;
   onChanged: () => void;
 }) {
   const t = useT();
@@ -93,6 +97,7 @@ function ClientRow({
   const choice = offerOf(row.offer);
   const offer = choice === "other" ? otherName : choice && t(`clientSearch.offer.${choice}`);
   const why = whyProblems(row.top_problem, row.problems);
+  const { alsoIn, samePhone } = repeatsOf(t, row, search);
   const stage = row.lead_stage;
   const notes = [
     stage !== "not_contacted" && t(STAGE_WORDS[stage] ?? STAGE_KEYS[stage]),
@@ -178,6 +183,16 @@ function ClientRow({
         </p>
       )}
       {offer && <p>{t("clientSearch.offerIt", { offer })}</p>}
+      {samePhone.length > 0 && (
+        <p className="text-xs font-medium">
+          {t("clientList.samePhone", { leads: samePhone.join("; ") })}
+        </p>
+      )}
+      {alsoIn.length > 0 && (
+        <p className="text-xs font-medium">
+          {t("clientList.alsoIn", { searches: alsoIn.join("; ") })}
+        </p>
+      )}
       {notes.length > 0 && <p className="text-xs text-muted-foreground">{notes.join(" · ")}</p>}
       <div className="flex flex-wrap gap-2">
         {stagesFor("contacted", stage).length > 0 && (
@@ -348,6 +363,7 @@ export function ClientListScreen() {
                       scoreRunId={scoreRunId}
                       latino={latino}
                       otherName={list.otherName}
+                      search={finished?.campaign_name ?? null}
                       onChanged={reload}
                     />
                   ))}

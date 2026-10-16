@@ -3237,6 +3237,21 @@ export interface ExplorerRow {
   stale: boolean;
   partial: boolean;
   is_synthetic: boolean;
+  searches: string[];
+  same_phone: PhoneTwin[];
+}
+/**
+ * Another lead that publishes one of a lead's phones, in any project: calling both reaches
+ * one line (the same place listed twice, or one another folder's search found too).
+ *
+ * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
+ * via the `definition` "PhoneTwin".
+ */
+export interface PhoneTwin {
+  business_id: string;
+  display_name: string;
+  project_name: string;
+  searches: string[];
 }
 /**
  * The explanation of one lead in one run, stored with its score (`business_scores`).

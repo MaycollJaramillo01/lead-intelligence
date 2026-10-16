@@ -155,7 +155,9 @@
         "suppressed": false,
         "stale": false,
         "partial": true,
-        "is_synthetic": true
+        "is_synthetic": true,
+        "searches": [],
+        "same_phone": []
       },
       "scorecard": {
         "business_id": "01900000-0000-7000-8000-000000000952",
@@ -1378,7 +1380,20 @@
         "suppressed": false,
         "stale": false,
         "partial": true,
-        "is_synthetic": true
+        "is_synthetic": true,
+        "searches": [
+          "Synthetic discovery campaign"
+        ],
+        "same_phone": [
+          {
+            "business_id": "01900000-0000-7000-8000-000000000111",
+            "display_name": "Synthetic Bakery 0001",
+            "project_name": "Synthetic test workspace",
+            "searches": [
+              "Synthetic discovery campaign"
+            ]
+          }
+        ]
       },
       "scorecard": {
         "business_id": "01900000-0000-7000-8000-000000000091",

@@ -5806,6 +5806,18 @@ class ExplorerQuery(Contract):
         return self
 
 
+class PhoneTwin(Contract):
+    """Another lead that publishes one of a lead's phones, in any project: calling both reaches
+    one line (the same place listed twice, or one another folder's search found too)."""
+
+    business_id: Id
+    display_name: str
+    #: Its project: the folder its searches sit in.
+    project_name: str
+    #: The searches that found it, by name; none when it came another way.
+    searches: list[str]
+
+
 class ExplorerRow(Contract):
     business_id: Id
     project_id: Id
@@ -5854,6 +5866,10 @@ class ExplorerRow(Contract):
     #: The score could not read everything: insufficient data, or a partial or empty audit.
     partial: bool
     is_synthetic: bool
+    #: The searches that found it, by name: more than one when another search found it again.
+    searches: list[str]
+    #: Other leads on one of its usable phones, by name, up to `explorer.MAX_TWINS_SHOWN`.
+    same_phone: list[PhoneTwin]
 
 
 class ExplorerPage(Contract):
@@ -7206,6 +7222,7 @@ DATA_MODELS: tuple[type[Contract], ...] = (
     ExplorerGroup,
     ExplorerSort,
     ExplorerQuery,
+    PhoneTwin,
     ExplorerRow,
     ExplorerPage,
     ViewColumn,

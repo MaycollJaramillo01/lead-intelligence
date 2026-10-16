@@ -34,6 +34,8 @@ from xml.sax.saxutils import escape
 
 import duckdb
 import orjson
+import phonenumbers
+from phonenumbers import NumberParseException, PhoneNumberFormat
 
 from research_engine import __version__, datasets, jobs, repository
 from research_engine.domain import (
@@ -69,6 +71,7 @@ from research_engine.domain import (
     ExportStatus,
     Job,
     JobStatus,
+    PhoneTwin,
     RunControlAction,
     ScoreRun,
     ValidationStatus,
@@ -245,6 +248,17 @@ QUERY_COLUMNS: Final[dict[str, tuple[ExportColumnType, str, str]]] = {
     _F.SUPPRESSED: (_T.FLAG, "suppressed", "On the do-not-contact list now."),
     _F.STALE: (_T.FLAG, "stale", f"Facts read more than {STALE_AFTER_DAYS} days ago."),
     _F.PARTIAL: (_T.FLAG, "partial", "The score could not read everything."),
+    "searches": (
+        _T.LIST,
+        "searches",
+        "The searches that found it, by name: two when another search delivered it already.",
+    ),
+    "same_phone": (
+        _T.LIST,
+        "same_phone",
+        "Other leads that publish its phone, in any folder, as «name (folder · searches)»: "
+        "one line called twice.",
+    ),
 }
 #: Snapshot columns -> (type, what it means).
 SNAPSHOT_COLUMNS: Final[dict[str, tuple[ExportColumnType, str]]] = {
@@ -678,7 +692,36 @@ def plan(conn: sqlite3.Connection, draft: ExportDraft) -> Plan:
     )
 
 
+def phone_text(normalized: str | None, raw: str) -> str:
+    """A phone the same way in every file: (281) 844-1292 for a North American number, as a US
+    caller reads and dials it and as Trato's importer (country US) reads it back; the international
+    form for any other; the published text when it never parsed. Never a leading "+" on a
+    North American number, which a spreadsheet would run as a formula."""
+    if not normalized:
+        return raw
+    try:
+        number = phonenumbers.parse(normalized)
+    except NumberParseException:
+        return raw
+    with contextlib.suppress(NumberParseException):  # E.164 drops the extension the text gave
+        region = phonenumbers.region_code_for_number(number)
+        number.extension = phonenumbers.parse(raw, region).extension
+    # ponytail: another country keeps its "+" and so the formula guard's apostrophe; the lists
+    # are of US businesses, a national form there would lose the country code
+    national = number.country_code == 1
+    return phonenumbers.format_number(
+        number, PhoneNumberFormat.NATIONAL if national else PhoneNumberFormat.INTERNATIONAL
+    )
+
+
+def twin_text(twin: PhoneTwin) -> str:
+    """Another lead on the same line, said with the folder and searches that found it."""
+    return f"{twin.display_name} ({' · '.join([twin.project_name, *twin.searches])})"
+
+
 def _plain(value: object) -> object:
+    if isinstance(value, PhoneTwin):
+        return twin_text(value)
     if isinstance(value, StrEnum):
         return value.value
     if isinstance(value, datetime):
@@ -707,13 +750,15 @@ def best_contacts(conn: sqlite3.Connection, ids: Sequence[str]) -> dict[str, dic
     """Per business, the phone and the email to use: the most validated published one of each kind,
     the primary before the rest, off the do-not-contact list. Invalid, stale and suppressed
     addresses are no route, the same rule the explorer's channel follows (`leads.index`). A merge
-    moves no contact, so the records merged into a business lend it theirs, as its page shows."""
+    moves no contact, so the records merged into a business lend it theirs, as its page shows.
+    A phone is written in one form whatever the page published (`phone_text`)."""
     found: dict[str, dict[str, str]] = {}
     ranked: dict[tuple[str, str], tuple[int, int]] = {}
     marks = ",".join("?" * len(ids))
     kinds = ",".join("?" * len(CONTACT_COLUMNS))
     rows = conn.execute(
         "SELECT coalesce(b.merged_into_id, b.id) AS root, c.contact_type, c.value_raw, "  # noqa: S608
+        "c.value_normalized, "
         "c.validation_status, c.is_primary FROM contact_points c "
         f"JOIN businesses b ON b.id = c.business_id WHERE (b.id IN ({marks}) "
         f"OR b.merged_into_id IN ({marks})) AND c.contact_type IN ({kinds}) "
@@ -735,7 +780,10 @@ def best_contacts(conn: sqlite3.Connection, ids: Sequence[str]) -> dict[str, dic
         if key in ranked and ranked[key] <= order:
             continue
         ranked[key] = order
-        found.setdefault(row["root"], {})[row["contact_type"]] = row["value_raw"]
+        value = row["value_raw"]
+        if row["contact_type"] == ContactType.PHONE:
+            value = phone_text(row["value_normalized"], value)
+        found.setdefault(row["root"], {})[row["contact_type"]] = value
     return found
 
 
@@ -792,7 +840,9 @@ def snapshot_rows(
     if snapshot is None:
         raise ExportError("a snapshot export names its snapshot")
     suppressed = explorer.suppressed_roots(conn)
-    chosen = ", ".join(plan_.keys[: len(draft.columns)])
+    keys = plan_.keys[: len(draft.columns)]
+    chosen = ", ".join(keys)
+    phones = [key == "primary_phone" for key in keys]
     cutoff = format_ts(snapshot.cutoff_at or snapshot.created_at)
     duck = duckdb.connect()
     try:
@@ -808,8 +858,12 @@ def snapshot_rows(
                     continue
                 yield [
                     *(
-                        _labelled(_plain(value), column.labels)
-                        for value, column in zip(values[:-1], draft.columns, strict=True)
+                        phone_text(value, value)
+                        if phone and isinstance(value, str)
+                        else _labelled(_plain(value), column.labels)
+                        for value, column, phone in zip(
+                            values[:-1], draft.columns, phones, strict=True
+                        )
                     ),
                     values[-1],
                     snapshot.id,

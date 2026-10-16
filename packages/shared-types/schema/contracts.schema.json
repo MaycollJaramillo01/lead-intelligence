@@ -12734,6 +12734,18 @@
         },
         "is_synthetic": {
           "type": "boolean"
+        },
+        "searches": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "same_phone": {
+          "items": {
+            "$ref": "#/$defs/PhoneTwin"
+          },
+          "type": "array"
         }
       },
       "required": [
@@ -12777,7 +12789,9 @@
         "suppressed",
         "stale",
         "partial",
-        "is_synthetic"
+        "is_synthetic",
+        "searches",
+        "same_phone"
       ],
       "title": "ExplorerRow",
       "type": "object"
@@ -19809,6 +19823,36 @@
       ],
       "title": "PageKind",
       "type": "string"
+    },
+    "PhoneTwin": {
+      "additionalProperties": false,
+      "description": "Another lead that publishes one of a lead's phones, in any project: calling both reaches\none line (the same place listed twice, or one another folder's search found too).",
+      "properties": {
+        "business_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "project_name": {
+          "type": "string"
+        },
+        "searches": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "business_id",
+        "display_name",
+        "project_name",
+        "searches"
+      ],
+      "title": "PhoneTwin",
+      "type": "object"
     },
     "PinView": {
       "additionalProperties": false,

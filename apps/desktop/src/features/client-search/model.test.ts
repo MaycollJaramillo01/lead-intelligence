@@ -20,6 +20,7 @@ import {
   otherReady,
   outcomeRequest,
   parseSearchName,
+  repeatsOf,
   searchTitle,
   soldNames,
   soldOf,
@@ -280,6 +281,40 @@ describe("simple client search results", () => {
     expect(offerOf(null)).toBeNull();
   });
 
+  it("says which other searches have the client and who else answers its phone", () => {
+    const here = "Buscar clientes · roofing · Houston · TX";
+    const other = "Buscar clientes · plumbing · Dallas · TX";
+    const twin = (display_name: string, project_name: string, searches: string[]) => ({
+      business_id: display_name,
+      display_name,
+      project_name,
+      searches,
+    });
+    expect(
+      repeatsOf(
+        keys,
+        {
+          searches: [other, here],
+          same_phone: [
+            twin("Roofs Two", "Falchion", [here]),
+            twin("Toned Homes", "Novarius", [other]),
+          ],
+        },
+        here,
+      ),
+    ).toEqual({
+      alsoIn: ["<businessType.plumbing> · Dallas, Texas"],
+      samePhone: [
+        "Roofs Two (<clientList.thisSearch>)",
+        "Toned Homes (Novarius · <businessType.plumbing> · Dallas, Texas)",
+      ],
+    });
+    expect(repeatsOf(keys, { searches: [here], same_phone: [] }, here)).toEqual({
+      alsoIn: [],
+      samePhone: [],
+    });
+  });
+
   it("says why to call with at most two observed problems, the heaviest first", () => {
     const problems: ProblemType[] = ["weak_local_seo", "no_online_booking", "no_website"];
     expect(whyProblems("no_online_booking", problems)).toEqual([
@@ -325,6 +360,7 @@ describe("simple client search results", () => {
       "name",
       "phone",
       "email",
+      "same_phone",
       "tier",
       "top_problem",
       "offer",
@@ -332,6 +368,7 @@ describe("simple client search results", () => {
       "region",
       "domain",
       "total_score",
+      "searches",
     ]);
     expect(file.columns.map((column) => column.header)).toEqual(
       file.columns.map((column) => `[${column.key}]`),

@@ -415,33 +415,51 @@ async def test_a_snapshot_export_is_reproducible_byte_for_byte(
 
 
 def test_a_query_export_carries_the_number_to_call(
-    conn: sqlite3.Connection, data_dir: Path, seeded: SyntheticSeedResult
+    conn: sqlite3.Connection, data_dir: Path, out: Path, seeded: SyntheticSeedResult
 ) -> None:
     """`main_channel` names the kind of the route only, so a list exported without the value
-    cannot be called. A number on the do-not-contact list is still no route."""
+    cannot be called. Every number is written one way, (281) 844-1292, whatever form its source
+    published: what a US caller reads, what Trato's importer (country US) reads back, and no
+    leading "+" that a spreadsheet would run, so no apostrophe. A number on the do-not-contact
+    list is still no route."""
     draft = _query_draft(
         ExportFormat.CSV,
         columns=(("name", "Business"), ("phone", "Phone"), ("email", "Email")),
     )
+    published = {"+12818441292": "(281) 844-1292", "12104056440": "(210) 405-6440"}
+    published |= {"8329750834": "(832) 975-0834", "281-844-1292 x7": "(281) 844-1292 ext. 7"}
+    plan_ = exports.plan(conn, draft)
+    leads = [row[3] for row in exports.query_rows(conn, plan_, draft, utc_now()) if row[1]][:4]
+    for business_id, raw in zip(leads, published, strict=True):
+        digits = "".join(ch for ch in raw.split("x")[0] if ch.isdigit())
+        conn.execute(
+            "UPDATE contact_points SET value_raw = ?, value_normalized = ? "
+            "WHERE contact_type = 'phone' AND business_id IN "
+            "(SELECT id FROM businesses WHERE ? IN (id, merged_into_id))",
+            (raw, "+1" + digits[-10:], business_id),
+        )
     preview = exports.preview(conn, data_dir, draft, utc_now())
     assert preview.headers[:3] == ["Business", "Phone", "Email"]
     calls = [row[1] for row in preview.sample if row[1]]
-    published = {
-        value
-        for (value,) in conn.execute(
-            "SELECT value_raw FROM contact_points WHERE contact_type = 'phone' "
-            "AND do_not_contact = 0 AND origin <> 'hypothesis'"
-        )
-    }
     assert calls
-    assert set(calls) <= published
+    assert all(str(call).startswith("(") for call in calls)
+    written = out / "calls.csv"
+    exports.write_csv(
+        written, plan_.headers, exports.query_rows(conn, plan_, draft, utc_now()), True, _nothing
+    )
+    with written.open(encoding="utf-8-sig", newline="") as handle:
+        by_lead = {row["business_id"]: row["Phone"] for row in csv.DictReader(handle)}
+    assert [by_lead[lead] for lead in leads] == list(published.values())
+    assert exports.phone_text(None, "281 844 1292") == "281 844 1292"  # never parsed: as given
+    assert exports.spreadsheet_cell("+12818441292") == "'+12818441292"  # other cells: guarded
 
     conn.execute(
-        "UPDATE contact_points SET do_not_contact = 1, suppression_reason = ? WHERE value_raw = ?",
-        ("asked to be left alone (test)", calls[0]),
+        "UPDATE contact_points SET do_not_contact = 1, suppression_reason = ? "
+        "WHERE business_id = ? AND contact_type = 'phone'",
+        ("asked to be left alone (test)", leads[0]),
     )
-    again = exports.preview(conn, data_dir, draft, utc_now())
-    assert all(row[1] != calls[0] for row in again.sample)
+    again = list(exports.query_rows(conn, exports.plan(conn, draft), draft, utc_now()))
+    assert all(row[1] != "(281) 844-1292" or row[3] != leads[0] for row in again)
 
 
 def test_a_column_writes_the_words_the_screen_gave_for_its_codes(

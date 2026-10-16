@@ -1261,6 +1261,18 @@
       "description": "The score could not read everything."
     },
     {
+      "source_kind": "query",
+      "key": "searches",
+      "type": "list",
+      "description": "The searches that found it, by name: two when another search delivered it already."
+    },
+    {
+      "source_kind": "query",
+      "key": "same_phone",
+      "type": "list",
+      "description": "Other leads that publish its phone, in any folder, as «name (folder · searches)»: one line called twice."
+    },
+    {
       "source_kind": "snapshot",
       "key": "project_id",
       "type": "text",

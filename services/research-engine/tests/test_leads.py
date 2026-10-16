@@ -397,6 +397,33 @@ def test_a_search_lists_only_what_its_campaign_found_and_how_each_lead_can_be_re
     assert len(names("reachable_by", "has", "phone")) == 38
     with pytest.raises(ValidationError):
         _query(filters=_group("and", _when("reachable_by", "has", "fax")))
+    # a lead says which searches found it, and which other leads publish its phone (two people
+    # would call one line); a twin on the do-not-contact list is no route, so no twin
+    (search,) = conn.execute("SELECT name FROM campaigns WHERE id = ?", (campaign,)).fetchone()
+    plumbing = _lead(conn, "Synthetic Plumbing 0701")
+    with repository.atomic(conn):
+        conn.execute(
+            "UPDATE contact_points SET value_normalized = '+12818441292' WHERE business_id IN "
+            "(SELECT id FROM businesses WHERE coalesce(merged_into_id, id) IN (?, ?, ?)) "
+            "AND contact_type = 'phone'",
+            (grocery, painting, plumbing),
+        )
+        conn.execute(
+            "UPDATE contact_points SET do_not_contact = 1, suppression_reason = 'test' "
+            "WHERE business_id = ? AND contact_type = 'phone'",
+            (plumbing,),
+        )
+    rows = {row.business_id: row for row in _rows(conn)}
+    assert rows[grocery].searches == [search]
+    assert rows[bakery].searches == []
+    assert [(twin.business_id, twin.searches) for twin in rows[grocery].same_phone] == [
+        (painting, [search])
+    ]
+    assert [twin.business_id for twin in rows[painting].same_phone] == [grocery]
+    assert rows[plumbing].same_phone == []
+    assert exports.twin_text(rows[painting].same_phone[0]) == (
+        f"{rows[grocery].display_name} (Synthetic test workspace · {search})"
+    )
     # a filter, never a column: the default view and the audit preset leave both fields out
     shown = {column.field for column in explorer.default_view().columns}
     assert shown.isdisjoint({ExplorerField.CAMPAIGN, ExplorerField.REACHABLE_BY})
