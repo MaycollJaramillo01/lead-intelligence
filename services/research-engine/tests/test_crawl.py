@@ -364,6 +364,37 @@ async def test_a_business_site_is_crawled_within_its_policies(
         conn.execute("DELETE FROM crawl_urls")
 
 
+async def test_sitemaps_with_the_same_findings_share_one_raw_record(
+    conn: sqlite3.Connection, data_dir: Path
+) -> None:
+    # sitemap findings carry no address, so two empty sitemaps hash alike (2026-10-16 crawls)
+    site = FixtureSite(
+        {
+            "/robots.txt": Reply(
+                content_type="text/plain",
+                body="User-agent: *\nSitemap: {base}/sitemap.xml\nSitemap: {base}/sitemap.rss\n",
+            ),
+            "/sitemap.xml": Reply(content_type="application/xml", body="<urlset></urlset>"),
+            "/sitemap.rss": Reply(content_type="application/xml", body="<urlset></urlset>"),
+            "/": Reply(body=html("Home", "<main><p>Hello.</p></main>")),
+        }
+    )
+    try:
+        service = crawler(data_dir)
+        run = await crawl(service, site.url("/"))
+        await service.shutdown()
+        rows = urls_of(conn, run)
+        first, second = (
+            detail(conn, rows[site.url(path)]) for path in ("/sitemap.xml", "/sitemap.rss")
+        )
+        assert first.crawl_url.status is second.crawl_url.status is CrawlUrlStatus.FETCHED
+        assert first.crawl_url.raw_record_id is not None
+        assert first.crawl_url.raw_record_id == second.crawl_url.raw_record_id
+        assert run.errors == []
+    finally:
+        site.close()
+
+
 # ---- redirects -----------------------------------------------------------------------------------
 
 

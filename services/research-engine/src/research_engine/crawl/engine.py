@@ -1425,6 +1425,12 @@ def _persist(
         }
     )
     with repository.atomic(conn):
+        # Identical findings are stored once per run: sitemap findings name no address, so two
+        # empty sitemaps of one site hash alike. Both URLs then point at the first record.
+        if raw is not None and (
+            first := repository.raw_record_with_payload(conn, raw.source_run_id, raw.payload_sha256)
+        ):
+            raw, final = None, final.model_copy(update={"raw_record_id": first})
         repository.insert(conn, *pages, *([raw] if raw else []), *got.new_rows)
         _write_url(conn, final)
     return final

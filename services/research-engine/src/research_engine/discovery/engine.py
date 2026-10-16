@@ -1007,7 +1007,7 @@ def _persist_page(conn: sqlite3.Connection, plan: _Plan, unit: _Unit, page: Disc
         for candidate in page.candidates:
             progress.records_seen += 1
             payload_sha = _digest(candidate.payload_json)
-            if repository.raw_record_exists(conn, unit.run.id, payload_sha):
+            if repository.raw_record_with_payload(conn, unit.run.id, payload_sha) is not None:
                 progress.duplicates += 1
                 continue
             raw = RawRecord(

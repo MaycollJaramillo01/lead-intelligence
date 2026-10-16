@@ -941,13 +941,16 @@ def latest_checkpoint(conn: sqlite3.Connection, task_id: str) -> JsonObject | No
     return state if isinstance(state, dict) else None
 
 
-def raw_record_exists(conn: sqlite3.Connection, source_run_id: str, payload_sha256: str) -> bool:
-    """True when this run already stored this exact payload: the same page twice, or a repeat."""
+def raw_record_with_payload(
+    conn: sqlite3.Connection, source_run_id: str, payload_sha256: str
+) -> str | None:
+    """The record this run already stored with this exact payload: the same page twice, or a
+    repeat."""
     row = conn.execute(
-        "SELECT 1 FROM raw_records WHERE source_run_id = ? AND payload_sha256 = ?",
+        "SELECT id FROM raw_records WHERE source_run_id = ? AND payload_sha256 = ?",
         (source_run_id, payload_sha256),
     ).fetchone()
-    return row is not None
+    return row["id"] if row else None
 
 
 def candidate_with_key(conn: sqlite3.Connection, campaign_id: str, dedup_key: str) -> str | None:
