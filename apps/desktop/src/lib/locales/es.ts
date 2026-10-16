@@ -710,6 +710,15 @@ export const es: Partial<Record<TranslationKey, string>> = {
   "clientSearches.progress": "Ver el progreso",
   "clientSearches.repeat": "Repetir",
   "clientSearches.resumed": "Tu búsqueda continúa",
+  "clientSearches.folderDescription": "Abre una carpeta para ver sus búsquedas de clientes.",
+  "clientSearches.otherFolder": "Otras búsquedas",
+  "clientSearches.explorations": "{count} exploraciones",
+  "clientSearches.oneExploration": "1 exploración",
+  "clientSearches.openFolder": "{name} · {explorations}",
+  "clientSearches.allFolders": "Todas las carpetas",
+  "clientSearch.folder": "Carpeta",
+  "clientSearch.chooseFolder": "Elige una carpeta",
+  "clientSearch.repeatingFolder": "Esta búsqueda se conserva en la carpeta {name}.",
   "clientSearch.repeating":
     "Es tu búsqueda anterior. Cambia lo que quieras y pulsa «Buscar clientes» para repetirla.",
   "clientSearch.repeatingNoOffer":

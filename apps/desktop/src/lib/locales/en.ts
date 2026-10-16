@@ -706,6 +706,15 @@ export const en = {
   "clientSearches.progress": "See the progress",
   "clientSearches.repeat": "Repeat",
   "clientSearches.resumed": "Your search goes on",
+  "clientSearches.folderDescription": "Open a folder to see its client searches.",
+  "clientSearches.otherFolder": "Other searches",
+  "clientSearches.explorations": "{count} explorations",
+  "clientSearches.oneExploration": "1 exploration",
+  "clientSearches.openFolder": "{name} · {explorations}",
+  "clientSearches.allFolders": "All folders",
+  "clientSearch.folder": "Folder",
+  "clientSearch.chooseFolder": "Choose a folder",
+  "clientSearch.repeatingFolder": "This search stays in the {name} folder.",
   "clientSearch.repeating":
     "This is your earlier search. Change what you want and press “Find clients” to repeat it.",
   "clientSearch.repeatingNoOffer":

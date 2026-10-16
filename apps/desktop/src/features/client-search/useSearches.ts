@@ -211,7 +211,7 @@ export function useSearchDetails(runs: readonly PipelineRun[]) {
           }
           known.current.set(detailKey(run), {
             clients,
-            draft: draftOf(run.campaign_name, campaign?.criteria, sold),
+            draft: draftOf(run.campaign_name, campaign?.criteria, sold, run.project_id),
           });
         }),
       );

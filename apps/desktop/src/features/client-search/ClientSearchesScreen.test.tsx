@@ -14,6 +14,7 @@ import type {
 import campaignFixture from "@lead/shared-types/fixtures/campaign_page.json";
 import campaignSavedFixture from "@lead/shared-types/fixtures/campaign_saved.json";
 import pageFixture from "@lead/shared-types/fixtures/explorer_page.json";
+import pipelinePageFixture from "@lead/shared-types/fixtures/pipeline_page.json";
 import runFixture from "@lead/shared-types/fixtures/pipeline_run.json";
 import catalogFixture from "@lead/shared-types/fixtures/scoring_catalog.json";
 import type { desktop } from "@/lib/ipc";
@@ -108,7 +109,7 @@ const catalog = catalogFixture as ScoringCatalog;
 const [profile] = catalog.icp_profiles;
 const page = pageFixture as ExplorerPage;
 
-function renderHistory() {
+async function renderHistory(folderName: string | null = "Other searches") {
   render(
     <MemoryRouter initialEntries={["/mis-busquedas"]}>
       <Routes>
@@ -117,6 +118,11 @@ function renderHistory() {
       </Routes>
     </MemoryRouter>,
   );
+  if (folderName) {
+    await userEvent.click(
+      await screen.findByRole("button", { name: new RegExp(`^${folderName} ·`) }),
+    );
+  }
 }
 
 beforeEach(() => {
@@ -166,8 +172,74 @@ beforeEach(() => {
 });
 
 describe("My searches", () => {
+  it("keeps three explorations in each brand folder and previous searches in their own folder", async () => {
+    const user = userEvent.setup();
+    const brands = ["Novarius", "Falchion", "cluster"];
+    const brandRuns = brands.flatMap((brand) =>
+      Array.from({ length: 3 }, (_, index) =>
+        run({
+          job_id: `job-${brand}-${index}`,
+          project_id: `project-${brand}`,
+          project_name: brand,
+          campaign_id: `campaign-${brand}-${index}`,
+          campaign_name: `Buscar clientes · roofing · ${brand} ${index + 1} · TX`,
+          status: "succeeded",
+          score_run_id: null,
+          actions: [],
+        }),
+      ),
+    );
+    mocks.listPipelines.mockResolvedValue({
+      ...pipelinePageFixture,
+      items: [...brandRuns, ...runs],
+      next_cursor: null,
+    } as PipelinePage);
+    await renderHistory(null);
+    for (const brand of brands) {
+      expect(await screen.findByRole("button", { name: `${brand} · 3 explorations` })).toBeTruthy();
+    }
+    expect(screen.queryByRole("listitem")).toBeNull();
+
+    for (const brand of brands) {
+      await user.click(screen.getByRole("button", { name: `${brand} · 3 explorations` }));
+      expect(screen.getByRole("heading", { name: brand })).toBeTruthy();
+      expect(screen.getAllByRole("listitem")).toHaveLength(3);
+      for (const otherBrand of brands) {
+        for (let index = 1; index <= 3; index += 1) {
+          const title = screen.queryByText(`Roofing · ${otherBrand} ${index}, Texas`);
+          expect(title !== null).toBe(brand === otherBrand);
+        }
+      }
+      expect(screen.queryByText("Roofing · Houston, Texas")).toBeNull();
+      await user.click(screen.getByRole("button", { name: "All folders" }));
+    }
+
+    await user.click(screen.getByRole("button", { name: "Other searches · 4 explorations" }));
+    expect(screen.getAllByRole("listitem")).toHaveLength(4);
+    expect(screen.getByText("Roofing · Houston, Texas")).toBeTruthy();
+    for (const brand of brands) {
+      expect(screen.queryByText(`Roofing · ${brand} 1, Texas`)).toBeNull();
+    }
+  });
+
+  it("shows the three empty brand folders before any search exists", async () => {
+    const user = userEvent.setup();
+    mocks.listPipelines.mockResolvedValue({
+      ...pipelinePageFixture,
+      items: [],
+      next_cursor: null,
+    } as PipelinePage);
+    await renderHistory(null);
+    for (const brand of ["Novarius", "Falchion", "cluster"]) {
+      expect(screen.getByRole("button", { name: `${brand} · 0 explorations` })).toBeTruthy();
+    }
+    expect(screen.queryByRole("button", { name: /^Other searches ·/ })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Novarius · 0 explorations" }));
+    expect(screen.getByText("Your previous searches will appear here.")).toBeTruthy();
+  });
+
   it("says when, what, where, how many clients and how each search ended", async () => {
-    renderHistory();
+    await renderHistory();
     const miamiRow = (
       await screen.findByText("Roofing · Miami, Florida · Latino businesses first")
     ).closest("li");
@@ -190,7 +262,7 @@ describe("My searches", () => {
 
   it("continues a paused search", async () => {
     const user = userEvent.setup();
-    renderHistory();
+    await renderHistory();
     const houston = (await screen.findByText("Roofing · Houston, Texas")).closest("li");
     await user.click(within(houston as HTMLElement).getByRole("button", { name: "Continue" }));
     await waitFor(() =>
@@ -204,13 +276,16 @@ describe("My searches", () => {
 
   it("repeats a search by opening the form filled with it", async () => {
     const user = userEvent.setup();
-    renderHistory();
+    await renderHistory();
     const miamiRow = (
       await screen.findByText("Roofing · Miami, Florida · Latino businesses first")
     ).closest("li");
     const repeat = await within(miamiRow as HTMLElement).findByRole("button", { name: "Repeat" });
     await user.click(repeat);
     expect(await screen.findByText(/This is your earlier search/)).toBeTruthy();
+    expect(
+      await screen.findByText("This search stays in the Synthetic test workspace folder."),
+    ).toBeTruthy();
     expect(
       screen
         .getByRole("button", { name: "Online bookings and appointments" })
@@ -226,10 +301,53 @@ describe("My searches", () => {
     );
   });
 
+  it("opens and controls the progress of the selected exploration instead of the newest run", async () => {
+    const user = userEvent.setup();
+    const selectedRun = run({
+      ...runs[0],
+      job_id: "job-selected",
+      project_id: "project-novarius",
+      project_name: "Novarius",
+      campaign_name: "Buscar clientes · roofing · Miami · FL",
+      status: "running",
+      actions: ["pause", "cancel"],
+    });
+    mocks.listPipelines.mockResolvedValue({
+      ...pipelinePageFixture,
+      items: [
+        run({
+          ...runs[1],
+          job_id: "job-newer",
+          project_id: "project-cluster",
+          project_name: "cluster",
+          status: "running",
+          actions: ["pause", "cancel"],
+        }),
+        selectedRun,
+      ],
+      next_cursor: null,
+    } as PipelinePage);
+    mocks.controlPipeline.mockResolvedValue(selectedRun);
+    await renderHistory("Novarius");
+    expect(screen.getByText("1 exploration")).toBeTruthy();
+    const progress = screen.getByRole("link", { name: "See the progress" });
+    expect(progress.getAttribute("href")).toBe("/buscar-clientes?job=job-selected");
+    await user.click(progress);
+    expect(await screen.findByText("Roofing · Miami, Florida")).toBeTruthy();
+    expect(screen.queryByText("Roofing · Houston, Texas")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Pause" }));
+    await waitFor(() =>
+      expect(mocks.controlPipeline).toHaveBeenCalledWith({
+        job_id: "job-selected",
+        action: "pause",
+      }),
+    );
+  });
+
   it("explains a stopped search without codes and lets it go on", async () => {
     const user = userEvent.setup();
     mocks.resolveDeadLetter.mockResolvedValue(runs[2] as PipelineRun);
-    renderHistory();
+    await renderHistory();
     const dallas = within(
       (await screen.findByText("Roofing · Dallas, Texas")).closest("li") as HTMLElement,
     );
@@ -278,6 +396,149 @@ describe("My searches", () => {
 });
 
 describe("Find clients with your own service", () => {
+  it("requires an existing brand folder and scopes every saved search to its real project", async () => {
+    const user = userEvent.setup();
+    const projectId = "real-project-falchion";
+    mocks.listPipelines.mockResolvedValue({
+      ...pipelinePageFixture,
+      items: ["Novarius", "Falchion", "cluster"].map((name) =>
+        run({
+          job_id: `job-${name}`,
+          project_name: name,
+          project_id: `real-project-${name.toLowerCase()}`,
+          campaign_name: `Buscar clientes · roofing · ${name} · TX`,
+          status: "succeeded",
+          actions: [],
+        }),
+      ),
+      next_cursor: null,
+    } as PipelinePage);
+    const saved = campaignSavedFixture as CampaignSaved;
+    mocks.saveCampaign.mockResolvedValue({
+      ...saved,
+      campaign: { ...saved.campaign, project_id: projectId },
+    });
+    mocks.saveIcpProfile.mockResolvedValue(profile as IcpProfileView);
+    mocks.changeScoring.mockResolvedValue(catalog);
+    mocks.startPipeline.mockResolvedValue(run({ job_id: "job-new", project_id: projectId }));
+    mocks.listCampaigns.mockResolvedValue({
+      ...campaigns,
+      items: [
+        {
+          ...(campaigns.items[0] as CampaignPage["items"][number]),
+          id: "campaign-another-brand",
+          project_id: "real-project-novarius",
+          name: "Buscar clientes · roofing · Miami · FL",
+        },
+      ],
+    });
+    render(
+      <MemoryRouter>
+        <ClientSearchScreen />
+      </MemoryRouter>,
+    );
+    const folder = await screen.findByLabelText("Folder");
+    expect(
+      within(folder)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["Choose a folder", "Novarius", "Falchion", "cluster"]);
+    await user.click(screen.getByRole("button", { name: "Online bookings and appointments" }));
+    await user.selectOptions(screen.getByLabelText("2. Which businesses?"), "roofing");
+    await user.selectOptions(screen.getByLabelText("State"), "FL");
+    await user.selectOptions(screen.getByLabelText("City"), "Miami");
+    const find = screen.getByRole("button", { name: "Find clients" });
+    expect(find.hasAttribute("disabled")).toBe(true);
+    await user.selectOptions(folder, projectId);
+    expect(find.hasAttribute("disabled")).toBe(false);
+    await user.click(find);
+    await waitFor(() => expect(mocks.startPipeline).toHaveBeenCalled());
+    expect(mocks.listCampaigns).toHaveBeenCalledWith({
+      project_id: projectId,
+      limit: 100,
+      cursor: null,
+    });
+    expect(mocks.saveCampaign).toHaveBeenCalledWith(
+      expect.objectContaining({
+        project_id: projectId,
+        campaign_id: null,
+      }),
+    );
+    expect(mocks.saveIcpProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        project_id: projectId,
+      }),
+    );
+    expect(mocks.startPipeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        project_id: projectId,
+      }),
+    );
+  });
+
+  it("does not show a different run when the requested job is absent", async () => {
+    mocks.listPipelines.mockResolvedValue({
+      ...pipelinePageFixture,
+      items: [run({ project_name: "Novarius", campaign_name: miami.name })],
+      next_cursor: null,
+    } as PipelinePage);
+    render(
+      <MemoryRouter initialEntries={["/buscar-clientes?job=missing"]}>
+        <ClientSearchScreen />
+      </MemoryRouter>,
+    );
+    await screen.findByLabelText("Folder");
+    expect(screen.queryByRole("heading", { name: "Your search" })).toBeNull();
+    expect(screen.queryByText("Roofing · Miami, Florida · Latino businesses first")).toBeNull();
+  });
+
+  it.each(["Novarius", "Synthetic test workspace"])(
+    "keeps the original project when repeating a search from %s",
+    async (projectName) => {
+      const user = userEvent.setup();
+      const repeatedRun = run({ ...runs[0], project_name: projectName });
+      mocks.listPipelines.mockResolvedValue({
+        ...pipelinePageFixture,
+        items: [
+          repeatedRun,
+          run({ ...runs[1], project_name: "Falchion", project_id: "other-brand" }),
+        ],
+        next_cursor: null,
+      } as PipelinePage);
+      const saved = campaignSavedFixture as CampaignSaved;
+      mocks.saveCampaign.mockResolvedValue({
+        ...saved,
+        campaign: { ...saved.campaign, project_id: repeatedRun.project_id },
+      });
+      mocks.saveIcpProfile.mockResolvedValue(profile as IcpProfileView);
+      mocks.changeScoring.mockResolvedValue(catalog);
+      mocks.startPipeline.mockResolvedValue(repeatedRun);
+      await renderHistory(projectName === "Novarius" ? "Novarius" : "Other searches");
+      const miamiRow = (
+        await screen.findByText("Roofing · Miami, Florida · Latino businesses first")
+      ).closest("li") as HTMLElement;
+      await user.click(await within(miamiRow).findByRole("button", { name: "Repeat" }));
+      expect(screen.queryByLabelText("Folder")).toBeNull();
+      await user.click(screen.getByRole("button", { name: "Find clients" }));
+      await waitFor(() => expect(mocks.startPipeline).toHaveBeenCalled());
+      expect(mocks.listCampaigns).toHaveBeenLastCalledWith({
+        project_id: repeatedRun.project_id,
+        limit: 100,
+        cursor: null,
+      });
+      expect(mocks.saveCampaign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          project_id: repeatedRun.project_id,
+        }),
+      );
+      expect(mocks.saveIcpProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          project_id: repeatedRun.project_id,
+        }),
+      );
+    },
+  );
+
   it("waits for its name and a problem, then sells it as the person wrote it", async () => {
     const user = userEvent.setup();
     const saved = campaignSavedFixture as CampaignSaved;

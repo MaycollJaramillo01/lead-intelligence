@@ -96,6 +96,24 @@ describe("simple client search requests", () => {
     expect(request.criteria.geography[0]?.radius_km).toBe(DEFAULT_RADIUS_KM);
   });
 
+  it("keeps the folder project when creating or repeating a search", () => {
+    const asked = { ...draft, projectId: "project-novarius" };
+    const campaign = buildCampaignRequest(asked);
+    const profile = buildIcpRequest(asked, template, names);
+    expect(campaign.project_id).toBe("project-novarius");
+    expect(profile.project_id).toBe("project-novarius");
+    expect(
+      draftOf(
+        campaign.name,
+        campaign.criteria,
+        soldOf(profile.definition as unknown as Record<string, unknown>),
+        asked.projectId,
+      ),
+    ).toEqual(asked);
+    expect(buildCampaignRequest(draft).project_id).toBeNull();
+    expect(buildIcpRequest(draft, template, names).project_id).toBeNull();
+  });
+
   it("creates an offer profile that never requires Latino evidence", () => {
     const request = buildIcpRequest(draft, template, {
       website: "Websites",

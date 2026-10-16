@@ -23,6 +23,7 @@ import { PROBLEMS } from "@/features/scoring/labels";
 import type { TranslationKey, Translator } from "@/lib/i18n";
 
 export type OfferChoice = "website" | "conversion" | "booking" | "google" | "measurement";
+export const SEARCH_FOLDERS = ["Novarius", "Falchion", "cluster"] as const;
 
 export const OFFER_PROBLEMS: Record<OfferChoice, readonly ProblemType[]> = {
   website: ["no_website", "website_unreachable", "poor_mobile_experience"],
@@ -44,6 +45,8 @@ export const OTHER_NAME_MAX = 80;
 export const OTHER_KEY = "simple_other";
 
 export interface ClientSearchDraft {
+  /** The persisted folder project; omitted by searches made before folders existed. */
+  projectId?: string;
   offers: OfferChoice[];
   /** «Otro»: null when not chosen. */
   other: OtherOffer | null;
@@ -107,7 +110,7 @@ export function buildCampaignRequest(
   };
   return {
     campaign_id: existingId,
-    project_id: null,
+    project_id: draft.projectId ?? null,
     name: searchName(type, draft),
     objective: `Lista de ${draft.wanted} clientes`,
     criteria,
@@ -188,6 +191,7 @@ export function draftOf(
   name: string | null,
   criteria: Pick<CampaignSaveRequest["criteria"], "geography" | "limits"> | undefined,
   sold: Sold,
+  projectId?: string,
 ): ClientSearchDraft | null {
   const asked = parseSearchName(name);
   if (!asked) return null;
@@ -195,6 +199,7 @@ export function draftOf(
   const wanted = WANTED.find((count) => candidateLimit(count) === criteria?.limits.max_candidates);
   return {
     ...asked,
+    ...(projectId ? { projectId } : {}),
     offers: [...sold.offers],
     other: sold.other && { name: sold.other.name, solves: [...sold.other.solves] },
     radiusKm: radius === DEFAULT_RADIUS_KM ? null : radius,
@@ -233,7 +238,7 @@ export function buildIcpRequest(
   }
   return {
     profile_id: existingId,
-    project_id: null,
+    project_id: draft.projectId ?? null,
     name: "Mi oferta",
     description: "Configurada desde Buscar clientes",
     definition: {

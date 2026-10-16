@@ -21,6 +21,7 @@ coverage/
 !/data/.gitkeep
 /logs/*
 !/logs/.gitkeep
+/leads/
 
 # secrets and machine-local config
 .env

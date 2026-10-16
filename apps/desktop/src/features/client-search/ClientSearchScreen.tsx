@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pause, Play, Search, Square } from "lucide-react";
-import { useLocation } from "react-router";
+import { useLocation, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { PageScroll, PageShell } from "@/components/layout/page-chrome";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   OTHER_NAME_MAX,
   otherReady,
   searchTitle,
+  SEARCH_FOLDERS,
   STAGE_MESSAGE,
   visibleProgress,
   type ClientSearchDraft,
@@ -40,6 +41,8 @@ export function ClientSearchScreen() {
   const t = useT();
   // "Repetir" in Mis búsquedas opens the form filled with the search it repeats
   const repeated = (useLocation().state as { repeat?: ClientSearchDraft } | null)?.repeat ?? null;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const jobId = searchParams.get("job");
   const [draft, setDraft] = useState<ClientSearchDraft>(() =>
     repeated
       ? // a city typed before the list existed (D-098) is chosen again from the list
@@ -59,7 +62,13 @@ export function ClientSearchScreen() {
           wanted: 25,
         },
   );
-  const { active, reload } = useSearchRuns();
+  const { runs, active: latest, reload } = useSearchRuns();
+  const active = jobId ? (runs.find((run) => run.job_id === jobId) ?? null) : latest;
+  const folders = SEARCH_FOLDERS.flatMap((name) => {
+    const run = runs.find((item) => item.project_name.trim().toLowerCase() === name.toLowerCase());
+    return run ? [{ id: run.project_id, name }] : [];
+  });
+  const repeatedProject = repeated && runs.find((run) => run.project_id === repeated.projectId);
   const [busy, setBusy] = useState(false);
   const [aiOff, setAiOff] = useState(false);
   useEffect(() => {
@@ -71,6 +80,9 @@ export function ClientSearchScreen() {
 
   const cities = useMemo(() => citiesOf(draft.region), [draft.region]);
   const valid =
+    (repeated !== null ||
+      folders.length === 0 ||
+      folders.some((folder) => folder.id === draft.projectId)) &&
     (draft.offers.length > 0 || draft.other !== null) &&
     otherReady(draft.other) &&
     draft.businessTypeId &&
@@ -93,8 +105,16 @@ export function ClientSearchScreen() {
     setBusy(true);
     try {
       const campaignDraft = buildCampaignRequest(draft);
-      const campaigns = await desktop.listCampaigns({ project_id: null, limit: 100, cursor: null });
-      const priorCampaign = campaigns.items.find((item) => item.name === campaignDraft.name);
+      const campaigns = await desktop.listCampaigns({
+        project_id: draft.projectId ?? null,
+        limit: 100,
+        cursor: null,
+      });
+      const priorCampaign = campaigns.items.find(
+        (item) =>
+          item.name === campaignDraft.name &&
+          (!draft.projectId || item.project_id === draft.projectId),
+      );
       const savedCampaign = await desktop.saveCampaign({
         ...campaignDraft,
         campaign_id: priorCampaign?.id ?? null,
@@ -118,7 +138,7 @@ export function ClientSearchScreen() {
         version_id: version.id,
         reason: "Configurado desde Buscar clientes",
       });
-      await desktop.startPipeline(
+      const started = await desktop.startPipeline(
         buildPipelineRequest(
           savedCampaign.campaign.project_id,
           savedCampaign.campaign.id,
@@ -127,6 +147,7 @@ export function ClientSearchScreen() {
       );
       toast.success(t("clientSearch.started"));
       await reload();
+      setSearchParams({ job: started.job_id }, { state: repeated ? { repeat: draft } : null });
     } catch (cause) {
       toast.error(t("clientSearch.startFailed"), {
         description: toIpcError(cause, "client search").message,
@@ -163,6 +184,33 @@ export function ClientSearchScreen() {
               </p>
             )}
           </header>
+
+          {!repeated && folders.length > 0 && (
+            <section className="rounded-xl border bg-card p-5">
+              <Label htmlFor="search-folder" className="font-semibold">
+                {t("clientSearch.folder")}
+              </Label>
+              <select
+                id="search-folder"
+                className={cn(SELECT, "mt-3")}
+                value={draft.projectId ?? ""}
+                onChange={(event) => setDraft({ ...draft, projectId: event.target.value })}
+                required
+              >
+                <option value="">{t("clientSearch.chooseFolder")}</option>
+                {folders.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </option>
+                ))}
+              </select>
+            </section>
+          )}
+          {repeatedProject && (
+            <p className="text-sm text-muted-foreground">
+              {t("clientSearch.repeatingFolder", { name: repeatedProject.project_name })}
+            </p>
+          )}
 
           <section className="rounded-xl border bg-card p-5" aria-labelledby="offer-heading">
             <h2 id="offer-heading" className="font-semibold">
