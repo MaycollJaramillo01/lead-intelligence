@@ -220,6 +220,8 @@ describe("simple client search results", () => {
   const usable = [
     { kind: "condition", field: "suppressed", operator: "is_false", value: null },
     { kind: "condition", field: "usable_channels", operator: "gt", value: 0 },
+    // a client an earlier search has, or on a better lead's line, belongs to that list (D-105)
+    { kind: "condition", field: "repeated", operator: "has_not", value: "campaign" },
   ];
 
   it("lists only what the search's campaign found, Latino evidence first when asked", () => {

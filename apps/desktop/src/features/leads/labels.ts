@@ -65,6 +65,7 @@ export const FIELD_KEYS: Record<ExplorerField, TranslationKey> = {
   partial: "explorer.field.partial",
   campaign: "explorer.field.campaign",
   reachable_by: "explorer.field.reachable_by",
+  repeated: "explorer.field.repeated",
 };
 
 export const OPERATOR_KEYS: Record<ExplorerOperator, TranslationKey> = {
@@ -303,6 +304,7 @@ export function cellText(t: Translator, row: ExplorerRow, field: ExplorerField):
       return t(row[field] ? "common.yes" : "common.no");
     case "campaign":
     case "reachable_by":
+    case "repeated":
       return null; // filters only: a lead shows neither (phase 16)
   }
 }

@@ -12176,7 +12176,8 @@
         "stale",
         "partial",
         "campaign",
-        "reachable_by"
+        "reachable_by",
+        "repeated"
       ],
       "title": "ExplorerField",
       "type": "string"

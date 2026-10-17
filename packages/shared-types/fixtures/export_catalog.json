@@ -1475,5 +1475,5 @@
     "parquet"
   ],
   "xlsx_max_rows": 1048575,
-  "max_columns": 38
+  "max_columns": 39
 }

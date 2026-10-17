@@ -657,6 +657,17 @@
       ],
       "sortable": false,
       "live": true
+    },
+    {
+      "field": "repeated",
+      "type": "set",
+      "operators": [
+        "has",
+        "has_not"
+      ],
+      "values": [],
+      "sortable": false,
+      "live": true
     }
   ],
   "max_depth": 3,

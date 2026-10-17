@@ -6854,7 +6854,7 @@ const EXPLORER_MAX_CHILDREN: usize = 20;
 const EXPLORER_MAX_SORT: usize = 4;
 const EXPLORER_MAX_OFFSET: u64 = 5_000_000;
 const EXPLORER_MAX_VALUES: usize = 50;
-const EXPLORER_FIELD_COUNT: usize = 38;
+const EXPLORER_FIELD_COUNT: usize = 39;
 const BULK_MAX_IDS: usize = 1000;
 const BULK_MAX_MATCHING: u64 = 5000;
 const BULK_MAX_SKIPS: usize = 100;
@@ -6912,7 +6912,8 @@ contract_enum!(ExplorerField {
     Stale,
     Partial,
     Campaign,
-    ReachableBy
+    ReachableBy,
+    Repeated
 });
 contract_enum!(ExplorerFieldType {
     Text,
@@ -7113,7 +7114,7 @@ impl ExplorerField {
             | Self::ChannelStatus
             | Self::TopProblem
             | Self::AuditStatus => ExplorerFieldType::Enum,
-            Self::Tag | Self::Problem | Self::Campaign | Self::ReachableBy => {
+            Self::Tag | Self::Problem | Self::Campaign | Self::ReachableBy | Self::Repeated => {
                 ExplorerFieldType::Set
             }
             Self::Suppressed | Self::Stale | Self::Partial => ExplorerFieldType::Flag,
@@ -7149,6 +7150,7 @@ impl ExplorerField {
                 | Self::Stale
                 | Self::Campaign
                 | Self::ReachableBy
+                | Self::Repeated
         )
     }
 

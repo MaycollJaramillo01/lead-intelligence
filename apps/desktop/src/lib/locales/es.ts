@@ -284,6 +284,7 @@ export const es: Partial<Record<TranslationKey, string>> = {
   "explorer.field.partial": "Parcial",
   "explorer.field.campaign": "Encontrado por la campaña",
   "explorer.field.reachable_by": "Se puede contactar por",
+  "explorer.field.repeated": "Repetido de otra búsqueda",
   "explorer.op.eq": "es",
   "explorer.op.neq": "no es",
   "explorer.op.in": "es uno de",

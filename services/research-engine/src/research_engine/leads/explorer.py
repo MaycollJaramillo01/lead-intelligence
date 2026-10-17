@@ -141,6 +141,41 @@ _REACHABLE: Final = (
     "SELECT coalesce(b.merged_into_id, b.id) FROM contact_points c "  # noqa: S608
     f"JOIN businesses b ON b.id = c.business_id WHERE c.contact_type = ? AND {_usable('c')}"
 )
+#: The leads a search repeats (D-105), for its campaign (three parameters) in a run (two). A client
+#: belongs to the first search that found it: an earlier live search of a project as synthetic as
+#: this one found it, or a business on one of its usable phones; or a lead this same search found
+#: on one of its phones ranks better in the run. Ids are UUIDv7, so an earlier search sorts first.
+#: Each part is read once (MATERIALIZED), and a lead's phones through its business (`+` keeps the
+#: planner off the contact-type index, which scanned every phone per lead: 48 s, now 0.3 s).
+_REPEATED: Final = (
+    "WITH earlier AS MATERIALIZED (SELECT DISTINCT coalesce(b.merged_into_id, b.id) AS root "  # noqa: S608
+    "FROM entity_records er JOIN discovery_candidates dc ON dc.id = er.candidate_id "
+    "JOIN campaigns cp ON cp.id = dc.campaign_id JOIN projects p ON p.id = cp.project_id "
+    "JOIN businesses b ON b.id = er.business_id "
+    "WHERE dc.campaign_id < ? AND cp.deleted_at IS NULL AND p.deleted_at IS NULL "
+    "AND p.is_synthetic = (SELECT q.is_synthetic FROM campaigns k "
+    "JOIN projects q ON q.id = k.project_id WHERE k.id = ?)), "
+    "here AS MATERIALIZED (SELECT DISTINCT coalesce(b.merged_into_id, b.id) AS root "
+    "FROM entity_records er JOIN discovery_candidates dc ON dc.id = er.candidate_id "
+    "JOIN businesses b ON b.id = er.business_id WHERE dc.campaign_id = ?), "
+    "lines AS MATERIALIZED (SELECT h.root, c.value_normalized AS phone FROM here h "
+    "JOIN businesses b ON b.merged_into_id = h.root JOIN contact_points c ON c.business_id = b.id "
+    f"WHERE +c.contact_type = 'phone' AND {_usable('c')} "
+    "UNION SELECT h.root, c.value_normalized FROM here h "
+    "JOIN contact_points c ON c.business_id = h.root "
+    f"WHERE +c.contact_type = 'phone' AND {_usable('c')}), "
+    "twin AS MATERIALIZED (SELECT DISTINCT l.root, coalesce(ob.merged_into_id, ob.id) AS other "
+    "FROM lines l JOIN contact_points o ON o.contact_type = 'phone' "
+    "AND o.value_normalized = l.phone "
+    f"JOIN businesses ob ON ob.id = o.business_id WHERE {_usable('o')} "
+    "AND coalesce(ob.merged_into_id, ob.id) <> l.root) "
+    "SELECT root FROM earlier "
+    "UNION SELECT root FROM twin WHERE other IN (SELECT root FROM earlier) "
+    "UNION SELECT t.root FROM twin t "
+    "JOIN lead_index mine ON mine.score_run_id = ? AND mine.business_id = t.root "
+    "JOIN lead_index better ON better.score_run_id = ? AND better.business_id = t.other "
+    "WHERE t.other IN (SELECT root FROM here) AND better.rank < mine.rank"
+)
 _PARTIAL_AUDITS: Final = (WebsiteAuditStatus.PARTIAL, WebsiteAuditStatus.EMPTY)
 
 #: Set fields a lead belongs to through a table: `has` is one uncorrelated subquery per query.
@@ -258,8 +293,12 @@ def _expression(field: ExplorerField, now: datetime) -> Sql:
     return _COLUMN[field], [], joins
 
 
-def _condition(node: ExplorerCondition, now: datetime) -> Sql:
+def _condition(node: ExplorerCondition, now: datetime, run_id: str) -> Sql:
     op, value = node.operator, node.value
+    if node.field is _F.REPEATED:
+        within = "IN" if op is _OP.HAS else "NOT IN"
+        repeated: list[object] = [value, value, value, run_id, run_id]
+        return f"li.business_id {within} ({_REPEATED})", repeated, set()
     if node.field in _MEMBERSHIP:
         within = "IN" if op is _OP.HAS else "NOT IN"
         return f"li.business_id {within} ({_MEMBERSHIP[node.field]})", [value], set()
@@ -296,7 +335,7 @@ def _condition(node: ExplorerCondition, now: datetime) -> Sql:
     raise LeadError(f"'{op}' does not apply to {node.field}")
 
 
-def _group(group: ExplorerGroup, now: datetime) -> Sql:
+def _group(group: ExplorerGroup, now: datetime, run_id: str) -> Sql:
     """An empty group, at any depth, filters nothing. A test on a missing value is false, so a
     negated group keeps the leads it did not match, missing values included."""
     parts: list[str] = []
@@ -304,7 +343,9 @@ def _group(group: ExplorerGroup, now: datetime) -> Sql:
     joins: set[str] = set()
     for child in group.children:
         sql, child_params, child_joins = (
-            _group(child, now) if isinstance(child, ExplorerGroup) else _condition(child, now)
+            _group(child, now, run_id)
+            if isinstance(child, ExplorerGroup)
+            else _condition(child, now, run_id)
         )
         if sql:
             parts.append(sql)
@@ -321,7 +362,7 @@ def _where(
 ) -> tuple[str, list[object], set[str], bool]:
     """The conditions of a query, and whether any of them narrows the run."""
     clauses, params = ["li.score_run_id = ?"], list[object]([run_id])
-    sql, filter_params, joins = _group(filters, now)
+    sql, filter_params, joins = _group(filters, now, run_id)
     if sql:
         clauses.append(sql)
         params += filter_params
@@ -425,20 +466,25 @@ def phone_twins(conn: sqlite3.Connection, ids: Sequence[str]) -> dict[str, list[
     pairs: dict[str, list[tuple[str, str, str]]] = defaultdict(list)
     marks = _marks(ids)
     for row in conn.execute(
-        "SELECT DISTINCT coalesce(b.merged_into_id, b.id) AS root, t.id, t.display_name, "  # noqa: S608
-        "p.name AS project FROM contact_points c JOIN businesses b ON b.id = c.business_id "
-        "JOIN projects lp ON lp.id = b.project_id "
-        "JOIN contact_points o ON o.contact_type = 'phone' "
-        "AND o.value_normalized = c.value_normalized "
+        # a lead's phones through its businesses, as `_REPEATED` reads them: never every phone
+        "WITH roots AS MATERIALIZED (SELECT id AS root, project_id FROM businesses "  # noqa: S608
+        f"WHERE id IN ({marks})), "
+        "lines AS MATERIALIZED (SELECT r.root, r.project_id, c.value_normalized AS phone "
+        "FROM roots r JOIN businesses b ON b.merged_into_id = r.root "
+        "JOIN contact_points c ON c.business_id = b.id WHERE +c.contact_type = 'phone' "
+        f"AND {_usable('c')} UNION SELECT r.root, r.project_id, c.value_normalized FROM roots r "
+        "JOIN contact_points c ON c.business_id = r.root "
+        f"WHERE +c.contact_type = 'phone' AND {_usable('c')}) "
+        "SELECT DISTINCT l.root, t.id, t.display_name, p.name AS project FROM lines l "
+        "JOIN projects lp ON lp.id = l.project_id "
+        "JOIN contact_points o ON o.contact_type = 'phone' AND o.value_normalized = l.phone "
         "JOIN businesses ob ON ob.id = o.business_id "
         "JOIN businesses t ON t.id = coalesce(ob.merged_into_id, ob.id) "
         "JOIN projects p ON p.id = t.project_id "
-        f"WHERE c.contact_type = 'phone' AND {_usable('c')} AND {_usable('o')} "
-        f"AND (b.id IN ({marks}) OR b.merged_into_id IN ({marks})) "
-        "AND t.id <> coalesce(b.merged_into_id, b.id) AND t.deleted_at IS NULL "
+        f"WHERE {_usable('o')} AND t.id <> l.root AND t.deleted_at IS NULL "
         "AND p.deleted_at IS NULL AND p.is_synthetic = lp.is_synthetic "
         "ORDER BY t.display_name, t.id",
-        [*ids, *ids],
+        list(ids),
     ):
         if len(pairs[row["root"]]) < MAX_TWINS_SHOWN:
             pairs[row["root"]].append((row["id"], row["display_name"], row["project"]))

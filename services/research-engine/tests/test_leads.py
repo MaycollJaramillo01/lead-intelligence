@@ -431,6 +431,71 @@ def test_a_search_lists_only_what_its_campaign_found_and_how_each_lead_can_be_re
     assert {column.key for column in audit.columns}.isdisjoint({"campaign", "reachable_by"})
 
 
+def test_a_client_is_listed_only_by_the_first_search_that_found_it(
+    conn: sqlite3.Connection, seeded: SyntheticSeedResult
+) -> None:
+    """D-105: a later search repeats what an earlier one found, the lead itself or a business on
+    one of its phones; within one search, of two leads on one phone the better-ranked one stays."""
+    run_id, connector_id = conn.execute(
+        "SELECT id, connector_id FROM source_runs WHERE project_id = ? ORDER BY created_at LIMIT 1",
+        (seeded.project_id,),
+    ).fetchone()
+    ctx = SyntheticContext(seeded.project_id, connector_id, run_id, utc_now())
+    first = seed_discovery(conn, ctx).campaign_id
+    later = new_id()  # created after: sorts after
+    copied = dict(conn.execute("SELECT * FROM campaigns WHERE id = ?", (first,)).fetchone())
+    copied |= {"id": later, "name": "A later search"}
+    conn.execute(
+        f"INSERT INTO campaigns ({', '.join(copied)}) VALUES ({', '.join('?' * len(copied))})",  # noqa: S608
+        list(copied.values()),
+    )
+    run = explorer.run_of(conn, None)
+    assert run is not None
+    a1, a2, b1, b2, b3, b4 = [
+        row["business_id"]
+        for row in conn.execute(
+            "SELECT business_id FROM lead_index WHERE score_run_id = ? ORDER BY rank LIMIT 6",
+            (run.id,),
+        )
+    ]
+    found = {first: [a1, a2], later: [a2, b1, b2, b3, b4]}
+    phones = {a1: 1, b1: 1, b2: 2, b3: 2, a2: 3, b4: 4}  # a1 and b1, b2 and b3 share a line
+    start = 900
+    for campaign, roots in found.items():
+        records = seed_businesses(conn, ctx, len(roots), start=start)
+        start += len(roots)
+        names = [{"name": f"record {number}"} for number in range(len(roots))]
+        candidates = insert_candidates(conn, ctx, names, campaign_id=campaign)
+        with repository.atomic(conn):
+            for root, record, candidate in zip(roots, records, candidates, strict=True):
+                conn.execute(
+                    "UPDATE businesses SET status = 'merged', merged_into_id = ? WHERE id = ?",
+                    (root, record),
+                )
+                conn.execute(
+                    "INSERT INTO entity_records (candidate_id, business_id, project_id, "
+                    "created_at) VALUES (?, ?, ?, ?)",
+                    (candidate, record, seeded.project_id, format_ts(utc_now())),
+                )
+    with repository.atomic(conn):
+        for root, line in phones.items():
+            conn.execute(
+                "UPDATE contact_points SET value_normalized = ? WHERE contact_type = 'phone' "
+                "AND business_id IN (SELECT id FROM businesses WHERE ? IN (id, merged_into_id))",
+                (f"+1281555{line:04d}", root),
+            )
+
+    def listed(campaign: str, operator: str = "has_not") -> set[str]:
+        filters = _group(
+            "and", _when("campaign", "has", campaign), _when("repeated", operator, campaign)
+        )
+        return {row.business_id for row in _rows(conn, filters=filters)}
+
+    assert listed(first) == {a1, a2}  # b1 shares a1's line, but came later
+    assert listed(later) == {b2, b4}
+    assert listed(later, "has") == {a2, b1, b3}
+
+
 def test_a_hundred_thousand_leads_are_paged_from_the_index_without_loading_them(
     conn: sqlite3.Connection, seeded: SyntheticSeedResult
 ) -> None:

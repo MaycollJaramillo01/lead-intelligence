@@ -336,6 +336,8 @@ export function clientListQuery(
       condition("tier", "in", filters.callFirst ? ["priority"] : ["priority", "review"]),
       condition("suppressed", "is_false"),
       condition("usable_channels", "gt", 0),
+      // D-105: a client already in an earlier search, or on a better lead's line, is not listed
+      condition("repeated", "has_not", search.campaign_id),
     );
     if (filters.phone) children.push(condition("reachable_by", "has", "phone"));
     if (filters.email) children.push(condition("reachable_by", "has", "email"));

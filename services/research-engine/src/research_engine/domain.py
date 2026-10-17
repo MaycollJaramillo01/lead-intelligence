@@ -5576,11 +5576,15 @@ class ExplorerField(StrEnum):
     CAMPAIGN = "campaign"
     #: Phase 16, filter only: the kinds of published contact an export would write for the lead.
     REACHABLE_BY = "reachable_by"
+    #: D-105, filter only: the leads the search named by the value repeats. A client is listed by
+    #: the first search that found it; a later one repeats it when an earlier search found it, or
+    #: a business on one of its phones, and when a better-ranked lead it found has its phone.
+    REPEATED = "repeated"
 
 
 #: Fields a lead is filtered by but never shows: no column, no sort, no export column.
 EXPLORER_FILTER_ONLY: frozenset[ExplorerField] = frozenset(
-    {ExplorerField.CAMPAIGN, ExplorerField.REACHABLE_BY}
+    {ExplorerField.CAMPAIGN, ExplorerField.REACHABLE_BY, ExplorerField.REPEATED}
 )
 
 
@@ -5683,6 +5687,7 @@ EXPLORER_FIELDS: dict[ExplorerField, ExplorerFieldInfo] = {
         _info(_F.SUPPRESSED, _T.FLAG, live=True), _info(_F.STALE, _T.FLAG, live=True),
         _info(_F.PARTIAL, _T.FLAG), _info(_F.CAMPAIGN, _T.SET, live=True),
         _info(_F.REACHABLE_BY, _T.SET, ContactType, live=True),
+        _info(_F.REPEATED, _T.SET, live=True),
     )
 }  # fmt: skip
 

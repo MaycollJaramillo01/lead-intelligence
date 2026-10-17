@@ -317,7 +317,8 @@ export type ExplorerField =
   | "stale"
   | "partial"
   | "campaign"
-  | "reachable_by";
+  | "reachable_by"
+  | "repeated";
 /**
  * This interface was referenced by `LeadIntelligenceContracts`'s JSON-Schema
  * via the `definition` "ExplorerOperator".

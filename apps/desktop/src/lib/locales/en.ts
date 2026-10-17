@@ -285,6 +285,7 @@ export const en = {
   "explorer.field.partial": "Partial",
   "explorer.field.campaign": "Found by campaign",
   "explorer.field.reachable_by": "Reachable by",
+  "explorer.field.repeated": "Repeated from another search",
   "explorer.op.eq": "is",
   "explorer.op.neq": "is not",
   "explorer.op.in": "is any of",

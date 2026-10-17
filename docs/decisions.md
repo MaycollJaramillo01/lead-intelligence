@@ -1530,6 +1530,25 @@ sus búsquedas); la exportación los ofrece como columnas, la descarga de «Tu l
 incluye («Mismo teléfono que», «Encontrado en») y la lista dice «Mismo teléfono que …: es una sola
 línea, llama una vez» y «También en …».
 
-**Consecuencia.** Se marca, no se borra: dos locales de una cadena pueden compartir centralita y
-siguen siendo dos negocios, y la persona decide a cuál llamar. Excluir lo ya entregado en otra
-búsqueda queda para cuando haga falta; el aviso ya lo nombra.
+**Consecuencia.** Los avisos nombran al otro negocio y dónde salió. Que un repetido ni siquiera
+llegue a la lista lo decide D-105.
+
+## D-105 · Un cliente sale solo en la primera búsqueda que lo encontró
+
+**Contexto.** Con D-104 la lista marcaba los repetidos, pero seguían en ella: en Novarius limpieza
+Houston/Dallas, jardinería San Antonio y Falchion techos Houston casi todas las filas eran negocios
+que ya habían salido en las búsquedas anteriores «… latinos primero» del proyecto «Local workspace»,
+de donde salieron leads ya entregados a Trato. La persona lo dijo claro: no deben ir clientes
+repetidos.
+
+**Decisión.** El explorador tiene el filtro `repeated` (solo filtro, como `campaign`), cuyo valor es
+la campaña de la búsqueda. Una búsqueda repite a un cliente si una búsqueda anterior viva (de
+cualquier proyecto real; los ids UUIDv7 ordenan por creación) encontró al propio negocio o a uno
+que publica uno de sus teléfonos utilizables, o si otro negocio de esta misma búsqueda con su
+teléfono tiene mejor puesto en la ejecución. La lista de «Tu lista de clientes», y por tanto su
+descarga, piden `repeated has_not <campaña>`; los CSV de las carpetas de marca, también.
+
+**Consecuencia.** Cada teléfono sale en una sola lista: la de la primera búsqueda que lo encontró, y
+dentro de ella la ficha mejor puntuada. Una búsqueda que repite zona y oficio de otra anterior da muy
+pocos clientes nuevos, y «Repetir» una búsqueda solo trae lo que la primera no tenía. El recuento de
+«negocios revisados» sigue contando todo lo encontrado.
