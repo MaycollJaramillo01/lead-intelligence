@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { ExplorerQuery, ExplorerRow, PipelineRun, ScoreRunItem } from "@lead/shared-types";
 import { desktop, toIpcError } from "@/lib/ipc";
+import type { KeysetPage } from "@/lib/useKeysetPages";
 import {
   clientListQuery,
   contactsOf,
@@ -16,14 +17,29 @@ import {
 
 export const POLL_MS = 2_000;
 const RUNNING = ["queued", "running", "paused"];
+const PAGE_SIZE = 100;
+
+/** Every item of a keyset-paginated list: its first page alone forgets the oldest ones. */
+async function everyPage<T>(list: (cursor: string | null) => Promise<KeysetPage<T>>) {
+  const items: T[] = [];
+  let cursor: string | null = null;
+  do {
+    const page: KeysetPage<T> = await list(cursor);
+    items.push(...page.items);
+    cursor = page.next_cursor;
+  } while (cursor);
+  return items;
+}
 
 /** The searches of the simple mode, newest first, polled while one of them is running. */
 export function useSearchRuns() {
   const [runs, setRuns] = useState<PipelineRun[]>([]);
   const reload = useCallback(async () => {
     try {
-      const page = await desktop.listPipelines({ project_id: null, limit: 50, cursor: null });
-      setRuns(page.items.filter((run) => run.campaign_name?.startsWith("Buscar clientes ·")));
+      const all = await everyPage((cursor) =>
+        desktop.listPipelines({ project_id: null, limit: PAGE_SIZE, cursor }),
+      );
+      setRuns(all.filter((run) => run.campaign_name?.startsWith("Buscar clientes ·")));
     } catch {
       /* diagnostics already explains an unavailable worker */
     }
@@ -182,7 +198,9 @@ export function useSearchDetails(runs: readonly PipelineRun[]) {
     void (async () => {
       const projects = [...new Set(missing.map((run) => run.project_id))];
       const [campaigns, catalogs] = await Promise.all([
-        desktop.listCampaigns({ project_id: null, limit: 100, cursor: null }),
+        everyPage((cursor) =>
+          desktop.listCampaigns({ project_id: null, limit: PAGE_SIZE, cursor }),
+        ),
         Promise.all(projects.map((id) => desktop.getScoringCatalog({ project_id: id }))),
       ]);
       const versions = catalogs.flatMap((catalog) =>
@@ -190,7 +208,7 @@ export function useSearchDetails(runs: readonly PipelineRun[]) {
       );
       await Promise.all(
         missing.map(async (run) => {
-          const campaign = campaigns.items.find((item) => item.id === run.campaign_id);
+          const campaign = campaigns.find((item) => item.id === run.campaign_id);
           let clients: number | null = null;
           let sold: Sold = { offers: [], other: null };
           if (run.status === "succeeded" && run.campaign_id && run.score_run_id) {

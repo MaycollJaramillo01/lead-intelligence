@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -236,6 +236,53 @@ describe("My searches", () => {
     expect(screen.queryByRole("button", { name: /^Other searches ·/ })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Novarius · 0 explorations" }));
     expect(screen.getByText("Your previous searches will appear here.")).toBeTruthy();
+  });
+
+  it("counts and offers every search, not only the newest page of them", async () => {
+    const counts = { Novarius: 60, Falchion: 50, cluster: 10 };
+    const all = Object.entries(counts).flatMap(([brand, count]) =>
+      Array.from({ length: count }, (_, index) =>
+        run({
+          job_id: `job-${brand}-${index}`,
+          project_id: `project-${brand}`,
+          project_name: brand,
+          campaign_id: `campaign-${brand}-${index}`,
+          campaign_name: `Buscar clientes · roofing · ${brand} ${index + 1} · TX`,
+          status: "succeeded",
+          score_run_id: null,
+          actions: [],
+        }),
+      ),
+    );
+    mocks.listPipelines.mockImplementation(async ({ limit, cursor }) => {
+      const start = Number(cursor ?? 0);
+      return {
+        ...pipelinePageFixture,
+        items: all.slice(start, start + limit),
+        next_cursor: start + limit < all.length ? String(start + limit) : null,
+      } as PipelinePage;
+    });
+    await renderHistory(null);
+    for (const [brand, count] of Object.entries(counts)) {
+      expect(
+        await screen.findByRole("button", { name: `${brand} · ${count} explorations` }),
+      ).toBeTruthy();
+    }
+
+    cleanup();
+    render(
+      <MemoryRouter>
+        <ClientSearchScreen />
+      </MemoryRouter>,
+    );
+    const folder = await screen.findByLabelText("Folder");
+    await waitFor(() =>
+      expect(
+        within(folder)
+          .getAllByRole("option")
+          .map((option) => option.textContent),
+      ).toEqual(["Choose a folder", "Novarius", "Falchion", "cluster"]),
+    );
   });
 
   it("says when, what, where, how many clients and how each search ended", async () => {
