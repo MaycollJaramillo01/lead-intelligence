@@ -19,6 +19,7 @@ from selectolax.lexbor import LexborHTMLParser, LexborNode
 
 from research_engine.crawl.urls import canonical
 from research_engine.domain import JsonObject
+from research_engine.resolution.normalize import not_the_business
 
 PARSER: Final = "selectolax.lexbor"
 PARSER_VERSION: Final = "1.0.0"
@@ -182,7 +183,7 @@ def snapshot(url: str, final_url: str, html: str, *, rendered: bool) -> JsonObje
         lowered = href.lower()
         if lowered.startswith("mailto:"):
             address = href[7:].split("?", 1)[0].strip()
-            if address:
+            if address and not not_the_business(address):
                 emails.append({"value": address, "origin": "mailto"})
         elif lowered.startswith("tel:"):
             number = href[4:].strip()
@@ -201,7 +202,8 @@ def snapshot(url: str, final_url: str, html: str, *, rendered: bool) -> JsonObje
             node.decompose()
     visible = _text(body)
     for match in _EMAIL.finditer(visible):
-        if match.group().rsplit(".", 1)[-1].lower() not in _NOT_AN_EMAIL_TLD:
+        tld = match.group().rsplit(".", 1)[-1].lower()
+        if tld not in _NOT_AN_EMAIL_TLD and not not_the_business(match.group()):
             emails.append({"value": match.group(), "origin": "text"})
     for match in _PHONE.finditer(visible):
         phones.append({"value": match.group(), "origin": "text"})

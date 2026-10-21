@@ -184,7 +184,8 @@ PAGE = """<!doctype html><html lang="es"><head><title>Panadería El Sol</title>
 <a href="https://facebook.example/sol" rel="nofollow">FB</a></nav>
 <main><h1>Bienvenidos</h1><h2>Pan del día</h2>
 <p>Horneamos todos los días. Pedidos al (512) 555-0101 o pedidos@sol.example.</p>
-<img src="logo@2x.png" alt=""></main><footer>© 2026</footer></body></html>"""
+<img src="logo@2x.png" alt=""></main><footer>© 2026 <a href="mailto:help.us@booksy.com">Citas</a>
+example@example.com</footer></body></html>"""
 
 
 def test_a_page_becomes_raw_findings_with_deterministic_hashes() -> None:
@@ -204,6 +205,11 @@ def test_a_page_becomes_raw_findings_with_deterministic_hashes() -> None:
     assert {"value": "hola@sol.example", "origin": "mailto"} in page["emails"]  # type: ignore[operator]
     assert {"value": "pedidos@sol.example", "origin": "text"} in page["emails"]  # type: ignore[operator]
     assert all("logo@2x" not in str(email) for email in page["emails"])  # type: ignore[union-attr]
+    # help.us@booksy.com and example@example.com are never the business's own (D-106)
+    assert page["emails"] == [
+        {"value": "hola@sol.example", "origin": "mailto"},
+        {"value": "pedidos@sol.example", "origin": "text"},
+    ]
     assert {"value": "(512) 555-0101", "origin": "text"} in page["phones"]  # type: ignore[operator]
     links = {str(link["url"]): link for link in page["links"] if isinstance(link, dict)}  # type: ignore[union-attr]
     assert "https://sol.example/about-us" in links, "tracking parameters are gone"

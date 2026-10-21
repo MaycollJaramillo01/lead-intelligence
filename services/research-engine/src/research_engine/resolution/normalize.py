@@ -510,6 +510,54 @@ FREE_EMAIL_DOMAINS: Final = frozenset(
         "earthlink.net",
     ]
 )
+#: Domains whose addresses a page shows but that are never the business's own: template
+#: placeholders, domain-sale notices and the booking or site platforms it publishes through (D-106).
+# ponytail: the ones real lists met; an address several businesses publish is caught by
+# `exports.best_contacts` whatever its domain
+NOT_THE_BUSINESS_EMAIL_DOMAINS: Final = frozenset(
+    [
+        "example.com",
+        "example.org",
+        "example.net",
+        "emailaddress.com",
+        "yourdomain.com",
+        "domain.com",
+        "mysite.com",
+        "yoursite.com",
+        "yourwebsite.com",
+        "mailservice.com",
+        "godaddy.com",
+        "wix.com",
+        "wixpress.com",
+        "domainmarket.com",
+        "hugedomains.com",
+        "dan.com",
+        "sedo.com",
+        "afternic.com",
+        "booksy.com",
+        "vagaro.com",
+        "squareup.com",
+        "styleseat.com",
+        "schedulicity.com",
+        "fresha.com",
+        "glossgenius.com",
+        "mindbodyonline.com",
+        "setmore.com",
+        "acuityscheduling.com",
+        "genbook.com",
+        "zenoti.com",
+        "toasttab.com",
+        "opentable.com",
+        "thryv.com",
+        "ueni.com",
+    ]
+)
+
+
+def not_the_business(address: str) -> bool:
+    """An address at a placeholder, domain-sale or platform domain (D-106)."""
+    domain = email(address).domain
+    return domain is not None and registrable_domain(domain) in NOT_THE_BUSINESS_EMAIL_DOMAINS
 
 
 def ascii_host(host: str) -> str | None:

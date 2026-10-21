@@ -41,6 +41,8 @@ from research_engine.domain import (
     SuppressionChangeRequest,
     SuppressionKind,
     SyntheticSeedResult,
+    format_ts,
+    new_id,
     no_filters,
     utc_now,
 )
@@ -460,6 +462,75 @@ def test_a_query_export_carries_the_number_to_call(
     )
     again = list(exports.query_rows(conn, exports.plan(conn, draft), draft, utc_now()))
     assert all(row[1] != "(281) 844-1292" or row[3] != leads[0] for row in again)
+
+
+def test_an_export_writes_only_the_business_s_own_email(
+    conn: sqlite3.Connection, seeded: SyntheticSeedResult
+) -> None:
+    """D-106: help.us@booksy.com sat on three barbershops and GoHighLevel merged them into one
+    contact. A placeholder, domain-sale or platform address is never the business's, nor one
+    another business on another line publishes too; two records on one line keep theirs."""
+    roots = [root for (root,) in conn.execute("SELECT id FROM businesses WHERE merged_into_id "
+                                              "IS NULL ORDER BY id")]  # fmt: skip
+    before = exports.best_contacts(conn, roots)
+    booksy, template, seller, one, other, own = [
+        root for root in roots if before.get(root, {}).keys() == {"phone"}
+    ][:6]
+    written = next(found["email"] for found in before.values() if "email" in found)
+    published = dict(
+        conn.execute(
+            "SELECT * FROM contact_points WHERE contact_type = 'email' AND value_raw = ?",
+            (written,),
+        ).fetchone()
+    )
+
+    def publish(root: str, value: str) -> None:
+        row = published | {"id": new_id(), "business_id": root, "location_id": None,
+                           "value_raw": value, "value_normalized": value}  # fmt: skip
+        conn.execute(
+            f"INSERT INTO contact_points ({', '.join(row)}) VALUES ({', '.join('?' * len(row))})",  # noqa: S608
+            list(row.values()),
+        )
+
+    publish(booksy, "help.us@booksy.com")
+    publish(template, "example@example.com")
+    publish(seller, "interested@domainmarket.com")
+    publish(one, "info@chain.example")
+    publish(other, "info@chain.example")
+    publish(own, "hola@own.example")
+    after = exports.best_contacts(conn, roots)
+    junk = {"help.us@booksy.com", "example@example.com", "interested@domainmarket.com"}
+    assert not junk & {found.get("email") for found in after.values()}
+    assert "email" not in after[one]
+    assert "email" not in after[other]
+    assert after[own]["email"] == "hola@own.example"
+    changed = {booksy, template, seller, one, other, own}
+    assert {root: after[root] for root in after.keys() - changed} == {
+        root: before[root] for root in before.keys() - changed
+    }, "every other lead keeps its own address"
+
+    records = "SELECT id FROM businesses WHERE coalesce(merged_into_id, id) IN (?, ?)"
+    conn.execute(
+        "UPDATE contact_points SET value_normalized = '+12818441292' WHERE contact_type = 'phone' "  # noqa: S608
+        f"AND business_id IN ({records})",
+        (one, other),
+    )
+    assert exports.best_contacts(conn, [one, other]) == {
+        one: {"phone": "(281) 844-1292", "email": "info@chain.example"},
+        other: {"phone": "(281) 844-1292", "email": "info@chain.example"},
+    }
+    # one business two projects found, its site and no phone: an unknown phone is not another
+    conn.execute(
+        "UPDATE contact_points SET deleted_at = ?, deleted_reason = 'test' "  # noqa: S608
+        f"WHERE contact_type = 'phone' AND business_id IN ({records})",
+        (format_ts(utc_now()), one, other),
+    )
+    assert exports.best_contacts(conn, [one]) == {}, "other sites, another business"
+    conn.execute(
+        f"UPDATE websites SET domain = 'www.chain.example' WHERE business_id IN ({records})",  # noqa: S608
+        (one, other),
+    )
+    assert exports.best_contacts(conn, [one]) == {one: {"email": "info@chain.example"}}
 
 
 def test_a_column_writes_the_words_the_screen_gave_for_its_codes(

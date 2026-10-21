@@ -80,6 +80,7 @@ from research_engine.domain import (
     utc_now,
 )
 from research_engine.leads import explorer, index
+from research_engine.resolution import normalize
 
 logger = logging.getLogger(__name__)
 
@@ -751,7 +752,9 @@ def best_contacts(conn: sqlite3.Connection, ids: Sequence[str]) -> dict[str, dic
     the primary before the rest, off the do-not-contact list. Invalid, stale and suppressed
     addresses are no route, the same rule the explorer's channel follows (`leads.index`). A merge
     moves no contact, so the records merged into a business lend it theirs, as its page shows.
-    A phone is written in one form whatever the page published (`phone_text`)."""
+    A phone is written in one form whatever the page published (`phone_text`). An email is the
+    business's own only: never a placeholder, domain-sale or platform address, nor one another
+    business publishes too (D-106, `_shared_emails`)."""
     found: dict[str, dict[str, str]] = {}
     ranked: dict[tuple[str, str], tuple[int, int]] = {}
     marks = ",".join("?" * len(ids))
@@ -770,10 +773,16 @@ def best_contacts(conn: sqlite3.Connection, ids: Sequence[str]) -> dict[str, dic
             *(kind.value for kind in CONTACT_COLUMNS.values()),
             ContactOrigin.HYPOTHESIS.value,
         ],
-    )
+    ).fetchall()
+    shared = _shared_emails(conn, rows)
     for row in rows:
         rank = index.STATUS_RANK.get(ValidationStatus(row["validation_status"]))
         if rank is None:
+            continue
+        if row["contact_type"] == ContactType.EMAIL and (
+            normalize.not_the_business(row["value_raw"])
+            or (row["root"], row["value_normalized"]) in shared
+        ):
             continue
         key = (row["root"], row["contact_type"])
         order = (rank, 0 if row["is_primary"] else 1)
@@ -785,6 +794,62 @@ def best_contacts(conn: sqlite3.Connection, ids: Sequence[str]) -> dict[str, dic
             value = phone_text(row["value_normalized"], value)
         found.setdefault(row["root"], {})[row["contact_type"]] = value
     return found
+
+
+def _shared_emails(conn: sqlite3.Connection, rows: Sequence[sqlite3.Row]) -> set[tuple[str, str]]:
+    """(business, address) pairs whose address a different business publishes too: a booking
+    platform's, a site template's or a chain's address, not this business's own. Two businesses
+    are different when both have phones and share none, or both have sites on other domains; two
+    records on one line (D-104), or one business two projects found, keep theirs."""
+    # ponytail: exact match on the stored address; compare lower() if case variants ever leak
+    emails = {row["value_normalized"] for row in rows if row["contact_type"] == ContactType.EMAIL}
+    emails.discard(None)
+    if not emails:
+        return set()
+    published: dict[str, set[str]] = {}
+    for value, root in conn.execute(
+        "SELECT c.value_normalized, coalesce(b.merged_into_id, b.id) FROM contact_points c "  # noqa: S608
+        "JOIN businesses b ON b.id = c.business_id WHERE c.contact_type = 'email' "
+        f"AND c.value_normalized IN ({','.join('?' * len(emails))}) "
+        "AND c.deleted_at IS NULL AND c.origin <> ?",
+        [*emails, ContactOrigin.HYPOTHESIS.value],
+    ):
+        published.setdefault(value, set()).add(root)
+    owners = {root for roots in published.values() if len(roots) > 1 for root in roots}
+    if not owners:
+        return set()
+    marks = ",".join("?" * len(owners))
+    phones: dict[str, set[str]] = {root: set() for root in owners}
+    sites: dict[str, set[str]] = {root: set() for root in owners}
+    for root, phone in conn.execute(
+        "SELECT coalesce(b.merged_into_id, b.id), c.value_normalized FROM contact_points c "  # noqa: S608
+        f"JOIN businesses b ON b.id = c.business_id WHERE (b.id IN ({marks}) "
+        f"OR b.merged_into_id IN ({marks})) AND c.contact_type = 'phone' "
+        "AND c.value_normalized IS NOT NULL AND c.deleted_at IS NULL AND c.origin <> ?",
+        [*owners, *owners, ContactOrigin.HYPOTHESIS.value],
+    ):
+        phones[root].add(phone)
+    for root, host in conn.execute(
+        "SELECT coalesce(b.merged_into_id, b.id), w.domain FROM websites w "  # noqa: S608
+        f"JOIN businesses b ON b.id = w.business_id WHERE b.id IN ({marks}) "
+        f"OR b.merged_into_id IN ({marks})",
+        [*owners, *owners],
+    ):
+        sites[root].add(normalize.registrable_domain(host))
+
+    def different(one: str, other: str) -> bool:
+        if phones[one] & phones[other]:
+            return False
+        if phones[one] and phones[other]:
+            return True
+        return bool(sites[one] and sites[other] and not sites[one] & sites[other])
+
+    return {
+        (root, value)
+        for value, roots in published.items()
+        for root in roots
+        if any(different(root, other) for other in roots - {root})
+    }
 
 
 def query_rows(

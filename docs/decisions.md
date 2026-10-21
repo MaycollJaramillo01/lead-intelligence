@@ -1552,3 +1552,29 @@ descarga, piden `repeated has_not <campaña>`; los CSV de las carpetas de marca,
 dentro de ella la ficha mejor puntuada. Una búsqueda que repite zona y oficio de otra anterior da muy
 pocos clientes nuevos, y «Repetir» una búsqueda solo trae lo que la primera no tenía. El recuento de
 «negocios revisados» sigue contando todo lo encontrado.
+
+## D-106 · Una lista solo lleva el correo del propio negocio
+
+**Contexto.** Los 244 clientes de la carpeta cluster se subieron a GoHighLevel y tres barberías
+acabaron en un solo contacto: las tres llevaban `help.us@booksy.com`, el correo de la plataforma de
+reservas que enlazan. El motor escribía en las listas el correo más validado que publicaba la web,
+fuera o no del negocio: plantillas (`example@example.com`, `email@emailaddress.com`,
+`info@mysite.com`, `filler@godaddy.com`), avisos de dominio en venta
+(`interested@domainmarket.com`), plataformas (`contact@locality.com` en tres salones de uñas) o el
+correo de un directorio que lista a otros. Las entregas a Trato salen de los mismos CSV.
+
+**Decisión.** `normalize.NOT_THE_BUSINESS_EMAIL_DOMAINS` reúne los dominios de plantilla, de venta
+de dominios y de plataformas de reservas o de webs (Booksy, Vagaro, Square, StyleSeat, GoDaddy,
+Wix…). El rastreo ya no los guarda como hallazgo (`crawl.extract`), y `exports.best_contacts` no
+escribe una dirección de esos dominios ni una que publica también otro negocio distinto: uno con
+teléfonos que no comparte ninguno con este, o con web en otro dominio. Dos fichas del mismo
+teléfono (D-104), o el mismo negocio encontrado por dos proyectos sin teléfono, conservan el suyo.
+Cuando la elegida queda fuera, sale la siguiente del negocio, si la hay.
+
+**Consecuencia.** Sobre los 2.268 clientes de las carpetas de marca cambian 18 correos: 5 pasan a
+la dirección real del negocio y 13 quedan vacíos. Una cadena cuyas sucursales publican la misma
+dirección (LA Fitness) y el negocio cuya dirección también aparece en la página de un directorio
+pierden el correo: el motor no sabe de quién es, y dos contactos con un mismo correo se fusionan en
+el CRM. Lo ya guardado sigue en el almacén; solo deja de salir en las listas. Correos de otro
+negocio que salen una sola vez (el del centro comercial, `g_clint@mcdonalds.com`) no los detecta
+ninguna de las dos reglas.
