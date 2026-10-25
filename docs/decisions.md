@@ -1591,17 +1591,18 @@ calentadores).
 **Decisión.** La puntuación tiene una compuerta nueva, `gate.lead_generation`
 (`scoring.model.lead_generation_listing`): falla, y el negocio queda excluido, cuando su nombre es
 solo un oficio y un lugar. Vale «oficio + su propia localidad» («Carpet Cleaning Katy»), «oficio +
-cualquier lugar + su estado» («Plumbing Telfair TX», «Carpet Cleaning TX») y «su localidad + oficio +
-su estado» («Channelview Carpet Cleaning TX»), con prefijos de reclamo (911, 24 horas, emergency,
-best, affordable) y coletillas (services, pros, near me). No cuentan una empresa registrada (LLC,
+cualquier lugar + su estado» («Plumbing Telfair TX», «Carpet Cleaning TX») y «su localidad + oficio»
+con el estado delante o detrás («Channelview Carpet Cleaning TX», «TX Sugar Land Plumbing»), con
+prefijos de reclamo (911, 24 horas, emergency, best, affordable, residential) y coletillas (services,
+pros, near me). Una localidad que trae el estado dentro («Mission Bend TX») cuenta sin él. No cuentan una empresa registrada (LLC,
 Inc.), un nombre con algo más («Plumbing Plus», «Painting By Mejia», «Compass Roofing TX») ni «ciudad +
 oficio» sin estado («Sugar Land Plumbing»), que es como se llaman muchos negocios reales. El dominio
 no decide: muchos negocios reales compran dominios de palabras clave (Campos Roofing en
-bestroofingtx.com). `ENGINE_VERSION` pasa a 1.1.0.
+bestroofingtx.com). `ENGINE_VERSION` pasa a 1.1.1.
 
 **Consecuencia.** «Tu lista de clientes» y su descarga solo muestran prioritarios y de revisión, así
 que estas fichas desaparecen al volver a puntuar el proyecto. En las 35 listas de las carpetas caen
-72 de 2.620 contactables (34 en plomería Houston, 16 en cerrajeros Houston, 10 en plomería Dallas, 9
+77 de 2.620 contactables (38 en plomería Houston, 17 en cerrajeros Houston, 10 en plomería Dallas, 9
 en puertas de garaje Dallas). Las redes que inventan un nombre de persona («Amanda Plumbing» en
 plumbingrepairsugarland.com) siguen pasando: solo el dominio las delata, y por el dominio caerían
 también negocios reales.

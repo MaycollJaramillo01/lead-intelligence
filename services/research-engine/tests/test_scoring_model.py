@@ -528,6 +528,10 @@ def test_a_name_that_is_only_a_trade_and_a_place_is_a_lead_generation_listing() 
         assert listing(name) == name, name
     assert listing("Channelview Carpet Cleaning TX", "Channelview")
     assert listing("Carpet Cleaning Katy", "Katy")
+    assert listing("TX Sugar Land Plumbing")
+    assert listing("Residential Plumbing Sugar Land")
+    assert listing("Plumbing Mission Bend", "Mission Bend TX")  # state written into the locality
+    assert listing("Texas Style Roofing") is None
     kept = (
         "Plumbing Plus", "Plumbing Express Service", "Painting By Mejia", "Roofing Hidalgo Llc",
         "Compass Roofing TX", "Morgal Roofing TX", "Sugar Land Plumbing", "The Maids in Sugar Land",

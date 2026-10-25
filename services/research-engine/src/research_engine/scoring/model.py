@@ -82,7 +82,7 @@ from research_engine.domain import (
 )
 from research_engine.resolution.normalize import US_REGIONS
 
-ENGINE_VERSION: Final = "1.1.0"
+ENGINE_VERSION: Final = "1.1.1"
 FACTS_VERSION: Final = "1.0.0"
 DEFAULT_MODEL_KEY: Final = "lead_intelligence.heuristic"
 MAX_EVIDENCE: Final = 8
@@ -997,7 +997,8 @@ _TRADE: Final = (
     r"(?:kitchen |bathroom )?remodeling|towing|movers|moving company"
 )
 _LISTING_PREFIX: Final = (
-    r"(?:(?:911|24 ?7|24 hours?|24hr|emergency|best|affordable|local|cheap|top|the|1) )*"
+    r"(?:(?:911|24 ?7|24 hours?|24hr|emergency|best|affordable|local|cheap|top|the|1|"
+    r"residential) )*"
 )
 _LISTING_SUFFIX: Final = (
     r"(?: (?:services?|company|pros?|experts?|specialists?|near me|repairs?|contractors?|prices?))*"
@@ -1015,15 +1016,22 @@ def lead_generation_listing(
 ) -> str | None:
     """The name that is only a trade and a place, or None. `places` are (locality, region): the
     place must be the listing's own locality, or any place when the name ends with its state; a
-    place-first name («Channelview Carpet Cleaning TX») counts only with the state. A registered
-    company (LLC, Inc.) and a name with anything else in it («Plumbing Plus») are businesses."""
-    localities = {words(locality) for locality, _ in places if locality}
+    place-first name counts only with the state, at either end («Channelview Carpet Cleaning TX»,
+    «TX Sugar Land Plumbing»). A registered company (LLC, Inc.) and a name with anything else in it
+    («Plumbing Plus») are businesses."""
     states = {
         form
         for _, region in places
         if region and region.upper() in US_REGIONS
         for form in (region.lower(), US_REGIONS[region.upper()])
     }
+    localities = set[str]()
+    for locality, _ in places:
+        folded = words(locality or "")
+        for state in states:  # «Mission Bend TX»: some listings write the state into the locality
+            folded = folded.removesuffix(f" {state}")
+        if folded:
+            localities.add(folded)
     for name in names:
         folded = words(name)
         if _LEGAL_FORM.search(folded):
@@ -1036,6 +1044,8 @@ def lead_generation_listing(
                 return name
         for state in states:
             head = folded.removesuffix(f" {state}")
+            if head == folded:
+                head = folded.removeprefix(f"{state} ")
             if head != folded and any(
                 head.startswith(f"{locality} ") and _TRADE_ONLY.fullmatch(head[len(locality) + 1 :])
                 for locality in localities
