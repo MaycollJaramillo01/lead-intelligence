@@ -82,7 +82,7 @@ from research_engine.domain import (
 )
 from research_engine.resolution.normalize import US_REGIONS
 
-ENGINE_VERSION: Final = "1.1.1"
+ENGINE_VERSION: Final = "1.1.2"
 FACTS_VERSION: Final = "1.0.0"
 DEFAULT_MODEL_KEY: Final = "lead_intelligence.heuristic"
 MAX_EVIDENCE: Final = 8
@@ -983,9 +983,10 @@ def matches_term(labels: Iterable[str], terms: Iterable[str]) -> str | None:
 # ponytail: the trades of the brand folders' searches; a trade missing here is simply not caught.
 _TRADE: Final = (
     r"(?:carpet|upholstery|air duct|dryer vent|window|house|home|office|commercial|gutter|pool|"
-    r"tile (?:and )?grout) cleaning|maid services?|cleaning (?:services?|company)|"
-    r"janitorial(?: services?)?|(?:pressure|power) washing|plumb(?:er|ers|ing)|toilet repair|"
-    r"(?:repair )?water heaters?(?: repairs?| replacement| installation)?|drain cleaning|"
+    r"tile (?:and )?grout) clean(?:ing|ers?)|air duct vents?|maid services?|"
+    r"cleaning (?:services?|company)|janitorial(?: services?)?|(?:pressure|power) washing|"
+    r"plumb(?:er|ers|ing)|toilet repair|(?:repair )?(?:tank (?:and )?tankless |tankless )?"
+    r"water heaters?(?: repairs?| replacement| installation)?|drain cleaning|"
     r"sewer repair|leak detection|slab leak(?: repair)?|roof(?:er|ers|ing)|roof repairs?|"
     r"a ?c repair|air conditioning(?: repair)?|hvac(?: repair)?|heating and (?:air|cooling)|"
     r"furnace repair|electricians?|electrical contractors?|garage doors?(?: repairs?)?|"
@@ -1016,9 +1017,10 @@ def lead_generation_listing(
 ) -> str | None:
     """The name that is only a trade and a place, or None. `places` are (locality, region): the
     place must be the listing's own locality, or any place when the name ends with its state; a
-    place-first name counts only with the state, at either end («Channelview Carpet Cleaning TX»,
-    «TX Sugar Land Plumbing»). A registered company (LLC, Inc.) and a name with anything else in it
-    («Plumbing Plus») are businesses."""
+    place-first name counts only with the state, at either end or right after the place
+    («Channelview Carpet Cleaning TX», «TX Sugar Land Plumbing», «Missouri City TX Air Duct
+    Cleaning»). A registered company (LLC, Inc.) and a name with anything else in it («Plumbing
+    Plus») are businesses."""
     states = {
         form
         for _, region in places
@@ -1046,6 +1048,8 @@ def lead_generation_listing(
             head = folded.removesuffix(f" {state}")
             if head == folded:
                 head = folded.removeprefix(f"{state} ")
+            if head == folded:  # «Missouri City TX Air Duct Cleaning»: the state after the place
+                head = folded.replace(f" {state} ", " ", 1)
             if head != folded and any(
                 head.startswith(f"{locality} ") and _TRADE_ONLY.fullmatch(head[len(locality) + 1 :])
                 for locality in localities

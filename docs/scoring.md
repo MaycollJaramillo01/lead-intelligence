@@ -19,7 +19,7 @@ facts of a canonical business ─ features (evidence, unknown or not applicable)
 | `scoring/store.py`  | Profiles, models and versions; runs, scores, reviews, outcomes; ranking, compare, calibration |
 | `scoring/engine.py` | Scoring as a resumable job                                                                    |
 
-`ENGINE_VERSION = 1.1.1` and `FACTS_VERSION = 1.0.0` are stored with every score (1.1 adds
+`ENGINE_VERSION = 1.1.2` and `FACTS_VERSION = 1.0.0` are stored with every score (1.1 adds
 `gate.lead_generation`, D-107).
 
 ## 1. Facts — `FACTS_VERSION = 1.0.0`

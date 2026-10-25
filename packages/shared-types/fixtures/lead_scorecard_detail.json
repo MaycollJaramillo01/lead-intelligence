@@ -16,7 +16,7 @@
     "icp_profile_id": "01900000-0000-7000-8000-000000001158",
     "icp_profile_name": "Synthetic ICP: local services with weak websites",
     "icp_profile_version": 1,
-    "engine_version": "1.1.1",
+    "engine_version": "1.1.2",
     "facts_from_run_id": null,
     "stats": {
       "businesses": 20,
@@ -123,7 +123,7 @@
     "confidence": 0.6444,
     "known_weight": 1.0,
     "versions": {
-      "engine_version": "1.1.1",
+      "engine_version": "1.1.2",
       "facts_version": "1.0.0",
       "scoring_model_key": "lead_intelligence.heuristic",
       "scoring_model_version": 1,

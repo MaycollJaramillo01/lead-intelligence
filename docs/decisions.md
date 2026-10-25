@@ -1592,17 +1592,21 @@ calentadores).
 (`scoring.model.lead_generation_listing`): falla, y el negocio queda excluido, cuando su nombre es
 solo un oficio y un lugar. Vale «oficio + su propia localidad» («Carpet Cleaning Katy»), «oficio +
 cualquier lugar + su estado» («Plumbing Telfair TX», «Carpet Cleaning TX») y «su localidad + oficio»
-con el estado delante o detrás («Channelview Carpet Cleaning TX», «TX Sugar Land Plumbing»), con
+con el estado delante, detrás o justo después del lugar («Channelview Carpet Cleaning TX», «TX Sugar
+Land Plumbing», «Missouri City TX Air Duct Cleaning»), con
 prefijos de reclamo (911, 24 horas, emergency, best, affordable, residential) y coletillas (services,
 pros, near me). Una localidad que trae el estado dentro («Mission Bend TX») cuenta sin él. No cuentan una empresa registrada (LLC,
 Inc.), un nombre con algo más («Plumbing Plus», «Painting By Mejia», «Compass Roofing TX») ni «ciudad +
 oficio» sin estado («Sugar Land Plumbing»), que es como se llaman muchos negocios reales. El dominio
 no decide: muchos negocios reales compran dominios de palabras clave (Campos Roofing en
-bestroofingtx.com). `ENGINE_VERSION` pasa a 1.1.1.
+bestroofingtx.com). `ENGINE_VERSION` pasa a 1.1.2 (1.1.2: el estado tras el lugar, «Air Duct
+Cleaner», «Tank & Tankless Water Heaters»).
 
 **Consecuencia.** «Tu lista de clientes» y su descarga solo muestran prioritarios y de revisión, así
 que estas fichas desaparecen al volver a puntuar el proyecto. En las 35 listas de las carpetas caen
 77 de 2.620 contactables (38 en plomería Houston, 17 en cerrajeros Houston, 10 en plomería Dallas, 9
 en puertas de garaje Dallas). Las redes que inventan un nombre de persona («Amanda Plumbing» en
 plumbingrepairsugarland.com) siguen pasando: solo el dominio las delata, y por el dominio caerían
-también negocios reales.
+también negocios reales. La ronda 6 (climatización Houston) trajo 9 variantes que la 1.1.1 no veía
+(«Sugar Land TX Water Heater Repairs», «Richmond TX Locksmith»); con la 1.1.2 caen en las 39 listas
+sin tocar ningún otro nombre.
