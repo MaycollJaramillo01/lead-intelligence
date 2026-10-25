@@ -19,7 +19,7 @@
       },
       "cutoff_at": "2026-01-01T00:00:00.000Z",
       "pipeline_versions_json": {
-        "scoring_engine": "1.0.0",
+        "scoring_engine": "1.1.0",
         "snapshot_schema": "2",
         "worker": "0.1.0"
       },
@@ -149,7 +149,7 @@
       },
       "cutoff_at": "2026-01-01T00:00:00.000Z",
       "pipeline_versions_json": {
-        "scoring_engine": "1.0.0",
+        "scoring_engine": "1.1.0",
         "snapshot_schema": "2",
         "worker": "0.1.0"
       },

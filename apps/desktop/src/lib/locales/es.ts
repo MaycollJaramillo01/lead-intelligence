@@ -2176,6 +2176,7 @@ export const es: Partial<Record<TranslationKey, string>> = {
   "scoring.stage.not_interested": "No interesado",
   "scoring.code.gate.do_not_contact": "Lista de no contactar",
   "scoring.code.gate.business_closed": "Negocio cerrado",
+  "scoring.code.gate.lead_generation": "Listado de captación (solo oficio y lugar)",
   "scoring.code.gate.exclusions": "Exclusiones",
   "scoring.code.gate.latino": "Requisito latino",
   "scoring.code.gate.observable_problem": "Un problema que una oferta resuelve",

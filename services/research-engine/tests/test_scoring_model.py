@@ -233,6 +233,7 @@ def test_exclusions_the_do_not_contact_list_and_closed_businesses_are_hard_gates
     cases = (
         (facts(business_suppressed=True), icp(), "gate.do_not_contact"),
         (facts(status="closed"), icp(), "gate.business_closed"),
+        (facts(names=["Plumber Austin TX"]), icp(), "gate.lead_generation"),
         (base, icp(exclusions=none | {"names": ["plumbing"]}), "gate.exclusions"),
         (base, icp(exclusions=none | {"domains": ["synthetic-a.example"]}), "gate.exclusions"),
         (base, icp(exclusions=none | {"regions": ["TX"]}), "gate.exclusions"),
@@ -509,3 +510,32 @@ def test_definitions_say_what_keeps_them_from_running() -> None:
     default = model.default_scoring()
     broken = default.model_copy(update={"features": default.features[1:], "review_threshold": 80})
     assert {"features_mismatch", "thresholds_order"} <= codes(model.check_scoring(broken))
+
+
+def test_a_name_that_is_only_a_trade_and_a_place_is_a_lead_generation_listing() -> None:
+    """D-107: names read in the Houston, Dallas and San Antonio searches of 2026-10-25."""
+
+    def listing(name: str, locality: str = "Sugar Land") -> str | None:
+        return model.lead_generation_listing([name], [(locality, "TX")])
+
+    caught = (
+        "Plumber Sugar Land TX", "Plumber in Sugar Land TX", "911 Water Heater Sugar Land TX",
+        "Toilet Repair Mission bend TX", "Plumbing Telfair TX", "Carpet Cleaning TX",
+        "Tile & Grout Cleaning New Territory TX", "Locksmith Sugar Land", "Plumbing Sugar Land",
+        "24 Hour Locksmith Houston Texas", "Best Cleaning Service Of Texas",
+    )  # fmt: skip
+    for name in caught:
+        assert listing(name) == name, name
+    assert listing("Channelview Carpet Cleaning TX", "Channelview")
+    assert listing("Carpet Cleaning Katy", "Katy")
+    kept = (
+        "Plumbing Plus", "Plumbing Express Service", "Painting By Mejia", "Roofing Hidalgo Llc",
+        "Compass Roofing TX", "Morgal Roofing TX", "Sugar Land Plumbing", "The Maids in Sugar Land",
+        "Professional Janitorial Services of Sugar Land", "Garage Door Guys Grand Prairie",
+        "Synthetic Plumbing 0901", "Plumbing Colony Lakes",
+    )  # fmt: skip
+    for name in kept:
+        assert listing(name) is None, name
+    assert listing("Plumbing Colony Lakes", "Colony Lakes")  # its own suburb, without the state
+    assert listing("Carpet Cleaning Katy", "Houston") is None  # a place it does not list
+    assert model.lead_generation_listing(["Plumber Austin TX"], []) is None  # no state to end in

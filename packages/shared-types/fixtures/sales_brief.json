@@ -4,7 +4,7 @@
   "display_name": "Synthetic Bakery 0001",
   "score_run_id": "01900000-0000-7000-8000-000000001399",
   "versions": {
-    "engine_version": "1.0.0",
+    "engine_version": "1.1.0",
     "facts_version": "1.0.0",
     "scoring_model_key": "custom.synthetic_model_contactability_first",
     "scoring_model_version": 1,

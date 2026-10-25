@@ -65,6 +65,13 @@
       "examples": []
     },
     {
+      "gate": "gate.lead_generation",
+      "passed": 20,
+      "failed": 0,
+      "unknown": 0,
+      "examples": []
+    },
+    {
       "gate": "gate.exclusions",
       "passed": 20,
       "failed": 0,

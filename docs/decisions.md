@@ -1578,3 +1578,30 @@ pierden el correo: el motor no sabe de quién es, y dos contactos con un mismo c
 el CRM. Lo ya guardado sigue en el almacén; solo deja de salir en las listas. Correos de otro
 negocio que salen una sola vez (el del centro comercial, `g_clint@mcdonalds.com`) no los detecta
 ninguna de las dos reglas.
+
+## D-107 · Un listado de captación no es un cliente
+
+**Contexto.** En la búsqueda Novarius de plomería en Houston (25/10/2026), 34 de los 87 contactables
+eran fichas como «Plumber Sugar Land TX», «Toilet Repair Mission bend TX» o «911 Water Heater
+Richmond TX»: redes de captación que publican una ficha por suburbio, con un número de seguimiento,
+y revenden las llamadas. No hay negocio al que venderle una web y los agentes pierden la llamada. En
+el almacén hay cientos más (limpieza de alfombras, secadoras, cerrajeros, puertas de garaje,
+calentadores).
+
+**Decisión.** La puntuación tiene una compuerta nueva, `gate.lead_generation`
+(`scoring.model.lead_generation_listing`): falla, y el negocio queda excluido, cuando su nombre es
+solo un oficio y un lugar. Vale «oficio + su propia localidad» («Carpet Cleaning Katy»), «oficio +
+cualquier lugar + su estado» («Plumbing Telfair TX», «Carpet Cleaning TX») y «su localidad + oficio +
+su estado» («Channelview Carpet Cleaning TX»), con prefijos de reclamo (911, 24 horas, emergency,
+best, affordable) y coletillas (services, pros, near me). No cuentan una empresa registrada (LLC,
+Inc.), un nombre con algo más («Plumbing Plus», «Painting By Mejia», «Compass Roofing TX») ni «ciudad +
+oficio» sin estado («Sugar Land Plumbing»), que es como se llaman muchos negocios reales. El dominio
+no decide: muchos negocios reales compran dominios de palabras clave (Campos Roofing en
+bestroofingtx.com). `ENGINE_VERSION` pasa a 1.1.0.
+
+**Consecuencia.** «Tu lista de clientes» y su descarga solo muestran prioritarios y de revisión, así
+que estas fichas desaparecen al volver a puntuar el proyecto. En las 35 listas de las carpetas caen
+72 de 2.620 contactables (34 en plomería Houston, 16 en cerrajeros Houston, 10 en plomería Dallas, 9
+en puertas de garaje Dallas). Las redes que inventan un nombre de persona («Amanda Plumbing» en
+plumbingrepairsugarland.com) siguen pasando: solo el dominio las delata, y por el dominio caerían
+también negocios reales.

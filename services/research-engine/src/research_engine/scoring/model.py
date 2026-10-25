@@ -80,8 +80,9 @@ from research_engine.domain import (
     WebsiteFindingResult,
     sort_key,
 )
+from research_engine.resolution.normalize import US_REGIONS
 
-ENGINE_VERSION: Final = "1.0.0"
+ENGINE_VERSION: Final = "1.1.0"
 FACTS_VERSION: Final = "1.0.0"
 DEFAULT_MODEL_KEY: Final = "lead_intelligence.heuristic"
 MAX_EVIDENCE: Final = 8
@@ -976,6 +977,73 @@ def matches_term(labels: Iterable[str], terms: Iterable[str]) -> str | None:
     return None
 
 
+# A lead-generation listing (D-107) is named after a trade and a place and nothing else: «Plumber
+# Sugar Land TX», «911 Dryer Vent Cleaning Plano TX», «Carpet Cleaning Katy». Networks publish one
+# per suburb, on a tracking number, and resell the calls; there is no business to sell to.
+# ponytail: the trades of the brand folders' searches; a trade missing here is simply not caught.
+_TRADE: Final = (
+    r"(?:carpet|upholstery|air duct|dryer vent|window|house|home|office|commercial|gutter|pool|"
+    r"tile (?:and )?grout) cleaning|maid services?|cleaning (?:services?|company)|"
+    r"janitorial(?: services?)?|(?:pressure|power) washing|plumb(?:er|ers|ing)|toilet repair|"
+    r"(?:repair )?water heaters?(?: repairs?| replacement| installation)?|drain cleaning|"
+    r"sewer repair|leak detection|slab leak(?: repair)?|roof(?:er|ers|ing)|roof repairs?|"
+    r"a ?c repair|air conditioning(?: repair)?|hvac(?: repair)?|heating and (?:air|cooling)|"
+    r"furnace repair|electricians?|electrical contractors?|garage doors?(?: repairs?)?|"
+    r"(?:auto |car |mobile )?locksmiths?|tree (?:services?|removal|trimming|care)|stump grinding|"
+    r"lawn (?:care|services?)|landscap(?:ing|ers?)|pest control|exterminators?|termite control|"
+    r"mosquito control|appliance repair|junk removal|foundation repair|"
+    r"water damage(?: restorations?)?|mold removal|painters?|(?:house )?painting|handyman|"
+    r"fence (?:company|repair|installation)|concrete contractors?|"
+    r"(?:kitchen |bathroom )?remodeling|towing|movers|moving company"
+)
+_LISTING_PREFIX: Final = (
+    r"(?:(?:911|24 ?7|24 hours?|24hr|emergency|best|affordable|local|cheap|top|the|1) )*"
+)
+_LISTING_SUFFIX: Final = (
+    r"(?: (?:services?|company|pros?|experts?|specialists?|near me|repairs?|contractors?|prices?))*"
+)
+_TRADE_FIRST: Final = re.compile(
+    rf"^{_LISTING_PREFIX}(?:{_TRADE})(?: and (?:{_TRADE}))*{_LISTING_SUFFIX}(?: (?:in|of|for))?"
+    r"(?P<rest>(?: [a-z]+)*)$"
+)
+_TRADE_ONLY: Final = re.compile(rf"(?:{_TRADE}){_LISTING_SUFFIX}")
+_LEGAL_FORM: Final = re.compile(r"\b(?:llc|inc|corp|ltd|lp|pllc)\b")
+
+
+def lead_generation_listing(
+    names: Iterable[str], places: Iterable[tuple[str | None, str | None]]
+) -> str | None:
+    """The name that is only a trade and a place, or None. `places` are (locality, region): the
+    place must be the listing's own locality, or any place when the name ends with its state; a
+    place-first name («Channelview Carpet Cleaning TX») counts only with the state. A registered
+    company (LLC, Inc.) and a name with anything else in it («Plumbing Plus») are businesses."""
+    localities = {words(locality) for locality, _ in places if locality}
+    states = {
+        form
+        for _, region in places
+        if region and region.upper() in US_REGIONS
+        for form in (region.lower(), US_REGIONS[region.upper()])
+    }
+    for name in names:
+        folded = words(name)
+        if _LEGAL_FORM.search(folded):
+            continue
+        if (found := _TRADE_FIRST.match(folded)) is not None:
+            rest = found.group("rest").split()
+            stated = bool(rest) and rest[-1] in states
+            place = " ".join(rest[:-1] if stated else rest)
+            if (stated and len(place.split()) <= 3) or (place and place in localities):
+                return name
+        for state in states:
+            head = folded.removesuffix(f" {state}")
+            if head != folded and any(
+                head.startswith(f"{locality} ") and _TRADE_ONLY.fullmatch(head[len(locality) + 1 :])
+                for locality in localities
+            ):
+                return name
+    return None
+
+
 def _in_area(facts: BusinessFacts, area: Area) -> bool:
     for loc in facts.locations:
         parts: list[tuple[str | None, str | None]] = [
@@ -1190,6 +1258,20 @@ def _gates(ctx: Context, observations: Mapping[str, Observation]) -> list[GateVi
             ),
         ),
     ]
+    places = [(loc.locality, loc.region) for loc in facts.locations]
+    listing = lead_generation_listing(facts.names, places)
+    gates.append(
+        (
+            "gate.lead_generation",
+            Decision(
+                GateOutcome.FAIL if listing else GateOutcome.PASS,
+                f"'{listing}' is only a trade and a place: a listing that resells calls"[:300]
+                if listing
+                else "The name is not a trade and a place alone",
+                tuple(business),
+            ),
+        )
+    )
     ex = icp.exclusions
     hits = (
         [f"name '{term}'" for term in [matches_term(facts.names, ex.names)] if term]

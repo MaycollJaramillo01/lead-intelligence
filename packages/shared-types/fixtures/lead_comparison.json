@@ -16,7 +16,7 @@
     "icp_profile_id": "01900000-0000-7000-8000-000000001158",
     "icp_profile_name": "Synthetic ICP: local services with weak websites",
     "icp_profile_version": 1,
-    "engine_version": "1.0.0",
+    "engine_version": "1.1.0",
     "facts_from_run_id": "01900000-0000-7000-8000-000000001163",
     "stats": {
       "businesses": 20,
@@ -166,7 +166,7 @@
         "confidence": 0.6129,
         "known_weight": 1.0,
         "versions": {
-          "engine_version": "1.0.0",
+          "engine_version": "1.1.0",
           "facts_version": "1.0.0",
           "scoring_model_key": "custom.synthetic_model_contactability_first",
           "scoring_model_version": 1,
@@ -969,6 +969,19 @@
             ]
           },
           {
+            "gate": "gate.lead_generation",
+            "outcome": "pass",
+            "detail": "The name is not a trade and a place alone",
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000952",
+                "label": "Synthetic Plumbing 0701",
+                "url": null
+              }
+            ]
+          },
+          {
             "gate": "gate.exclusions",
             "outcome": "pass",
             "detail": "No exclusion applies",
@@ -1402,7 +1415,7 @@
         "confidence": 0.6444,
         "known_weight": 1.0,
         "versions": {
-          "engine_version": "1.0.0",
+          "engine_version": "1.1.0",
           "facts_version": "1.0.0",
           "scoring_model_key": "custom.synthetic_model_contactability_first",
           "scoring_model_version": 1,
@@ -2044,6 +2057,19 @@
             "gate": "gate.business_closed",
             "outcome": "pass",
             "detail": "Business status: candidate",
+            "evidence": [
+              {
+                "kind": "business",
+                "ref": "01900000-0000-7000-8000-000000000091",
+                "label": "Synthetic Bakery 0001",
+                "url": null
+              }
+            ]
+          },
+          {
+            "gate": "gate.lead_generation",
+            "outcome": "pass",
+            "detail": "The name is not a trade and a place alone",
             "evidence": [
               {
                 "kind": "business",

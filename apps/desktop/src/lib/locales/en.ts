@@ -2161,6 +2161,7 @@ export const en = {
   "scoring.stage.not_interested": "Not interested",
   "scoring.code.gate.do_not_contact": "Do-not-contact list",
   "scoring.code.gate.business_closed": "Business closed",
+  "scoring.code.gate.lead_generation": "Lead-generation listing (trade and place only)",
   "scoring.code.gate.exclusions": "Exclusions",
   "scoring.code.gate.latino": "Latino requirement",
   "scoring.code.gate.observable_problem": "A problem an offer solves",

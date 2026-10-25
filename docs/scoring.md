@@ -19,7 +19,8 @@ facts of a canonical business ─ features (evidence, unknown or not applicable)
 | `scoring/store.py`  | Profiles, models and versions; runs, scores, reviews, outcomes; ranking, compare, calibration |
 | `scoring/engine.py` | Scoring as a resumable job                                                                    |
 
-`ENGINE_VERSION = 1.0.0` and `FACTS_VERSION = 1.0.0` are stored with every score.
+`ENGINE_VERSION = 1.1.0` and `FACTS_VERSION = 1.0.0` are stored with every score (1.1.0 adds
+`gate.lead_generation`, D-107).
 
 ## 1. Facts — `FACTS_VERSION = 1.0.0`
 
@@ -98,6 +99,7 @@ undecided gate leaves it with insufficient data. Every decided gate carries its 
 | ------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------- |
 | `gate.do_not_contact`     | the business is on the do-not-contact list                                                     | never                                         |
 | `gate.business_closed`    | its status is `closed`                                                                         | never                                         |
+| `gate.lead_generation`    | its name is only a trade and a place: «Plumber Sugar Land TX», «Carpet Cleaning Katy» (D-107)  | never                                         |
 | `gate.exclusions`         | an excluded name or category term, domain (or subdomain), region or postal code prefix matches | never                                         |
 | `gate.latino`             | the status is not the one required (only when the ICP asks)                                    | Latino evidence has not been evaluated        |
 | `gate.observable_problem` | problems were evaluated and none an offer solves is observed (when the model requires one)     | no problem an offer solves could be evaluated |
