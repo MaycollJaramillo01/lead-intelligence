@@ -1088,3 +1088,25 @@ async def test_a_crawl_needs_something_to_crawl(data_dir: Path) -> None:
                 settings=crawl_settings(),
             )
         )
+
+
+def test_two_crawls_storing_the_same_body_at_once_both_succeed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Windows refuses a rename onto a file another crawl just wrote: same hash, same body."""
+    # ponytail: simulated with a patched rename; a real two-thread race is too flaky to test
+    from research_engine.crawl import engine
+
+    body = b"<html>same page</html>"
+    first, digest = engine.store_artifact(tmp_path, body, ".html")
+    target = tmp_path / first
+    target.unlink()  # the second crawl checked before the first one renamed
+
+    def refused(self: Path, other: Path) -> Path:
+        Path(other).write_bytes(body)  # the first crawl wins the race
+        raise PermissionError(5, "Acceso denegado")
+
+    monkeypatch.setattr(Path, "replace", refused)
+    assert engine.store_artifact(tmp_path, body, ".html") == (first, digest)
+    assert target.read_bytes() == body
+    assert not list(target.parent.glob("*.partial"))

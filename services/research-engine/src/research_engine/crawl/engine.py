@@ -1298,7 +1298,14 @@ def store_artifact(data_dir: Path, data: bytes, suffix: str) -> tuple[str, str]:
         # short on purpose: Windows paths stop at 260 characters (the core bounds the data dir)
         partial = target.with_name(f"{digest[:16]}.{new_id()[-8:]}.partial")
         partial.write_bytes(data)
-        partial.replace(target)
+        try:
+            partial.replace(target)
+        except PermissionError:
+            # Two crawls stored the same body at once and Windows refused the second rename: the
+            # name is the content's hash, so the file already there is this one.
+            if not target.exists():
+                raise
+            partial.unlink(missing_ok=True)
     return relative_data_path(data_dir, target), digest
 
 
