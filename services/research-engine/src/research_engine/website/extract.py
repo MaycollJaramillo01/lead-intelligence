@@ -680,8 +680,10 @@ def _language(visible: str, lang: str | None) -> str | None:
     return code if code in ("es", "en") else None
 
 
-def page_facts(html: str, url: str, final_url: str) -> PageFacts:
-    """The facts of one page. `final_url` is where it was served from, after its redirects."""
+def page_facts(html: str, url: str, final_url: str, *, technologies: bool = True) -> PageFacts:
+    """The facts of one page. `final_url` is where it was served from, after its redirects.
+    `technologies=False` skips their detection, three quarters of the time a page takes, for a
+    reader that never looks at them (contact extraction)."""
     tree = LexborHTMLParser(html)
     site = site_of(final_url)
     https = urlsplit(final_url).scheme == "https"
@@ -768,8 +770,10 @@ def page_facts(html: str, url: str, final_url: str) -> PageFacts:
                 continue
             if (value := _attr(node, "src") or _attr(node, "href")).lower().startswith("http://"):
                 mixed.append(value)
-    technologies = _detect(
-        html[:MAX_RAW_HTML], scripts, inline, meta.get("generator"), frames, hrefs
+    detected = (
+        _detect(html[:MAX_RAW_HTML], scripts, inline, meta.get("generator"), frames, hrefs)
+        if technologies
+        else ()
     )
     schema = _schema(tree)
     forms = _forms(tree, final_url, https)
@@ -846,7 +850,7 @@ def page_facts(html: str, url: str, final_url: str) -> PageFacts:
         zoom_disabled=bool(_ZOOM_OFF.search((meta.get("viewport") or "").lower())),
         mixed_content=_unique(mixed),
         scripts=script_count,
-        technologies=technologies,
+        technologies=detected,
         trust=trust,
         schema=schema,
     )

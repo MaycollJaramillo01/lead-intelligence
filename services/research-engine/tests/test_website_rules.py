@@ -435,6 +435,10 @@ def test_audits_are_deterministic_and_reproducible_from_their_snapshot() -> None
     html = synthetic_complete_site(SITE, NOW.year)["/contact"]
     url = f"https://{SITE}/contact"
     assert extract.page_facts(html, url, url) == extract.page_facts(html, url, url)
+    full = extract.page_facts(html, url, url)
+    without = extract.page_facts(html, url, url, technologies=False)
+    assert full.technologies, "the synthetic contact page shows a technology to detect"
+    assert without == replace(full, technologies=()), "skipping detection changes nothing else"
 
 
 def test_rules_are_versioned_and_every_rule_is_documented() -> None:

@@ -65,6 +65,7 @@ from research_engine.testdata import (
     synthetic_mail_lookup,
     synthetic_page_html,
 )
+from research_engine.website import store as website_store
 
 V = ValidationStatus
 PUBLISHED = CONTACT_SITES["published"]
@@ -730,8 +731,21 @@ def test_contact_lists_filter_by_channel_quality_role_and_freshness_and_page_sta
 
 
 def test_contact_runs_resume_and_repeat_without_writing_twice(
-    conn: sqlite3.Connection, seeded: ContactFixture, synthetic: SyntheticContext, data_dir: Path
+    conn: sqlite3.Connection,
+    seeded: ContactFixture,
+    synthetic: SyntheticContext,
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    read = website_store._facts
+    opened: list[str] = []
+
+    def counted(data_dir: Path, row: sqlite3.Row, final_url: str, **options: bool) -> object:
+        opened.append(final_url)
+        return read(data_dir, row, final_url, **options)
+
+    monkeypatch.setattr(website_store, "_facts", counted)
+
     def counts() -> tuple[int, ...]:
         return tuple(
             conn.execute(
@@ -761,11 +775,20 @@ def test_contact_runs_resume_and_repeat_without_writing_twice(
     )
     assert finished.stats.mail_domains_checked == 0  # every answer was still cached
     assert counts() == before
+    assert opened == [], "a page already read for its businesses is not opened again"
     first = store.get_contact_run(conn, seeded.job_id)
     assert first.stats.contacts_found > 0
     assert first.stats.hypotheses == 2
     assert first.stats.ambiguous_people >= 1
     assert first.stats.suppressed >= 1
+
+
+def test_a_page_is_read_again_only_for_a_business_it_was_not_read_for() -> None:
+    applied = {"x1": {"b1"}}
+    assert not store.already_read(None, applied, ("b1",)), "never extracted: read it"
+    assert store.already_read("x1", applied, ("b1",))
+    assert not store.already_read("x1", applied, ("b1", "b2")), "b2 still needs its contacts"
+    assert store.already_read("x2", applied, ("b1", "b2")), "it found nothing: nothing to add"
 
 
 def test_performance_on_many_contact_pages(

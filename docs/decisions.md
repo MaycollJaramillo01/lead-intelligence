@@ -1657,3 +1657,25 @@ locales).
 
 **Consecuencia.** Una búsqueda de frontera trae solo negocios de EE. UU. Un lugar al que Overture no
 le pusiera país quedaría fuera; hoy no hay ninguno.
+
+## D-110 · La extracción de contactos no vuelve a leer lo que ya leyó
+
+**Contexto.** En la ronda 8 (25/10/2026) la etapa de contactos de una búsqueda nueva de Novarius
+tardó unos 40 minutos: 9.200 páginas a unas 4 por segundo. El trabajo de contactos es del proyecto
+y recorre todas sus páginas; `contacts.store.extract_batch` era idempotente al escribir, pero abría
+y analizaba otra vez el HTML guardado de cada una antes de ver que no había nada nuevo. 9.188 de las
+9.500 páginas del proyecto ya estaban extraídas para todos sus negocios, y cada búsqueda nueva
+tardaba más que la anterior. De cada página nueva, tres cuartas partes del tiempo se iban en
+detectar tecnologías (`website.extract._detect`), que la extracción de contactos nunca mira: solo
+lee los formularios y la URL final.
+
+**Decisión.** `extract_batch` salta una página que esta versión del extractor ya leyó cuando todos
+los negocios por los que habla tienen lo que encontró en ella, o cuando no encontró nada
+(`contacts.store.already_read`); un negocio nuevo en esa página la vuelve a leer. La extracción de
+contactos pide `website.extract.page_facts(..., technologies=False)`; la auditoría web las sigue
+detectando.
+
+**Consecuencia.** Medido sobre el almacén real en solo lectura: la etapa recorre las 9.500 páginas
+en algo más de un minuto en lugar de unos 40, y una página nueva cuesta unos 21 ms en lugar de 95.
+Una página ya leída cuyo negocio cambió de país conserva los teléfonos que se leyeron con el país
+anterior.

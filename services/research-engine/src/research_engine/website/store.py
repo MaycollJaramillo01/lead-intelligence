@@ -147,7 +147,7 @@ _ROWS_SQL: Final = (
 
 
 def _facts(
-    data_dir: Path, row: sqlite3.Row, final_url: str
+    data_dir: Path, row: sqlite3.Row, final_url: str, *, technologies: bool = True
 ) -> tuple[extract.PageFacts | None, str | None]:
     """The facts of a fetched page from the bytes the crawler stored (the rendered HTML when it
     rendered one, the cached copy when the server answered 304), or why there are none."""
@@ -164,7 +164,8 @@ def _facts(
     except (OSError, ValueError):
         return None, "artifact_missing"
     try:
-        return extract.page_facts(decode(body, content_type)[0], row["url"], final_url), None
+        html = decode(body, content_type)[0]
+        return extract.page_facts(html, row["url"], final_url, technologies=technologies), None
     except Exception:
         logger.warning("a stored page could not be read", exc_info=True, extra={"url": row["url"]})
         return None, "unreadable"

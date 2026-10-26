@@ -253,13 +253,14 @@ def extract_batch(
     now: datetime,
 ) -> ExtractBatch:
     """Reads a batch of pages in one transaction. Idempotent: an extraction of this version is
-    written once per page, a channel once per extraction and business, a person once per name."""
+    written once per page, a channel once per extraction and business, a person once per name. A
+    page this version already read for every business it speaks for is not read again: its stored
+    HTML was opened and parsed on every run of the project, 9 200 pages for one new search."""
     ids = [source.raw_record_id for source in batch]
     if not ids:
         return ExtractBatch(0, 0, 0, 0)
     marks = _marks(ids)
     version = [EXTRACTOR_SITE, rules.EXTRACTOR_VERSION]
-    pages = {row["id"]: row for row in conn.execute(_PAGES_SQL.format(marks=marks), ids)}
     extractions = {
         row["raw_record_id"]: row["id"]
         for row in conn.execute(
@@ -288,6 +289,23 @@ def extract_batch(
             [*ids, *version],
         )
     }
+    applied: dict[str, set[str]] = defaultdict(set)
+    for extraction_id, business_id, _ in (*seen_contacts, *seen_people):
+        applied[extraction_id].add(business_id)
+    batch = [
+        source
+        for source in batch
+        if not already_read(extractions.get(source.raw_record_id), applied, source.business_ids)
+    ]
+    if not batch:
+        return ExtractBatch(len(ids), 0, 0, 0)
+    marks = _marks([source.raw_record_id for source in batch])
+    pages = {
+        row["id"]: row
+        for row in conn.execute(
+            _PAGES_SQL.format(marks=marks), [source.raw_record_id for source in batch]
+        )
+    }
     businesses = sorted({business for source in batch for business in source.business_ids})
     countries: dict[str, set[str]] = defaultdict(set)
     locations: dict[str, list[tuple[str, str | None, str | None]]] = defaultdict(list)
@@ -309,7 +327,11 @@ def extract_batch(
             continue
         payload = _object(page["payload_json"])
         final_url = str(payload.get("final_url") or page["url"] or "")
-        facts = website_store._facts(data_dir, page, final_url)[0] if data_dir else None
+        facts = (
+            website_store._facts(data_dir, page, final_url, technologies=False)[0]
+            if data_dir
+            else None
+        )
         found_countries = {code for business in source.business_ids for code in countries[business]}
         country = next(iter(found_countries)) if len(found_countries) == 1 else None
         found = rules.scan_page(payload, facts, country=country)
@@ -419,7 +441,19 @@ def extract_batch(
                 forms += contact.contact_type in _FORMS
     with repository.atomic(conn):
         repository.insert(conn, *records)
-    return ExtractBatch(len(batch), contacts, forms, people)
+    return ExtractBatch(len(ids), contacts, forms, people)
+
+
+def already_read(
+    extraction_id: str | None, applied: Mapping[str, set[str]], business_ids: Sequence[str]
+) -> bool:
+    """Whether reading the page again would add nothing: this version extracted it, and either
+    every business it speaks for has what it found or it found nothing at all.
+    ponytail: a business whose country changed since keeps the phones read under the old one."""
+    if extraction_id is None:
+        return False
+    found_for = applied.get(extraction_id)
+    return not found_for or set(business_ids) <= found_for
 
 
 # ---- currency, clusters and mail domains -------------------------------------------------------
