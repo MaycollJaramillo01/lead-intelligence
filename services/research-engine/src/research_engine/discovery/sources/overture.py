@@ -14,7 +14,7 @@ How a run reads it:
    also filters the postcode;
 3. one DuckDB query over the public bucket (anonymous S3, `httpfs`) writes the matching places to
    `overture/<hash>.parquet` in the data directory: places with a phone or an email that are not
-   permanently closed, up to the source's record cap;
+   permanently closed, the closest to the centre of a box first, up to the source's record cap;
 4. pages are windows of that local file, so paging and resuming never go back to S3.
 
 The payload keeps the lists as read, plus `phone`, `email`, `website` and `address` (the first of
@@ -61,7 +61,7 @@ from research_engine.domain import (
 )
 
 KEY: Final = "overture.places"
-VERSION: Final = "1.1.0"
+VERSION: Final = "1.2.0"
 STAC_URL: Final = "https://stac.overturemaps.org/catalog.json"
 NOMINATIM_URL: Final = "https://nominatim.openstreetmap.org/search"
 #: The public release. Tests point it at a local Parquet file.
@@ -228,6 +228,18 @@ def build_filter(boxes: list[Box], criteria: DiscoveryCriteria) -> tuple[str, li
     return " AND ".join(where), params
 
 
+def nearest_first(boxes: list[Box]) -> str:
+    """ORDER BY of the capped query: closest to a box's centre first. Without it the cap kept the
+    first rows of the release, one corner of the box: «Dallas» came back Arlington and Mansfield."""
+    distances = []
+    for box in boxes:
+        x, y = (box.west + box.east) / 2, (box.south + box.north) / 2
+        k = max(0.01, math.cos(math.radians(y)))  # a degree of longitude is shorter off the equator
+        distances.append(f"pow((bbox.xmin - ({x!r})) * {k!r}, 2) + pow(bbox.ymin - ({y!r}), 2)")
+    nearest = distances[0] if len(distances) == 1 else f"least({', '.join(distances)})"
+    return f"{nearest}, id"
+
+
 def cache_name(criteria: DiscoveryCriteria, release: str, cap: int) -> str:
     """Same release, places, terms and cap, same file. Short, far from Windows' MAX_PATH (D-091)."""
     spec = {
@@ -246,8 +258,11 @@ def _literal(text: str) -> str:
     return "'" + text.replace("'", "''") + "'"
 
 
-def materialise(target: Path, places: str, where: str, params: list[object], cap: int) -> None:
-    """The one remote query of a run: the matching places, written to the data directory."""
+def materialise(
+    target: Path, places: str, where: str, params: list[object], cap: int, order: str = "id"
+) -> None:
+    """The one remote query of a run: the matching places, `order` first, written to the data
+    directory."""
     target.parent.mkdir(parents=True, exist_ok=True)
     partial = target.with_suffix(".partial")
     duck = duckdb.connect()
@@ -258,7 +273,8 @@ def materialise(target: Path, places: str, where: str, params: list[object], cap
             duck.execute(f"SET s3_region = {_literal(S3_REGION)}")
         duck.execute(
             f"COPY (SELECT {_COLUMNS} FROM read_parquet({_literal(places)}) "  # noqa: S608 - values are bound
-            f"WHERE {where} LIMIT {int(cap)}) TO {_literal(str(partial))} (FORMAT parquet)",
+            f"WHERE {where} ORDER BY {order} LIMIT {int(cap)}) "
+            f"TO {_literal(str(partial))} (FORMAT parquet)",
             params,
         )
     except duckdb.IOException as exc:
@@ -401,7 +417,8 @@ class OverturePlacesSource:
                     await asyncio.sleep(NOMINATIM_INTERVAL_S)
                 boxes.append(await locate(scope, context))
             where, params = build_filter(boxes, request.criteria)
-            await asyncio.to_thread(materialise, target, places, where, params, cap)
+            order = nearest_first(boxes)
+            await asyncio.to_thread(materialise, target, places, where, params, cap, order)
         rows, total = await asyncio.to_thread(window, target, offset, request.page_size)
         candidates = [
             candidate

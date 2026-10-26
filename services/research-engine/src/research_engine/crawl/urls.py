@@ -114,6 +114,18 @@ def canonical(url: str, base: str | None = None) -> str | None:
     return result if len(result) <= MAX_URL_LENGTH else None
 
 
+_INDEX_FILE: Final = re.compile(r"/(?:index|default)\.(?:html?|php|aspx?)$", re.IGNORECASE)
+
+
+def page_key(url: str) -> str:
+    """What a site has already seen: one page whatever its scheme, a leading `www.`, a trailing
+    slash or an index file. Fetching `http://www.x.com/` then `https://x.com/index.html` spent the
+    page budget on the home page twice and left out the About page."""
+    parts = urlsplit(url)
+    path = _INDEX_FILE.sub("/", parts.path).rstrip("/") or "/"
+    return urlunsplit(("", parts.netloc.removeprefix("www."), path, parts.query, ""))
+
+
 def host_of(url: str) -> str:
     return urlsplit(url).hostname or ""
 

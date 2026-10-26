@@ -22,7 +22,14 @@ from research_engine.crawl.extract import (
 )
 from research_engine.crawl.fetch import retry_after
 from research_engine.crawl.robots import ALLOW_ALL, parse
-from research_engine.crawl.urls import canonical, in_scope, page_kind, priority, skip_reason
+from research_engine.crawl.urls import (
+    canonical,
+    in_scope,
+    page_key,
+    page_kind,
+    priority,
+    skip_reason,
+)
 from research_engine.domain import PageKind, default_crawl_settings
 
 pytestmark = pytest.mark.anyio
@@ -57,6 +64,16 @@ def test_relative_links_resolve_against_the_page() -> None:
     assert canonical("../contact", base) == "https://example.com/contact"
     assert canonical("//cdn.example.net/x.js", base) == "https://cdn.example.net/x.js"
     assert canonical("?page=2", base) == "https://example.com/about/team?page=2"
+
+
+def test_a_page_is_seen_once_whatever_its_scheme_www_slash_or_index_file() -> None:
+    home = {page_key(url) for url in ("http://www.x.com/", "https://x.com/", "https://x.com/index.html",
+                                       "https://www.x.com/Default.aspx")}  # fmt: skip
+    assert home == {"//x.com/"}
+    assert page_key("https://x.com/about/") == page_key("http://www.x.com/about")
+    assert page_key("https://x.com/about") != page_key("https://x.com/contact")
+    assert page_key("https://x.com/?p=2") != page_key("https://x.com/")
+    assert page_key("https://shop.x.com/") != page_key("https://x.com/")
 
 
 def test_scope_and_page_kinds() -> None:

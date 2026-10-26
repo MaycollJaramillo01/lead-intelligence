@@ -86,7 +86,7 @@
         "key": "usaspending.recipients",
         "name": "USAspending.gov award recipients",
         "kind": "official_api",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "capabilities": [
           "pagination",
           "checkpoint",
@@ -124,7 +124,7 @@
         "key": "overture.places",
         "name": "Overture Maps places (phones, websites, emails)",
         "kind": "public_dataset",
-        "version": "1.1.0",
+        "version": "1.2.0",
         "capabilities": [
           "pagination",
           "checkpoint",

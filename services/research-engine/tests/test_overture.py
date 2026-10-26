@@ -178,6 +178,24 @@ async def test_reachable_places_become_candidates_whose_phone_and_email_reach_co
     }
 
 
+def test_a_capped_run_keeps_the_places_closest_to_the_centre(tmp_path: Path) -> None:
+    # the first roofers of the file sit 0.4 degrees south-west of Houston, the last ones on it
+    step = "(599 - right(id, 4)::INT) * 0.4 / 599"
+    bbox = f"{{'xmin': -95.37 - {step}, 'xmax': 0.0, 'ymin': 29.76 - {step}, 'ymax': 0.0}}"
+    moved = f"SELECT * REPLACE ({bbox} AS bbox) FROM ({PLACES_SQL}) WHERE id < 'place-0600'"  # noqa: S608
+    release = tmp_path / "places.parquet"
+    duck = duckdb.connect()
+    duck.execute(f"COPY ({moved} ORDER BY id) TO '{release}' (FORMAT parquet)")
+    duck.close()
+    box = overture.Box(west=-95.77, south=29.36, east=-94.97, north=30.16)
+    where, params = overture.build_filter([box], empty_criteria())
+    target = tmp_path / "kept.parquet"
+    overture.materialise(target, str(release), where, params, 10, overture.nearest_first([box]))
+    rows, total = overture.window(target, 0, 50)
+    assert total == 10
+    assert [row["id"] for row in rows] == [f"place-{i:04d}" for i in range(590, 600)]
+
+
 @pytest.mark.parametrize(
     ("taxonomy", "term", "expected"),
     [

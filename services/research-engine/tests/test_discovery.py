@@ -54,6 +54,7 @@ from research_engine.domain import (
     empty_criteria,
     utc_now,
 )
+from research_engine.latino import rules as latino_rules
 
 pytestmark = pytest.mark.anyio
 
@@ -818,6 +819,32 @@ def test_the_dedup_key_prefers_a_stable_id_then_a_domain_then_the_name() -> None
         name="PANADERIA EL SOL", locality="austin", region="TX"
     )
     assert dedup_key(name="A", locality="Austin") != dedup_key(name="A", locality="Miami")
+
+
+def test_hispanic_owned_recipients_carry_their_federal_declaration() -> None:
+    selection = SourceSelection(
+        connector_key=USASPENDING_KEY, priority=50, max_records=None,
+        config_json={"hispanic_owned": True},
+    )  # fmt: skip
+    request = SourceRequest(
+        criteria=criteria(sources=[selection]), selection=selection, page_size=100, run_input={}
+    )
+    assert usaspending.build_filters(request)["recipient_type_names"] == [
+        "hispanic_american_owned_business"
+    ]
+    award = recorded_pages()[0]["results"][0]  # type: ignore[index]
+    candidate = usaspending.candidate_from_award(award, hispanic_owned=True)
+    assert candidate is not None
+    assert [f.claim for f in latino_rules.scan_payload(candidate.payload_json)] == [
+        "ownership_attribute"
+    ]
+    plain = usaspending.candidate_from_award(award)
+    assert plain is not None
+    assert latino_rules.scan_payload(plain.payload_json) == []
+    unfiltered = request.model_copy(
+        update={"selection": selection.model_copy(update={"config_json": {}})}
+    )
+    assert "recipient_type_names" not in usaspending.build_filters(unfiltered)
 
 
 def test_a_recorded_award_becomes_a_candidate_without_inventing_anything() -> None:

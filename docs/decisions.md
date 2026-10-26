@@ -1610,3 +1610,36 @@ plumbingrepairsugarland.com) siguen pasando: solo el dominio las delata, y por e
 también negocios reales. La ronda 6 (climatización Houston) trajo 9 variantes que la 1.1.1 no veía
 («Sugar Land TX Water Heater Repairs», «Richmond TX Locksmith»); con la 1.1.2 caen en las 39 listas
 sin tocar ningún otro nombre.
+
+## D-108 · Una búsqueda trae los negocios del centro, lee la página «About» y pide al registro federal los de propiedad hispana
+
+**Contexto.** La auditoría del 25/10/2026 sobre las 39 listas de las carpetas de marca: de 2.876
+contactables, 48 (1,7 %) tenían alguna evidencia latina y ninguno de propiedad latina. Tres causas
+estaban en el motor. (1) `overture.places` pedía `WHERE … LIMIT cap` sin orden, así que el tope se
+quedaba con las primeras filas del archivo, una esquina de la caja: «techos Dallas» salió de
+Arlington y Mansfield (60 % de teléfonos 817) y «plomería Houston» de Sugar Land. (2) El rastreador
+solo reconocía una URL repetida si era idéntica: `http://www.x.com/`, `https://x.com/` y
+`/index.html` gastaban tres páginas del presupuesto en la misma portada (1.001 de 1.055 «segundas
+portadas» eran idénticas) y la página «About», donde un negocio dice que es de propiedad hispana,
+quedó fuera 1.843 veces y se leyó 231. (3) `usaspending.recipients` existía pero nunca pedía el tipo
+de empresa `hispanic_american_owned_business`, la única fuente gratuita de propiedad declarada.
+
+**Decisión.** (1) `overture.places` 1.2.0 ordena por distancia al centro de la caja más cercana
+(`nearest_first`, longitud corregida por la latitud) antes del tope. (2) El rastreador cuenta como
+vista una página por `crawl.urls.page_key`: sin esquema, sin `www.` inicial, sin barra final y sin
+`index`/`default` (`.html`, `.htm`, `.php`, `.asp`, `.aspx`). (3) `usaspending.recipients` 1.1.0
+acepta `config_json["hispanic_owned"]: true` en la selección de la campaña: filtra
+`recipient_type_names` por ese tipo y el candidato lleva `hispanic_american_owned_business: true`
+en su carga, que las reglas latinas ya leían como atributo de propiedad de una fuente oficial. (4) Un
+enlace «Español» solo es `spanish_version` si va al propio sitio o a un subdominio suyo: «Lennox
+Stores» salía como mercado hispano por un «Español» que llevaba a un formulario de docusign.net.
+`latino.rules.EXTRACTOR_VERSION` pasa a 1.1.0, así que el siguiente trabajo latino de cada proyecto
+vuelve a leer sus páginas y la evidencia de la 1.0.0 deja de contar. Los nombres y apellidos siguen
+sin usarse.
+
+**Consecuencia.** El tope ya no decide qué parte de la ciudad entra, y una búsqueda nueva baja de
+Overture otra vez (la versión forma parte del nombre de la copia local). Un sitio gasta su
+presupuesto en páginas distintas. Las empresas del registro federal no traen teléfono: solo son
+contactables cuando la resolución las une a la ficha de Overture del mismo negocio, y el filtro de
+ciudad del API deja fuera a las de los suburbios. Las listas ya guardadas no cambian hasta que se
+vuelva a buscar.

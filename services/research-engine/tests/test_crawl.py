@@ -616,6 +616,29 @@ async def test_include_exclude_and_budgets(
     )
 
 
+async def test_the_home_page_under_another_address_does_not_spend_the_page_budget(
+    conn: sqlite3.Connection, data_dir: Path
+) -> None:
+    about = html("About", "<main><p>We are a family-owned, Hispanic-owned bakery.</p></main>")
+    site = FixtureSite(
+        {
+            "/robots.txt": Reply(404),
+            "/": Reply(
+                body=html("Home", '<a href="/index.html">Home</a> <a href="/about/">About us</a>')
+            ),
+            "/index.html": Reply(body=html("Home", "")),
+            "/about/": Reply(body=about),
+        }
+    )
+    service = crawler(data_dir)
+    run = await crawl(service, site.url("/"), max_pages_per_site=2)
+    await service.shutdown()
+    site.close()
+    assert site.hits("/about/") == 1, "the About page fits in the budget"
+    assert site.hits("/index.html") == 0, "the home page is not read a second time"
+    assert run.metrics.pages_fetched == 2
+
+
 async def test_the_request_budget_is_shared_by_every_site(
     data_dir: Path, bakery: FixtureSite
 ) -> None:

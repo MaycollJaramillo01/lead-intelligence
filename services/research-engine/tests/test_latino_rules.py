@@ -187,6 +187,17 @@ def test_a_spanish_website_without_a_declaration_is_market_affinity() -> None:
     assert all(factor.role is EvidenceRole.SUPPORTS and factor.counted for factor in result.factors)
 
 
+def test_a_spanish_version_is_one_of_the_site_s_own_pages() -> None:
+    def scanned(url: str) -> set[str]:
+        found = page("Heating and air.", links=({"text": "Español", "url": url},))
+        return claims(rules.scan_page(found | {"final_url": "https://www.parts.example/"}))
+
+    assert scanned("https://es.parts.example/") == {"spanish_version"}
+    assert scanned("https://parts.example/es/") == {"spanish_version"}
+    assert scanned("https://na4.forms.example/PowerFormSigning.aspx") == set()
+    assert scanned("https://translate.example/?sl=en&tl=es") == set()
+
+
 def test_mostly_spanish_text_is_a_spanish_page_even_without_a_lang_attribute() -> None:
     text = (
         "Somos una empresa de servicios de calidad para nuestros clientes. Ofrecemos también "

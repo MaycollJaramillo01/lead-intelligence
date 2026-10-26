@@ -20,6 +20,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from typing import Final
+from urllib.parse import urlsplit
 
 from research_engine.domain import (
     EvidenceFreshness,
@@ -33,7 +34,7 @@ from research_engine.domain import (
 
 RULES_VERSION: Final = "1.0.0"
 #: Version of the extraction patterns; it stamps the extractions that store evidence.
-EXTRACTOR_VERSION: Final = "1.0.0"
+EXTRACTOR_VERSION: Final = "1.1.0"
 
 
 # ---- taxonomy ----------------------------------------------------------------------------------
@@ -401,6 +402,13 @@ def _strongest(findings: Iterable[Finding]) -> list[Finding]:
     return list(best.values())
 
 
+def _same_site(url: str, page_url: str) -> bool:
+    """The link stays on the page's site or one of its subdomains (`es.`)."""
+    host = urlsplit(url).hostname or ""
+    site = (urlsplit(page_url).hostname or "").removeprefix("www.")
+    return host.removeprefix("www.") == site or host.endswith(f".{site}")
+
+
 def scan_page(page: Mapping[str, object]) -> list[Finding]:
     """Claims of one crawled page of a business's website (`crawl.extract.snapshot` payload)."""
     found: list[Finding] = []
@@ -418,10 +426,13 @@ def scan_page(page: Mapping[str, object]) -> list[Finding]:
                              f"{share:.0%} of common words in Spanish", 0.5,
                              {"spanish_share": round(share, 2)}))  # fmt: skip
     links = page.get("links")
+    home = page.get("final_url") or page.get("url")
     for index, link in enumerate(links if isinstance(links, list) else []):
         if not isinstance(link, Mapping):
             continue
         link_text, url = link.get("text"), link.get("url")
+        if isinstance(url, str) and isinstance(home, str) and not _same_site(url, home):
+            continue  # «Español» on a form host, a translator or a maker's page is not this site's
         if (isinstance(link_text, str) and _SPANISH_LINK_TEXT.match(link_text)) or (
             isinstance(url, str) and _SPANISH_URL.match(url)
         ):

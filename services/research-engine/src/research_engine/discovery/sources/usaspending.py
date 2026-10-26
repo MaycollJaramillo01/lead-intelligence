@@ -42,7 +42,7 @@ from research_engine.domain import (
 )
 
 KEY: Final = "usaspending.recipients"
-VERSION: Final = "1.0.0"
+VERSION: Final = "1.1.0"
 BASE_URL: Final = "https://api.usaspending.gov"
 SEARCH_PATH: Final = "/api/v2/search/spending_by_award/"
 COUNT_PATH: Final = "/api/v2/search/spending_by_award_count/"
@@ -61,6 +61,15 @@ FIELDS: Final = [
 #: The API only accepts award dates from this day on; an older freshness filter is clamped to it.
 EARLIEST_DATE: Final = "2007-10-01"
 DEFAULT_START: Final = "2020-01-01"
+#: `config_json["hispanic_owned"]: true` asks only for recipients whose SAM.gov registration
+#: declares them Hispanic American owned, a business type the API filters by. The row itself does
+#: not repeat it, so the candidate's payload adds it under the API's own name, which the Latino
+#: rules read as an ownership attribute of an official source.
+HISPANIC_OWNED: Final = "hispanic_american_owned_business"
+
+
+def _hispanic_owned(request: SourceRequest) -> bool:
+    return request.selection.config_json.get("hispanic_owned") is True
 
 
 def _page_number(cursor: str | None) -> int:
@@ -107,6 +116,8 @@ def build_filters(request: SourceRequest) -> JsonObject:
         filters["recipient_locations"] = locations
     if request.criteria.verticals:
         filters["naics_codes"] = [*request.criteria.verticals]
+    if _hispanic_owned(request):
+        filters["recipient_type_names"] = [HISPANIC_OWNED]
     return filters
 
 
@@ -189,8 +200,11 @@ def _decode(response: httpx.Response) -> dict[str, Any]:
     return payload
 
 
-def candidate_from_award(award: Mapping[str, Any]) -> Candidate | None:
-    """One award row as a candidate business. Rows without a recipient name are skipped."""
+def candidate_from_award(
+    award: Mapping[str, Any], *, hispanic_owned: bool = False
+) -> Candidate | None:
+    """One award row as a candidate business. Rows without a recipient name are skipped. A row
+    returned under the Hispanic-owned filter says so in its payload."""
     name = clean(award.get("Recipient Name"))
     if name is None:
         return None
@@ -205,7 +219,7 @@ def candidate_from_award(award: Mapping[str, Any]) -> Candidate | None:
     return Candidate(
         external_id=recipient_id or award_id,
         source_url=url,
-        payload_json=dict(award),
+        payload_json=dict(award) | ({HISPANIC_OWNED: True} if hispanic_owned else {}),
         dedup_key=dedup_key(name=name, locality=locality, region=region, external_id=recipient_id),
         name_raw=name[:300],
         locality=locality,
@@ -296,7 +310,7 @@ class UsaSpendingSource:
         for award in results:
             if not isinstance(award, Mapping):
                 continue
-            candidate = candidate_from_award(award)
+            candidate = candidate_from_award(award, hispanic_owned=_hispanic_owned(request))
             if candidate is not None and not _excluded(candidate, request):
                 candidates.append(candidate)
         has_next = bool(metadata.get("hasNext")) and bool(results)

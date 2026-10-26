@@ -98,7 +98,7 @@
         "provenance": {
           "extraction_id": "01900000-0000-7000-8000-000000000389",
           "extractor": "latino.payload",
-          "extractor_version": "1.0.0",
+          "extractor_version": "1.1.0",
           "extracted_at": "2026-01-01T00:00:00.000Z",
           "raw_record_id": "01900000-0000-7000-8000-000000000247",
           "source_run_id": "01900000-0000-7000-8000-000000000234",
@@ -148,7 +148,7 @@
         "provenance": {
           "extraction_id": "01900000-0000-7000-8000-000000000391",
           "extractor": "latino.payload",
-          "extractor_version": "1.0.0",
+          "extractor_version": "1.1.0",
           "extracted_at": "2026-01-01T00:00:00.000Z",
           "raw_record_id": "01900000-0000-7000-8000-000000000249",
           "source_run_id": "01900000-0000-7000-8000-000000000232",
@@ -256,5 +256,5 @@
     }
   ],
   "rules_version": "1.0.0",
-  "extractor_version": "1.0.0"
+  "extractor_version": "1.1.0"
 }

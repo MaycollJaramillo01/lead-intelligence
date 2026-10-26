@@ -67,6 +67,7 @@ from research_engine.crawl.urls import (
     canonical,
     host_of,
     in_scope,
+    page_key,
     page_kind,
     path_and_query,
     priority,
@@ -681,7 +682,8 @@ class CrawlService:
         rows: list[CrawlUrl] = []
         for item in urls:
             url, anchor = item if isinstance(item, tuple) else (item, None)
-            if url in site.known or len(site.known) >= MAX_URLS_PER_SITE:
+            key = page_key(url)
+            if key in site.known or len(site.known) >= MAX_URLS_PER_SITE:
                 continue
             reason = None
             if target is CrawlTarget.SITEMAP:
@@ -696,7 +698,7 @@ class CrawlService:
                 kind = page_kind(url, anchor)
                 rank = priority(kind, depth)
                 reason = skip_reason(url, job.settings)
-            site.known.add(url)
+            site.known.add(key)
             rows.append(
                 _row(site.run.id, url, target, kind, depth, rank, now, parent.id, reason=reason)
             )
@@ -1128,7 +1130,7 @@ def _open_site(
         task_id=task_id,
         site=str(run.effective_config_json["site"]),
         frontier=asyncio.PriorityQueue(),
-        known={row.url for row in rows},
+        known={page_key(row.url) for row in rows},
         pages_used=sum(
             1
             for row in rows
