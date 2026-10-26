@@ -16,6 +16,7 @@ import pytest
 from research_engine import repository
 from research_engine.discovery.engine import DiscoveryService, EngineSettings
 from research_engine.discovery.sources import overture
+from research_engine.discovery.sources.base import SourceContext
 from research_engine.domain import (
     CampaignSaveRequest,
     ContactPoint,
@@ -194,6 +195,38 @@ def test_a_capped_run_keeps_the_places_closest_to_the_centre(tmp_path: Path) -> 
     rows, total = overture.window(target, 0, 50)
     assert total == 10
     assert [row["id"] for row in rows] == [f"place-{i:04d}" for i in range(590, 600)]
+
+
+async def test_a_border_city_keeps_only_places_of_the_campaign_s_country(tmp_path: Path) -> None:
+    # place 0 stands for a roofer across the river: inside the box, in Mexico
+    country = "CASE WHEN id = 'place-0000' THEN 'MX' ELSE 'US' END"
+    addresses = f"[{{'freeform': 'x', 'locality': 'x', 'region': 'x', 'country': {country}}}]"
+    moved = f"SELECT * REPLACE ({addresses} AS addresses) FROM ({PLACES_SQL})"  # noqa: S608
+    release = tmp_path / "places.parquet"
+    duck = duckdb.connect()
+    duck.execute(f"COPY ({moved}) TO '{release}' (FORMAT parquet)")
+    duck.close()
+    scope = GeoScope(
+        country_code="US", region="TX", metro=None, locality="El Paso", postal_code=None,
+        radius_km=40,
+    )  # fmt: skip
+    async with httpx.AsyncClient(transport=FakeEverywhere()) as http:
+        box = await overture.locate(scope, SourceContext(data_dir=None, http=http, now=utc_now()))
+    assert box.country_code == "US"
+    criteria = empty_criteria().model_copy(update={"categories": ["roofing"]})
+    where, params = overture.build_filter([box], criteria)
+    target = tmp_path / "kept.parquet"
+    overture.materialise(target, str(release), where, params, 1000, overture.nearest_first([box]))
+    rows, total = overture.window(target, 0, 1000)
+    assert total == 599  # 600 roofers in the box with a phone, less the Mexican one
+    assert "place-0000" not in {row["id"] for row in rows}
+
+
+class FakeEverywhere(httpx.AsyncBaseTransport):
+    """Nominatim placing every city on Houston's coordinates."""
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[HOUSTON])
 
 
 @pytest.mark.parametrize(

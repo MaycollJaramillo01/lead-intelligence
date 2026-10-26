@@ -61,7 +61,7 @@ from research_engine.domain import (
 )
 
 KEY: Final = "overture.places"
-VERSION: Final = "1.2.0"
+VERSION: Final = "1.3.0"
 STAC_URL: Final = "https://stac.overturemaps.org/catalog.json"
 NOMINATIM_URL: Final = "https://nominatim.openstreetmap.org/search"
 #: The public release. Tests point it at a local Parquet file.
@@ -92,7 +92,7 @@ _KEYWORD: Final = "names.primary ILIKE ?"
 
 @dataclass(frozen=True, slots=True)
 class Box:
-    """Where to look, in degrees, plus what a ZIP or a whole-country search must also match."""
+    """Where to look, in degrees, plus what a ZIP must also match and the campaign's country."""
 
     west: float
     south: float
@@ -178,14 +178,15 @@ async def locate(scope: GeoScope, context: SourceContext) -> Box:
         half_lon = radius / (KM_PER_DEGREE * max(0.01, math.cos(math.radians(latitude))))
         south, north = latitude - half_lat, latitude + half_lat
         west, east = longitude - half_lon, longitude + half_lon
-    only_country = not (scope.region or scope.locality or scope.postal_code or scope.metro)
     return Box(
         west=west,
         south=south,
         east=east,
         north=north,
         postal_code=scope.postal_code if not scope.radius_km else None,
-        country_code=scope.country_code if only_country else None,
+        # a border city's box takes in the other country (El Paso's holds Ciudad Juárez, McAllen's
+        # Reynosa) and nearest-first would rank it first; Overture fills every place's country
+        country_code=scope.country_code,
     )
 
 

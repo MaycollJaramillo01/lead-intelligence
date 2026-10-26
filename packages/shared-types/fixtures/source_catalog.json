@@ -124,7 +124,7 @@
         "key": "overture.places",
         "name": "Overture Maps places (phones, websites, emails)",
         "kind": "public_dataset",
-        "version": "1.2.0",
+        "version": "1.3.0",
         "capabilities": [
           "pagination",
           "checkpoint",

@@ -1643,3 +1643,17 @@ presupuesto en páginas distintas. Las empresas del registro federal no traen te
 contactables cuando la resolución las une a la ficha de Overture del mismo negocio, y el filtro de
 ciudad del API deja fuera a las de los suburbios. Las listas ya guardadas no cambian hasta que se
 vuelva a buscar.
+
+## D-109 · Una ciudad de frontera solo trae negocios de su país
+
+**Contexto.** Con D-108 el tope de `overture.places` se queda con los negocios más cercanos al centro
+de la caja. La caja de 40 km de El Paso incluye Ciudad Juárez, la de McAllen Reynosa y la de Laredo
+Nuevo Laredo, a pocos kilómetros del centro: los negocios mexicanos habrían ocupado buena parte del
+tope. La caja solo filtraba el país en las búsquedas de un país entero.
+
+**Decisión.** `overture.places` 1.3.0 filtra `addresses[1].country` por el país de la campaña en
+toda caja. Overture rellena ese campo en todos sus lugares (0 vacíos en los 13.139 de las copias
+locales).
+
+**Consecuencia.** Una búsqueda de frontera trae solo negocios de EE. UU. Un lugar al que Overture no
+le pusiera país quedaría fuera; hoy no hay ninguno.
